@@ -1,0 +1,98 @@
+# Agent Evaluation CI/CD Pipeline (Module 12)
+# Runs DeepEval evaluation suite on every push and PR.
+# Fails the build if any quality threshold is violated.
+
+name: Agent Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  OPENAI_MODEL: gpt-4o-mini
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  evaluate:
+    name: Run Agent Evaluations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run functional tests
+        run: |
+          pytest tests/functional/ -v --tb=short -m functional \
+            --junitxml=reports/results/functional.xml
+
+      - name: Run LLM quality evaluation
+        run: |
+          pytest tests/evaluation/ -v --tb=short -m evaluation \
+            --junitxml=reports/results/evaluation.xml
+
+      - name: Run RAG evaluation
+        run: |
+          pytest tests/rag/ -v --tb=short -m rag \
+            --junitxml=reports/results/rag.xml
+
+      - name: Run security tests
+        run: |
+          pytest tests/security/ -v --tb=short -m security \
+            --junitxml=reports/results/security.xml
+
+      - name: Run regression tests
+        run: |
+          pytest tests/regression/ -v --tb=short -m regression \
+            --junitxml=reports/results/regression.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.sha }}
+          path: reports/results/
+          retention-days: 30
+
+  security-scan:
+    name: Red Team Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: evaluate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run red team scan
+        run: |
+          cd security
+          promptfoo eval --config promptfoo.yaml \
+            --output ../reports/results/security-scan.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-${{ github.sha }}
+          path: reports/results/security-scan.json
+          retention-days: 30

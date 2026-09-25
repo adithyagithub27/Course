@@ -1,0 +1,152 @@
+[
+  {
+    "question": "How many vacation days do employees get per year?",
+    "answer": "All full-time employees are entitled to 15 days of paid vacation per calendar year.",
+    "ground_truth": "All full-time employees are entitled to 15 days of paid vacation per calendar year.",
+    "contexts": [
+      "All full-time employees are entitled to 15 days of paid vacation per calendar year. Unused vacation days may be carried over to the following year, up to a maximum of 5 days. Vacation requests must be submitted to the employee's direct manager at least 14 calendar days before the requested start date."
+    ],
+    "category": "vacation",
+    "difficulty": "easy"
+  },
+  {
+    "question": "How many days can I carry over unused vacation?",
+    "answer": "Unused vacation days may be carried over to the following year, up to a maximum of 5 days.",
+    "ground_truth": "Unused vacation days may be carried over up to a maximum of 5 days.",
+    "contexts": [
+      "All full-time employees are entitled to 15 days of paid vacation per calendar year. Unused vacation days may be carried over to the following year, up to a maximum of 5 days."
+    ],
+    "category": "vacation",
+    "difficulty": "easy"
+  },
+  {
+    "question": "How many days per week can I work remotely?",
+    "answer": "Eligible employees may work remotely for up to three days per week, subject to manager approval.",
+    "ground_truth": "Eligible employees may work remotely for up to three (3) days per week, subject to manager approval.",
+    "contexts": [
+      "Eligible employees may work remotely for up to three (3) days per week, subject to manager approval. A Remote Work Agreement form must be completed and signed before commencing remote work. All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone."
+    ],
+    "category": "remote_work",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What are the core business hours for remote workers?",
+    "answer": "All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone.",
+    "ground_truth": "Core business hours are 10:00 AM to 3:00 PM in the employee's local timezone.",
+    "contexts": [
+      "All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone. Equipment allowance of $500 is provided for home office setup."
+    ],
+    "category": "remote_work",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What is the deadline for submitting expense reports?",
+    "answer": "Business expenses must be submitted through the company expense portal within 30 days of the expense date.",
+    "ground_truth": "Business expenses must be submitted within 30 days of the expense date.",
+    "contexts": [
+      "Business expenses must be submitted through the company expense portal within 30 days of the expense date. Original receipts are required for all expenses exceeding $25. Expenses over $500 require prior manager approval."
+    ],
+    "category": "expenses",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Do I need receipts for a $20 lunch expense?",
+    "answer": "No, receipts are only required for expenses exceeding $25. A $20 expense does not require a receipt.",
+    "ground_truth": "Original receipts are required for all expenses exceeding $25. A $20 expense is below the threshold.",
+    "contexts": [
+      "Original receipts are required for all expenses exceeding $25. Expenses over $500 require prior manager approval."
+    ],
+    "category": "expenses",
+    "difficulty": "medium"
+  },
+  {
+    "question": "How many sick days do I get per year?",
+    "answer": "Employees receive 10 days of paid sick leave per year.",
+    "ground_truth": "Employees receive 10 days of paid sick leave per year.",
+    "contexts": [
+      "Employees receive 10 days of paid sick leave per year. Sick leave may be used for personal illness, medical appointments, or care of an immediate family member."
+    ],
+    "category": "sick_leave",
+    "difficulty": "easy"
+  },
+  {
+    "question": "When do I need a doctor's note for sick leave?",
+    "answer": "A doctor's note is required for absences exceeding 3 consecutive days.",
+    "ground_truth": "A doctor's note is required for absences exceeding 3 consecutive days.",
+    "contexts": [
+      "A doctor's note is required for absences exceeding 3 consecutive days. Unused sick leave does not carry over and is not paid out upon termination."
+    ],
+    "category": "sick_leave",
+    "difficulty": "easy"
+  },
+  {
+    "question": "When are performance reviews conducted?",
+    "answer": "Performance reviews are conducted semi-annually in June and December.",
+    "ground_truth": "Performance reviews are conducted semi-annually in June and December.",
+    "contexts": [
+      "Performance reviews are conducted semi-annually in June and December. Each review includes self-assessment, manager assessment, and a calibration meeting."
+    ],
+    "category": "performance",
+    "difficulty": "easy"
+  },
+  {
+    "question": "What percentage of health insurance premiums does the company cover?",
+    "answer": "The company covers 80% of employee premiums and 50% of dependent premiums.",
+    "ground_truth": "The company covers 80% of employee premiums and 50% of dependent premiums.",
+    "contexts": [
+      "The company offers three health insurance plans: Basic HMO, Standard PPO, and Premium PPO. The company covers 80% of employee premiums and 50% of dependent premiums."
+    ],
+    "category": "benefits",
+    "difficulty": "easy"
+  },
+  {
+    "question": "Can I use sick leave to care for a family member?",
+    "answer": "Yes, sick leave may be used for care of an immediate family member.",
+    "ground_truth": "Sick leave may be used for personal illness, medical appointments, or care of an immediate family member.",
+    "contexts": [
+      "Employees receive 10 days of paid sick leave per year. Sick leave may be used for personal illness, medical appointments, or care of an immediate family member."
+    ],
+    "category": "sick_leave",
+    "difficulty": "medium"
+  },
+  {
+    "question": "What happens if I get a 'Needs Improvement' performance rating?",
+    "answer": "Employees rated Needs Improvement receive a 60-day performance improvement plan (PIP).",
+    "ground_truth": "Employees rated Needs Improvement receive a 60-day performance improvement plan (PIP).",
+    "contexts": [
+      "Ratings use a 5-point scale: Exceeds Expectations, Meets Expectations, Developing, Needs Improvement, Unsatisfactory. Employees rated Needs Improvement receive a 60-day performance improvement plan (PIP)."
+    ],
+    "category": "performance",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Is there an equipment allowance for remote workers?",
+    "answer": "Yes, an equipment allowance of $500 is provided for home office setup.",
+    "ground_truth": "Equipment allowance of $500 is provided for home office setup.",
+    "contexts": [
+      "All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone. Equipment allowance of $500 is provided for home office setup."
+    ],
+    "category": "remote_work",
+    "difficulty": "easy"
+  },
+  {
+    "question": "How do I report workplace harassment?",
+    "answer": "Violations should be reported to HR or through the anonymous ethics hotline.",
+    "ground_truth": "Violations should be reported to HR or through the anonymous ethics hotline.",
+    "contexts": [
+      "Harassment, discrimination, and retaliation of any kind are strictly prohibited. Violations should be reported to HR or through the anonymous ethics hotline. The company maintains a zero-tolerance policy for workplace violence."
+    ],
+    "category": "conduct",
+    "difficulty": "medium"
+  },
+  {
+    "question": "Do I need VP approval to take 3 consecutive vacation days?",
+    "answer": "No, VP-level approval is only required for requests of more than 5 consecutive days. Three consecutive days only need manager approval submitted at least 14 days in advance.",
+    "ground_truth": "Requests for more than 5 consecutive days require VP-level approval. Three days only need standard manager approval.",
+    "contexts": [
+      "Vacation requests must be submitted to the employee's direct manager at least 14 calendar days before the requested start date. Requests for more than 5 consecutive days require VP-level approval."
+    ],
+    "category": "vacation",
+    "difficulty": "hard"
+  }
+]

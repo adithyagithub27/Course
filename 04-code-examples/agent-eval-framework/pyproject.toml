@@ -1,0 +1,20 @@
+[project]
+name = "agent-eval-framework"
+version = "0.1.0"
+description = "A reusable framework for testing and evaluating AI agents"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "functional: Functional quality tests",
+    "evaluation: LLM output quality tests",
+    "rag: RAG pipeline tests",
+    "security: Security and red team tests",
+    "tool_calling: Tool calling tests",
+    "regression: Regression tests",
+    "slow: Tests that take >30s",
+]

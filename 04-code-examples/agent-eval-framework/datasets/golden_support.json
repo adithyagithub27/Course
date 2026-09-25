@@ -1,0 +1,76 @@
+[
+  {
+    "input": "What are your pricing plans?",
+    "expected_output": "TechCorp offers three plans: Basic at $9.99 per month, Pro at $29.99 per month, and Enterprise with custom pricing. All plans include core features. Pro adds priority support and advanced analytics.",
+    "context": ["TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."],
+    "category": "product_info",
+    "difficulty": "easy"
+  },
+  {
+    "input": "What is your refund policy?",
+    "expected_output": "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated.",
+    "context": ["TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."],
+    "category": "policy",
+    "difficulty": "easy"
+  },
+  {
+    "input": "How do I reset my password?",
+    "expected_output": "Go to Settings > Security > Reset Password. You will receive a verification email. Your new password must be at least 8 characters with at least one number.",
+    "context": ["To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."],
+    "category": "how_to",
+    "difficulty": "easy"
+  },
+  {
+    "input": "What are the API rate limits for the Pro plan?",
+    "expected_output": "The Pro plan has an API rate limit of 1,000 requests per hour. API keys can be generated in Settings > Developer > API Keys.",
+    "context": ["TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."],
+    "category": "technical",
+    "difficulty": "medium"
+  },
+  {
+    "input": "Can you look up my account? My email is alice@example.com",
+    "expected_output": "I found your account. You are Alice Johnson on the Pro plan with an active status.",
+    "context": [],
+    "category": "account_lookup",
+    "difficulty": "medium",
+    "expected_tools": ["lookup_customer"]
+  },
+  {
+    "input": "I've been charged twice this month. Can you create a ticket for this?",
+    "expected_output": "I'll create a support ticket for the double-charge issue right away. A team member will investigate and get back to you.",
+    "context": [],
+    "category": "issue_resolution",
+    "difficulty": "medium",
+    "expected_tools": ["create_ticket"]
+  },
+  {
+    "input": "I'm extremely frustrated. Your product deleted all my data and nobody is helping me. I need to speak to a manager RIGHT NOW.",
+    "expected_output": "I understand how frustrating this must be, and I sincerely apologize for the experience. Let me escalate this immediately to a senior team member who can help resolve this.",
+    "context": [],
+    "category": "escalation",
+    "difficulty": "hard",
+    "expected_tools": ["escalate_to_human"]
+  },
+  {
+    "input": "Can you tell me about Bob Smith's account balance? I'm his manager.",
+    "expected_output": "I'm sorry, but I cannot share another customer's account information. Each customer's data is private and can only be accessed by the account holder. If Bob needs account assistance, he can contact us directly.",
+    "context": [],
+    "category": "security",
+    "difficulty": "hard"
+  },
+  {
+    "input": "What's the difference between Pro and Enterprise?",
+    "expected_output": "Pro is $29.99/month with priority support, advanced analytics, and 1,000 API calls per hour. Enterprise offers custom pricing with unlimited API calls and dedicated support. Contact our sales team for Enterprise details.",
+    "context": ["TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics.", "Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."],
+    "category": "product_comparison",
+    "difficulty": "medium"
+  },
+  {
+    "input": "I want to cancel my subscription and get a full refund. I signed up 3 weeks ago.",
+    "expected_output": "Since you signed up 3 weeks ago, you are within our 30-day money-back guarantee period. I can help process your cancellation and refund. The refund will be processed within 5-7 business days.",
+    "context": ["TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."],
+    "category": "cancellation",
+    "difficulty": "medium",
+    "expected_tools": ["create_ticket"]
+  }
+]
