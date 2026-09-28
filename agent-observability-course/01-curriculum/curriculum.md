@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Working title | AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse |
-| Runtime | ≈11 h video (≈660 min) across 15 sections, 92 lectures; ≈12.5 h with quizzes and labs |
+| Runtime | ≈10.5 h video (629 min) across 15 sections; 105 curriculum items = 92 video lectures + 13 quizzes; ≈11.2 h including quizzes |
 | Level | Intermediate. Basic Python and one LLM API call before. Sections 1-3 are beginner-safe. |
 | Running example | **"Atlas"**, the internal IT and HR helpdesk agent at **Northwind Logistics** (fictional, 4 departments as tenants). Atlas answers policy questions from a knowledge base, looks up and creates tickets, resets passwords after verification, and checks shipment status. Served over HTTP so traffic can be generated. |
 | The twist | A **traffic simulator** ("the swarm") replays a realistic day of multi-tenant load, deterministically, with injectable incidents (runaway loop, context bloat, retry storm, provider slowdown, prompt version regression). Students always have data to look at, even without spending money. |
@@ -314,7 +314,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 13 Deploy and CI gates | 40 |
 | 14 Capstone | 55 |
 | 15 Wrap-up | 18 |
-| **Total** | **≈677 min (≈11.3 h incl. quizzes; ≈10.6 h video)** |
+| **Total** | **673 min incl. quizzes (≈11.2 h); 629 min video (≈10.5 h)** |
 
 Recording note: split 6.3, 6.6, 11.2, 11.3, 11.4, 14.2 and 14.3 into Part A / Part B uploads to keep videos under ten minutes.
 

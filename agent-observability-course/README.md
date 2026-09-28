@@ -15,7 +15,7 @@ Course 4 in the Build → Test → Deploy → Operate series. Complete productio
 
 | Field | Value |
 |---|---|
-| Runtime | ≈10.6 h video, 15 sections, 92 lectures |
+| Runtime | ≈10.5 h video (629 min), 15 sections, 92 video lectures + 13 quizzes |
 | Level | Intermediate Python (beginner-safe first three sections) |
 | Stack | langfuse 4, opentelemetry-sdk 1.45, GenAI semconv 0.66, openinference, litellm, langsmith, deepeval, prometheus-client, fastapi, Docker Compose (Langfuse, OTel Collector, Prometheus, Grafana) |
 | Student cost | ≈$5-15 in API usage; everything runs offline via the mock LLM |
