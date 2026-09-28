@@ -18,6 +18,14 @@ Languages (``LANGUAGE`` env, see ``src/maple/config.py``)::
 The STT gets the language code (``deepgram/nova-3`` with ``language="es"``), the TTS
 speaks it (Cartesia Sonic-3 is multilingual), ``inference.TurnDetector()`` supports
 en/es/hi, and the prompt tells Riley to translate English FAQ answers.
+
+Optional extension from lecture 7.8, for callers who switch language mid-call::
+
+    FOLLOW_CALLER_LANGUAGE=1 python agents/s07_knowledge_agent.py console
+
+The STT runs in Deepgram's code-switching ``multi`` mode, every final transcript
+carries a language code, and ``follow_caller_language`` updates the TTS language when
+it changes. The prompt already tells Riley to switch with the caller.
 """
 
 from __future__ import annotations
@@ -25,7 +33,17 @@ from __future__ import annotations
 import logging
 import os
 
-from livekit.agents import Agent, AgentServer, ChatContext, ChatMessage, JobContext, cli
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    ChatContext,
+    ChatMessage,
+    JobContext,
+    UserInputTranscribedEvent,
+    cli,
+    inference,
+)
 
 from common import (
     CallState,
@@ -73,6 +91,27 @@ class KnowledgeRiley(KnowledgeToolsMixin, Agent):
             )
 
 
+def follow_caller_language(session: AgentSession[CallState], *, initial: str = "en") -> None:
+    """Switch the TTS language when the caller changes language mid-call (lecture 7.8).
+
+    Needs an STT that reports a language on final transcripts (Deepgram ``multi`` does).
+    The LLM switches on its own: the language block says "if the caller switches, switch
+    with them".
+    """
+    current = {"language": initial}
+
+    @session.on("user_input_transcribed")
+    def _follow_caller_language(ev: UserInputTranscribedEvent) -> None:
+        if not ev.is_final or ev.language is None:
+            return
+        spoken = str(ev.language).split("-", 1)[0]  # "es-419" -> "es"
+        if spoken in ("en", "es", "hi") and spoken != current["language"]:
+            logger.info("caller switched language: %s -> %s", current["language"], spoken)
+            current["language"] = spoken
+            if session.tts is not None:
+                session.tts.update_options(language=spoken)
+
+
 server = AgentServer(setup_fnc=prewarm)
 
 
@@ -81,9 +120,25 @@ async def entrypoint(ctx: JobContext) -> None:
     """Start the knowledge agent in the configured language."""
     settings = get_settings()
     prefetch = os.getenv("KNOWLEDGE_MODE", "tool").lower() == "prefetch"
-    logger.info("language=%s prefetch=%s", settings.language, prefetch)
-    session = create_session(settings, proc=ctx.proc, userdata=CallState())
-    await session.start(agent=KnowledgeRiley(language=settings.language, prefetch=prefetch), room=ctx.room)
+    follow = os.getenv("FOLLOW_CALLER_LANGUAGE", "0") == "1"
+    logger.info("language=%s prefetch=%s follow_caller_language=%s", settings.language, prefetch, follow)
+    if not follow:
+        session = create_session(settings, proc=ctx.proc, userdata=CallState())
+        await session.start(
+            agent=KnowledgeRiley(language=settings.language, prefetch=prefetch), room=ctx.room
+        )
+        return
+
+    # Lecture 7.8 extension: code-switching STT, TTS follows the caller, prompt starts in English.
+    session = create_session(
+        settings,
+        proc=ctx.proc,
+        userdata=CallState(),
+        stt=inference.STT(model=settings.stt_model, language="multi"),
+        tts=inference.TTS(model=settings.tts_model.split(":", 1)[0], voice=settings.tts_voice, language="en"),
+    )
+    follow_caller_language(session, initial="en")
+    await session.start(agent=KnowledgeRiley(language="en", prefetch=prefetch), room=ctx.room)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,9 @@ Two kinds of checks:
   check the appointment actually exists.
 
 ``mock_tools(RileyBookingAgent, {...})`` swaps tool *execution* for deterministic
-fakes to force the "no availability" and "backend down" paths.
+fakes to force the "no availability" and "backend down" paths. LiveKit calls a mock with
+the real tool's arguments positionally, ``context`` first, so a mock either mirrors the
+real signature (``(context, day, part_of_day="any")``) or takes no parameters at all.
 """
 
 from __future__ import annotations
@@ -108,7 +110,7 @@ async def test_cancel_requires_confirmation(llm, judge_llm, scheduler) -> None:
 
 
 async def test_no_availability_mocked(llm, judge_llm, scheduler) -> None:
-    def no_slots(day: str, part_of_day: str = "any") -> str:
+    def no_slots(context, day: str, part_of_day: str = "any") -> str:
         return "There are no openings in the next two weeks. Offer the waitlist or a transfer."
 
     with mock_tools(RileyBookingAgent, {"find_available_slots": no_slots}):
@@ -128,7 +130,7 @@ async def test_no_availability_mocked(llm, judge_llm, scheduler) -> None:
 
 
 async def test_backend_outage_mocked(llm, judge_llm, scheduler) -> None:
-    def outage(day: str, part_of_day: str = "any") -> str:
+    def outage(context, day: str, part_of_day: str = "any") -> str:
         raise ToolError("The scheduling system is not responding. Apologize and offer to take a message.")
 
     with mock_tools(RileyBookingAgent, {"find_available_slots": outage}):
@@ -146,6 +148,25 @@ async def test_backend_outage_mocked(llm, judge_llm, scheduler) -> None:
                     "or transfer, without making up times.",
                 )
             )
+
+
+async def test_after_lunch_means_afternoon(llm, scheduler) -> None:
+    seen: list[tuple[str, str]] = []
+
+    def spy(context, day: str, part_of_day: str = "any") -> str:
+        seen.append((day, part_of_day))
+        return (
+            "Open times: Thursday, October eighth at two in the afternoon "
+            "[slot_start=2026-10-08T14:00]. Offer these to the caller in words."
+        )
+
+    with mock_tools(RileyBookingAgent, {"find_available_slots": spy}):
+        async with AgentSession(llm=llm, userdata=CallState()) as session:
+            await session.start(RileyBookingAgent(scheduler=scheduler))
+            await session.run(user_input="Anything Thursday after lunch?")
+
+    assert seen, "Riley never checked availability"
+    assert seen[0][1] == "afternoon"
 
 
 async def test_greeter_hands_off_to_booking(llm, scheduler) -> None:

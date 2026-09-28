@@ -124,7 +124,7 @@ frontend/         how to put a web UI in front of Riley
 | 6.2-6.4 | `agents/s06_realtime_agent.py` (`REALTIME_HYBRID=1` for 6.3) |
 | 7.1-7.3 | `src/maple/knowledge.py`, `src/maple/data/faq.md`, `agents/s07_knowledge_agent.py` |
 | 7.5-7.6 | `agents/s07_multi_agent.py` |
-| 7.8 | `agents/s07_knowledge_agent.py` with `LANGUAGE=es` or `LANGUAGE=hi` |
+| 7.8 | `agents/s07_knowledge_agent.py` with `LANGUAGE=es` or `LANGUAGE=hi` (`FOLLOW_CALLER_LANGUAGE=1` for mid-call switching) |
 | 8.2-8.4 | `agents/s08_telephony_agent.py`, `livekit.toml.example` |
 | 8.5 | `agents/s08_outbound_call.py` (`dispatch` sub-command) |
 | 9.3 | `tests/agent/test_greeting.py`, `tests/agent/conftest.py` |
@@ -141,7 +141,9 @@ frontend/         how to put a web UI in front of Riley
 | 11.5 | `tests/agent/test_safety.py`, `simulated_caller.py --persona injection_attacker` |
 | 12.2 | `deploy/Dockerfile`, `deploy/.dockerignore` |
 | 12.5 | `frontend/README.md` |
+| 12.8 | `agents/s12_chaos_demo.py` (kill switch: `touch /tmp/riley-kill-llm`) |
 | 13.x | `agents/s13_capstone_receptionist.py`, whole `tests/` tree |
+| 13.4 | `tests/agent/test_capstone.py` |
 | 14.2 | `pipecat/s14_pipecat_bot.py` |
 
 ## Names you will see in the lectures

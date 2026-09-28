@@ -28,6 +28,7 @@ speakable :class:`ToolError` and formats results for the ear.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -53,6 +54,7 @@ from livekit.agents import (  # noqa: E402
     ChatContext,
     EndpointingOptions,
     InterruptionOptions,
+    JobContext,
     JobProcess,
     NotGivenOr,
     RunContext,
@@ -448,6 +450,19 @@ def create_session(
     )
 
 
+def can_say(session: AgentSession[Any]) -> bool:
+    """Whether ``session.say(text)`` can speak on this session.
+
+    ``say`` needs a TTS; a pure realtime model that produces audio itself and does not
+    support ``say`` (OpenAI Realtime with ``modalities=["audio"]``) raises instead.
+    """
+    model = session.llm
+    if session.tts is not None or not isinstance(model, llm.RealtimeModel):
+        return True
+    caps = model.capabilities
+    return caps.supports_say or not caps.audio_output
+
+
 # --------------------------------------------------------------------------------------
 # Formatting helpers
 # --------------------------------------------------------------------------------------
@@ -485,6 +500,19 @@ class BookingToolsMixin:
         if self.simulated_latency > 0:
             await asyncio.sleep(self.simulated_latency)
 
+    def _filler(
+        self, context: RunContext[CallState], text: str
+    ) -> contextlib.AbstractAsyncContextManager[None]:
+        """Filler speech for a slow tool, skipped where ``say`` would fail (lecture 6.2).
+
+        A string filler is spoken with ``session.say``, which needs a TTS. A pure realtime
+        session (``RealtimeModel`` with audio output and no separate TTS) has none, so the
+        filler is skipped there. Cascaded and hybrid sessions behave exactly as before.
+        """
+        if not can_say(context.session):
+            return contextlib.nullcontext()
+        return context.with_filler(text, delay=0.8)
+
     def _check_verified(self, context: RunContext[CallState], phone: str) -> None:
         if not self.require_verification:
             return
@@ -509,7 +537,7 @@ class BookingToolsMixin:
                 "tomorrow" or "Thursday".
             part_of_day: "morning", "afternoon" or "any".
         """
-        async with context.with_filler("One moment while I check the schedule.", delay=0.8):
+        async with self._filler(context, "One moment while I check the schedule."):
             await self._backend_call()
             try:
                 target = parse_day(day, self.scheduler.today)
@@ -551,7 +579,7 @@ class BookingToolsMixin:
             reason: Short reason for the visit, e.g. "cleaning" or "tooth pain".
         """
         context.disallow_interruptions()  # a half-finished booking is worse than a short wait
-        async with context.with_filler("Booking that for you now.", delay=0.8):
+        async with self._filler(context, "Booking that for you now."):
             await self._backend_call()
             try:
                 appt = self.scheduler.book(patient_name, phone, slot_start, reason)
@@ -585,7 +613,7 @@ class BookingToolsMixin:
         """
         self._check_verified(context, phone)
         context.disallow_interruptions()
-        async with context.with_filler("Let me move that for you.", delay=0.8):
+        async with self._filler(context, "Let me move that for you."):
             await self._backend_call()
             try:
                 current = self.scheduler.upcoming_for_phone(phone)
@@ -612,7 +640,7 @@ class BookingToolsMixin:
         """
         self._check_verified(context, phone)
         context.disallow_interruptions()
-        async with context.with_filler("Okay, cancelling that now.", delay=0.8):
+        async with self._filler(context, "Okay, cancelling that now."):
             await self._backend_call()
             try:
                 current = self.scheduler.upcoming_for_phone(phone)
@@ -732,6 +760,32 @@ def caller_number(participant: rtc.RemoteParticipant | None) -> str | None:
     return participant.attributes.get("sip.phoneNumber") or None
 
 
+async def transfer_sip_caller(job_ctx: JobContext, caller: rtc.RemoteParticipant, state: CallState) -> bool:
+    """Blind-transfer the phone caller to ``TRANSFER_PHONE_NUMBER`` and record the outcome.
+
+    Shared by ``transfer_to_human`` and the capstone's error handler (lecture 13.3).
+    Returns ``False`` when the SIP transfer failed (the caller is still on the line).
+    """
+    settings = get_settings()
+    try:
+        await job_ctx.transfer_sip_participant(caller, settings.transfer_sip_uri)
+    except Exception:  # SIP errors surface as API errors
+        logger.exception("transfer failed")
+        state.call_outcome = "transfer_failed"
+        return False
+    state.call_outcome = "transferred"
+    return True
+
+
+async def hang_up(session: AgentSession[Any], job_ctx: JobContext | None) -> None:
+    """End the call: delete the room on a real job, shut the session down in console mode or tests."""
+    if job_ctx is None or job_ctx.is_fake_job():
+        session.shutdown()
+        return
+    # Deleting the room disconnects everyone, including the SIP caller.
+    await job_ctx.delete_room()
+
+
 class TelephonyToolsMixin:
     """Adds ``transfer_to_human`` and ``end_call``."""
 
@@ -756,13 +810,8 @@ class TelephonyToolsMixin:
                 "so the front desk can call back."
             )
         await context.wait_for_playout()  # let "I'm transferring you now" finish first
-        try:
-            await job_ctx.transfer_sip_participant(caller, settings.transfer_sip_uri)
-        except Exception as exc:  # SIP errors surface as API errors
-            logger.exception("transfer failed")
-            state.call_outcome = "transfer_failed"
-            raise ToolError("The transfer didn't go through. Apologize and offer to take a message.") from exc
-        state.call_outcome = "transferred"
+        if not await transfer_sip_caller(job_ctx, caller, state):
+            raise ToolError("The transfer didn't go through. Apologize and offer to take a message.")
         return "The caller has been transferred."
 
     @function_tool
@@ -772,10 +821,5 @@ class TelephonyToolsMixin:
         if state.call_outcome == "in_progress":
             state.call_outcome = "completed"
         await context.wait_for_playout()  # let the goodbye finish
-        job_ctx = get_job_context(required=False)
-        if job_ctx is None or job_ctx.is_fake_job():
-            context.session.shutdown()
-            return None
-        # Deleting the room disconnects everyone, including the SIP caller.
-        await job_ctx.delete_room()
+        await hang_up(context.session, get_job_context(required=False))
         return None

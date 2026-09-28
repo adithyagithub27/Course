@@ -15,7 +15,8 @@ Combines:
 * Input and output guardrails, PII-redacted logs (S11)
 * Metrics JSONL, usage and cost per minute, optional OTel/Langfuse tracing (S10)
 * Fallbacks: LiveKit Inference server-side STT/TTS fallbacks, an LLM ``FallbackAdapter``,
-  per-stage ``conn_options`` timeouts and spoken error recovery (13.3)
+  per-stage ``conn_options`` timeouts and spoken error recovery that really transfers
+  or hangs up (13.3)
 * ``on_simulation_end``: your own pass/fail check for LiveKit Simulations (9.14)
 
 Run::
@@ -27,6 +28,8 @@ Run::
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from typing import Any
 
@@ -46,6 +49,7 @@ from livekit.agents import (
     inference,
     llm,
 )
+from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.agent_session import SessionConnectOptions
 from s10_observed_agent import attach_observers, setup_observability
 from s11_guarded_agent import GuardrailsMixin, install_pii_log_filter
@@ -63,9 +67,12 @@ from common import (
     caller_number,
     clinic_today,
     create_session,
+    find_sip_participant,
     get_scheduler,
     get_settings,
+    hang_up,
     prewarm,
+    transfer_sip_caller,
 )
 from maple import prompts
 from maple.config import Settings
@@ -79,7 +86,8 @@ Capstone rules:
   existing appointment does: use verify_caller first.
 - For insurance, payment plans or bills, hand off with transfer_to_billing.
 - Before transferring to a human say one short sentence, then call transfer_to_human.
-- When the caller is finished, say goodbye in one sentence, then call end_call."""
+- When the caller is finished, say goodbye in one sentence, then call end_call.
+- If the clinic is closed on the requested day, call find_available_slots for the next open day and offer those times."""
 
 CONN_OPTIONS = SessionConnectOptions(
     stt_conn_options=APIConnectOptions(max_retry=2, retry_interval=1.0, timeout=8.0),
@@ -235,6 +243,36 @@ async def on_simulation_end(sim: SimulationContext) -> None:
         sim.fail(f"expected call outcome {expected!r} but got {outcome!r}")
 
 
+async def recover_after_error(
+    session: AgentSession[CallState], ctx: JobContext, spoken: SpeechHandle
+) -> None:
+    """Make ``ERROR_SPEECH`` true (lecture 13.3).
+
+    The error line promises a transfer, so once it has played we take the same path as
+    ``transfer_to_human``: a phone caller with ``TRANSFER_PHONE_NUMBER`` configured is
+    transferred to the front desk. Web callers, console mode and an unconfigured number
+    get a short goodbye with the clinic phone number, then the call ends cleanly instead
+    of leaving the caller with a dead agent.
+    """
+    state = session.userdata
+    with contextlib.suppress(Exception):  # TTS may be the failing stage; never hang here
+        await asyncio.wait_for(spoken.wait_for_playout(), timeout=20)
+
+    caller = find_sip_participant(ctx.room) if not ctx.is_fake_job() else None
+    if (
+        caller is not None
+        and get_settings().transfer_sip_uri
+        and await transfer_sip_caller(ctx, caller, state)
+    ):
+        return
+    state.notes.append("error: transfer unavailable, ended the call")
+    with contextlib.suppress(Exception):
+        goodbye = session.say(prompts.ERROR_GOODBYE, allow_interruptions=False)
+        await asyncio.wait_for(goodbye.wait_for_playout(), timeout=20)
+    with contextlib.suppress(Exception):
+        await hang_up(session, ctx)
+
+
 server = AgentServer(setup_fnc=prewarm)
 
 
@@ -275,8 +313,11 @@ async def entrypoint(ctx: JobContext) -> None:
         if getattr(ev.error, "recoverable", True):
             return
         logger.error("unrecoverable %s error", type(ev.source).__name__)
+        if session.userdata.call_outcome == "error":
+            return  # already speaking the error line and transferring or hanging up
         session.userdata.call_outcome = "error"
-        session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        spoken = session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        asyncio.create_task(recover_after_error(session, ctx, spoken))  # noqa: RUF006
 
     attach_observers(session, ctx)
     await session.start(agent=CapstoneRiley(caller_id=caller_id), room=ctx.room)
