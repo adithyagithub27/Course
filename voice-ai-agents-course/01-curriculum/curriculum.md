@@ -11,7 +11,7 @@
 | Field | Value |
 |---|---|
 | Working title | Production Voice AI Agents with Python: Build, Test, Deploy |
-| Runtime | ~11.3 hours video across 15 sections, 97 lectures (v1.1; see `curriculum-review.md`) |
+| Runtime | ~11.5 hours video (687 min) across 15 sections, 97 lectures (v1.1; see `curriculum-review.md`) |
 | Level | Intermediate (basic Python + basic async/await). Section 1-3 are beginner-safe. |
 | Running example | **"Riley", the AI receptionist for Maple Street Dental** (fictional clinic). Riley answers questions, books/reschedules/cancels appointments, transfers to a human, and runs on a real phone number. |
 | Primary framework | LiveKit Agents 1.8 (`AgentServer`, `AgentSession`, `Agent`, `@function_tool`) |
@@ -166,7 +166,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 5.6 | Reschedule, cancel and tool errors | SC | 9 | `reschedule_appointment`, `cancel_appointment`, raising `ToolError` with speakable messages, retry prompts. | same |
 | 5.7 | Session state with userdata | SC | 6 | Typed `@dataclass` userdata on `AgentSession`, `context.userdata`, carrying caller details across tools. | same |
 | 5.8 | Project 1: Booking agent | AS | 5 | Build and demo the booking flow. | `05-projects/project-1-booking-agent.md` |
-| 5.9 | Challenge: add a waitlist tool (pause, then solution) | CE | 6 | Spec given on screen: `join_waitlist(name, phone, preferred_day)` backed by `scheduler.add_to_waitlist`. Student pauses and builds it. Then the solution walkthrough covers the three mistakes most people make (tool description too vague, no read-back, forgetting ToolError). | `agents/s05_booking_agent.py`, `src/maple/scheduler.py` |
+| 5.9 | Challenge: add a waitlist tool (pause, then solution) | SC | 6 | Spec given on screen: `join_waitlist(name, phone, preferred_day)` backed by `scheduler.add_to_waitlist`. Student pauses and builds it. Then the solution walkthrough covers the three mistakes most people make (tool description too vague, no read-back, forgetting ToolError). | `agents/s05_booking_agent.py`, `src/maple/scheduler.py` |
 | 5.10 | Quiz: Tools | QZ | 2 | 5 questions | `06-assessments/quizzes/section-05.md` |
 
 ### Section 6: Speech-to-Speech with OpenAI Realtime (≈42 min)
@@ -314,7 +314,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 13 Capstone | 67 |
 | 14 Pipecat & stack choice (optional) | 32 |
 | 15 Wrap-up | 18 |
-| **Total** | **≈768 min (≈12.8 h incl. quizzes/labs; ≈11.3 h video)** |
+| **Total** | **≈768 min (≈12.8 h incl. quizzes/labs; ≈11.5 h / 687 min video)** |
 
 Recording note: split 5.3, 7.5, 8.2, 9.3, 13.2 and 13.5 into Part A / Part B uploads to keep every video under ten minutes.
 
