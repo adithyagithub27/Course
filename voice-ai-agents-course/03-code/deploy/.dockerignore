@@ -1,0 +1,22 @@
+# Copy to the repo root before building: cp deploy/.dockerignore .dockerignore
+.git
+.github
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.env
+.env.*
+!.env.example
+metrics
+console-recordings
+tests
+frontend
+pipecat
+deploy
+*.md
+!README.md
+.deepeval

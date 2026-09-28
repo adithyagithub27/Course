@@ -1,0 +1,17 @@
+# Copy to livekit.toml (lecture 8.2 and 12.3).
+#
+# `lk agent create` writes this file for LiveKit Cloud deployments. The agent name
+# below is what telephony dispatch rules and explicit dispatch target.
+#
+# Notes (livekit-agents 1.8):
+# - `start` reads [agent] name from ./livekit.toml when LIVEKIT_AGENT_NAME is not set.
+# - `dev` never reads it (dev workers stay out of the deployed pool); set
+#   LIVEKIT_AGENT_NAME in .env to test named dispatch locally.
+# - Passing agent_name= to @server.rtc_session() still works but is deprecated.
+
+[project]
+subdomain = "your-project-subdomain"
+
+[agent]
+name = "riley-receptionist"
+# id = "CA_xxxxxxxxxxxx"   # filled in by `lk agent create`

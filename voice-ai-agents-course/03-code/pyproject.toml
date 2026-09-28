@@ -1,0 +1,83 @@
+[project]
+name = "voice-agents-course"
+version = "1.1.0"
+description = "Student code for 'Production Voice AI Agents with Python: Build, Test, Deploy' (Riley, the Maple Street Dental receptionist)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "livekit-agents[openai,silero,deepgram,cartesia]~=1.8",
+    "livekit-api>=1.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "jiwer>=3.0",
+    "deepeval>=3.0",
+    "ruff>=0.6",
+]
+pipecat = [
+    "pipecat-ai[deepgram,openai,cartesia,silero,webrtc,runner]~=1.12",
+]
+observability = [
+    "opentelemetry-sdk>=1.25",
+    "opentelemetry-exporter-otlp>=1.25",
+]
+
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/maple"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/maple", "README.md"]
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests/unit", "tests/agent", "tests/evals"]
+pythonpath = ["src", "agents"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+markers = [
+    "offline: runs without API keys (mock LLM or pure Python)",
+    "live: calls a real LLM; skipped when OPENAI_API_KEY is not set",
+    "eval: LLM-as-judge evaluation; slower and costs a few cents",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:livekit.*",
+    "ignore::DeprecationWarning:deepeval.*",
+    "ignore::DeprecationWarning:pydantic.*",
+]
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 110
+include = ["*.py", "*.pyi"]
+target-version = "py311"
+extend-exclude = [".venv", "metrics", "console-recordings"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "E501",    # long strings in prompts are fine
+    "RUF001",  # ambiguous unicode in Spanish/Hindi greetings is intended
+    "RUF012",  # class-level mutable defaults on mixins are intentional
+    "B008",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["maple", "common"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011"]

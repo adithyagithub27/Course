@@ -1,0 +1,111 @@
+# Voice agent tests in CI (lecture 9.10).
+#
+# - unit:   always. Lint, offline unit tests, offline mock-LLM agent tests, WER and latency reports.
+# - live:   LiveKit behavior tests + DeepEval + simulated callers, only when the
+#           OPENAI_API_KEY secret exists (forks and PRs without secrets skip cleanly).
+#
+# Note: this file lives in 03-code/.github/workflows/. When 03-code is the root of your
+# own repository (the student repo), GitHub picks it up automatically.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash  # explicit bash = -eo pipefail, so `| tee` keeps failing exit codes
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --extra dev && mkdir -p reports
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Unit tests (offline)
+        run: uv run pytest tests/unit -q --junitxml=reports/unit.xml
+
+      - name: Agent tests with the mock LLM (offline)
+        run: uv run pytest tests/agent tests/evals -m offline -q --junitxml=reports/offline.xml
+
+      - name: WER report
+        run: uv run python tests/evals/stt_wer_eval.py | tee reports/wer.txt
+
+      - name: Latency budget
+        run: uv run python tests/evals/latency_report.py | tee reports/latency.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-reports
+          path: reports/
+
+  live:
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+    steps:
+      - name: Check for secrets
+        id: secrets
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "enabled=false" >> "$GITHUB_OUTPUT"; echo "OPENAI_API_KEY secret not set: skipping live tests"; fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.enabled == 'true'
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.secrets.outputs.enabled == 'true'
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install
+        if: steps.secrets.outputs.enabled == 'true'
+        run: uv sync --extra dev && mkdir -p reports
+
+      - name: LiveKit behavior tests
+        if: steps.secrets.outputs.enabled == 'true'
+        run: uv run pytest tests/agent -q --junitxml=reports/agent.xml
+
+      - name: DeepEval conversation quality
+        if: steps.secrets.outputs.enabled == 'true'
+        run: uv run pytest tests/evals -q --junitxml=reports/evals.xml
+
+      - name: Simulated callers
+        if: steps.secrets.outputs.enabled == 'true'
+        run: uv run python tests/evals/simulated_caller.py --turns 5 | tee reports/simulated_callers.txt
+
+      - name: Audio-in eval (skips without WAVs)
+        if: steps.secrets.outputs.enabled == 'true'
+        run: uv run python tests/evals/audio_in_eval.py | tee reports/audio_in.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.secrets.outputs.enabled == 'true'
+        with:
+          name: live-reports
+          path: reports/

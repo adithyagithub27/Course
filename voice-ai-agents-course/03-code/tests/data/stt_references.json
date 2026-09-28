@@ -1,0 +1,110 @@
+[
+  {
+    "id": "stt-01",
+    "condition": "laptop mic, US English",
+    "reference": "Hi, I'd like to book a cleaning with Doctor Chen next Tuesday morning.",
+    "hypotheses": {
+      "baseline": "Hi, I'd like to book a cleaning with doctor Chan next Tuesday morning.",
+      "with_keyterms": "Hi, I'd like to book a cleaning with Doctor Chen next Tuesday morning."
+    }
+  },
+  {
+    "id": "stt-02",
+    "condition": "phone line, Texas accent",
+    "reference": "My insurance is Delta Dental PPO through my husband's work.",
+    "hypotheses": {
+      "baseline": "My insurance is delta dennis PPO through my husband's work.",
+      "with_keyterms": "My insurance is Delta Dental PPO through my husband's work."
+    }
+  },
+  {
+    "id": "stt-03",
+    "condition": "phone line, background TV",
+    "reference": "I was prescribed amoxicillin after my root canal and I'm still in pain.",
+    "hypotheses": {
+      "baseline": "I was prescribed a moxie cillin after my route canal and I'm still in pain.",
+      "with_keyterms": "I was prescribed amoxicillin after my root canal and I'm still in pain."
+    }
+  },
+  {
+    "id": "stt-04",
+    "condition": "mobile, Spanish-accented English",
+    "reference": "Can I see Doctor Alvarez on Thursday afternoon for my crown?",
+    "hypotheses": {
+      "baseline": "Can I see doctor Al Vera's on Thursday afternoon for my brown?",
+      "with_keyterms": "Can I see Doctor Alvarez on Thursday afternoon for my crown?"
+    }
+  },
+  {
+    "id": "stt-05",
+    "condition": "laptop mic, Indian English",
+    "reference": "Please cancel my appointment on October sixth, my number is five one two five five five zero one four two.",
+    "hypotheses": {
+      "baseline": "Please cancel my appointment on October 6th my number is 512 555 0142.",
+      "with_keyterms": "Please cancel my appointment on October sixth my number is five one two five five five zero one four two."
+    }
+  },
+  {
+    "id": "stt-06",
+    "condition": "phone line, elderly caller",
+    "reference": "Do you take MetLife or Cigna? I'm switching plans in January.",
+    "hypotheses": {
+      "baseline": "Do you take met life or signa? I'm switching plans in January.",
+      "with_keyterms": "Do you take MetLife or Signa? I'm switching plans in January."
+    }
+  },
+  {
+    "id": "stt-07",
+    "condition": "car speakerphone",
+    "reference": "Is the hygienist available on Saturday? My son needs a checkup.",
+    "hypotheses": {
+      "baseline": "Is the hi genist available on Saturday? My son needs a check up.",
+      "with_keyterms": "Is the hygienist available on Saturday? My son needs a check up."
+    }
+  },
+  {
+    "id": "stt-08",
+    "condition": "phone line, fast talker",
+    "reference": "Can I pay with CareCredit for the Invisalign treatment?",
+    "hypotheses": {
+      "baseline": "Can I pay with care credit for the in visa line treatment?",
+      "with_keyterms": "Can I pay with CareCredit for the Invisalign treatment?"
+    }
+  },
+  {
+    "id": "stt-09",
+    "condition": "laptop mic, US English",
+    "reference": "I took ibuprofen but my wisdom tooth still hurts.",
+    "hypotheses": {
+      "baseline": "I took ibuprofen but my wisdom tooth still hurts.",
+      "with_keyterms": "I took ibuprofen but my wisdom tooth still hurts."
+    }
+  },
+  {
+    "id": "stt-10",
+    "condition": "phone line, overlapping speech",
+    "reference": "No, not Tuesday, I said Thursday at nine thirty.",
+    "hypotheses": {
+      "baseline": "No not Tuesday I said Thursday at 930.",
+      "with_keyterms": "No, not Tuesday, I said Thursday at 930."
+    }
+  },
+  {
+    "id": "stt-11",
+    "condition": "mobile, windy street",
+    "reference": "Is Maple Street Dental open on Sunday?",
+    "hypotheses": {
+      "baseline": "Is maple st dental open on Sunday?",
+      "with_keyterms": "Is Maple Street Dental open on Sunday?"
+    }
+  },
+  {
+    "id": "stt-12",
+    "condition": "phone line, Scottish accent",
+    "reference": "I'd like to reschedule with Doctor Brooks, the children's dentist.",
+    "hypotheses": {
+      "baseline": "I'd like to reschedule with doctor Brooke's the children's dentist.",
+      "with_keyterms": "I'd like to reschedule with Doctor Brooks the children's dentist."
+    }
+  }
+]
