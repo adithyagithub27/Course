@@ -11,7 +11,7 @@
 | Field | Value |
 |---|---|
 | Working title | Production Voice AI Agents with Python: Build, Test, Deploy |
-| Runtime | ~10.5 hours video across 15 sections, 78 lectures |
+| Runtime | ~11.3 hours video across 15 sections, 97 lectures (v1.1; see `curriculum-review.md`) |
 | Level | Intermediate (basic Python + basic async/await). Section 1-3 are beginner-safe. |
 | Running example | **"Riley", the AI receptionist for Maple Street Dental** (fictional clinic). Riley answers questions, books/reschedules/cancels appointments, transfers to a human, and runs on a real phone number. |
 | Primary framework | LiveKit Agents 1.8 (`AgentServer`, `AgentSession`, `Agent`, `@function_tool`) |
@@ -107,7 +107,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
-| 1.1 | Meet Riley: a live phone call with the agent you'll build | DM | 4 | Hook. Call Riley, book an appointment, get transferred. Show the finished capstone and the test dashboard. | Capstone demo recording |
+| 1.1 | Meet Riley: one call that works, one that fails, one that's fixed | DM | 5 | Hook by contrast. Call 1: Riley books an appointment and transfers. Call 2: a naive agent talks over the caller, mishears the date and hallucinates availability. Call 3: the fixed agent passing its test suite. Promise: by Section 13 yours does call 1 and passes call 3's tests. | Capstone demo recording, failure recording |
 | 1.2 | What a voice agent actually is | SL | 7 | Voice agent vs IVR vs chatbot. Components: transport (WebRTC/SIP), VAD, STT, turn detection, LLM, tools, TTS. Where each fails. | Diagram: voice pipeline |
 | 1.3 | Cascaded vs speech-to-speech architectures | SL | 8 | STT→LLM→TTS pipeline vs realtime S2S (OpenAI Realtime). Trade-offs: control, cost, latency, voice quality, tool reliability. Half-cascade hybrid. | Comparison table |
 | 1.4 | The latency budget: why 800 ms is the magic number | SL | 8 | Human turn gap ≈200-300 ms. Budget: endpointing, STT final, LLM TTFT, TTS TTFB, network. Target <1 s voice-to-voice. Preview of how we'll measure it in S9/S10. | `10-resources/latency-budget-worksheet.md` |
@@ -123,6 +123,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 2.3 | LiveKit CLI, projects and credentials | SC | 7 | Install `lk` CLI, `lk cloud auth`, create project, `lk app env` to write credentials, verify with `lk room list`. | |
 | 2.4 | Smoke test: unit tests and console mode | SC | 6 | `make test` (offline unit tests pass), `uv run agents/s03_hello_agent.py console` talks through your laptop mic. Troubleshooting mic permissions and keys. | `tests/unit/` |
 | 2.5 | Lab 1: Environment verification | LAB | 3 | Checklist lab | `04-labs/lab-01-environment.md` |
+| 2.6 | Quick win: run the finished Riley before you build it | SC | 6 | `make console AGENT=agents/s13_capstone_receptionist.py`: talk to the capstone agent, book an appointment, trigger a transfer. Students hear the destination before the journey. | `agents/s13_capstone_receptionist.py` |
+| 2.7 | Spending caps, free tiers and offline mock mode | SC | 6 | Set hard spending limits on OpenAI, Deepgram, Cartesia; LiveKit free-tier minutes; `MOCK_MODE=1` runs Riley with a scripted fake LLM and text I/O for zero-cost practice; how to estimate a lab's cost before running it. | `src/maple/config.py`, `agents/common.py`, `10-resources/provider-cost-guide.md` |
 
 ### Section 3: Your First Voice Agent with LiveKit Agents (≈58 min)
 
@@ -136,6 +138,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 3.6 | VAD, turn detection and interruptions | SL | 9 | Silero VAD params, endpointing (`EndpointingOptions` min/max delay, fixed vs dynamic), semantic turn detector, interruption options (`min_duration`, `min_words`, false-interruption resume), preemptive generation. | Diagram: turn-taking timeline |
 | 3.7 | Tuning turn-taking live | DM | 5 | Change endpointing and interruption settings, hear the difference. Common tuning mistakes. | |
 | 3.8 | Lab 2: Customise your first agent | LAB | 4 | Swap voice, model and turn settings; record observations. | `04-labs/lab-02-first-agent.md` |
+| 3.9 | Break it: five ways your first agent fails, and what each sounds like | DM | 7 | Before/after audio for: (1) endpointing too short, caller cut off; (2) too long, awkward silence; (3) interruptions disabled, agent talks over caller; (4) TTS reading markdown symbols aloud; (5) STT model mismatch on accents and phone audio. Each paired with the one setting that fixes it. | `agents/s03_hello_agent.py` with `--broken` env toggles |
+| 3.10 | Quiz: First agent and turn-taking | QZ | 3 | 5 questions | `06-assessments/quizzes/section-03.md` |
 
 ### Section 4: Prompting for the Ear (≈40 min)
 
@@ -147,6 +151,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 4.4 | Greetings, silence and "are you still there?" | SC | 7 | `on_enter` greeting, `user_away_timeout`, user state events, graceful hang-up after repeated silence. | `agents/s04_voice_prompting.py` |
 | 4.5 | Persona and brand voice without the cringe | TH | 5 | Warmth vs efficiency, disclosure that it's an AI, consistency. | |
 | 4.6 | Lab 3: Rewrite a chat prompt for voice | LAB | 5 | Before/after exercise with rubric. | `04-labs/lab-03-voice-prompting.md` |
+| 4.7 | Challenge: Riley for your business | AS | 3 | Students rewrite Riley's instructions for a business they know (salon, restaurant, clinic, law office) using `business-template.md`, run it in console, and post one transcript in Q&A. First portfolio artefact. | `10-resources/business-template.md` |
+| 4.8 | Quiz: Prompting for the ear | QZ | 2 | 5 questions | `06-assessments/quizzes/section-04.md` |
 
 ### Section 5: Tools: Booking, Rescheduling and Cancelling (≈62 min)
 
@@ -160,6 +166,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 5.6 | Reschedule, cancel and tool errors | SC | 9 | `reschedule_appointment`, `cancel_appointment`, raising `ToolError` with speakable messages, retry prompts. | same |
 | 5.7 | Session state with userdata | SC | 6 | Typed `@dataclass` userdata on `AgentSession`, `context.userdata`, carrying caller details across tools. | same |
 | 5.8 | Project 1: Booking agent | AS | 5 | Build and demo the booking flow. | `05-projects/project-1-booking-agent.md` |
+| 5.9 | Challenge: add a waitlist tool (pause, then solution) | CE | 6 | Spec given on screen: `join_waitlist(name, phone, preferred_day)` backed by `scheduler.add_to_waitlist`. Student pauses and builds it. Then the solution walkthrough covers the three mistakes most people make (tool description too vague, no read-back, forgetting ToolError). | `agents/s05_booking_agent.py`, `src/maple/scheduler.py` |
+| 5.10 | Quiz: Tools | QZ | 2 | 5 questions | `06-assessments/quizzes/section-05.md` |
 
 ### Section 6: Speech-to-Speech with OpenAI Realtime (≈42 min)
 
@@ -168,7 +176,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 6.1 | How realtime speech models work | SL | 8 | Audio in/audio out, server VAD, voices, transcription side channel, session limits. | |
 | 6.2 | Code-along: Riley on `gpt-realtime` | SC | 10 | `AgentSession(llm=openai.realtime.RealtimeModel(model=..., voice="marin"))`, same tools reused, turn detection options. | `agents/s06_realtime_agent.py` |
 | 6.3 | Hybrid: realtime LLM with your own TTS | SC | 7 | `modalities=["text"]` + separate TTS for voice control and brand consistency. | same |
-| 6.4 | Head-to-head: cascaded vs realtime | DM | 10 | Same 5 test calls; compare latency, cost/minute, tool accuracy, interruptions. Decision matrix. | `10-resources/architecture-decision-matrix.md` |
+| 6.4 | Head-to-head: cascaded vs realtime | DM | 10 | Same 5 test calls, played side by side so students hear the difference, not just read numbers; compare latency, cost/minute, tool accuracy, interruptions. Decision matrix. | `10-resources/architecture-decision-matrix.md` |
 | 6.5 | Lab 4: Measure both architectures | LAB | 5 | Fill the comparison sheet. | `04-labs/lab-04-realtime-vs-cascaded.md` |
 | 6.6 | Quiz: Architectures and tools | QZ | 2 | 8 questions | `06-assessments/quizzes/section-06.md` |
 
@@ -183,6 +191,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 7.5 | Code-along: Greeter → Booking → Billing | SC | 12 | Tools that return another `Agent` to hand off, shared userdata, `on_enter` per agent, chat context carry-over. | `agents/s07_multi_agent.py` |
 | 7.6 | Lab 5: Add an Insurance agent | LAB | 5 | Extend the handoff graph. | `04-labs/lab-05-handoffs.md` |
 | 7.7 | Quiz: Knowledge and handoffs | QZ | 2 | 6 questions | `06-assessments/quizzes/section-07.md` |
+| 7.8 | Multilingual Riley: Spanish and Hindi callers | SC | 8 | STT language settings and multilingual models, the multilingual turn detector, per-language TTS voices, detecting and switching language mid-call, translating the FAQ answers, what to test differently. | `agents/s07_knowledge_agent.py` (`LANGUAGE` env), `src/maple/config.py` |
 
 ### Section 8: Telephony: Put Riley on a Phone Number (≈55 min)
 
@@ -194,7 +203,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 8.4 | Transfer to a human and ending calls | SC | 9 | `transfer_to_human` tool using `get_job_context().transfer_sip_participant(...)`, warm vs cold transfer, `end_call` tool. | same |
 | 8.5 | Outbound calls: appointment reminders | SC | 10 | Explicit dispatch + `CreateSIPParticipant` via the LiveKit API; answering-machine considerations. | `agents/s08_outbound_call.py` |
 | 8.6 | Compliance: disclosure, consent and recording | TH | 6 | AI disclosure, call-recording consent (one/two-party), TCPA for outbound, do-not-call, data retention. Not legal advice. | `10-resources/telephony-compliance-checklist.md` |
-| 8.7 | Project 2: Phone receptionist | AS | 3 | Inbound number that books and transfers. | `05-projects/project-2-phone-receptionist.md` |
+| 8.7 | Project 2: Phone receptionist | AS | 3 | Inbound number that books and transfers. Includes a "no phone number" path (web client + SIP test) for students who cannot get a Twilio number in their country. | `05-projects/project-2-phone-receptionist.md` |
+| 8.8 | Quiz: Telephony | QZ | 2 | 5 questions | `06-assessments/quizzes/section-08.md` |
 
 ### Section 9: Testing and Evaluating Voice Agents (≈75 min) — signature section
 
@@ -212,6 +222,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 9.10 | Voice agent tests in CI | SC | 3 | GitHub Actions: unit always, agent tests and evals when secrets exist, artifacts. | `.github/workflows/ci.yml` |
 | 9.11 | Project 3: Test suite for Riley | AS | 0 (text) | 15+ tests across the pyramid. | `05-projects/project-3-test-suite.md` |
 | 9.12 | Quiz: Testing voice agents | QZ | 0 | 10 questions | `06-assessments/quizzes/section-09.md` |
+| 9.13 | Audio-in tests: real caller audio through the pipeline | SC | 7 | Text tests miss STT errors. Feed recorded caller WAVs (accents, phone noise, overlapping speech) through the STT node, assert transcripts with WER thresholds, then run the transcript through the behavior tests. `session.run(..., input_modality="audio")` where supported. | `tests/evals/audio_in_eval.py`, `tests/data/audio/` |
+| 9.14 | LiveKit Simulations: scenario-based caller testing at scale | DM | 6 | LiveKit's built-in Simulation framework: define caller scenarios, run them against the deployed agent, read simulator verdicts, hook `on_simulation_end` to record your own verdict. Flag: LiveKit Cloud feature, verify availability and pricing before recording. | `agents/s13_capstone_receptionist.py` (`on_simulation_end`) |
 
 ### Section 10: Observability, Latency and Cost (≈45 min)
 
@@ -223,6 +235,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 10.4 | Cost per minute: the number your boss will ask for | SC | 8 | `src/maple/costs.py` price table × usage; compare cascaded vs realtime; where money goes. | `src/maple/costs.py` |
 | 10.5 | Dashboards and alerts that matter | SL | 6 | p95 latency, cost/min, transfer rate, containment rate, failed tool calls; alert thresholds. | |
 | 10.6 | Lab 6: Build a call-quality report | LAB | 5 | Run 10 calls, produce latency + cost report. | `04-labs/lab-06-observability.md` |
+| 10.7 | Quiz: Observability and cost | QZ | 2 | 5 questions | `06-assessments/quizzes/section-10.md` |
 
 ### Section 11: Security, Safety and Guardrails (≈38 min)
 
@@ -246,19 +259,23 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 12.5 | A web front end for Riley | SC | 8 | LiveKit React agent starter, token server, connecting to your deployed agent. | `frontend/README.md` |
 | 12.6 | Production readiness checklist | SL | 6 | Fallback models, timeouts, error speech, graceful degradation, on-call runbook. | `10-resources/production-checklist.md` |
 | 12.7 | Lab 7: Deploy and call your agent | LAB | 4 | Deployed agent reachable by web and phone. | `04-labs/lab-07-deploy.md` |
+| 12.8 | Chaos demo: kill a provider mid-call | DM | 5 | Revoke the TTS key or block the STT endpoint during a live call; show the fallback provider taking over and the spoken error recovery. Then show what happens without fallbacks. | `agents/s13_capstone_receptionist.py` |
+| 12.9 | Quiz: Deployment | QZ | 2 | 5 questions | `06-assessments/quizzes/section-12.md` |
 
 ### Section 13: Capstone: Riley, Production Receptionist (≈60 min)
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
 | 13.1 | Capstone brief and architecture | SL | 6 | Requirements, acceptance criteria, architecture diagram. | `05-projects/capstone-riley.md` |
-| 13.2 | Assembling the production agent | SC | 15 | Combine prompts, tools, knowledge, handoffs, guardrails, telemetry, telephony. | `agents/s13_capstone_receptionist.py` |
+| 13.1a | Build it yourself first: the capstone gate | TH | 3 | Stop here and build from the brief. Time box: one week. The remaining lectures are the reference solution; watching them first turns a portfolio project into a typing exercise. | `05-projects/capstone-riley.md` |
+| 13.2 | Reference solution: assembling the production agent | SC | 15 | Combine prompts, tools, knowledge, handoffs, guardrails, telemetry, telephony. Record as Part A/B. | `agents/s13_capstone_receptionist.py` |
 | 13.3 | Hardening: fallbacks, timeouts, error speech | SC | 10 | Provider fallback lists, `conn_options`, spoken error recovery. | same |
 | 13.4 | Full test run: unit → behavior → evals → simulated calls | SC | 12 | Run the whole suite, read the report, fix a failing case live. | `tests/` |
 | 13.5 | Deploy, call, observe | DM | 12 | Deploy, place real calls, watch traces and cost per minute. | |
 | 13.6 | Capstone submission and portfolio write-up | TH | 5 | What to put on GitHub/LinkedIn, demo video tips. | `05-projects/capstone-riley.md` |
+| 13.7 | Domain swap: ship Riley for a restaurant, salon or law office | AS | 4 | Re-skin the capstone for a new business: new FAQ, new tool schema, new prompt, same tests adapted. Proves the skills transfer and gives students a second, distinct portfolio project. | `10-resources/business-template.md`, `05-projects/capstone-riley.md` |
 
-### Section 14: Pipecat and Choosing Your Stack (≈32 min)
+### Section 14 (optional): Pipecat and Choosing Your Stack (≈32 min)
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
@@ -274,39 +291,44 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 15.1 | What you built and where to go next | TH | 5 | Recap, multilingual agents, avatars, outbound campaigns, the Build/Test/Operate course path. | |
 | 15.2 | Final practice test | QZ | 0 | 40-question practice test | `06-assessments/practice-test.md` |
 | 15.3 | Bonus lecture | TH | 5 | Links to the instructor's other courses and community (Udemy bonus-lecture rules apply). | |
+| 15.4 | Careers: voice AI roles, interview questions, pricing a client project | TH | 8 | Role titles that hire for this (voice AI engineer, conversational AI engineer, AI solutions engineer), 12 interview questions with model answers, how freelancers scope and price a voice agent build (discovery, per-minute costs, setup fee vs retainer), portfolio positioning. No salary figures. | `10-resources/interview-questions.md` |
 
 ---
 
 ## 4. Runtime Totals
 
-| Section | Minutes |
+| Section | Minutes (v1.1) |
 |---|---|
-| 1 Welcome | 38 |
-| 2 Setup | 32 |
-| 3 First agent | 58 |
-| 4 Prompting for the ear | 40 |
-| 5 Tools | 62 |
+| 1 Welcome | 39 |
+| 2 Setup | 44 |
+| 3 First agent | 68 |
+| 4 Prompting for the ear | 45 |
+| 5 Tools | 70 |
 | 6 Realtime | 42 |
-| 7 Knowledge & handoffs | 48 |
-| 8 Telephony | 55 |
-| 9 Testing & evaluation | 75 |
-| 10 Observability & cost | 45 |
+| 7 Knowledge & handoffs | 56 |
+| 8 Telephony | 57 |
+| 9 Testing & evaluation | 88 |
+| 10 Observability & cost | 47 |
 | 11 Security | 38 |
-| 12 Deploy | 50 |
-| 13 Capstone | 60 |
-| 14 Pipecat & stack choice | 32 |
-| 15 Wrap-up | 10 |
-| **Total** | **≈685 min (≈11.4 h incl. quizzes/labs; ≈10.5 h video)** |
+| 12 Deploy | 57 |
+| 13 Capstone | 67 |
+| 14 Pipecat & stack choice (optional) | 32 |
+| 15 Wrap-up | 18 |
+| **Total** | **≈768 min (≈12.8 h incl. quizzes/labs; ≈11.3 h video)** |
+
+Recording note: split 5.3, 7.5, 8.2, 9.3, 13.2 and 13.5 into Part A / Part B uploads to keep every video under ten minutes.
 
 ## 5. Assessments Summary
 
 | Type | Count | Location |
 |---|---|---|
-| Quizzes | 6 section quizzes (S1, S6, S7, S9, S11, S14) | `06-assessments/quizzes/` |
+| Quizzes | 12 section quizzes (S1, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S14) | `06-assessments/quizzes/` |
 | Practice test | 1 × 40 questions | `06-assessments/practice-test.md` |
 | Labs | 7 | `04-labs/` |
-| Projects / assignments | 3 projects + capstone | `05-projects/` |
+| Challenges (pause-then-solution) | 4 (4.7, 5.9, 13.1a gate, 13.7) | in lecture scripts + `05-projects/` |
+| Projects / assignments | 3 projects + capstone + domain-swap | `05-projects/` |
 | Coding exercises (Udemy in-browser) | 5 pure-Python exercises (scheduler, WER, PII, latency percentile, cost/min) | `06-assessments/coding-exercises.md` |
+| Extra resources (v1.1) | `troubleshooting.md`, `business-template.md`, `voice-agent-readiness-scorecard.md`, `interview-questions.md` | `10-resources/` |
 
 ## 6. Verified API Reference for Writers (LiveKit Agents 1.8.3, Pipecat 1.12.0)
 
