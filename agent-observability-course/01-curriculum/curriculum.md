@@ -344,7 +344,8 @@ client = get_client()
 client.update_current_generation(model=..., usage_details={"input": 1200, "output": 180, "cache_read_input_tokens": 900},
                                  cost_details={"input": 0.00048, "output": 0.000288}, completion_start_time=..., model_parameters={...})
 client.update_current_span(metadata=..., level="WARNING", status_message=...)
-client.update_current_trace(session_id=..., user_id=..., tags=[...], metadata={...})   # verify exact name on installed SDK
+from langfuse import propagate_attributes
+with propagate_attributes(session_id=..., user_id=..., tags=[...], metadata={...}): ...   # update_current_trace does not exist in 4.15
 client.score_current_trace(name="resolved", value=1, data_type="BOOLEAN", comment=...)
 client.create_score(trace_id=..., name="judge_grounded", value=0.8)
 client.create_prompt(name="atlas-system", prompt=..., labels=["production"], type="text")
