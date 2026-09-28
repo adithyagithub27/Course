@@ -1,6 +1,8 @@
 # Next-Course Market Research: Where to Build in Q4 2026
 
-> **Document purpose:** Identify AI course topics on Udemy (and adjacent platforms) that show real demand but are not yet saturated, and rank them against this instructor's existing position (AI Agent Testing & Evaluation, plus a prior "Course 1").
+> **Document purpose:** Identify AI course topics on Udemy (and adjacent platforms) that show real demand but are not yet saturated, and rank them against this instructor's two courses in production:
+> 1. **Generative AI and AI Agents: Zero to Production, Build Real Apps** (broad build course)
+> 2. **AI Agent Testing & Evaluation: Build Production-Ready Quality Frameworks with Python** (quality course, documented in this repo)
 >
 > **Research date:** 2026-09-28
 > **Method:** ~200 targeted web searches across Udemy course listings, Udemy Business / Coursera skills reports, Maven, DeepLearning.AI, Coursera, LinkedIn Learning, and third-party "best of" roundups. Student counts and ratings are as displayed in listings on the research date and should be re-verified in Udemy Marketplace Insights before committing.
@@ -9,9 +11,11 @@
 
 ## 1. Executive Summary
 
-**Recommendation:** Build **"Production Voice AI Agents with Python: LiveKit, Pipecat & OpenAI Realtime (incl. testing voice agents)"** as the next course, with **"Agentic AI Certification Prep: Microsoft AB-100 / AB-620 / AI-500"** as the fast-follow.
+**Recommendation:** Build **"Production Voice AI Agents with Python: LiveKit, Pipecat & OpenAI Realtime (incl. testing voice agents)"** as Course 3, then **"AI Agent Observability, LLMOps & Cost Control"** as Course 4 to complete a Build, Test, Operate trilogy that cross-sells across all three student bases. **Agentic AI Certification Prep (Microsoft AB-100 / AB-620 / AI-500)** is the standalone fast-follow if a lower-effort, high-intent title is wanted.
 
-Both sit in the "proven demand, thin supply" quadrant. Voice agents already have a 37,000-student, 4.8-rated no-code course proving buyer intent, but almost no code-first production course exists. Microsoft's 2026 agentic certifications have spawned a dozen practice-test packs but almost no full video prep courses, and certification searches are the highest-intent traffic on Udemy.
+Voice agents sit in the "proven demand, thin supply" quadrant: a no-code voice course already has 37,000 students at 4.8 stars, yet almost no code-first production course exists. Observability has moderate competition but the strongest fit, because it is the natural third step after building agents (Course 1) and testing them (Course 2).
+
+**Warning on Course 1:** "Generative AI and AI Agents: Zero to Production" competes directly with the most crowded category on Udemy. The top three generic agent bootcamps alone hold roughly 900,000 students and reviewers have benchmarked 50+ such courses. Course 1 will not win on organic search as a generalist bootcamp; it needs a sharp production angle and should be treated as the top of the funnel that feeds Courses 2 through 4. See Section 6b.
 
 **What to avoid:** generic "AI Agents bootcamp" courses (top three alone hold ~900,000 students; reviewers have benchmarked 50+ of them), prompt engineering/ChatGPT (2,600+ courses indexed), n8n no-code agents, general Claude Code, MCP basics, RAG basics, and AI governance/ISO 42001. These are red oceans in 2026.
 
@@ -83,19 +87,21 @@ Ratings/students are from listings on the research date.
 
 ## 4. Ranked Recommendations
 
-Scoring: **Demand** (evidence buyers exist), **Gap** (how few quality competitors), **Fit** (leverages the instructor's testing/eval/observability brand and existing students), **Durability** (will the topic still sell in 12 months). Each 1-5.
+Scoring: **Demand** (evidence buyers exist), **Gap** (how few quality competitors), **Fit** (leverages both existing courses: the "build real apps" audience of Course 1 and the testing/eval brand of Course 2), **Durability** (will the topic still sell in 12 months). Each 1-5.
 
 | Rank | Course concept | Demand | Gap | Fit | Durability | Total | Verdict |
 |---|---|---|---|---|---|---|---|
-| **1** | **Production Voice AI Agents with Python** (LiveKit Agents, Pipecat, OpenAI Realtime, SIP telephony, latency/interruption handling, plus a module on **testing and evaluating voice agents**) | 5 | 4 | 4 | 4 | **17** | **Build next** |
-| **2** | **Agentic AI Certification Prep: Microsoft AB-100 / AB-620 / AI-500** (full video course + labs + practice exams) | 4 | 5 | 3 | 3 | **15** | Fast-follow; check Microsoft exam retirement dates |
-| **3** | **Claude Agent SDK & Agent Skills: Build Production Agents** (SDK, subagents, hooks, MCP servers, Skills standard, evals of agents) | 4 | 4 | 4 | 3 | **15** | Strong, but ecosystem changes monthly; plan for quarterly re-records |
-| **4** | **AI Agent Observability, LLMOps & Cost Control** (OpenTelemetry GenAI conventions, Langfuse + LangSmith + Arize Phoenix, drift, token FinOps, alerting) | 4 | 3 | 5 | 4 | **16** | Natural sequel to the eval course; direct upsell to existing students. Competition now exists, so lead with cost/FinOps + OTel angle |
-| **5** | **Securing AI Agents & MCP Servers** (agent identity, tool permissions, MCP server hardening, indirect prompt injection via tools, guardrails, promptfoo/PyRIT/Garak red teaming) | 5 | 2 | 4 | 4 | **15** | Demand is highest here but 8+ courses arrived in 12 months. Only viable with the agent/MCP-specific angle |
-| **6** | **Agent Memory & Context Engineering** | 3 | 5 | 3 | 3 | **14** | Uncontested but unproven on Udemy; better as a 2-hour companion course or a module in #3 |
-| **7** | **Agentic AI for QA/SDET in Python** (agents that write, run, self-heal and evaluate tests) | 4 | 3 | 5 | 3 | **15** | Best fit with a QA audience, but sits next to Rahul Shetty's Playwright+AI lane. Differentiate on Python + evals of test agents, not Playwright |
+| **1** | **Production Voice AI Agents with Python** (LiveKit Agents, Pipecat, OpenAI Realtime, SIP telephony, latency/interruption handling, plus a module on **testing and evaluating voice agents**) | 5 | 4 | 4 | 4 | **17** | **Build as Course 3.** Extends the "build real apps" promise of Course 1 into a modality no bootcamp covers, and reuses Course 2's eval tooling |
+| **2** | **AI Agent Observability, LLMOps & Cost Control** (OpenTelemetry GenAI conventions, Langfuse + LangSmith + Arize Phoenix, drift, token FinOps, alerting) | 4 | 3 | 5 | 4 | **16** | **Build as Course 4.** Completes Build (C1), Test (C2), Operate (C4). Cross-sells to both existing student bases. Competition now exists, so lead with cost/FinOps + OTel angle |
+| **3** | **Agentic AI Certification Prep: Microsoft AB-100 / AB-620 / AI-500** (full video course + labs + practice exams) | 4 | 5 | 2 | 3 | **14** | Standalone fast-follow. Highest-intent search, near-zero full-course competition, but weak brand fit and Microsoft-stack dependency |
+| **4** | **Claude Agent SDK & Agent Skills: Build Production Agents** (SDK, subagents, hooks, MCP servers, Skills standard, evals of agents) | 4 | 4 | 3 | 3 | **14** | Strong market, but partly overlaps Course 1's build content; ecosystem changes monthly, plan quarterly re-records |
+| **5** | **Securing AI Agents & MCP Servers** (agent identity, tool permissions, MCP server hardening, indirect prompt injection via tools, guardrails, promptfoo/PyRIT/Garak red teaming) | 5 | 2 | 4 | 4 | **15** | Demand is highest here but 8+ courses arrived in 12 months. Only viable with the agent/MCP-specific angle. Could instead be a red-team expansion of Course 2 |
+| **6** | **Agentic AI for QA/SDET in Python** (agents that write, run, self-heal and evaluate tests) | 4 | 3 | 4 | 3 | **14** | Fits the Course 2 audience, but sits next to Rahul Shetty's Playwright+AI lane. Differentiate on Python + evals of test agents, not Playwright |
+| 7 | **Agent Memory & Context Engineering** | 3 | 5 | 3 | 3 | 14 | Uncontested but unproven on Udemy; better as a 2-hour companion or a module added to Course 1 |
 | 8 | AWS Bedrock AgentCore end-to-end | 4 | 4 | 2 | 4 | 14 | Good market, needs deep AWS credibility |
 | 9 | Spec-Driven Development with AI coding agents (English) | 3 | 4 | 2 | 3 | 12 | Cheap to produce, low fit |
+
+**Change from the first draft:** Observability moved from #4 to #2 and Certification Prep dropped from #2 to #3 once Course 1 was identified. With a build course and a test course already in hand, the operate course completes a trilogy that can be bundled and cross-promoted, which outweighs the cert course's search advantage.
 
 ### Why #1 is Voice Agents
 
@@ -144,7 +150,36 @@ The differentiation doc claims only two real Udemy courses exist and none cover 
 **Action items:**
 1. Rewrite the "Supply Side" table in `course-differentiation.md` to list the eight competitors above and reposition on **full lifecycle + CI/CD gates + enterprise scenarios**, not "first" or "only".
 2. Consider adding **Garak and PyRIT** alongside promptfoo in the red-teaming module, since the newest security competitor teaches all three.
-3. Add a lecture on **evaluating agents against OpenTelemetry GenAI semantic conventions**, which no competitor mentions and which bridges to recommendation #4.
+3. Add a lecture on **evaluating agents against OpenTelemetry GenAI semantic conventions**, which no competitor mentions and which bridges to recommendation #2 (Observability).
+
+## 6b. Saturation Risk for Course 1 (Generative AI and AI Agents: Zero to Production)
+
+Course 1 is a generalist build course, which is the most crowded category on the platform.
+
+| Direct competitor | Students | Rating | Framing |
+|---|---|---|---|
+| AI Engineer Agentic Track: The Complete Agent & MCP Course (Ed Donner) | 398,566 | 4.7 | 8 projects, 5 frameworks, 30 days |
+| Intro to AI Agents and Agentic AI (365 Careers) | 277,438 | 4.5 | Beginner, business + build |
+| LangChain: Agentic AI Engineering with LangChain & LangGraph (Eden Marco) | 218,228 | 4.6 | Framework deep dive |
+| Machine Learning, Data Science & AI Engineering with Python | 247,465 | n/a | Broad AI engineering |
+| AI Engineer Bootcamp 2026: LLMs, RAG, AI Agents & Vector DBs | 100,000+ | 4.6 | 30 hours, full pipeline |
+| AI Agents & Workflows: The Practical Guide (Schwarzmüller) | 72,009 | n/a | Python + TypeScript |
+| Complete Agentic AI Bootcamp with LangGraph and LangChain | 66,526 | n/a | Bootcamp |
+| The Agentic AI Engineering Masterclass 2026 (Ryan Ahmed) | 30,209 | 4.5 | Multi-framework |
+| Production AI Agents with LangChain + LangGraph [2026] | n/a | n/a | Explicitly "production-first": security, testing, LangSmith, FastAPI, Docker |
+| AI Engineer Production Track: Deploy LLMs & Agents at Scale | 9,456 | 4.8 | Cloud deploy, Terraform, CI/CD, cost |
+
+Reviewer consensus across 20+, 30+ and 50+ course roundups: most agent bootcamps are "outdated, framework-specific with no broader context, or just plain shallow". That is the opening, but only if Course 1 is visibly different in its title and first three lectures.
+
+**What "Zero to Production" must mean to stand out:**
+
+- **One stack, shipped.** Competitors tour five frameworks. Course 1 should pick one (for example OpenAI Agents SDK or LangGraph) and take a single app all the way to a deployed, monitored URL: FastAPI, Docker, a cloud deploy, auth, rate limits, cost caps.
+- **Quality built in from lecture one.** Evals, tracing and a CI check appear early and are reused throughout. No top-ten bootcamp does this, and it is the bridge to Course 2.
+- **Cost and latency as first-class topics.** Only the "Production Track" course above covers LLM cost management, and it has under 10,000 students. This is the cheapest differentiator to add.
+- **Real apps, not demos.** Lead with the deployed artifacts (a support agent with escalation, a document agent with RAG, a tool-calling ops agent) and reuse the enterprise scenario datasets from `05-datasets/`.
+- **Title keywords.** Include "Production", "Deploy" and the chosen framework in the title. Avoid "Complete", "Masterclass", "Bootcamp" and "A-Z", which are the most common patterns among the incumbents.
+
+**Portfolio role:** Course 1 is the top of the funnel. Expect it to earn more from cross-sells into Courses 2, 3 and 4 than from its own organic ranking. Plan the end-of-course lecture and the completion message around that hand-off.
 
 ---
 
@@ -152,10 +187,10 @@ The differentiation doc claims only two real Udemy courses exist and none cover 
 
 | Quarter | Release | Rationale |
 |---|---|---|
-| Q4 2026 | Launch **AI Agent Testing & Evaluation** with refreshed positioning (Section 6) | Already in production |
-| Q1 2027 | **Production Voice AI Agents with Python** (rank #1) | Proven demand, thin supply, reuses eval brand |
-| Q2 2027 | **Agentic AI Certification Prep (AB-100 / AB-620 / AI-500)** (rank #2) | First-mover on cert titles; high-intent search |
-| Q3 2027 | **AI Agent Observability, LLMOps & Cost Control** (rank #4) as the sequel/upsell | Direct email to eval-course students |
+| Q4 2026 | Launch **Course 1: GenAI & AI Agents: Zero to Production** with the sharpened production angle (Section 6b) and **Course 2: AI Agent Testing & Evaluation** with refreshed positioning (Section 6) | Both already in production; launch C1 first so it feeds C2 |
+| Q1 2027 | **Course 3: Production Voice AI Agents with Python** (rank #1) | Proven demand, thin supply, extends "build real apps" and reuses eval tooling |
+| Q2 2027 | **Course 4: AI Agent Observability, LLMOps & Cost Control** (rank #2) | Completes Build, Test, Operate; bundle and cross-promote all four |
+| Q3 2027 | **Agentic AI Certification Prep (AB-100 / AB-620 / AI-500)** (rank #3) if the certs are still current | First-mover on cert titles; high-intent search |
 | Backlog | Claude Agent SDK & Skills; Securing Agents & MCP; Agent Memory & Context Engineering | Re-check saturation each quarter before committing |
 
 ---
