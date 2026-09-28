@@ -151,12 +151,12 @@ Cost engineering carries the largest weight because it is the course's signature
   - *Explanation:* Incorrect. Identity belongs on the trace; generations carry model and usage.
 - **C.** `Langfuse(user_id=...)` at client construction.
   - *Explanation:* Incorrect. The client is process-wide; user is per request.
-- **D.** `get_client().update_current_trace(user_id=<hashed employee id>)` inside the request, alongside the `session_id` and tags already being set.
+- **D.** `propagate_attributes(user_id=<hashed employee id>)` around the request, alongside the `session_id` and tags already being set.
   - *Explanation:* Correct. `user_id` is a trace-level field set per request; hashing it satisfies Section 10 while still populating the Users view.
 
 **Correct answer: D**
 
-### Q8. A student wraps each agent step in `atlas.step N` and records `northwind.context_tokens`. On a normal request the values are 1,180, 1,650, 1,990. On another request they read 1,150, 1,150, 1,150, 1,150, 1,150, 1,150. What does the second pattern most likely indicate?
+### Q8. A student wraps each agent step in `atlas.step N` and records `atlas.context_tokens`. On a normal request the values are 1,180, 1,650, 1,990. On another request they read 1,150, 1,150, 1,150, 1,150, 1,150, 1,150. What does the second pattern most likely indicate?
 
 *Domain: D2 · Related lecture: 5.2 Code-along: tracing the tool loop step by step*
 
@@ -235,7 +235,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: D**
 
-### Q13. A showback report shows tenant shares: logistics-ops 28%, warehouse 22%, hr 31%, finance 18%, and lists "escalated" as a feature costing 19% of the total. A department head says "so finance and escalations are 37% together". What is wrong?
+### Q13. A showback report shows tenant shares: ops 28%, eng 22%, hr 31%, finance 18%, and lists "escalated" as a feature costing 19% of the total. A department head says "so finance and escalations are 37% together". What is wrong?
 
 *Domain: D3 · Related lecture: 6.3 Cost per request, session, user, tenant and feature*
 
@@ -487,7 +487,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: D**
 
-### Q29. Histogram buckets for `atlas_request_duration_seconds` are `0.5, 1, 2, 4, 8, +Inf`. The p95 computed by `histogram_quantile` shows exactly 4.0 for an hour, then jumps to 6.3. What can and cannot you conclude?
+### Q29. Histogram buckets for `atlas_request_latency_seconds` are `0.5, 1, 2, 4, 8, +Inf`. The p95 computed by `histogram_quantile` shows exactly 4.0 for an hour, then jumps to 6.3. What can and cannot you conclude?
 
 *Domain: D6 · Related lecture: 9.2 Code-along: Prometheus metrics from Atlas*
 
@@ -517,7 +517,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: C**
 
-### Q31. An alert fires at 03:10: `AtlasCostAnomaly tenant=warehouse`. The on-call engineer opens the runbook. What should its first section let them do within five minutes?
+### Q31. An alert fires at 03:10: `AtlasTenantCostAnomaly tenant=ops`. The on-call engineer opens the runbook. What should its first section let them do within five minutes?
 
 *Domain: D6 · Related lecture: 9.5 Alert rules and the runbook*
 
@@ -551,7 +551,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q33. The collector's `attributes` processor is configured with `action: hash` on `northwind.user_id_raw`. What does this achieve that `action: delete` would not, and what does it not achieve?
+### Q33. The collector's `attributes` processor is configured with `action: hash` on `atlas.user_id_raw`. What does this achieve that `action: delete` would not, and what does it not achieve?
 
 *Domain: D7 · Related lecture: 10.2 Code-along: masking in the SDK and the collector*
 
@@ -591,7 +591,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 - **A.** Count of generations per hour.
   - *Explanation:* Incorrect. Flat requests with more steps would show here, but it says nothing about history or tool sizes.
-- **B.** For the affected tenant, before vs after 09:00: mean steps per request, mean `northwind.context_tokens` at step 1, and mean tool-result length per tool; whichever moved is the mechanism, and only one query with three columns is needed.
+- **B.** For the affected tenant, before vs after 09:00: mean steps per request, mean `atlas.context_tokens` at step 1, and mean tool-result length per tool; whichever moved is the mechanism, and only one query with three columns is needed.
   - *Explanation:* Correct. The three mechanisms have three distinct signatures on span attributes; compare before and after, then read three traces for confirmation.
 - **C.** The OpenAI invoice.
   - *Explanation:* Incorrect. Invoices are daily totals with no mechanism.
@@ -615,18 +615,18 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: D**
 
-### Q37. Incident 4 (Project 2) presents a cost rise with normal quality, normal tool errors and slightly higher p95 on one tenant after a new FAQ drove more people to a shipment feature. Which hypothesis is the *last* one you should test, given the evidence?
+### Q37. Incident 4 (Project 2) presents two pages on one day: a `lookup_ticket` error-rate spike at 10:35 with sessions hitting the step limit, and a p95 doubling at 15:20 with tool errors back to normal and cost per request only slightly up. Judge scores are normal all day. Which hypothesis is the *last* one you should test, given the evidence?
 
 *Domain: D8 · Related lecture: 11.6 Project 2: Investigate a fourth incident*
 
-- **A.** "Judge scores dropped because of a prompt change" — quality is normal and `releases.txt` is where you would confirm a prompt change; with normal scores and no prompt label move, this hypothesis has the least support and goes last.
-  - *Explanation:* Correct. Order hypotheses by how much the observed signals already support them: cost up with flat requests points at tokens per request or model mix first; a quality hypothesis contradicts a normal judge.
-- **B.** "Tool results got bigger" — plausible for a shipment feature.
-  - *Explanation:* Incorrect as the last: this is a leading hypothesis for a new shipment feature.
-- **C.** "Model mix shifted toward the escalation model" — plausible if long contexts trigger escalation rules.
-  - *Explanation:* Incorrect as the last: cost per request up with latency slightly up is consistent with a price-per-token change.
-- **D.** "More traffic" — the Slack message suggests it.
-  - *Explanation:* Incorrect as the last: it is quickly refuted by the flat request count, which is why it goes first (fast to refute).
+- **A.** "Judge scores dropped because of a prompt change" — quality is normal in both windows and `atlas.prompt_version` does not change all day; this hypothesis has the least support and goes last.
+  - *Explanation:* Correct. Order hypotheses by how much the observed signals already support them: a tool error spike with step-limit sessions points at the tool loop first, a TTFT rise with unchanged tokens points at the provider first; a quality hypothesis contradicts a normal judge.
+- **B.** "The model re-called a failing tool until the step limit" — plausible for the morning page.
+  - *Explanation:* Incorrect as the last: this is the leading hypothesis for the 10:35 page (`execute_tool lookup_ticket` spans per trace, `error.type`, `atlas.steps`).
+- **C.** "The provider got slow" — plausible for the afternoon page.
+  - *Explanation:* Incorrect as the last: p95 up with tool errors normal and tokens unchanged is exactly what `atlas.ttft_ms` per hour would confirm.
+- **D.** "More traffic" — two pages on one day suggest load.
+  - *Explanation:* Incorrect as the last: it is quickly refuted by the flat request count per hour, which is why it goes first (fast to refute).
 
 **Correct answer: A**
 

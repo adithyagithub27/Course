@@ -84,7 +84,7 @@
 - **A.** Each department gets its own OpenAI API key, and the invoice is split by key.
   - *Explanation:* Incorrect. Separate keys give a monthly total per key at best, with no link to sessions, features or traces. The course attributes cost from spans, not invoices.
 - **B.** Every request carries tenant, user and session identifiers as HTTP headers, which become trace attributes (tags, `user_id`, `session_id`), so cost recorded on each generation can be rolled up by any of them.
-  - *Explanation:* Correct. `X-Tenant`, `X-User-Id` and `X-Session-Id` are set on the trace. Because cost is attributed per generation span and every span belongs to a trace with those attributes, roll-ups by tenant, user, session and feature are queries rather than guesses.
+  - *Explanation:* Correct. `X-Tenant`, `X-User` and `X-Session` are set on the trace. Because cost is attributed per generation span and every span belongs to a trace with those attributes, roll-ups by tenant, user, session and feature are queries rather than guesses.
 - **C.** Atlas runs four separate copies, one per department.
   - *Explanation:* Incorrect. One service serves all tenants; separation is by attributes, not by deployment.
 - **D.** Cost is estimated from request counts times an average price.

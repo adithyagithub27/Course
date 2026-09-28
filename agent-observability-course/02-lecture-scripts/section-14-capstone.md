@@ -31,7 +31,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | 14.6 | Domain swap: observe a different agent | AS | 4:00 video | ~452 |
 | 14.7 | Quiz: Capstone review | QZ | 5:00 (1:00 video intro) | ~106 |
 
-**Names used in this section (match `03-code/`).** Students build in their own branch or fork of `03-code/` and name their console module `console/my_ops_console.py` so it never collides with the reference `console/ops_console.py`. Shipped entry points: `telemetry/otel_setup.py::configure_tracing(settings, exporter_kind=, store=, batch=)`, `shutdown_tracing`, `exporter_health`; `telemetry/langfuse_setup.py::init_langfuse(settings, tracer_provider=)`, `trace_attributes`, `create_score`, `get_prompt_text`, `push_prompts`; `telemetry/genai_attrs.py::set_agent`, `set_tenant_context`, `set_llm_request`, `set_llm_usage`, `set_cost`, `set_tool`, `set_retrieval`, `set_guardrail`, `add_event`; `telemetry/metrics.py::record_generation`, `record_request`, `record_tool`, `metrics_app`, counters `REQUESTS`, `COST`, `BUDGET_DECISIONS`, `FALLBACKS`, `TOOL_CALLS`, `JUDGE_SCORE`, `EXPORTER_FAILURES`; `src/northwind/pricing.py::estimate_cost -> CostBreakdown`; `src/northwind/cost.py::CostRecord`, `rollup`, `total_cost`, `cost_per_session`, `showback_table`; `src/northwind/budget.py::BudgetGuard.decide -> BudgetDecision`, `Decision`, `EWMAAnomalyDetector`; `app/agent.py::AtlasAgent.run`, `build_router_config`, `CircuitBreaker`, `FALLBACKS`; `src/northwind/slo.py::compute_slis`, `burn_rate`, `DEFAULT_SLOS`; `src/northwind/drift.py::compare_windows`, `DriftResult`, `drift_report_markdown`; `src/northwind/report.py::ReportInputs`, `IncidentNote`, `weekly_report`, `default_recommendations`; `src/northwind/sampling.py::JudgeSamplingPolicy`, `TraceSummary`. Not yet written at scripting time (names assumed): `evals/online_judge.py::judge_sample`, `evals/drift_report.py::weekly_drift`, `evals/to_dataset.py::promote_failures`, `deploy/alerts/atlas-rules.yml`, `tests/budget/test_budget_gate.py`, `simulator/replay.py`, Makefile targets. Acceptance criteria are numbered AC-01 to AC-20 in the brief.
+**Names used in this section (match `03-code/`).** Students build in their own branch or fork of `03-code/` and name their console module `console/my_ops_console.py` so it never collides with the reference `console/ops_console.py`. Shipped entry points: `telemetry/otel_setup.py::configure_tracing(settings, exporter_kind=, store=, batch=)`, `shutdown_tracing`, `exporter_health`; `telemetry/langfuse_setup.py::init_langfuse(settings, tracer_provider=)`, `trace_attributes`, `create_score`, `get_prompt_text`, `push_prompts`; `telemetry/genai_attrs.py::set_agent`, `set_tenant_context`, `set_llm_request`, `set_llm_usage`, `set_cost`, `set_tool`, `set_retrieval`, `set_guardrail`, `add_event`; `telemetry/metrics.py::record_generation`, `record_request`, `record_tool`, `metrics_app`, counters `REQUESTS`, `COST`, `BUDGET_DECISIONS`, `FALLBACKS`, `TOOL_CALLS`, `JUDGE_SCORE`, `EXPORTER_FAILURES`; `src/northwind/pricing.py::estimate_cost -> CostBreakdown`; `src/northwind/cost.py::CostRecord`, `rollup`, `total_cost`, `cost_per_session`, `showback_table`; `src/northwind/budget.py::BudgetGuard.decide -> BudgetDecision`, `Decision`, `EWMAAnomalyDetector`; `app/agent.py::AtlasAgent.run`, `build_router_config`, `CircuitBreaker`, `FALLBACKS`; `src/northwind/slo.py::compute_slis`, `burn_rate`, `DEFAULT_SLOS`; `src/northwind/drift.py::compare_windows`, `DriftResult`, `drift_report_markdown`; `src/northwind/report.py::ReportInputs`, `IncidentNote`, `weekly_report`, `default_recommendations`; `src/northwind/sampling.py::JudgeSamplingPolicy`, `TraceSummary`. Also shipped: `evals/online_judge.py::run_judge(store, rate=, dry_run=, model=)` with `OfflineJudge`, `DeepEvalJudge`, `pick_judge`; `evals/drift_report.py::compare_split(store, split_ts)` and `compare_stores(baseline, current)`; `evals/to_dataset.py::select_bad_traces(store, threshold=)`, `write_jsonl`, `push_to_langfuse`; `deploy/alerts.yml`; `tests/budget/test_budget_gate.py`; `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=) -> (ReplaySummary, LocalSpanStore)`; Makefile targets `replay`, `judge`, `feedback`, `drift`, `dataset`, `budget-check`, `report`, `stack`, `langfuse-up`, `incident N=`. Acceptance criteria are numbered AC-01 to AC-20 in the brief.
 
 ---
 
@@ -259,24 +259,51 @@ Now the agent loop, where every span gets its attributes and its cost.
 
 [CODE: `app/agent.py`, the generation step, abbreviated]
 ```python
-with self.tracer.start_as_current_span(ga.llm_span_name(model)) as gen_span:
-    ga.set_llm_request(gen_span, model=model, provider=ga.PROVIDER_OPENAI, conversation_id=session_id, ...)
-    resp, ttft_s = self._call_llm(model=model, messages=messages, ...)
-    inp, out, cached, reasoning = usage_numbers(resp.usage)
-    ga.set_llm_usage(gen_span, input_tokens=inp, output_tokens=out, cache_read=cached, reasoning=reasoning, ttft_s=ttft_s)
-    cost = self._price(used_model, inp, out, cached, reasoning)      # estimate_cost() from pricing.py: the ONE cost computation
-    ga.set_cost(gen_span, cost)                                        # atlas.cost_usd + langfuse.observation.cost_details
-    metrics.record_generation(tenant=tenant, model=used_model, feature=feature,
-                              input_tokens=inp, output_tokens=out, cached=cached, cost_usd=cost.total_usd, ttft_s=ttft_s)
+            with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
+                ga.set_llm_request(
+                    span,
+                    model=current,
+                    conversation_id=session_id,
+                    prompt_version=prompt_version,
+                    prompt_cache_key=cache_key,
+                )
+                ...
+                    resp = self.llm.chat(**kwargs)
+                    ...
+                    inp, out, cached, reasoning = usage_numbers(usage)
+                    cost = self._price(current, inp, out, cached, reasoning)
+                    ga.set_llm_usage(
+                        span,
+                        input_tokens=inp,
+                        output_tokens=out,
+                        cached_tokens=cached,
+                        reasoning_tokens=reasoning,
+                        ...
+                        ttft_s=ttft_s,
+                        completion_start_time=t0 if ttft_s is None else None,
+                    )
+                    ga.set_cost(span, cost)
+                    ...
+                    metrics.record_generation(
+                        tenant=tenant,
+                        model=current,
+                        feature=feature,
+                        input_tokens=inp,
+                        output_tokens=out,
+                        cached_tokens=cached,
+                        reasoning_tokens=reasoning,
+                        cost_usd=float(cost.total_usd),
+                        ttft_s=ttft_s,
+                    )
 ```
 
 One generation span. Request attributes: model, provider, conversation id. Usage attributes from the response: input, output, cached and reasoning tokens, and TTFT from the stream. Then the line that makes AC-05 pass: `self._price`, which calls `estimate_cost` in `pricing.py`. One computation, one `CostBreakdown`. The result is written three ways. `set_cost` puts it on the span as `atlas.cost_usd` and as Langfuse's cost details attribute. `record_generation` adds it to the Prometheus counter `atlas_cost_usd_total`, labelled by tenant, model and feature, never by user. And the local store reads the same span attribute for the console and the report.
 
 If your capstone computed cost in the metrics module and again in the report, that's the diff note. Compute once, write everywhere.
 
-[SCREEN: Run `OFFLINE=1 make replay`, then open the Ops Console cost page and `curl localhost:8000/metrics | grep atlas_cost_usd_total`. Callout: console total $2.41 for the 400-session day; Prometheus sum $2.41.]
+[SCREEN: Run `OFFLINE=1 make replay`, then open the Ops Console cost page and `curl localhost:8000/metrics | grep atlas_cost_usd_total`. Callout: console total $1.92 for the 400-session day with all three levers on; Prometheus sum $1.92.]
 
-Replay the four-hundred-session day. Console says two dollars forty-one. Prometheus says two forty-one. In Part B, the report will say the same number. That's the criterion.
+Replay the four-hundred-session day. Console says one ninety-two. Prometheus says one ninety-two. In Part B, the report will say the same number. That's the criterion.
 
 [SCREEN: Switch to Part B title card.]
 
@@ -287,45 +314,81 @@ Part B. Budgets and routing, and then proving the saving that Section 6 promised
 
 [CODE: `app/agent.py::run`, the budget guard, as shipped]
 ```python
-if self.budget_guard is not None:
-    decision = self.budget_guard.decide(tenant, time.time(), next_cost_usd=0.01)
-    result.budget_decision = decision.decision.value
-    metrics.BUDGET_DECISIONS.labels(tenant, decision.decision.value).inc()
-    if decision.decision is Decision.REFUSE:
-        ga.add_event(root, "budget.refused", reason=decision.reason)
-        return self._refusal(result)                         # BUDGET_REFUSAL_MESSAGE: polite, one sentence
-    if decision.decision is Decision.DEGRADE:
-        ga.add_event(root, "budget.degraded", reason=decision.reason, model=s.degraded_model)
-        model, top_k = s.degraded_model, min(top_k, 2)
-    if decision.anomaly:                                     # the Incident 1 action item
-        metrics.BUDGET_DECISIONS.labels(tenant, "anomaly").inc()
+            if self.budget_guard is not None:
+                decision = self.budget_guard.decide(
+                    tenant, time.time(), next_cost_usd=self.budget_guard.estimate(tenant)
+                )
+                result.budget_decision = decision.decision.value
+                root.set_attribute(ga.ATLAS_BUDGET_DECISION, decision.decision.value)
+                metrics.BUDGET_DECISIONS.labels(tenant, decision.decision.value).inc()
+                metrics.BUDGET_SPENT.labels(tenant).set(decision.spent_usd)
+                if decision.decision is Decision.REFUSE:
+                    result.answer, result.outcome = BUDGET_REFUSAL, "refused"
+                    ga.add_event(root, "budget.refused", reason=decision.reason)
+                    return self._finish(root, result, tenant, started)
+                if decision.decision is Decision.DEGRADE:
+                    ga.add_event(
+                        root, "budget.degraded", reason=decision.reason, model=s.degraded_model
+                    )
+                    model, top_k = self._choose_deployment(intent, degraded=True), min(top_k, 2)
+                    result.model = model
 ```
 
-Before the loop, the budget guard from Lecture 6.7. `decide` pre-charges an estimated cent and returns allow, degrade or refuse against the tenant's soft and hard caps, twenty-five and forty dollars by default. Refuse: an event on the root span and a polite one-sentence refusal. Degrade: an event, the degraded model, `gpt-4.1-nano`, and top-k capped at two. And the line the shipped code didn't have until Incident 1: when the EWMA detector flags an anomaly, count it, so the alert rule in the next lecture can page. That's the seventy-one minutes Incident 1 lost, recovered.
+[CODE: the capstone addition, two lines after the degrade branch]
+```python
+                if decision.anomaly:                                     # the Incident 1 action item
+                    metrics.BUDGET_DECISIONS.labels(tenant, "anomaly").inc()
+```
+
+Before the loop, the budget guard from Lecture 6.7. `decide` pre-charges the tenant's EWMA estimate for the next request and returns allow, degrade or refuse against the tenant's soft and hard caps, twenty-five and forty dollars by default. Refuse: an event on the root span, `BUDGET_REFUSAL` as the answer, and no model call; the server turns the outcome into a 429. Degrade: an event, the degraded model, `gpt-4.1-nano`, and top-k capped at two. And the line the shipped code didn't have until Incident 1: when the EWMA detector flags an anomaly, count it, so the alert rule in the next lecture can page. That's the seventy-one minutes Incident 1 lost, recovered.
 
 [CODE: `app/agent.py`, router mode and the breaker]
 ```python
 def build_router_config(settings: Settings) -> dict[str, Any]:
+    """LiteLLM Router kwargs (verified against litellm 1.103): model_list, fallbacks,
+    num_retries, timeout, allowed_fails, cooldown_time. Pure data — testable offline."""
+    models = sorted(
+        {
+            settings.model,
+            settings.escalation_model,
+            settings.routing_model,
+            settings.degraded_model,
+            "gpt-4o-mini",
+        }
+    )
     return {
-        "model_list": [...],                                      # gpt-4.1-mini, gpt-4.1, gpt-5-mini, gpt-4.1-nano
+        "model_list": [
+            {
+                "model_name": m,
+                "litellm_params": {"model": f"openai/{m}", "api_key": settings.openai_api_key},
+            }
+            for m in models
+        ],
         "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
         "num_retries": settings.max_retries,
-        "timeout": settings.request_timeout_s,                    # 8.0 after Incident 2, was 20.0
-        "allowed_fails": 3, "cooldown_time": 60,
+        "timeout": settings.request_timeout_s,
+        "allowed_fails": 3,
+        "cooldown_time": 30,
     }
-
-# _call_llm: the breaker counts timeouts and slow calls, not only exhausted retries (Incidents 1 and 2)
-if self.breaker.is_open(current) and current in FALLBACKS:
-    nxt = FALLBACKS[current]; metrics.FALLBACKS.labels(current, nxt).inc(); current = nxt
 ```
 
-Router mode. `build_router_config` is pure data, so it's unit-tested offline: the fallback chain from `FALLBACKS`, retries and the timeout from settings. Eight seconds now, not twenty. And in `_call_llm`, the circuit breaker: when it's open for a model, the next call goes to that model's fallback and the fallback counter increments. After Section 11 it opens on timeouts and on slow calls, not only when retries are exhausted. Escalation to `gpt-4.1` is separate and unchanged: the model asks for it with the escalate marker, the agent records an event and re-runs the step on the escalation model.
+```python
+            # _call_model: the breaker is consulted before every attempt
+            if self.breaker.is_open(current) and current in FALLBACKS:
+                nxt = FALLBACKS[current]
+                metrics.FALLBACKS.labels(current, nxt).inc()
+                result.fallbacks += 1
+                log.warning("circuit open for %s; falling back to %s", current, nxt)
+                current = nxt
+```
+
+Router mode. `build_router_config` is pure data, so it's unit-tested offline: the fallback chain from `FALLBACKS`, retries and the timeout from settings. Twenty seconds by default; Incident 2 is the argument for tightening `ATLAS_REQUEST_TIMEOUT_S`. And in `_call_model`, the circuit breaker: when it's open for a model, the next call goes to that model's fallback and the fallback counter increments. After Section 11 it opens on timeouts and on slow calls, not only when retries are exhausted. Escalation to `gpt-4.1` is separate and unchanged: the model asks for it with the escalate marker, the agent records an event and re-runs the step on the escalation model.
 
 Now the saving. AC-08 says forty percent against the baseline day.
 
-[SCREEN: Ops Console, cost page, "compare replays" view. Baseline (`ATLAS_PROMPT_CACHE=0 ATLAS_CONTEXT_DIET=0 ATLAS_ROUTER_MODE=0`): $4.23. With cache, diet and router mode: $2.41. Callout: -43%. Breakdown bar: caching 19%, context diet 15%, routing 9%.]
+[SCREEN: Ops Console, cost page, "compare replays" view. Baseline (`ATLAS_PROMPT_CACHE=0 ATLAS_CONTEXT_DIET=0 ATLAS_ROUTER_MODE=0`): $5.67 for `SESSIONS=400`. With cache, diet and router mode (`CACHE=1 DIET=1 ROUTER=1`): $1.92. Callout: -66%. Breakdown bar: caching 34 points, context diet 26, routing 6.]
 
-Two replays of the same day, same seed. Baseline with caching off, the diet off and no routing: four dollars twenty-three. With all three on: two forty-one. Forty-three percent. And the console breaks it down, because "we saved money" is a claim and "caching saved nineteen percent, the diet fifteen, routing nine" is evidence. Caching is the biggest because the system prompt and tool schemas are a stable prefix over a thousand tokens; `prompt_cache_key` per prompt version and tenant, from Lecture 6.4, makes them hit.
+Two replays of the same day, same seed. Baseline with caching off, the diet off and no routing: five sixty-seven. With all three on: one ninety-two. Sixty-six percent, the same share as the full four-thousand-session day in Section 6. And the console breaks it down, because "we saved money" is a claim and "caching saved thirty-four points, the diet another twenty-six, routing six" is evidence. Caching is the biggest because the system prompt and tool schemas are a stable prefix over a thousand tokens; `prompt_cache_key` per prompt version and tenant, from Lecture 6.4, makes them hit.
 
 [SLIDE 1: Part A checklist against the criteria]
 - AC-01, AC-02: every generation and tool span carries `gen_ai.*`; integration test green
@@ -363,7 +426,7 @@ Compare with your branch. The three most common diff notes from beta: two tracer
 | Target duration | 12:00 total: Part A 6:00 (~320 spoken words), Part B 6:00 (~450 spoken words) |
 | Learning objectives | 1. Run the sampled online judge and feedback loop so scores land in Langfuse with prompt version metadata, and produce the weekly drift report. 2. Provision the Grafana dashboard and three alert rules as code, with runbook links and owners. 3. Make the CI budget gate a required check and show it red on a real regression. |
 | Prerequisites | 14.2; Sections 8, 9 and 13 |
-| Files used | `evals/online_judge.py`, `evals/feedback.py`, `evals/drift_report.py`, `evals/to_dataset.py`, `src/northwind/sampling.py`, `src/northwind/drift.py`, `src/northwind/slo.py`, `telemetry/metrics.py`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/alerts/atlas-rules.yml`, `tests/budget/test_budget_gate.py`, `.github/workflows/ci.yml` |
+| Files used | `evals/online_judge.py`, `evals/feedback.py`, `evals/drift_report.py`, `evals/to_dataset.py`, `src/northwind/sampling.py`, `src/northwind/drift.py`, `src/northwind/slo.py`, `telemetry/metrics.py`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/alerts.yml`, `tests/budget/test_budget_gate.py`, `.github/workflows/ci.yml` |
 
 ### Script: Part A — quality that shows up on a timeline
 
@@ -372,67 +435,93 @@ Part A of the reference gave Priya cost. Part B gives her "better or worse", "pa
 
 Start with quality, because Incident 3 taught you that quality without a timeline is an email from HR.
 
-[CODE: `evals/online_judge.py`, the sampled judge]
+[CODE: `evals/online_judge.py`, the sampled judge (abbreviated)]
 ```python
-from northwind.sampling import JudgeSamplingPolicy, TraceSummary
-from telemetry.langfuse_setup import create_score
-from telemetry import metrics
-
-def judge_sample(store, *, since: float, policy: JudgeSamplingPolicy) -> int:
-    judged = 0
-    for t in store.traces_since(since):
-        summary = TraceSummary.from_spans(t)                     # cost, latency, error, feedback, prompt_version
-        if not policy.should_judge(summary):                     # rate from settings.judge_sample_rate, always on error or thumbs-down
+def run_judge(store, *, rate=0.1, limit=None, dry_run=True, model="gpt-4.1-mini", since=None, write_langfuse=True):
+    judge = pick_judge(dry_run=dry_run, model=model)            # OfflineJudge offline, DeepEvalJudge with a key
+    policy = JudgeSamplingPolicy(rate=rate)
+    already = {s.trace_id for s in store.scores(name="judge_overall")}
+    for span in store.spans(kind="agent", since=since):
+        a = span.attributes
+        ...
+        t = TraceSummary(trace_id=span.trace_id, error=outcome == "error", duration_ms=span.duration_ms,
+                         cost_usd=float(a.get("atlas.cost_usd", 0.0) or 0.0), steps=int(a.get("atlas.steps", 1) or 1),
+                         tenant=str(a.get("atlas.tenant", "")), escalated=bool(a.get("atlas.escalated", False)))
+        if not policy.should_judge(t):                            # rate from JUDGE_SAMPLE_RATE, always on escalation / thumbs-down
             continue
-        case = LLMTestCase(input=t.question, actual_output=t.answer, retrieval_context=t.snippets)
-        for metric in (GROUNDED, RESOLVED, SAFE_ESCALATION):     # GEval, Lecture 8.2
-            metric.measure(case)
-            create_score(t.trace_id, f"judge_{metric.name}", metric.score, comment=metric.reason)
-            metrics.JUDGE_SCORE.labels(metric.name).observe(metric.score)
-        create_score(t.trace_id, "judge_cost_usd", judge_cost(case))   # judging is a line item
-        judged += 1
-    return judged
+        scores = judge.score(question=..., answer=..., intent=..., outcome=outcome, tool_calls=..., trace_id=span.trace_id)
+        for name, value in scores.items():                        # resolved, grounded, safe_escalation, overall
+            store.add_score(ScoreRecord(span.trace_id, f"judge_{name}", value, "judge", judge.name, ts, tenant, session_id))
+            if write_langfuse and langfuse_enabled():
+                create_score(span.trace_id, f"judge_{name}", value, comment=judge.name)
+        summary.estimated_cost_usd += 3 * (1200 * 0.4e-6 + 150 * 1.6e-6)   # judging is a line item
 ```
 
-The judge samples at the rate in settings, ten percent by default, plus every error and every thumbs-down, because those are the ones worth a second opinion. `JudgeSamplingPolicy` from `sampling.py` makes that decision from a `TraceSummary`. Three G-Eval metrics from Lecture 8.2: grounded, resolved, safe escalation. Each writes a score to the trace with the judge's reason as the comment, through the guarded `create_score`, and observes the same value into the `atlas_judge_score` histogram so Grafana sees it within a scrape. And a fourth score: what the judging cost. Priya's cost per resolved question includes the cost of knowing it was resolved. Leave it out and your report is wrong by a few percent.
+The judge samples at the rate in settings, ten percent by default, plus every escalation and every thumbs-down, because those are the ones worth a second opinion. `JudgeSamplingPolicy` from `sampling.py` makes that decision from a `TraceSummary` built off the agent span's attributes. Three criteria from Lecture 8.2: resolved, grounded, safe escalation, plus their mean as `overall`. Each writes a score to the local store and, through the guarded `create_score`, to the trace in Langfuse, so Grafana and the console see it within a scrape. And a fourth number: what the judging cost. Priya's cost per resolved question includes the cost of knowing it was resolved. Leave it out and your report is wrong by a few percent.
 
 The root spans already carry `atlas.prompt_version`, so every score is sliceable by prompt version. That's the exhibit that solved Incident 3, built in.
 
 [CODE: `evals/drift_report.py`, weekly comparison]
 ```python
-from northwind.drift import compare_windows, drift_report_markdown
+def compare_stores(
+    baseline: LocalSpanStore,
+    current: LocalSpanStore,
+    *,
+    thresholds: DriftThresholds = DriftThresholds(),
+) -> list[DriftResult]:
+    b = _metrics(baseline, None, None)
+    c = _metrics(current, None, None)
+    results = []
+    for metric, (bvals, hib) in b.items():
+        cvals = c.get(metric, ([], hib))[0]
+        results.append(
+            compare_windows(metric, bvals, cvals, thresholds=thresholds, higher_is_better=hib)
+        )
+    return results
 
-def weekly_drift(store, *, week_start: float) -> list[DriftResult]:
-    this_week = store.window(week_start, week_start + WEEK)
-    last_week = store.window(week_start - WEEK, week_start)
-    results = [
-        compare_windows("judge_grounded", last_week.scores("judge_grounded"), this_week.scores("judge_grounded")),
-        compare_windows("judge_resolved", last_week.scores("judge_resolved"), this_week.scores("judge_resolved")),
-        compare_windows("user_feedback",  last_week.scores("user_feedback"),  this_week.scores("user_feedback")),
-        compare_windows("cost_usd",       last_week.costs(),                  this_week.costs()),
-        compare_windows("latency_ms",     last_week.latencies(),              this_week.latencies()),
+
+def compare_split(
+    store: LocalSpanStore, split_ts: float, *, thresholds: DriftThresholds = DriftThresholds()
+) -> list[DriftResult]:
+    b = _metrics(store, None, split_ts)
+    c = _metrics(store, split_ts, None)
+    return [
+        compare_windows(m, bv, c.get(m, ([], hib))[0], thresholds=thresholds, higher_is_better=hib)
+        for m, (bv, hib) in b.items()
     ]
-    results += [compare_windows(f"judge_grounded[{v}]", last_week.scores("judge_grounded"), this_week.scores("judge_grounded", prompt_version=v))
-                for v in this_week.prompt_versions()]
-    return results          # drift_report_markdown(results) renders it; DriftResult.alert uses DriftThresholds
 ```
 
-The drift report compares this week to last for five signals with `compare_windows`, which computes the delta and the PSI from `drift.py`, and adds a comparison per prompt version. `DriftResult.alert` applies the thresholds. The reference also runs `compare_windows` hourly on `judge_grounded` alone, feeding a Prometheus gauge, because a weekly report finds Incident 3 on Monday and an hourly check finds it at ten past twelve.
+The drift report compares two windows, last week's store against this week's with `compare_stores`, or one store split at a timestamp with `compare_split`, for every metric `_metrics` collects: the judge scores, user feedback, cost per request and latency, with `compare_windows` computing the delta and the PSI from `drift.py` and `DriftResult.alert` applying `DriftThresholds`. The reference also runs `compare_split` hourly on `judge_grounded` alone, feeding a Prometheus gauge, because a weekly report finds Incident 3 on Monday and an hourly check finds it at ten past twelve.
 
-[SCREEN: `OFFLINE=1 ATLAS_SCENARIO=prompt_regression make replay`, then `make eval`. Terminal shows the drift report: `judge_grounded: 0.91 → 0.72 (PSI 0.34, ALERT)`, `judge_grounded[langfuse:2]: 0.72`.]
+[SCREEN: `OFFLINE=1 make replay SCENARIO=prompt_regression`, then `make drift`. Terminal shows the drift report: `judge_grounded: 0.91 → 0.72 (PSI 0.34, ALERT)`; the console's quality page split by `atlas.prompt_version` shows `v2` at 0.72.]
 
-Replay the prompt-regression scenario and run the evals. The drift report flags grounded with a PSI above the threshold, and the version breakdown points straight at version two. AC-15, green.
+Replay the prompt-regression scenario and run the drift report. It flags grounded with a PSI above the threshold, and the prompt-version split points straight at version two. AC-15, green.
 
-[CODE: `evals/to_dataset.py`, close the loop]
+[CODE: `evals/to_dataset.py`, close the loop (abbreviated)]
 ```python
-def promote_failures(store, *, since: float, dataset: str = "atlas-failures") -> int:
-    lf = client()
-    bad = [t for t in store.traces_since(since) if t.score("judge_grounded") == 0 or t.score("user_feedback") == -1]
-    for t in bad:
-        lf.create_dataset_item(dataset_name=dataset, input=t.question, expected_output=None,
-                               source_trace_id=t.trace_id,
-                               metadata={"tenant": t.tenant, "prompt_version": t.prompt_version})
-    return len(bad)
+def select_bad_traces(store, *, threshold: float = 0.6, limit: int = 100) -> list[DatasetItem]:
+    judge = {s.trace_id: s.value for s in store.scores(name="judge_overall")}
+    fb = {s.trace_id: s.value for s in store.scores(name="user_feedback")}
+    items = []
+    for span in store.spans(kind="agent"):
+        reasons = []
+        if (j := judge.get(span.trace_id)) is not None and j < threshold: reasons.append(f"judge_overall={j:.2f}")
+        if (f := fb.get(span.trace_id)) is not None and f <= 0.25: reasons.append("negative_feedback")
+        if span.attr("atlas.outcome") in {"step_limit", "error"}: reasons.append(str(span.attr("atlas.outcome")))
+        if not reasons: continue
+        items.append(DatasetItem(input={"message": mask_text(..., hash_ids=True), "tenant": span.attr("atlas.tenant"), "intent": ...},
+                                 expected_output=None,
+                                 metadata={"reasons": reasons, "prompt_version": span.attr("atlas.prompt_version"), ...},
+                                 source_trace_id=span.trace_id))
+    return items
+
+
+def push_to_langfuse(items, *, dataset_name="atlas-failures") -> int:
+    lf = client() or init_langfuse(Settings.from_env())
+    ...
+    for it in items:
+        lf.create_dataset_item(dataset_name=dataset_name, input=it.input, expected_output=it.expected_output,
+                               metadata=it.metadata, source_trace_id=it.source_trace_id)
 ```
 
 And the loop closes: every ungrounded or thumbs-down trace becomes a dataset item with its tenant and prompt version. The live-evals job in CI runs against this dataset. Production failures become next week's regression suite. AC-16.
@@ -447,7 +536,7 @@ Now the operations pillar. Dashboard, alerts, CI. All as code, all with owners.
 [SCREEN: `deploy/grafana/dashboards/atlas-ops.json` in VS Code, collapsed to panel titles. Then Grafana with the dashboard provisioned from `deploy/grafana/provisioning/`. Footer: "verify against current Grafana docs".]
 
 [SLIDE 1: The Atlas Ops dashboard, one panel per SLI]
-- Variable: `tenant` (all, logistics-ops, warehouse, hr, finance)
+- Variable: `tenant` (all, ops, finance, hr, eng)
 - Row 1: `atlas_requests_total` rate, p95 from `atlas_request_latency_seconds` vs 4 s budget, `atlas_ttft_seconds` p95, error outcome share
 - Row 2: `atlas_cost_usd_total` per hour and per session, model mix, `atlas_budget_decisions_total` by decision
 - Row 3: `atlas_judge_score` (7-day), `atlas_feedback_total` thumbs-down rate, containment, drift gauge
@@ -458,35 +547,44 @@ Twelve panels, one per SLI from Lecture 9.1, in four rows, every one backed by a
 
 The dashboard JSON is provisioned from the repo, Lecture 13.4 item ten. Verify the provisioning config against current Grafana docs; the mechanism is stable, the file format details move.
 
-[CODE: `deploy/alerts/atlas-rules.yml`, three rules]
+[CODE: `deploy/alerts.yml`, three of the ten rules]
 ```yaml
-groups:
-  - name: atlas
-    rules:
-      - alert: AtlasLatencyBurnRate
-        expr: atlas_slo_burn_rate{sli="latency_p95"} > 14.4       # 1h window; slo.burn_rate() exposed as a gauge
-        for: 15m
-        labels: {severity: page, owner: atlas-oncall}
-        annotations: {runbook: "runbooks/latency-burn.md"}
-      - alert: AtlasTenantSpendAnomaly
-        expr: increase(atlas_budget_decisions_total{decision=~"anomaly|degrade"}[15m]) > 0
-        for: 5m
-        labels: {severity: page, owner: atlas-oncall}
-        annotations: {runbook: "runbooks/cost-anomaly.md"}
-      - alert: AtlasToolErrorSpike
-        expr: sum(rate(atlas_tool_calls_total{outcome="error"}[10m])) / sum(rate(atlas_tool_calls_total[10m])) > 0.2
+      - alert: AtlasLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le)) > 4
         for: 10m
-        labels: {severity: ticket, owner: atlas-team}
-        annotations: {runbook: "runbooks/tool-errors.md"}
+        labels: { severity: page }
+        annotations:
+          summary: "Atlas p95 latency above 4 s"
+          runbook: "10-resources/runbook-template.md#latency"
+
+      - alert: AtlasTenantCostAnomaly
+        # spend in the last hour vs the average hourly spend over the previous day
+        expr: |
+          sum(increase(atlas_cost_usd_total[1h])) by (tenant)
+          > 2.5 * (sum(increase(atlas_cost_usd_total[1d] offset 1h)) by (tenant) / 24)
+          and sum(increase(atlas_cost_usd_total[1h])) by (tenant) > 1
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Tenant {{ $labels.tenant }} hourly spend is 2.5x its daily average"
+
+      - alert: AtlasToolErrorRate
+        expr: |
+          sum(rate(atlas_tool_calls_total{outcome="error"}[10m])) by (tool)
+          / sum(rate(atlas_tool_calls_total[10m])) by (tool) > 0.05
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Tool {{ $labels.tool }} error rate above 5%"
 ```
 
 Three alert rules, from Lecture 9.5. Latency burn rate above fourteen point four for fifteen minutes, which is the fast-burn threshold from `slo.py`. Tenant spend anomaly or degradation, from the budget decisions counter you saw in Part A of 14.2; this is the one that would have paged at ten oh nine on Monday. And a tool error spike above twenty percent, which is a ticket, not a page, because a failing tool at two a.m. with bounded retries is a morning problem now.
 
 Every rule has an owner label and a runbook. That's checklist item twelve.
 
-[DEMO: `make stack-up` both stacks. `OFFLINE=1 ATLAS_SCENARIO=context_bloat make replay`. Grafana alert list: `AtlasTenantSpendAnomaly` goes pending, then firing after five minutes, tenant `logistics-ops`. Screenshot.]
+[DEMO: `make langfuse-up` and `make stack`, then `make run PROM=1 SCENARIO=context_bloat` and `make swarm RPS=5 DURATION=1200 SCENARIO=context_bloat`. Grafana alert list: `AtlasTenantCostAnomaly` goes pending, then firing after fifteen minutes, tenant `ops`. Screenshot.]
 
-Replay the context-bloat scenario. Within the first hour of simulated traffic, the spend anomaly alert fires for logistics-ops. That screenshot is AC-18. And it's Incident 1 detected in the first hour instead of the third.
+Drive the context-bloat scenario. Within the first hour of traffic, the cost anomaly alert fires for ops. That screenshot is AC-18. And it's Incident 1 detected in the first hour instead of the third.
 
 Last, the pull request.
 
@@ -554,7 +652,7 @@ class ReportInputs:
     feedback_positive: int = 0
     feedback_negative: int = 0
     incidents: Sequence[IncidentNote] = ()        # title, started, duration_min, impact, root_cause, status
-    drift: Sequence[DriftResult] = ()             # from evals.drift_report.weekly_drift
+    drift: Sequence[DriftResult] = ()             # from evals.drift_report.compare_split / compare_stores
     previous_week_cost_usd: float | None = None
     period_start: date = ...; period_end: date = ...
     latency_budget_ms: float = 4000.0
@@ -634,7 +732,7 @@ def default_recommendations(inputs: ReportInputs) -> list[str]:
 
 Four rules, and each recommendation they produce has two parts: a number and an action. "Cache hit ratio is twenty-eight percent; stabilise the prefix and send the cache key." "p95 four thousand three hundred exceeds the four-thousand budget; check TTFT and top-k." When you paste the report into the email, add the third part yourself: an owner. A recommendation with a number, an action and a name gets done. And keep it to three. A report with nine recommendations is a report with none.
 
-[SCREEN: Terminal, `make report WEEK=2026-09-14`. Output file `reports/2026-09-14-atlas-weekly.md` opens. Scroll it in fifteen seconds: headline table, SLOs with one ❌ on containment, showback by tenant, drift, one incident row for Monday's cost spike with its root cause, two recommendations.]
+[SCREEN: Terminal, `make report > reports/2026-09-14-atlas-weekly.md`. The file opens. Scroll it in fifteen seconds: headline table, SLOs with one ❌ on containment, showback by tenant, drift, one incident row for Monday's cost spike with its root cause, two recommendations.]
 
 Generate it for the replayed week. One page. Headline table, SLOs with one cross on containment, showback, drift, one incident row for Monday with its root cause in a sentence, two recommendations. Total cost in the headline: the same number you saw in the console and in Prometheus. AC-05, closed. AC-20, done.
 
@@ -658,7 +756,7 @@ Send this every Monday morning. After three weeks, the manager starts forwarding
 
 - Mistake: the report computes its own cost. Insist on `cost.total_cost`, `cost_per_session` and `rollup` shared with the console; AC-05 depends on it.
 - Names as shipped in `src/northwind/report.py`: `ReportInputs`, `IncidentNote(title, started, duration_min, impact, root_cause, status)`, `weekly_report`, `default_recommendations`, `_pct`. Section headings: "Headline numbers", "SLOs", "Cost by tenant (showback)", "Cost by feature", "Cost by model", "Drift vs previous week", "Incidents", "Recommendations".
-- `make report WEEK=` and the `reports/` folder are assumed Makefile conventions (the Makefile was not yet written at scripting time); the generator script builds `ReportInputs` from `LocalSpanStore.cost_records()` and `latency_samples()` plus the score records.
+- `make report` prints the markdown to stdout; redirect it into a `reports/` folder in your fork. The target builds `ReportInputs` from `LocalSpanStore.cost_records('request')`, `latency_samples()` and the `judge_overall` / `user_feedback` score records.
 - Mistake: percentages without a denominator. The judge row prints `n=`; students who add their own rows should too.
 - "Should the report include the incident postmortem text?" No; one line per incident, link the postmortem. One page.
 

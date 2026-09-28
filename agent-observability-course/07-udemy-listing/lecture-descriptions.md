@@ -44,7 +44,7 @@
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
 | 4.1 | How Langfuse sits on OpenTelemetry | SL | 6 | Understand Langfuse SDK v4 as an OpenTelemetry exporter plus semantics: observation types (agent, tool, generation, retriever, guardrail, chain), traces, sessions, users, environments and releases. |
-| 4.2 | Code-along: @observe and observation types | SC | 9 | Code along with the @observe decorator and its observation types, get_client(), update_current_generation for model, usage and cost details, and update_current_trace for session, user, tags and metadata. |
+| 4.2 | Code-along: @observe and observation types | SC | 9 | Code along with the @observe decorator and its observation types, get_client(), update_current_generation for model, usage and cost details, and propagate_attributes for session, user, tags and metadata. |
 | 4.3 | Sessions, users, tenants and tags: slicing production | SC | 7 | Map Northwind's departments to tags and metadata, employees to user_id and conversations to session_id, then filter production traffic by each in the Langfuse UI. |
 | 4.4 | Prompt management and versions | SC | 8 | Create prompts with labels (production, staging), fetch them with a fallback and a cache, and link generations to prompt versions. This lecture sets up Incident 3. |
 | 4.5 | Scores, datasets and the feedback loop | SC | 8 | Score traces from code, create scores by trace id, and promote traces into dataset items. You'll see how production traffic becomes your next regression suite. |

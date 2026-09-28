@@ -58,7 +58,7 @@ Friday, 6:04 in the evening. Northwind Logistics' ticket system goes down for ma
 ATLAS_MAX_STEPS=0 OFFLINE=1 make swarm SCENARIO=loop
 ```
 
-[DEMO: The swarm sends one request: "Where is my ticket INC-2231?" from a warehouse employee. Terminal 1 logs a tool call to `lookup_ticket`, then `ToolError: ticketing API 503`, then another call. The Ops Console meter starts moving: $0.01, $0.03, $0.06. A "steps" counter next to it climbs: 4, 5, 6.]
+[DEMO: The swarm sends one request: "Where is my ticket TCK-100231?" from a warehouse employee. Terminal 1 logs a tool call to `lookup_ticket`, then `ToolError: ticketing API 503`, then another call. The Ops Console meter starts moving: $0.01, $0.03, $0.06. A "steps" counter next to it climbs: 4, 5, 6.]
 
 One question. "Where is my ticket?" Atlas calls the ticket tool. The tool returns a 503. Atlas reads the error, decides to try again, and calls the tool again. [PAUSE] Same error.
 
@@ -98,7 +98,7 @@ Now let's run exactly the same outage against the same agent, with three things 
 OFFLINE=1 make swarm SCENARIO=loop
 ```
 
-[DEMO: Same request. Terminal 1 logs `lookup_ticket` 503 twice, then "step limit 8 reached, surfacing error to user". Atlas replies: "The ticketing system isn't responding right now. I've noted your ticket INC-2231 and will retry in the background. You'll get an email when it's back." Meter stops at $0.04. The console's "Alerts" panel shows one line: "tool_error_rate lookup_ticket 100% over 60 s (ops)".]
+[DEMO: Same request. Terminal 1 logs `lookup_ticket` 503 twice, then "step limit 8 reached, surfacing error to user". Atlas replies: "The ticketing system isn't responding right now. I've noted your ticket TCK-100231 and will retry in the background. You'll get an email when it's back." Meter stops at $0.04. The console's "Alerts" panel shows one line: "tool_error_rate lookup_ticket 100% over 60 s (ops)".]
 
 Same question, same broken tool. This time Atlas tries, tries once more, and at step eight it stops and tells the employee the truth. Four cents. [PAUSE] The alerts panel fired on the tool error rate within a minute, so an on-call engineer would have known Friday at 6:05, not Monday at 9.
 

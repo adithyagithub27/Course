@@ -11,7 +11,7 @@
 ```markdown
 # Runbook: <ALERT NAME>
 
-**Alert rule:** <file and rule name, e.g. deploy/alerts/atlas.yml :: AtlasCostAnomaly>
+**Alert rule:** <file and rule name, e.g. deploy/alerts.yml :: AtlasTenantCostAnomaly>
 **Severity:** <page | ticket | info>
 **Owner (team / rotation):** <who is paged; who reviews this runbook quarterly>
 **Last reviewed:** <date>   **Last fired:** <date, link to incident>
@@ -80,9 +80,9 @@
 
 | Alert | SLI | Rule sketch | Severity | Runbook file |
 |---|---|---|---|---|
-| `AtlasErrorBudgetFastBurn` | task success SLO | burn rate > <X> over 1 h **and** > <X> over 5 min | page | `runbooks/error-budget-fast-burn.md` |
-| `AtlasErrorBudgetSlowBurn` | task success SLO | burn rate > <Y> over 6 h and 30 min | ticket | `runbooks/error-budget-slow-burn.md` |
-| `AtlasCostAnomaly` | cost per resolved session per tenant | > EWMA baseline + <k>σ for 15 min, or hard cap hits > 0 | page (hard cap) / ticket (anomaly) | `runbooks/cost-anomaly.md` |
-| `AtlasToolErrorSpike` | tool error rate | > <Z>% over 10 min for any tool | ticket; page if it coincides with fast burn | `runbooks/tool-error-spike.md` |
+| `AtlasTaskSuccessBurnRateFast` | task success SLO | burn rate > <X> over 1 h **and** > <X> over 5 min | page | `runbooks/error-budget-fast-burn.md` |
+| `AtlasTaskSuccessBurnRateSlow` | task success SLO | burn rate > <Y> over 6 h and 30 min | ticket | `runbooks/error-budget-slow-burn.md` |
+| `AtlasTenantCostAnomaly` / `AtlasBudgetHardCapHit` | hourly spend per tenant | > 2.5× the tenant's daily average hour for 15 min; hard-cap refusals > 0 | ticket (anomaly) / page (hard cap) | `runbooks/cost-anomaly.md` |
+| `AtlasToolErrorRate` | tool error rate | > <Z>% over 10 min for any tool | ticket; page if it coincides with fast burn | `runbooks/tool-error-spike.md` |
 
 Thresholds are yours to set from the replayed baseline; the worksheet in `latency-budget-worksheet.md` and the SLO definitions in `src/northwind/slo.py` give you the starting numbers.

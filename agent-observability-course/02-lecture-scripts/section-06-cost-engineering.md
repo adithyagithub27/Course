@@ -2,30 +2,31 @@
 
 > **Course:** AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse
 > **Section runtime:** about 70 minutes (10 lectures, including one challenge, one project intro and one quiz intro)
-> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics, with four departments as tenants (`operations`, `warehouse`, `finance`, `sales`)
+> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics, with four departments as tenants (`ops`, `finance`, `hr`, `eng`)
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Terminal font at 18 pt minimum. Every dollar figure on screen gets a callout.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on litellm 1.103 / langfuse 4.15 / openai 2.54. Prices as of 2026-09-28: verify current pricing."
 > **Recording note (from the curriculum):** split 6.3 and 6.6 into Part A / Part B uploads to keep each video under ten minutes.
 
 **Cue legend:** [AVATAR] avatar on camera · [SLIDE n: title] full-screen slide with the listed bullets · [SCREEN: ...] OBS recording · [CODE: ...] code on screen, exact code in the fenced block · [DEMO: ...] live run · [B-ROLL] cutaway · [PAUSE] one-beat pause.
 
-**Code names used in this section (to match `03-code/`):** `northwind.pricing` (`FALLBACK_PRICES`, `get_price`, `cost_usd`), `northwind.cost` (`CostRecord`, `rollup`, `showback`), `northwind.tokens` (`estimate_tokens`, `trim_history`, `truncate_tool_result`), `northwind.budget` (`TenantBudget`, `BudgetGuard`, `Decision`, `EwmaAnomaly`), `app.agent.AtlasAgent` (`mode="direct"` or `mode="router"`, `prompt_cache_key`), `telemetry.metrics` (`LLM_COST`, `LLM_TOKENS`, `BUDGET_EVENTS`), `simulator/replay.py`, `console/ops_console.py`. If the repo names differ when you record, the repo wins; update the on-screen code, not the numbers.
+**Code names used in this section (match `03-code/`):** `northwind.pricing` (`FALLBACK_PRICES`, `ModelPrice`, `get_price`, `estimate_cost` → `CostBreakdown`, `cost_usd`), `northwind.cost` (`CostRecord`, `Rollup`, `rollup`, `cost_per_session`, `showback_table`), `northwind.tokens` (`estimate_tokens`, `truncate_tool_result`, `trim_history`, `context_diet`), `northwind.budget` (`TenantBudget`, `BudgetGuard.decide` → `BudgetDecision`, `Decision`, `EWMAAnomalyDetector`; `EwmaAnomaly` is an alias), `app.agent.AtlasAgent` (`_cache_key`, `_choose_deployment`, `build_router_config`, `RouterClient`; `ATLAS_ROUTER_MODE=1` switches router mode on), `app.prompts.prompt_cache_key`, `telemetry.metrics` (`COST`, `TOKENS`, `BUDGET_DECISIONS`, `BUDGET_SPENT`; `LLM_COST` and `BUDGET_EVENTS` are aliases), `simulator/replay.py`, `console/ops_console.py`. Makefile flags: `make replay CACHE=1 DIET=1 ROUTER=1`; each defaults to `0`, so plain `make replay` is the baseline.
 
-**The numbers card (one set of figures for the whole section; every lecture reconciles to it):**
+**The numbers card (one set of figures for the whole section; every lecture reconciles to it). Measured with `make replay` (seed 7, 4,000 sessions, `OFFLINE=1`):**
 
 | Item | Value |
 |---|---|
-| Traffic on the replayed day | 10,000 requests in 4,000 sessions, 3 LLM steps per request on average |
-| Baseline tokens per request (gpt-4.1-mini) | steps of 2,480 / 4,040 / 4,220 input tokens = 10,740 input; 60 + 60 + 220 = 340 output |
-| Baseline cost per request (mini only) | 10,740 × $0.40/M + 340 × $1.60/M = $0.004296 + $0.000544 = **$0.00484** |
-| Retries | 4% of steps re-issued: 1,200 generations, **$2.05** |
-| Escalations | 10% of requests re-run the final step on gpt-4.1 (4,220 in / 300 out): 1,000 × $0.01084 = **$10.84** |
-| **Baseline day** | $48.40 + $2.05 + $10.84 = **$61.29**, so $0.0153 per session, about $1,840 a month, about $22,400 a year |
-| Caching alone (70% hit rate) | **$39.58** (−35%) |
-| Context diet alone | **$46.79** (−24%) |
-| Routing alone | **$52.42** (−15%) |
-| All three | **$24.86** (−59%), $0.0062 per session, about $750 a month |
-| Prices used (verify current pricing) | gpt-4.1-mini $0.40 in / $1.60 out / $0.10 cached per 1M; gpt-4.1 $2.00 / $8.00 / $0.50 |
+| Traffic on the replayed day | 10,184 requests in 4,000 sessions, 20,130 generations (about 2 LLM steps per request) |
+| One baseline request (the demo request in 6.4 and 6.5, gpt-4.1-mini) | steps of 3,259 / 6,667 input tokens = 9,926 input; 42 + 282 = 324 output |
+| Cost of that request | 9,926 × $0.40/M + 324 × $1.60/M = $0.003970 + $0.000518 = **$0.00449**; input is 88% |
+| Escalations | 43 requests (0.4%) run on gpt-4.1: **$0.32** of the day. No retries on the baseline day (retry storms are an incident scenario: 7.3, 11.2) |
+| **Baseline day** | **$56.70**, so $0.0056 per request, $0.0142 per session, about $1,700 a month, about $20,700 a year |
+| Caching alone (`CACHE=1`; 49% of the day's input tokens served from cache) | **$37.24** (−34%) |
+| Context diet alone (`DIET=1`) | **$42.28** (−25%) |
+| Routing alone (`ROUTER=1`) | **$47.37** (−17%) |
+| Caching + diet | **$22.88** (−60%) |
+| All three | **$19.21** (−66%), $0.0048 per session, about $580 a month |
+| Quality on the replay (every row) | judge `resolved` 0.89, `grounded` 0.94. The offline judge scores answer text, and the mock's answers do not change with the cost flags, so the scores are identical by construction; on a real model this row is the one you have to earn |
+| Prices used (verify current pricing) | gpt-4.1-mini $0.40 in / $1.60 out / $0.10 cached per 1M; gpt-4.1 $2.00 / $8.00 / $0.50; gpt-4.1-nano $0.10 / $0.40 / $0.025 |
 
 ---
 
@@ -49,11 +50,11 @@
 
 ### Script
 
-[B-ROLL: the Ops Console cost page. A single Atlas request expands into three generation rows. The input column reads 2,480, then 4,040, then 4,220. A running total at the bottom ticks up to $0.0048.]
+[B-ROLL: the Ops Console cost page. A single Atlas request expands into two generation rows. The input column reads 3,259, then 6,667. A running total at the bottom ticks up to $0.0045.]
 
 [AVATAR]
 
-One question. One answer. Three model calls. [PAUSE] Look at the input column: two thousand four hundred, then four thousand, then four thousand two hundred. The user typed eighty tokens. Atlas sent the model ten thousand seven hundred. That's the shape of every agent bill I have ever seen, and by the end of this lecture you'll be able to read it like a receipt.
+One question. One answer. Two model calls. [PAUSE] Look at the input column: three thousand two hundred, then six thousand six hundred. The user typed about thirty tokens. Atlas sent the model almost ten thousand. That's the shape of every agent bill I have ever seen, and by the end of this lecture you'll be able to read it like a receipt.
 
 [SLIDE 1: The six token streams]
 - Uncached input: what you send, at full price
@@ -73,45 +74,42 @@ Here's the question for the whole section. [PAUSE] Which stream is biggest for A
 
 | Step | What is in the prompt | Input tokens | Output tokens |
 |---|---|---|---|
-| 1 | system + tools + policy (1,800), history (600), question (80) | 2,480 | 60 (tool call) |
-| 2 | step 1 again + tool call + `search_knowledge_base` result (1,500) | 4,040 | 60 (tool call) |
-| 3 | step 2 again + `lookup_ticket` result (120) | 4,220 | 220 (answer) |
-| Total | | **10,740** | **340** |
+| 1 | system prompt + 5 tool schemas (about 3,200), question (about 30) | 3,259 | 42 (tool call) |
+| 2 | step 1 again + tool call + `search_knowledge_base` result, 4 articles (about 3,400) | 6,667 | 282 (answer) |
+| Total | | **9,926** | **324** |
 
 [AVATAR]
 
-Step one. Atlas sends the system prompt, the five tool schemas and the policy snippets. That prefix is about eighteen hundred tokens. Plus six hundred tokens of conversation history and the eighty-token question. Two thousand four hundred eighty in. The model answers with a sixty-token tool call.
+Step one. Atlas sends the system prompt and the five tool schemas. That prefix is about thirty-two hundred tokens. Plus the thirty-token question. Three thousand two hundred fifty-nine in. The model answers with a forty-two-token tool call.
 
-Step two. Here's the part that surprises people. The model has no memory. So Atlas sends everything from step one again, plus the tool call, plus the fifteen-hundred-token knowledge base result. Four thousand and forty in.
+Step two. Here's the part that surprises people. The model has no memory. So Atlas sends everything from step one again, plus the tool call, plus the thirty-four-hundred-token knowledge base result, four articles at the default top-k. Six thousand six hundred sixty-seven in, and finally a two-hundred-eighty-token answer for the user.
 
-Step three. Everything again, plus a small ticket lookup. Four thousand two hundred twenty in, and finally a two-hundred-twenty-token answer for the user.
-
-Add it up. Ten thousand seven hundred forty input tokens. Three hundred forty output. [PAUSE] The prefix alone was sent three times: fifty-four hundred tokens for eighteen hundred tokens of actual content.
+Add it up. Nine thousand nine hundred twenty-six input tokens. Three hundred twenty-four output. [PAUSE] The prefix alone was sent twice, and in a multi-turn session it goes again on every follow-up, with the articles riding along: thousands of tokens for thirty tokens of actual question.
 
 [SLIDE 3: What that costs (gpt-4.1-mini, verify current pricing)]
-- Input: 10,740 × $0.40 per million = $0.004296
-- Output: 340 × $1.60 per million = $0.000544
-- Total: $0.00484 per request
-- Input is 89% of the cost
-- 10,000 requests a day: $48.40 a day before retries and escalations
+- Input: 9,926 × $0.40 per million = $0.003970
+- Output: 324 × $1.60 per million = $0.000518
+- Total: $0.00449 per request
+- Input is 88% of the cost
+- 10,184 requests a day, one- to four-turn sessions: $56.70 a day
 
 [AVATAR]
 
-Now the money. At forty cents per million input tokens, the input costs four tenths of a cent. Output is four times the price per token, but there's thirty times less of it, so it's a twentieth of a cent. Total: just under half a cent per request. And eighty-nine percent of it is input.
+Now the money. At forty cents per million input tokens, the input costs four tenths of a cent. Output is four times the price per token, but there's thirty times less of it, so it's a twentieth of a cent. Total: just under half a cent per request. And eighty-eight percent of it is input.
 
 That's the answer to the question. For a tool-calling agent, the bill is input. Not the clever answer at the end. The re-sent context in the middle. Which is why the three levers in this section, caching, the context diet and routing, all attack input first.
 
-[SLIDE 4: The full day (baseline)]
-- 10,000 requests, 4,000 sessions, 3 steps each: $48.40
-- Retries: 4% of steps run twice, 1,200 extra generations: $2.05
-- Escalations: 10% of requests re-run the final step on gpt-4.1: $10.84
-- Day: $61.29 · Session: $0.0153 · Month: about $1,840 · Year: about $22,400
+[SLIDE 4: The full day (baseline, `make replay`, seed 7)]
+- 10,184 requests, 4,000 sessions, 20,130 generations: $56.70
+- Escalations: 43 requests (0.4%) run on gpt-4.1, five times the price per token: $0.32
+- Retries: none on a normal day; a retry storm re-bills the whole prompt (7.3, Incident 1)
+- Day: $56.70 · Request: $0.0056 · Session: $0.0142 · Month: about $1,700 · Year: about $20,700
 
 [AVATAR]
 
-Scale it to Atlas's replayed day. Ten thousand requests, forty-eight dollars forty. Then the forgotten streams. Four percent of steps get retried after a tool error, and each retry re-sends the whole four-thousand-token prompt: two dollars. And one in ten requests escalates the final step to gpt-4.1, which is five times the price per token. That's ten dollars eighty-four, more than a sixth of the bill, from a tenth of the traffic.
+Scale it to Atlas's replayed day. Ten thousand requests in four thousand sessions, fifty-six dollars seventy. Almost all of it is gpt-4.1-mini input. The forgotten streams are small today, and that is the point: forty-three requests escalated to gpt-4.1, thirty-two cents, five times the price per token for less than half a percent of the traffic. And no retries, because nothing failed. On the day a tool or a provider does fail, every retry re-sends the whole prompt and bills it again; that is Incident 1 in Section 11.
 
-Sixty-one dollars twenty-nine a day. A cent and a half per session. About eighteen hundred a month. [PAUSE] Not scary yet. Section one's four-thousand-dollar weekend was a loop. This is the normal day, and normal days are where the savings live, because you can plan them.
+Fifty-six dollars seventy a day. A cent and a half per session. About seventeen hundred a month. [PAUSE] Not scary yet. Section one's four-thousand-dollar weekend was a loop. This is the normal day, and normal days are where the savings live, because you can plan them.
 
 [SLIDE 5: Where usage comes from (OpenAI, verified on openai 2.54)]
 - Chat Completions: `usage.prompt_tokens`, `usage.completion_tokens`, `usage.prompt_tokens_details.cached_tokens`, `usage.completion_tokens_details.reasoning_tokens`
@@ -132,7 +130,7 @@ Where do the numbers come from? Every response carries a usage object. On Chat C
 
 [AVATAR]
 
-So here's the plan. First a price table you can trust, then attribution, so every one of those sixty-one dollars has a tenant and a feature on it. Then the three levers, each measured on the same day of traffic. Then budgets so it can't run away. And in 6.8 you'll take the sixty-one dollar day and cut it by forty percent yourself, before I show you my version. [PAUSE] Keep the number in your head: sixty-one twenty-nine.
+So here's the plan. First a price table you can trust, then attribution, so every one of those fifty-six dollars has a tenant and a feature on it. Then the three levers, each measured on the same day of traffic. Then budgets so it can't run away. And in 6.8 you'll take the fifty-six dollar day and cut it by forty percent yourself, before I show you my version. [PAUSE] Keep the number in your head: fifty-six seventy.
 
 ### Recap
 
@@ -147,7 +145,7 @@ Next, the price table. If the prices are wrong, every number after this is wrong
 - **"Isn't output the expensive part?"** Per token, yes, four times. Per request, no: Atlas sends thirty times more input than output. Always look at the product, price times volume.
 - **Double-counting cached tokens.** `cached_tokens` is inside `prompt_tokens`. Students who add them get a bill that is too high, and then "save" money by fixing the bug.
 - **Reasoning tokens.** gpt-4.1-mini reports zero. If a student swaps in a reasoning model such as `gpt-5-mini`, the output count jumps and they need to know why.
-- **Tool-call overhead.** Tool schemas are input tokens on every step. Five tools cost about 600 tokens per step here; fifty tools would be a bill of their own.
+- **Tool-call overhead.** Tool schemas are input tokens on every step. The system prompt plus five tool schemas is about 3,200 tokens per step here; fifty tools would be a bill of their own.
 - **Prices move.** Say it on camera: verify current pricing. The math is the lesson; the constants are the moment.
 
 ---
@@ -167,7 +165,7 @@ Next, the price table. If the prices are wrong, every number after this is wrong
 **Learning objectives**
 
 1. Read a model's prices from `litellm.model_cost` and know which keys matter: `input_cost_per_token`, `output_cost_per_token`, `cache_read_input_token_cost`.
-2. Write `cost_usd(model, input_tokens, output_tokens, cached_tokens)` with correct handling of cached and reasoning tokens.
+2. Read `estimate_cost(model, input_tokens, output_tokens, cached_tokens=, reasoning_tokens=)`, and its float wrapper `cost_usd`, with correct handling of cached and reasoning tokens.
 3. Pin a dated fallback table and a unit test so a price change or a missing model fails loudly instead of silently.
 
 ### Script
@@ -184,7 +182,7 @@ Here's a bug I found in a real showback report. The team hard-coded gpt-4o price
 
 [AVATAR]
 
-Three sources, one function. LiteLLM ships a price table for hundreds of models, updated with the library. We read from it first. Behind it sits our own fallback: a small dictionary with a date in a comment, so offline mode and tests never depend on the network or on a library upgrade. And there's room for overrides, for negotiated rates. Everything funnels into one function, `cost_usd`. Nothing else in the repo multiplies tokens by prices. That's the rule that would have saved that team.
+Three sources, one function. LiteLLM ships a price table for hundreds of models, updated with the library. We read from it first. Behind it sits our own fallback: a small dictionary with a date in a comment, so offline mode and tests never depend on the network or on a library upgrade. And there's room for overrides, for negotiated rates. Everything funnels into one function, `estimate_cost`. Nothing else in the repo multiplies tokens by prices. That's the rule that would have saved that team.
 
 [SCREEN: terminal]
 
@@ -203,53 +201,119 @@ Four times ten to the minus seven per input token. That's forty cents per millio
 [CODE: `src/northwind/pricing.py` (excerpt)]
 
 ```python
-from dataclasses import dataclass
+@dataclass(frozen=True)
+class ModelPrice:
+    """USD per 1M tokens for one model."""
 
-# USD per 1M tokens. Pinned 2026-09-28. VERIFY CURRENT PRICING before you trust a report.
-FALLBACK_PRICES: dict[str, dict[str, float]] = {
-    "gpt-4.1-mini": {"input": 0.40, "output": 1.60, "cached_input": 0.10},
-    "gpt-4.1":      {"input": 2.00, "output": 8.00, "cached_input": 0.50},
-    "gpt-5-mini":   {"input": 0.25, "output": 2.00, "cached_input": 0.025},
+    model: str
+    input_per_m: Decimal
+    output_per_m: Decimal
+    cached_input_per_m: Decimal
+    source: str = "fallback"
+
+    @property
+    def input_per_token(self) -> Decimal:
+        return self.input_per_m / MILLION
+
+    # output_per_token and cached_input_per_token follow the same pattern
+
+
+#: Pinned fallback prices, USD per 1M tokens (input, output, cached input).
+FALLBACK_PRICES: dict[str, ModelPrice] = {
+    "gpt-4.1": _p("gpt-4.1", "2.00", "8.00", "0.50"),
+    "gpt-4.1-mini": _p("gpt-4.1-mini", "0.40", "1.60", "0.10"),
+    "gpt-4.1-nano": _p("gpt-4.1-nano", "0.10", "0.40", "0.025"),
+    "gpt-5-mini": _p("gpt-5-mini", "0.25", "2.00", "0.025"),
+    "gpt-4o-mini": _p("gpt-4o-mini", "0.15", "0.60", "0.075"),
 }
 
 
-@dataclass(frozen=True)
-class Price:
-    """USD per single token."""
-    input: float
-    output: float
-    cached_input: float
+@lru_cache(maxsize=256)
+def get_price(model: str, *, use_litellm: bool = False) -> ModelPrice:
+    """Return the price for ``model``.
+
+    ``use_litellm`` is False by default because importing LiteLLM takes seconds
+    and needs no network; enable it in production, keep it off in unit tests.
+    """
+    name = normalize_model_name(model)
+    if use_litellm:
+        found = _litellm_price(name)
+        if found is not None:
+            return found
+    try:
+        return FALLBACK_PRICES[name]
+    except KeyError as exc:
+        raise UnknownModelError(name) from exc
 
 
-def get_price(model: str, *, prefer_litellm: bool = True) -> Price:
-    if prefer_litellm:
-        try:
-            import litellm
-            row = litellm.model_cost[model]
-            return Price(
-                input=row["input_cost_per_token"],
-                output=row["output_cost_per_token"],
-                cached_input=row.get("cache_read_input_token_cost", row["input_cost_per_token"]),
-            )
-        except (ImportError, KeyError):
-            pass
-    p = FALLBACK_PRICES[model]  # KeyError on purpose: an unknown model must fail loudly
-    return Price(p["input"] / 1e6, p["output"] / 1e6, p["cached_input"] / 1e6)
+def estimate_cost(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    cached_tokens: int = 0,
+    reasoning_tokens: int = 0,
+    use_litellm: bool = False,
+    price: ModelPrice | None = None,
+) -> CostBreakdown:
+    """Compute the cost of one generation.
+
+    Args:
+        model: model name as reported by the API (``gpt-4.1-mini-2025-04-14`` is fine).
+        input_tokens: total prompt tokens **including** cached tokens.
+        output_tokens: total completion tokens **including** reasoning tokens.
+        cached_tokens: ``prompt_tokens_details.cached_tokens``.
+        reasoning_tokens: ``completion_tokens_details.reasoning_tokens``.
+        use_litellm: consult ``litellm.model_cost`` first.
+        price: explicit price override (skips lookup).
+    """
+    if input_tokens < 0 or output_tokens < 0 or cached_tokens < 0 or reasoning_tokens < 0:
+        raise ValueError("token counts must be non-negative")
+    cached_tokens = min(cached_tokens, input_tokens)
+    reasoning_tokens = min(reasoning_tokens, output_tokens)
+    p = price or get_price(model, use_litellm=use_litellm)
+    uncached = input_tokens - cached_tokens
+    input_usd = _q(Decimal(uncached) * p.input_per_token)
+    cached_usd = _q(Decimal(cached_tokens) * p.cached_input_per_token)
+    output_usd = _q(Decimal(output_tokens) * p.output_per_token)
+    total = _q(input_usd + cached_usd + output_usd)
+    return CostBreakdown(
+        model=p.model,
+        input_tokens=input_tokens,
+        cached_tokens=cached_tokens,
+        output_tokens=output_tokens,
+        reasoning_tokens=reasoning_tokens,
+        input_usd=input_usd,
+        cached_usd=cached_usd,
+        output_usd=output_usd,
+        total_usd=total,
+        price_source=p.source,
+    )
 
 
-def cost_usd(model: str, input_tokens: int, output_tokens: int,
-             cached_tokens: int = 0, reasoning_tokens: int = 0) -> float:
-    """Cost of one generation. cached_tokens is a subset of input_tokens;
-    reasoning_tokens is a subset of output_tokens and is billed as output."""
-    p = get_price(model)
-    uncached = max(input_tokens - cached_tokens, 0)
-    usd = uncached * p.input + cached_tokens * p.cached_input + output_tokens * p.output
-    return round(usd, 8)
+def cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    *,
+    cached_tokens: int = 0,
+    reasoning_tokens: int = 0,
+) -> float:
+    """Convenience: total cost as a float."""
+    return float(
+        estimate_cost(
+            model,
+            input_tokens,
+            output_tokens,
+            cached_tokens=cached_tokens,
+            reasoning_tokens=reasoning_tokens,
+        ).total_usd
+    )
 ```
 
-Walk through it. `FALLBACK_PRICES` is per million, because that's how price pages read, with the date and the warning in the comment. `Price` is per token, because that's how you multiply. `get_price` tries LiteLLM first, and if the model isn't there, falls back. [PAUSE] Notice what it does not do: it does not return zero for an unknown model. A `KeyError` is the right behavior. A silent zero is how a new model runs for a month at no apparent cost.
+Walk through it. `FALLBACK_PRICES` is per million, because that's how price pages read, with the date and the warning in the module docstring. `ModelPrice` exposes per-token properties, because that's how you multiply. `get_price` asks LiteLLM first when you pass `use_litellm=True`, which production does and the unit tests don't, because importing LiteLLM takes seconds; then it falls back to the pinned table. [PAUSE] Notice what it does not do: it does not return zero for an unknown model. `UnknownModelError`, a `KeyError`, is the right behavior. A silent zero is how a new model runs for a month at no apparent cost.
 
-`cost_usd` is the whole lesson from last lecture in four lines. Uncached input at full price. Cached input at the discount. Output at the output price. `reasoning_tokens` is a parameter so the call site is honest about it, but it adds nothing, because it's already inside `output_tokens`.
+`estimate_cost` is the whole lesson from last lecture, in `Decimal` so that ten thousand records sum the same way every time. Uncached input at full price. Cached input at the discount. Output at the output price. `reasoning_tokens` is a parameter so the call site is honest about it, and the breakdown reports it, but it adds nothing to the total, because it's already inside `output_tokens`. `cost_usd` is the float wrapper for when you just want the number.
 
 [SCREEN: terminal]
 
@@ -266,44 +330,53 @@ print(litellm.cost_per_token(model='gpt-4.1-mini', prompt_tokens=1200, completio
 "
 ```
 
-[DEMO: prints `0.001088`, `0.000858`, `0.01084`, then `(0.00021, 0.000288)`]
+[DEMO: prints `0.001088`, `0.000498`, `0.01084`, then `(0.00021, 0.000288)`]
 
-Step one of the Atlas request: a tenth of a cent. A cached example: twelve hundred in, nine hundred of them cached, one eighty out. Twelve hundred minus nine hundred is three hundred uncached at forty cents, nine hundred at ten cents, one eighty at a dollar sixty. Eighty-six thousandths of a cent. And LiteLLM agrees: `cost_per_token` returns the input part and the output part as a tuple. Twenty-one thousandths of a cent input, and the same output figure. [PAUSE] Two independent calculators, same answer. That's the moment you can trust the function.
+A step like the first one of an Atlas request, twenty-five hundred in and sixty out: a tenth of a cent. A cached example: twelve hundred in, nine hundred of them cached, one eighty out. Twelve hundred minus nine hundred is three hundred uncached at forty cents, nine hundred at ten cents, one eighty at a dollar sixty. About five hundredths of a cent. And LiteLLM agrees: `cost_per_token` returns the input part and the output part as a tuple. Twenty-one thousandths of a cent input, and the same output figure. [PAUSE] Two independent calculators, same answer. That's the moment you can trust the function.
 
-The third line is the escalation step from 6.1: four thousand two hundred twenty into gpt-4.1, three hundred out. One point zero eight cents. Ten times the mini step. Remember that for 6.6.
+The third line is an escalation step: four thousand two hundred twenty into gpt-4.1, three hundred out. One point zero eight cents. Ten times the mini step. Remember that for 6.6.
 
 [CODE: `tests/unit/test_pricing.py` (excerpt)]
 
 ```python
+from decimal import Decimal
+
 import pytest
-from northwind.pricing import FALLBACK_PRICES, cost_usd, get_price
+
+from northwind.pricing import FALLBACK_PRICES, UnknownModelError, estimate_cost, get_price
 
 
-def test_fallback_matches_litellm_within_tolerance():
-    litellm = pytest.importorskip("litellm")
-    for model, p in FALLBACK_PRICES.items():
-        row = litellm.model_cost[model]
-        assert row["input_cost_per_token"] == pytest.approx(p["input"] / 1e6, rel=0.01)
-        assert row["output_cost_per_token"] == pytest.approx(p["output"] / 1e6, rel=0.01)
+@pytest.mark.parametrize("model", sorted(FALLBACK_PRICES))
+def test_price_table_has_cached_price_below_input(model):
+    p = FALLBACK_PRICES[model]
+    assert p.cached_input_per_m < p.input_per_m < p.output_per_m
 
 
-def test_cached_tokens_are_a_subset_of_input():
-    full = cost_usd("gpt-4.1-mini", 1200, 180)
-    cached = cost_usd("gpt-4.1-mini", 1200, 180, cached_tokens=900)
-    assert cached < full
-    assert cached == pytest.approx(300 * 0.40e-6 + 900 * 0.10e-6 + 180 * 1.60e-6)
+def test_cached_tokens_billed_at_cached_rate():
+    cb = estimate_cost("gpt-4.1-mini", 1000, 0, cached_tokens=800)
+    # 200 uncached * 0.4/M + 800 cached * 0.1/M
+    assert cb.input_usd == Decimal("0.00008000")
+    assert cb.cached_usd == Decimal("0.00008000")
+    assert cb.total_usd == Decimal("0.00016000")
 
 
-def test_unknown_model_fails_loudly():
-    with pytest.raises(KeyError):
-        get_price("gpt-imaginary")
+def test_reasoning_tokens_not_double_charged():
+    plain = estimate_cost("gpt-5-mini", 100, 300)
+    with_reasoning = estimate_cost("gpt-5-mini", 100, 300, reasoning_tokens=200)
+    assert plain.total_usd == with_reasoning.total_usd
+    assert with_reasoning.reasoning_usd == Decimal("0.00040000")
+
+
+def test_unknown_model_raises():
+    with pytest.raises(UnknownModelError):
+        get_price("gpt-99-ultra")
 ```
 
-Three tests, and the first one is the one that would have saved that team. It compares our pinned table to LiteLLM's on every test run. The day the library ships a new price, this test goes red, and someone has to look at the price page and update the date. [PAUSE] That's a price change becoming a code review instead of a surprise. The second test pins the cached-subset rule. The third pins the loud failure.
+Four tests, and the first one is the shape check that would have saved that team: for every pinned model, cached is below input is below output, so a typo in a price fails the build. Comparing the table with LiteLLM's is the one-liner you run when you bump the library, `litellm.model_cost["gpt-4.1-mini"]["input_cost_per_token"]` against `get_price("gpt-4.1-mini").input_per_token`; the day the library ships a new price, that check goes red and someone has to look at the price page and update the date. [PAUSE] That's a price change becoming a code review instead of a surprise. The second test pins the cached-subset rule. The third pins that reasoning tokens are reported but never charged twice. The fourth pins the loud failure.
 
 [SCREEN: terminal, `uv run pytest tests/unit/test_pricing.py -q`]
 
-[DEMO: 3 passed]
+[DEMO: all green]
 
 [AVATAR]
 
@@ -311,7 +384,7 @@ One more thing about rounding. Store cost in USD as a float with eight decimals 
 
 ### Recap
 
-Read prices from `litellm.model_cost`, pin a dated fallback table with a test that compares the two, and let one function, `cost_usd`, do all the arithmetic, with cached tokens as a subset of input.
+Read prices from `litellm.model_cost` when you can, pin a dated fallback table with tests, and let one function, `estimate_cost`, do all the arithmetic, with cached tokens as a subset of input.
 
 ### Transition
 
@@ -320,7 +393,7 @@ Now that every generation can have a price, let's put a tenant, a user and a fea
 ### Speaker notes: common mistakes and Q&A
 
 - **"Why not just use `litellm.completion_cost(response)`?"** Use it when you have a LiteLLM response object. Atlas also runs offline and computes cost from span attributes, so a pure function over token counts is the common denominator. Show both agree, as in the demo.
-- **`cache_read_input_token_cost` missing for a model.** The `.get` falls back to full price, which overstates cost rather than understating it. Say why that direction is the safe one.
+- **`cache_read_input_token_cost` missing for a model.** `_litellm_price` falls back to the full input price for the cached rate, which overstates cost rather than understating it. Say why that direction is the safe one.
 - **Currency.** Everything is USD. If finance reports in EUR, convert at report time with a dated rate, never per generation.
 - **Batch and flex tiers.** Some providers discount batch or flexible processing; that's an override, not a new function.
 - **Verify current pricing.** Repeat it. The constants on screen are dated 2026-09-28.
@@ -335,29 +408,29 @@ Now that every generation can have a price, let's put a tenant, a user and a fea
 | Title | Cost per request, session, user, tenant and feature |
 | Type | SC (screencast code-along; upload as Part A "attribution" and Part B "the showback report") |
 | Target duration | 9:00 (about 720 spoken words at ~140 wpm; remaining time is on-screen code, runs and the report) |
-| One idea | Attach cost to every generation together with tenant, user, session and feature, then roll up, so the same sixty-one dollars can be sliced any way finance asks. |
+| One idea | Attach cost to every generation together with tenant, user, session and feature, then roll up, so the same fifty-seven dollars can be sliced any way finance asks. |
 | Prerequisites | 6.2; Section 4 (sessions, users, tags) |
 | Files used | `src/northwind/cost.py`, `src/northwind/report.py`, `app/agent.py`, `telemetry/langfuse_setup.py`, `console/ops_console.py` |
 
 **Learning objectives**
 
-1. Record a `CostRecord` per generation with `trace_id`, `session_id`, `user_id`, `tenant`, `feature`, `model`, token counts and `usd`.
-2. Push the same numbers to Langfuse with `update_current_generation(usage_details=..., cost_details=...)`.
+1. Record a `CostRecord` per generation with `trace_id`, `session_id`, `user_id`, `tenant`, `feature`, `intent`, `model`, token counts and `cost_usd`.
+2. Write the same numbers on the generation span as `gen_ai.usage.*`, `atlas.cost_usd` and Langfuse's `usage_details` / `cost_details` attributes (`genai_attrs.set_llm_usage`, `set_cost`).
 3. Roll up by any dimension with `rollup`, and produce the showback table with cost per resolved session.
 
 ### Script
 
 [AVATAR]
 
-Your CFO asks one question: "What does the helpdesk agent cost per department?" [PAUSE] If your answer is "sixty-one dollars a day, total," you've just told them you don't know. If your answer is a table with four rows, cost per session, and a trend, you've just been given budget for the next quarter. Same data. The difference is attribution.
+Your CFO asks one question: "What does the helpdesk agent cost per department?" [PAUSE] If your answer is "fifty-seven dollars a day, total," you've just told them you don't know. If your answer is a table with four rows, cost per session, and a trend, you've just been given budget for the next quarter. Same data. The difference is attribution.
 
 [SLIDE 1: Five dimensions, one record]
 - Request: one `trace_id`
 - Session: one conversation, `session_id`
 - User: one employee, `user_id` (hashed in telemetry, Section 10)
 - Tenant: one department, `tenant` tag
-- Feature: the intent Atlas served: `policy_question`, `ticket_lookup`, `create_ticket`, `password_reset`, `shipment_status`
-- Every generation carries all five plus tokens and `usd`
+- Feature: what Atlas served, from `feature_for_intent` in `app/mock_llm.py`: `policy_question`, `ticket_lookup`, `create_ticket`, `password_reset`, `shipment_status`, `escalation`, `other` (the finer `intent` rides along)
+- Every generation carries all five plus tokens and `cost_usd`
 
 [AVATAR]
 
@@ -368,86 +441,130 @@ Five dimensions. Request, session, user, tenant, feature. The trick is that you 
 [CODE: `src/northwind/cost.py` (excerpt)]
 
 ```python
-from collections import defaultdict
-from dataclasses import dataclass, asdict
-from typing import Iterable
-
-from northwind.pricing import cost_usd
+Dimension = Literal["tenant", "session_id", "user_id", "feature", "model", "intent"]
+DIMENSIONS: tuple[str, ...] = ("tenant", "session_id", "user_id", "feature", "model", "intent")
 
 
 @dataclass(frozen=True)
 class CostRecord:
+    """One priced LLM generation (or a whole request when aggregated upstream)."""
+
     trace_id: str
-    session_id: str
-    user_id: str          # hashed employee id
-    tenant: str           # operations | warehouse | finance | sales
-    feature: str          # policy_question | ticket_lookup | create_ticket | password_reset | shipment_status
+    tenant: str
     model: str
     input_tokens: int
     output_tokens: int
+    cost_usd: float
+    timestamp: float
+    session_id: str = ""
+    user_id: str = ""
+    feature: str = "chat"
+    intent: str = "unknown"
     cached_tokens: int = 0
-    step: int = 0
-    resolved: bool | None = None   # filled in later by feedback or the judge
+    reasoning_tokens: int = 0
+    latency_ms: float = 0.0
+    outcome: str = "resolved"
+    steps: int = 1
+    scenario: str | None = None
 
-    @property
-    def usd(self) -> float:
-        return cost_usd(self.model, self.input_tokens, self.output_tokens, self.cached_tokens)
+    # CostRecord.from_usage(...) builds one from token counts and prices it with estimate_cost()
 
 
-def rollup(records: Iterable[CostRecord], by: str) -> dict[str, dict[str, float]]:
-    """Sum usd and tokens grouped by one field, e.g. by='tenant'."""
-    out: dict[str, dict[str, float]] = defaultdict(lambda: {"usd": 0.0, "input": 0, "output": 0, "cached": 0, "generations": 0})
+def rollup(records: Iterable[CostRecord], by: str = "tenant") -> dict[str, Rollup]:
+    """Group records by one dimension and aggregate."""
+    if by not in DIMENSIONS:
+        raise ValueError(f"unknown dimension {by!r}; choose from {DIMENSIONS}")
+    out: dict[str, Rollup] = {}
     for r in records:
-        key = getattr(r, by)
-        row = out[key]
-        row["usd"] += r.usd
-        row["input"] += r.input_tokens
-        row["output"] += r.output_tokens
-        row["cached"] += r.cached_tokens
-        row["generations"] += 1
-    return dict(out)
+        key = str(getattr(r, by)) or "(none)"
+        agg = out.setdefault(key, Rollup(key=key))
+        agg.requests += 1
+        agg.cost_usd += Decimal(str(r.cost_usd))
+        agg.input_tokens += r.input_tokens
+        agg.output_tokens += r.output_tokens
+        agg.cached_tokens += r.cached_tokens
+        if r.session_id:
+            agg.sessions.add(r.session_id)
+        if r.outcome == "resolved":
+            agg.resolved += 1
+        elif r.outcome == "escalated":
+            agg.escalated += 1
+        elif r.outcome in {"error", "step_limit", "refused"}:
+            agg.errors += 1
+    return out
 
 
-def cost_per_session(records: Iterable[CostRecord]) -> dict[str, float]:
-    sessions: dict[str, float] = defaultdict(float)
-    for r in records:
-        sessions[r.session_id] += r.usd
-    return dict(sessions)
+def cost_per_session(records: Iterable[CostRecord]) -> Decimal:
+    """Average cost per distinct session across all records."""
+    recs = list(records)
+    sessions = {r.session_id for r in recs if r.session_id}
+    if not sessions:
+        return Decimal(0)
+    return total_cost(recs) / len(sessions)
 ```
 
-`CostRecord` is one generation. Tokens, model, and the five dimensions. `usd` is a property, so the price function from 6.2 runs on read and nobody stores a stale number. `rollup` groups by any field name. `by="tenant"` gives the CFO's table. `by="feature"` tells engineering which intent to optimize first. `by="model"` tells you what the escalation model is really costing.
+`CostRecord` is one priced generation, or one whole request when the store aggregates upstream. Tokens, model, `cost_usd`, and the dimensions: tenant, session, user, feature, intent. `CostRecord.from_usage` builds one from token counts and prices it with `estimate_cost` from 6.2, so nobody types a price and nobody stores a stale one. `rollup` groups by any dimension in `DIMENSIONS` and returns a `Rollup` per key: requests, sessions, tokens, cost, and the derived `cost_per_request`, `cost_per_session` and `cache_hit_ratio`. `by="tenant"` gives the CFO's table. `by="feature"` or `by="intent"` tells engineering which question type to optimize first. `by="model"` tells you what the escalation model is really costing.
 
-And `by="user_id"`. That one deserves a word. The user id here is a keyed hash, which Section 10 explains, so the report can say "twenty employees account for eighteen percent of spend" without naming anyone. That's a real finding on the replayed day: a handful of people in operations use Atlas as a shipment tracker, forty times a day each. Not misuse. But it's a feature request for a cheaper `check_shipment` path, and you only see it at the user level. [PAUSE] Do that rollup in the report, from the span store. Never as a Prometheus label.
+And `by="user_id"`. That one deserves a word. The user id here is a keyed hash, which Section 10 explains, so the report can say "twenty employees account for eighteen percent of spend" without naming anyone. That's a real finding on the replayed day: a handful of dispatchers in ops use Atlas as a shipment tracker, many times a day each. Not misuse. But it's a feature request for a cheaper `check_shipment` path, and you only see it at the user level. [PAUSE] Do that rollup in the report, from the span store. Never as a Prometheus label.
 
 Where do the records come from? The agent loop.
 
 [SCREEN: `app/agent.py`, the generation step]
 
-[CODE: `app/agent.py` (excerpt, inside the step loop)]
+[CODE: `app/agent.py` (excerpt, inside `_call_model`)]
 
 ```python
-usage = response.usage
-cached = getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0) or 0
-record = CostRecord(
-    trace_id=lf.get_current_trace_id() or "", session_id=ctx.session_id, user_id=ctx.user_hash,
-    tenant=ctx.tenant, feature=ctx.feature, model=response.model,
-    input_tokens=usage.prompt_tokens, output_tokens=usage.completion_tokens,
-    cached_tokens=cached, step=step,
-)
-self.cost_sink.append(record)           # local store in OFFLINE mode, otherwise the exporter
-
-lf.update_current_generation(
-    model=response.model,
-    usage_details={"input": usage.prompt_tokens, "output": usage.completion_tokens,
-                   "cache_read_input_tokens": cached},
-    cost_details={"input": cost_usd(response.model, usage.prompt_tokens - cached, 0),
-                  "output": cost_usd(response.model, 0, usage.completion_tokens),
-                  "cache_read_input_tokens": cached * get_price(response.model).cached_input},
-)
-LLM_COST.labels(model=response.model, tenant=ctx.tenant, feature=ctx.feature).inc(record.usd)
+                    inp, out, cached, reasoning = usage_numbers(usage)
+                    cost = self._price(current, inp, out, cached, reasoning)
+                    ga.set_llm_usage(
+                        span,
+                        input_tokens=inp,
+                        output_tokens=out,
+                        cached_tokens=cached,
+                        reasoning_tokens=reasoning,
+                        response_model=getattr(resp, "model", None)
+                        if not stream
+                        else getattr(last, "model", None),
+                        finish_reasons=[finish] if finish else None,
+                        ttft_s=ttft_s,
+                        completion_start_time=t0 if ttft_s is None else None,
+                    )
+                    ga.set_cost(span, cost)
 ```
 
-Three destinations, one moment. The `CostRecord` goes to our store for reports. The same numbers go to Langfuse through `update_current_generation`, with `usage_details` and `cost_details`, so the trace UI shows dollars next to tokens. [PAUSE] And a Prometheus counter, `LLM_COST`, gets the increment, for the dashboards in Section 9. Note the labels on the counter: model, tenant, feature. Never user or session. Those have thousands of values, and Prometheus would fall over. That's the cardinality rule from lecture 5.5.
+```python
+# telemetry/genai_attrs.py
+def set_cost(span: Span, cost: CostBreakdown) -> None:
+    span.set_attribute(ATLAS_COST_USD, float(cost.total_usd))
+    span.set_attribute(
+        LF_OBS_COST,
+        json.dumps(
+            {
+                "input": float(cost.input_usd),
+                "output": float(cost.output_usd),
+                "cache_read_input_tokens": float(cost.cached_usd),
+                "total": float(cost.total_usd),
+            }
+        ),
+    )
+```
+
+```python
+# app/agent.py, a few lines further down in _call_model
+                    metrics.record_generation(
+                        tenant=tenant,
+                        model=current,
+                        feature=feature,
+                        input_tokens=inp,
+                        output_tokens=out,
+                        cached_tokens=cached,
+                        reasoning_tokens=reasoning,
+                        cost_usd=float(cost.total_usd),
+                        ttft_s=ttft_s,
+                    )
+```
+
+Three destinations, one moment. `usage_numbers` reads the usage object, Chat or Responses shape, and `_price` calls `estimate_cost` once. `set_llm_usage` writes the tokens as `gen_ai.usage.*` and as Langfuse's `usage_details`; `set_cost` writes the money twice over: `atlas.cost_usd`, which the local store turns into a `CostRecord` for the console and the reports, and `langfuse.observation.cost_details`, so the trace UI shows dollars next to tokens. [PAUSE] And `metrics.record_generation` increments the Prometheus counter `atlas_cost_usd_total`, for the dashboards in Section 9. Note the labels on the counter: tenant, model, feature. Never user or session. Those have thousands of values, and Prometheus would fall over. That's the cardinality rule from lecture 5.5.
 
 One detail. Langfuse can compute cost itself from its own model price list when you send `usage_details`. We send `cost_details` anyway, because the number in the report must equal the number in the trace, and only our function guarantees that.
 
@@ -456,25 +573,25 @@ One detail. Langfuse can compute cost itself from its own model price list when 
 Part B. The report. Let's replay the day and run it.
 
 ```bash
-OFFLINE=1 make replay
-uv run python -m northwind.report --day 2026-09-22 --by tenant --by feature
+OFFLINE=1 make replay        # the baseline day into .atlas/spans.sqlite (about 20 s)
+make report                  # northwind.report.weekly_report over the local store, markdown to stdout
 ```
 
-[DEMO: the markdown report renders. Tenant table, then feature table, as below.]
+[DEMO: the markdown report renders: headline numbers, then "Cost by tenant (showback)", "Cost by feature", "Cost by model", as below.]
 
 [SLIDE 2: Showback by tenant (baseline day)]
 
 | Tenant | Sessions | Cost | Cost per session | Share |
 |---|---|---|---|---|
-| operations | 1,600 | $24.52 | $0.0153 | 40% |
-| warehouse | 1,200 | $18.39 | $0.0153 | 30% |
-| finance | 720 | $11.03 | $0.0153 | 18% |
-| sales | 480 | $7.36 | $0.0153 | 12% |
-| **Total** | **4,000** | **$61.29** | **$0.0153** | |
+| ops | 1,706 | $20.43 | $0.0120 | 36% |
+| eng | 839 | $12.60 | $0.0150 | 22% |
+| finance | 719 | $12.00 | $0.0167 | 21% |
+| hr | 736 | $11.67 | $0.0159 | 21% |
+| **Total** | **4,000** | **$56.70** | **$0.0142** | |
 
 [AVATAR]
 
-Here's the CFO's table. Operations is forty percent of the bill because it's forty percent of the sessions. Cost per session is flat across tenants, a cent and a half. [PAUSE] That flatness is the interesting finding. It means no department is misusing Atlas. The cost is structural. To cut it, change the agent, not the users.
+Here's the CFO's table. Ops is thirty-six percent of the bill because it's forty-three percent of the sessions, and its cost per session is the lowest, one point two cents, because dispatchers ask short ticket and shipment questions. Finance is the most expensive per session, one point seven cents, because payroll and expense questions retrieve more policy text. [PAUSE] That spread is the interesting finding, and it's small. No department is misusing Atlas. The cost is structural. To cut it, change the agent, not the users.
 
 Now slice the same records by feature.
 
@@ -482,26 +599,27 @@ Now slice the same records by feature.
 
 | Feature | Share of requests | Cost | Cost per request |
 |---|---|---|---|
-| policy_question | 45% | $35.15 | $0.0078 |
-| ticket_lookup | 20% | $8.75 | $0.0044 |
-| create_ticket | 12% | $8.25 | $0.0069 |
-| password_reset | 13% | $4.47 | $0.0034 |
-| shipment_status | 10% | $4.69 | $0.0047 |
+| policy_question | 63% | $43.23 | $0.0067 |
+| create_ticket | 15% | $6.71 | $0.0044 |
+| ticket_lookup | 10% | $3.23 | $0.0031 |
+| shipment_status | 7% | $2.23 | $0.0031 |
+| password_reset | 3% | $0.79 | $0.0029 |
+| escalation | 0.4% | $0.38 | $0.0088 |
 
 [AVATAR]
 
-Now it's not flat. Policy questions are forty-five percent of requests and fifty-seven percent of the cost, at almost eight tenths of a cent each, more than double a password reset. Why? Policy questions call `search_knowledge_base`, and that tool returns fifteen hundred tokens of retrieved text that gets re-sent on every following step. [PAUSE] That one row tells you where the context diet in 6.5 will pay off most.
+Now it's not flat. Policy questions are sixty-three percent of requests and seventy-six percent of the cost, at two thirds of a cent each, more than double a ticket lookup or a shipment check. Why? Policy questions call `search_knowledge_base`, and that tool returns four articles, about thirty-four hundred tokens, that get re-sent on every following step and every follow-up turn. [PAUSE] That one row tells you where the context diet in 6.5 will pay off most. And the escalation row: forty-three requests, the most expensive per request by far, and still under a dollar. Remember that for 6.6.
 
 [SLIDE 4: The number finance accepts: cost per resolved session]
-- Cost per session: total ÷ sessions = $0.0153
-- Resolved rate (feedback or judge, Section 8): 82%
-- Cost per resolved session: $61.29 ÷ 3,280 = $0.0187
+- Cost per session: total ÷ sessions = $0.0142
+- Resolved rate (judge `resolved` on the sampled traces, Section 8): 0.89
+- Cost per resolved session: $56.70 ÷ (4,000 × 0.89) = $0.0159
 - Compare with a human ticket: minutes of an agent's time
 - Report cost per *resolved* session; cost per session hides failures
 
 [AVATAR]
 
-One more number, and it's the one this whole course is named for in the market research: cost per resolved session. Divide the day's cost by the sessions that actually got resolved, not all sessions. Eighty-two percent resolved means the real unit cost is not a cent and a half, it's one point nine cents. [PAUSE] Why report the harsher number? Because when quality drops, cost per session stays flat and cost per resolved session climbs. It's the only cost metric that notices when the agent gets worse. In Section 8 we'll fill in `resolved` from feedback and the judge; today the replay uses the simulator's ground truth.
+One more number, and it's the one this whole course is named for in the market research: cost per resolved session. Divide the day's cost by the sessions that actually got resolved, not all sessions. Eighty-nine percent resolved means the real unit cost is not one point four cents, it's one point six. [PAUSE] Why report the harsher number? Because when quality drops, cost per session stays flat and cost per resolved session climbs. It's the only cost metric that notices when the agent gets worse. In Section 8 we'll fill in `resolved` from feedback and the judge; today the replay uses the simulator's ground truth.
 
 [SCREEN: `console/ops_console.py`, cost page: tenant bars, feature bars, cost-per-resolved-session tile]
 
@@ -509,7 +627,7 @@ The Ops Console shows the same rollups live. Same records, same function, so the
 
 ### Recap
 
-Stamp every generation with tenant, user, session, feature, model, tokens and `usd`, send the same numbers to Langfuse and Prometheus, and any report, including cost per resolved session, is a group-by.
+Stamp every generation with tenant, user, session, feature, model, tokens and `cost_usd`, send the same numbers to Langfuse and Prometheus, and any report, including cost per resolved session, is a group-by.
 
 ### Transition
 
@@ -517,11 +635,11 @@ Attribution tells you where the money goes. Next, the first lever that brings it
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Storing `usd` instead of computing it.** If prices change or a bug is fixed, stored numbers are wrong forever. Compute on read from tokens; cache only for display.
-- **Feature detection.** `ctx.feature` is Atlas's routed intent, set by the first tool chosen (or by the classifier in `app/agent.py`). Unknown intents go to `other`, never to the biggest bucket.
+- **Typing prices anywhere but `pricing.py`.** `CostRecord.from_usage` prices through `estimate_cost`; the span keeps the tokens, so a corrected price table can re-price history from `gen_ai.usage.*`.
+- **Feature detection.** `run()` classifies the message (`classify_intent`) and maps it with `feature_for_intent`; anything that is not a tool request is a `policy_question`, and small talk or an injection attempt goes to `other`.
 - **Cost per session across days.** Sessions can span midnight. Attribute to the day the session started; say so in the report footer.
 - **Langfuse `cost_details` keys.** Use the same keys as `usage_details` (`input`, `output`, `cache_read_input_tokens`). Verified on langfuse 4.15.
-- **Part A / Part B split.** Cut after the `app/agent.py` code block; Part B starts at `make replay`.
+- **Part A / Part B split.** Cut after the `app/agent.py` code blocks; Part B starts at `make replay`.
 
 ---
 
@@ -533,7 +651,7 @@ Attribution tells you where the money goes. Next, the first lever that brings it
 | Title | Prompt caching: the cheapest win |
 | Type | SC (screencast code-along) |
 | Target duration | 8:00 (about 650 spoken words at ~140 wpm; remaining time is on-screen code, runs and the before/after) |
-| One idea | Put everything stable at the front of the prompt, set a `prompt_cache_key`, and the same day of traffic costs 35% less with identical answers. |
+| One idea | Put everything stable at the front of the prompt, set a `prompt_cache_key`, and the same day of traffic costs 34% less with identical answers. |
 | Prerequisites | 6.3 |
 | Files used | `app/agent.py`, `app/prompts.py`, `console/ops_console.py` |
 
@@ -545,11 +663,11 @@ Attribution tells you where the money goes. Next, the first lever that brings it
 
 ### Script
 
-[B-ROLL: split screen. Left, red tint, BEFORE: a request's three steps with `cached_tokens: 0, 0, 0`. Right, green tint, AFTER: the same three steps with `cached_tokens: 1,792, 2,432, 4,032`. Cost line: $0.00484 → $0.00236.]
+[B-ROLL: split screen. Left, red tint, BEFORE: a request's two steps with `cached_tokens: 0, 0`. Right, green tint, AFTER: the same two steps with `cached_tokens: 3,200, 3,200`. Cost line: $0.00449 → $0.00257.]
 
 [AVATAR]
 
-Same question, same answer, same model. Left side, half a cent. Right side, a third of a cent. [PAUSE] The only difference is the order of the prompt and one parameter. This is the cheapest win in the course, and most teams haven't turned it on.
+Same question, same answer, same model. Left side, half a cent. Right side, a quarter of a cent. [PAUSE] The only difference is the order of the prompt and one parameter. This is the cheapest win in the course, and most teams haven't turned it on.
 
 [SLIDE 1: How prompt caching works (OpenAI, verify current terms)]
 - Provider caches the prefix of a prompt it has seen recently; exact match, from the start
@@ -576,81 +694,98 @@ Here's what Atlas version one did wrong, and it's what most agents do. The promp
 
 [SCREEN: VS Code, `app/prompts.py` then `app/agent.py`]
 
-[CODE: `app/agent.py` (excerpt): building the prompt and the call]
+[CODE: `app/prompts.py` and `app/agent.py` (excerpts): the key, the prompt order and the call]
 
 ```python
-def _build_messages(self, ctx: RequestContext, history: list[dict]) -> list[dict]:
-    # 1. stable prefix: identical for every request of this tenant on this prompt version
-    system = self.prompt.compile(tenant_policy=self.policy_for(ctx.tenant))  # rules + policy, no date, no user
-    messages = [{"role": "system", "content": system}]
-    # 2. slowly changing: conversation history
-    messages += history
-    # 3. per-request: the question, with the volatile bits at the very end
-    messages.append({"role": "user", "content": f"{ctx.question}\n\n[context: today={ctx.today}, user={ctx.display_name}]"})
-    return messages
-
-
-def _cache_key(self, ctx: RequestContext) -> str:
-    # same key => same cache shard. Version + tenant, never user or session.
-    return f"atlas:{self.prompt.version}:{ctx.tenant}"
-
-
-response = self.client.chat.completions.create(
-    model=self.model,
-    messages=self._build_messages(ctx, history),
-    tools=self.tool_schemas,                 # tools are part of the prefix and are cached too
-    prompt_cache_key=self._cache_key(ctx),
-)
+# app/prompts.py
+def prompt_cache_key(version: str, tenant: str) -> str:
+    """Stable per-prompt, per-tenant cache key (Section 6.4)."""
+    return f"atlas-{version}-{tenant}"
 ```
 
-Three layers. The system message is compiled from the prompt version and the tenant's policy snippets, nothing else. No date, no name. The history comes next; within a session it only grows at the end, so earlier turns keep matching. Then the question, with the date and the user's name tucked at the very end, where they can't break anything.
+```python
+# app/agent.py
+    def _cache_key(self, prompt_version: str, tenant: str) -> str | None:
+        """``prompt_cache_key`` sent to OpenAI (None when caching is off)."""
+        return prompt_cache_key(prompt_version, tenant) if self.settings.prompt_cache else None
+```
 
-The cache key is version plus tenant. Four tenants, one prompt version, four keys. [PAUSE] Never put the user or session in the key. That would give you four thousand keys a day and almost no hits.
+```python
+# app/agent.py, run(): stable first, per-request last
+            messages: list[dict[str, Any]] = [{"role": "system", "content": prompt_text}]
+            messages.extend(history or [])
+            messages.append({"role": "user", "content": message})
+```
 
-And notice: `tools=` is part of the prefix. Five tool schemas, about six hundred tokens, cached along with the system message.
+```python
+# app/agent.py, _call_model(): the call
+                    kwargs: dict[str, Any] = dict(
+                        model=current,
+                        messages=messages,
+                        tools=TOOL_SCHEMAS,
+                        stream=stream,
+                        scenario=scenario,
+                        timeout=self.settings.request_timeout_s,
+                    )
+                    if cache_key:
+                        kwargs["prompt_cache_key"] = cache_key
+                    resp = self.llm.chat(**kwargs)
+```
+
+Three layers. The system message is the prompt version's text from `app/prompts.py`, nothing else: no date, no user name, no tenant banner. `TOOL_SCHEMAS`, the five tool definitions, is a constant, so it's part of the prefix too. The history comes next; within a session it only grows at the end, so earlier turns keep matching. Then the question, last, where it can't break anything.
+
+The cache key is `atlas-<version>-<tenant>`. One prompt version, four tenants, four keys. [PAUSE] Never put the user or session in the key. That would give you four thousand keys a day and almost no hits. And `ATLAS_PROMPT_CACHE=0` makes `_cache_key` return `None`, which is how the baseline replay measures the world without caching.
 
 [SCREEN: terminal]
 
 Let's prove it. One request, three steps, print `cached_tokens` per step.
 
 ```bash
-uv run python -m app.agent --tenant operations --question "How do I reset my VPN token?" --show-usage
+OFFLINE=1 ATLAS_PROMPT_CACHE=1 uv run python -c "
+from app.agent import AtlasAgent
+a = AtlasAgent()
+for sid in ('warm', 'demo'):        # the first call warms the cache shard, like the previous ops request would
+    r = a.run('How do I reset my VPN token?', tenant='ops', user_id='NW-40213', session_id=sid)
+for g in r.generations:
+    print(f'step {g.step}  prompt={g.input_tokens}  cached={g.cached_tokens}  completion={g.output_tokens}')
+print(f'request cost: \${r.cost_usd:.5f}')
+"
 ```
 
 [DEMO: output:]
 
 ```
-step 1  prompt=2480  cached=1792  completion=60   tool=search_knowledge_base
-step 2  prompt=4040  cached=2432  completion=60   tool=lookup_ticket
-step 3  prompt=4220  cached=4032  completion=220
-request cost: $0.00236  (uncached would be $0.00484)
+step 1  prompt=3259  cached=3200  completion=42
+step 2  prompt=6667  cached=3200  completion=282
+request cost: $0.00257
 ```
 
-Step one: seventeen hundred ninety-two cached. That's the eighteen-hundred-token prefix, rounded down to a cache block, hit because another operations request ran a moment ago. Step two: twenty-four hundred cached, which is all of step one's prompt. Step three: four thousand cached, all of step two. [PAUSE] Within one request the hit rate is nearly perfect, because steps are seconds apart, so this request cost less than half. The number you can't control is step one across requests, and that's why the day-level planning figure is a seventy percent hit rate, not ninety-five.
+Step one: thirty-two hundred cached. That's the system prompt plus the tool schemas, rounded down to a cache block, hit because another ops request ran a moment ago. Step two: thirty-two hundred again, the same prefix; the thirty-four hundred tokens of fresh retrieval results can't be cached, because nobody has sent them before. [PAUSE] So this request cost forty-three percent less than the four forty-nine it cost uncached. The number you can't control is step one across requests: whether the previous request on this shard shared your prefix. On the replayed day, forty-nine percent of all input tokens come from cache.
 
 Now the same day of traffic.
 
 ```bash
 OFFLINE=1 make replay          # baseline, caching off
-OFFLINE=1 CACHE=1 make replay  # same seed, caching on
+OFFLINE=1 make replay CACHE=1  # same seed, caching on
 ```
 
 [SLIDE 3: Before and after on the same day (verify current pricing)]
 
-| | Before | After (70% hit rate) |
+| | Before | After |
 |---|---|---|
-| Uncached input per request | 10,740 | 4,916 |
-| Cached input per request | 0 | 5,824 |
-| Input cost per request | $0.004296 | $0.001966 + $0.000582 = $0.002548 |
-| Cost per request (mini) | $0.00484 | $0.00309 |
-| Day (incl. retries and escalations, both cached) | $61.29 | **$39.58** |
-| Saving | | **$21.71 a day, 35%** |
+| Uncached input, demo request | 9,926 | 3,526 |
+| Cached input, demo request | 0 | 6,400 |
+| Input cost, demo request | $0.003970 | $0.001410 + $0.000640 = $0.002050 |
+| Cost per request (demo, mini) | $0.00449 | $0.00257 |
+| Share of the day's input tokens served from cache | 0% | 49% |
+| Day | $56.70 | **$37.24** |
+| Saving | | **$19.46 a day, 34%** |
 
 [AVATAR]
 
-The day drops from sixty-one twenty-nine to thirty-nine fifty-eight. Twenty-one dollars seventy-one a day, six hundred fifty a month, thirty-five percent, with a seventy percent hit rate that the replay models from real traffic shape. [PAUSE] The answers are byte-for-byte identical, because the model saw the same tokens. Caching changes the bill, not the behavior.
+The day drops from fifty-six seventy to thirty-seven twenty-four. Nineteen dollars forty-six a day, about five hundred eighty a month, thirty-four percent, with a forty-nine percent hit rate on input tokens that the replay models from the real traffic shape. [PAUSE] The answers are byte-for-byte identical, because the model saw the same tokens. Caching changes the bill, not the behavior.
 
-[SCREEN: Ops Console, cost page: new tile "cache hit rate 70%", cached tokens series]
+[SCREEN: Ops Console, cost page: new tile "cache hit ratio 49%" (`Rollup.cache_hit_ratio`), cached tokens series]
 
 One new tile on the console: cache hit rate, cached tokens over uncached. Watch it. If it falls, someone put a timestamp at the front of the prompt again. It's the cheapest regression to catch and the most common one to ship.
 
@@ -667,7 +802,7 @@ Rules of thumb. Sort the prompt. Key on version and tenant. Check your prefix le
 
 ### Recap
 
-Put the stable prefix first, the volatile bits last, set `prompt_cache_key` to version plus tenant, and the same day of Atlas traffic drops from $61.29 to $39.58 with identical answers.
+Put the stable prefix first, the volatile bits last, set `prompt_cache_key` to version plus tenant, and the same day of Atlas traffic drops from $56.70 to $37.24 with identical answers.
 
 ### Transition
 
@@ -675,9 +810,9 @@ Caching makes re-sent tokens cheaper. The next lever makes them fewer: the conte
 
 ### Speaker notes: common mistakes and Q&A
 
-- **"Why isn't the hit rate 100%?"** Step one of each request depends on another request with the same prefix having run recently on the same shard. Cache expiry, traffic lulls and routing cost you hits. 70% is a realistic planning number; the console shows the real one.
-- **Date in the system prompt.** The most common regression. If Atlas needs today's date, put it at the end of the user message, as in the code.
-- **History that gets edited.** Summarising or trimming the middle of the history breaks the prefix for that session. In 6.5 we trim from the front in blocks, on turn boundaries, so most steps still match.
+- **"Why isn't the hit rate 100%?"** Step one of each request depends on another request with the same prefix having run recently on the same shard. Cache expiry, traffic lulls and routing cost you hits. 49% of input tokens is the measured number on the replayed day; the console shows the real one.
+- **Date in the system prompt.** The most common regression. If Atlas needs today's date, put it at the end of the user message, never in `app/prompts.py`.
+- **History that gets edited.** Summarising or trimming the middle of the history breaks the prefix for that session. In 6.5 `trim_history` drops whole turns from the oldest end, so the system prompt and tool schemas still match.
 - **Multiple prompt versions live at once.** Two versions halve the hit rate for the day of a rollout. That's fine; say it in the runbook.
 - **Prices and terms.** Cached price, minimum prefix and retention have changed before. Verify current pricing and docs before recording.
 
@@ -691,26 +826,26 @@ Caching makes re-sent tokens cheaper. The next lever makes them fewer: the conte
 | Title | The context diet |
 | Type | SC (screencast code-along) |
 | Target duration | 8:00 (about 690 spoken words at ~140 wpm; remaining time is on-screen code and the before/after) |
-| One idea | Trim history, truncate tool results and lower retrieval top-k, measure tokens per step before and after, and cut the input bill by a quarter without hurting answers. |
+| One idea | Truncate tool results and trim history, measure tokens per step before and after, and cut the input bill by a quarter without hurting answers. |
 | Prerequisites | 6.4 |
 | Files used | `src/northwind/tokens.py`, `app/agent.py`, `app/knowledge.py`, `tests/unit/test_tokens.py` |
 
 **Learning objectives**
 
 1. Estimate tokens without the network using `estimate_tokens`, and use `tiktoken` only when its encoding is already cached.
-2. Apply `trim_history` (keep the last N turns plus a summary) and `truncate_tool_result` (hard cap with a marker) in the agent loop.
-3. Lower retrieval top-k from 5 to 3 and measure tokens per step and cost per request before and after.
+2. Apply `context_diet`, which runs `truncate_tool_result` (a JSON-aware cap with a marker) and then `trim_history` (oldest turns first, replaced by a summary line), in the agent loop.
+3. Keep retrieval top-k a separate, measured knob (`ATLAS_TOP_K`, default 4) and measure tokens per step and cost per request before and after.
 
 ### Script
 
 [AVATAR]
 
-Fifteen hundred tokens. That's what `search_knowledge_base` returned for "how do I reset my VPN token." Five chunks, three hundred tokens each. The answer used one of them. [PAUSE] The other twelve hundred tokens rode along for two more steps, at full price, saying nothing. Multiply by forty-five hundred policy questions a day. That's the diet.
+Thirty-four hundred tokens. That's what `search_knowledge_base` returned for "how do I reset my VPN token." Four whole articles, about eight hundred fifty tokens each. The answer used one of them. [PAUSE] The other twenty-five hundred tokens rode along into the next step, at full price, and in a multi-turn session into every follow-up, saying nothing. Multiply by sixty-four hundred policy questions a day. That's the diet.
 
 [SLIDE 1: Four places context bloats]
 - History: every past turn, forever
 - Tool results: whole documents when a paragraph would do
-- Retrieval: top-k of 5 when 3 answers 96% of questions
+- Retrieval: top-k of 12 (Incident 1) when 4 answers the question
 - Tool schemas: fifty tools when the request needs five
 - Rule: measure tokens per step first; cut the biggest, re-measure
 
@@ -723,113 +858,164 @@ Context bloats in four places. History that never gets trimmed. Tool results pas
 [CODE: `src/northwind/tokens.py` (excerpt)]
 
 ```python
-def estimate_tokens(text: str, model: str = "gpt-4.1-mini") -> int:
-    """Token count without network: tiktoken if its encoding is already on disk, else ~4 chars per token."""
-    try:
-        import tiktoken
-        enc = tiktoken.encoding_for_model(model)  # raises if the encoding is not cached locally
-        return len(enc.encode(text))
-    except Exception:
-        return max(1, len(text) // 4)
+def estimate_tokens(text: str, model: str | None = None) -> int:
+    """Alias of :func:`count_tokens` (name used in the lecture scripts)."""
+    return count_tokens(text, model)
 
 
-def truncate_tool_result(text: str, max_tokens: int = 600) -> str:
-    """Hard cap on a tool result, with a visible marker so the model knows it is looking at a cut."""
-    if estimate_tokens(text) <= max_tokens:
-        return text
-    keep_chars = max_tokens * 4
-    return text[:keep_chars].rsplit("\n", 1)[0] + f"\n[... truncated to {max_tokens} tokens; ask for more if needed]"
+def truncate_tool_result(result: str, max_tokens: int = 400) -> str:
+    """Tool results are the usual source of context bloat.
+
+    JSON results stay **valid JSON**: long string fields are clipped and, if that
+    is not enough, list items are dropped from the end. Plain text keeps the head
+    and the tail with a marker in between.
+    """
+    if count_tokens(result) <= max_tokens:
+        return result
+    ...
 
 
-def trim_history(messages: list[dict], *, keep_last_turns: int = 4, max_tokens: int = 1_200,
-                 summarize: Callable[[list[dict]], str] | None = None) -> list[dict]:
-    """Keep the last N user/assistant turns whole; replace older turns with one summary line.
-    Cuts on turn boundaries from the front so the cached prefix survives as long as possible."""
-    if estimate_tokens(json.dumps(messages)) <= max_tokens:
-        return messages
-    turns = split_into_turns(messages)
-    old, recent = turns[:-keep_last_turns], turns[-keep_last_turns:]
-    summary = summarize(flatten(old)) if summarize else f"[earlier: {len(old)} turns about {topics(old)}]"
-    return [{"role": "system", "content": f"Conversation so far: {summary}"}] + flatten(recent)
+def trim_history(
+    messages: Sequence[Message],
+    max_tokens: int,
+    *,
+    keep_system: bool = True,
+    keep_last_n: int = 2,
+    summariser: Summariser | None = summarise_placeholder,
+    model: str | None = None,
+) -> list[Message]:
+    """Drop the oldest non-system turns until the history fits ``max_tokens``.
+
+    The system prompt (if ``keep_system``) and the last ``keep_last_n`` messages
+    are always kept. Dropped turns are replaced by one system-role summary when a
+    ``summariser`` is given. Tool-call/tool-result pairs are dropped together so
+    the API never sees an orphan ``tool`` message.
+    """
+    ...
+
+
+def context_diet(
+    messages: Sequence[Message],
+    *,
+    history_budget: int = 3000,
+    tool_result_budget: int = 400,
+    keep_last_n: int = 2,
+) -> tuple[list[Message], dict[str, int]]:
+    """Apply tool-result truncation then history trimming; return (messages, stats)."""
+    before = count_message_tokens(messages)
+    slimmed: list[Message] = []
+    for m in messages:
+        if m.get("role") == "tool" and isinstance(m.get("content"), str):
+            m = {**m, "content": truncate_tool_result(m["content"], tool_result_budget)}
+        slimmed.append(m)
+    trimmed = trim_history(slimmed, history_budget, keep_last_n=keep_last_n)
+    after = count_message_tokens(trimmed)
+    return trimmed, {"tokens_before": before, "tokens_after": after, "saved": before - after}
 ```
 
-Three functions. `estimate_tokens` uses `tiktoken` if the encoding is already on disk, otherwise four characters per token. That approximation is within ten percent for English, and it never phones home, so tests and offline mode work. `truncate_tool_result` caps a result and adds a visible marker, so the model knows it saw a cut and can ask for more. `trim_history` keeps the last four turns whole and replaces older ones with a summary line. It cuts on turn boundaries from the front, so the cached prefix from 6.4 survives most steps.
+Four functions. `count_tokens`, with the alias `estimate_tokens`, uses `tiktoken` only when `ATLAS_USE_TIKTOKEN=1` and the encoding is already on disk; otherwise a word-and-punctuation approximation. That's within about ten percent for English, and it never phones home, so tests and offline mode work. `truncate_tool_result` caps a result and keeps JSON valid: long string fields are clipped first, then list items are dropped from the end; plain text keeps the head and the tail with a visible marker, so the model knows it saw a cut and can ask for more. `trim_history` drops the oldest turns until the history fits its budget, always keeps the system prompt and the last two messages, drops tool-call and tool-result pairs together so the API never sees an orphan, and replaces what it dropped with one summary line. `context_diet` runs the two in that order and returns the messages plus a `saved` count. Because it cuts from the oldest end, the cached prefix from 6.4 survives.
 
 Now wire them in.
 
 [SCREEN: `app/agent.py` and `app/knowledge.py`]
 
-[CODE: `app/agent.py` (excerpt) and `app/knowledge.py` (excerpt)]
+[CODE: `app/agent.py` (excerpts) and `src/northwind/config.py` (excerpt)]
 
 ```python
-# app/agent.py, in the step loop
-history = trim_history(history, keep_last_turns=self.cfg.keep_last_turns, max_tokens=self.cfg.history_budget)
-...
-result = tool(**args)
-result = truncate_tool_result(result, max_tokens=self.cfg.tool_result_budget)   # default 600
-messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
-
-# app/knowledge.py
-def search_knowledge_base(query: str, k: int = settings.retrieval_top_k) -> str:   # default was 5; now 3
-    hits = retriever.search(query, k=k)
-    return "\n\n".join(f"[{h.doc}] {h.text[:800]}" for h in hits)               # ~200 tokens per chunk
+# app/agent.py, run(): before the loop
+            messages: list[dict[str, Any]] = [{"role": "system", "content": prompt_text}]
+            messages.extend(history or [])
+            messages.append({"role": "user", "content": message})
+            diet_on = s.context_diet and scenario != "context_bloat"
+            if diet_on:
+                messages, stats = context_diet(
+                    messages,
+                    history_budget=s.history_token_budget,
+                    tool_result_budget=s.tool_result_token_budget,
+                )
+                if stats["saved"]:
+                    ga.add_event(root, "context.trimmed", **stats)
 ```
 
-Two budgets in config: `history_budget`, twelve hundred tokens, and `tool_result_budget`, six hundred. And in the knowledge tool, top-k drops from five to three, and each chunk is capped at about two hundred tokens.
+```python
+# app/agent.py, _run_tool(): every tool result, as it arrives
+        if diet_on:
+            content = truncate_tool_result(content, self.settings.tool_result_token_budget)
+        return {"role": "tool", "tool_call_id": tc.get("id"), "content": content}, ok
+```
 
-One option I left off by default: the `summarize=` callback. You can pass a function that asks gpt-4.1-mini to write a two-sentence summary of the old turns instead of the placeholder line. It gives better continuity on long sessions, and it costs a model call, about three hundred input tokens and forty out, a hundredth of a cent. On Atlas, sessions average two and a half turns, so it would fire on fewer than one request in twenty. Turn it on when your history budget trips often, and measure it like everything else. [PAUSE] The other cut for bigger agents is tool schemas. Atlas has five tools, six hundred tokens. If you have forty, send the model only the tools relevant to the routed intent, and you'll save more than the diet did. [PAUSE] Why three? Because in the replay's ground truth, the right chunk is in the top three for ninety-six percent of policy questions. The two extra chunks were insurance that cost twelve hundred tokens per step and paid out four percent of the time. We'll check the quality side in a moment.
+```python
+# src/northwind/config.py, Settings (env names in from_env: ATLAS_TOP_K, ATLAS_CONTEXT_DIET,
+# ATLAS_HISTORY_TOKENS, ATLAS_TOOL_RESULT_TOKENS)
+    retrieval_top_k: int = 4
+    ...
+    context_diet: bool = True
+    ...
+    history_token_budget: int = 8000
+    tool_result_token_budget: int = 1400
+```
+
+Two budgets in config: `history_token_budget`, eight thousand tokens, and `tool_result_token_budget`, fourteen hundred, both from the environment. The diet runs once before the loop, on the history the server kept for the session, and `_run_tool` caps every tool result as it arrives. An event on the root span, `context.trimmed`, records how many tokens the diet saved, so the saving is visible per trace. The `context_bloat` scenario switches the diet off on purpose; that's how Incident 1 is built. And the Makefile's `DIET` flag is just `ATLAS_CONTEXT_DIET`.
+
+One option the code leaves on a placeholder: the `summariser` callback. The default, `summarise_placeholder`, writes one line: how many messages were dropped, how many user turns, how many tool results, which topics. You can pass a function that asks gpt-4.1-mini to write a two-sentence summary instead. It gives better continuity on long sessions, and it costs a model call, about three hundred input tokens and forty out, a hundredth of a cent. On Atlas, sessions average two and a half requests, so it would fire rarely. Turn it on when your history budget trips often, and measure it like everything else. [PAUSE] The other cut for bigger agents is tool schemas. Atlas has five tools, well under a thousand tokens. If you have forty, send the model only the tools relevant to the routed intent, and you'll save more than the diet did. [PAUSE] And retrieval top-k. It is deliberately not part of the diet flag: `ATLAS_TOP_K` stays at four, because in the replay's ground truth four articles answer the question, and the judge's grounded score in Section 8 is the number that tells you whether a lower k is safe. Incident 1 shows what twelve looks like. We'll check the quality side in a moment.
 
 [SCREEN: terminal]
 
 Measure it. Same request as last lecture.
 
 ```bash
-uv run python -m app.agent --tenant operations --question "How do I reset my VPN token?" --show-usage --diet
+OFFLINE=1 ATLAS_PROMPT_CACHE=0 ATLAS_CONTEXT_DIET=1 uv run python -c "
+from app.agent import AtlasAgent
+r = AtlasAgent().run('How do I reset my VPN token?', tenant='ops', user_id='NW-40213', session_id='demo')
+for g in r.generations:
+    print(f'step {g.step}  prompt={g.input_tokens}  cached={g.cached_tokens}  completion={g.output_tokens}')
+print(f'input {r.usage[\"input_tokens\"]}  request cost: \${r.cost_usd:.5f}')
+"
 ```
 
 [DEMO: output:]
 
 ```
-step 1  prompt=2130  completion=60   (history 600 -> 250)
-step 2  prompt=2790  completion=60   (tool result 1500 -> 600)
-step 3  prompt=2970  completion=220
-input 7890 (was 10740)  request cost: $0.00370 (was $0.00484)
+step 1  prompt=3259  cached=0  completion=42
+step 2  prompt=4602  cached=0  completion=282
+input 7861  request cost: $0.00366
 ```
 
-Ten thousand seven hundred forty becomes seven thousand eight hundred ninety. Twenty-seven percent fewer input tokens per request, from two changes that took eight lines. Now the day.
+Nine thousand nine hundred twenty-six becomes seven thousand eight hundred sixty-one. Twenty-one percent fewer input tokens on this request, all of it from the tool result: thirty-four hundred tokens of articles capped to fourteen hundred, JSON still valid. The history was already under budget, so `trim_history` did nothing here; it earns its keep on turn three and four. Now the day.
 
 [SLIDE 2: Before and after on the same day (diet only, caching off, verify current pricing)]
 
 | | Before | After |
 |---|---|---|
-| Input tokens per request | 10,740 | 7,890 |
-| Steps | 2,480 / 4,040 / 4,220 | 2,130 / 2,790 / 2,970 |
-| Cost per request (mini) | $0.00484 | $0.00370 |
-| Day (incl. retries and escalations) | $61.29 | **$46.79** |
-| Saving | | **$14.50 a day, 24%** |
-| Judge "grounded" score (replay, Section 8 metric) | 0.91 | 0.90 |
+| Input tokens, demo request | 9,926 | 7,861 |
+| Steps | 3,259 / 6,667 | 3,259 / 4,602 |
+| Cost per request (demo, mini) | $0.00449 | $0.00366 |
+| Input tokens, whole day | 130.4M | 94.7M (−27%) |
+| Day | $56.70 | **$42.28** |
+| Saving | | **$14.42 a day, 25%** |
+| Judge "grounded" score (replay, Section 8 metric) | 0.94 | 0.94 |
 
 [AVATAR]
 
-Fourteen dollars fifty a day, twenty-four percent, on its own. And the last row is the one that makes this responsible: the grounded score on the replay barely moves, ninety-one to ninety. [PAUSE] If it had dropped to eighty, top-k three would have been a bad trade, and you'd go back to four. That's the discipline: every token cut ships with a quality number next to it. Section 8 makes that number automatic.
+Fourteen dollars forty-two a day, twenty-five percent, on its own. And the last row is the one that makes this responsible: the grounded score on the replay doesn't move. [PAUSE] On the mock that is by construction; on a real model it is the number you watch. If it had dropped, the tool budget was too tight and you'd raise it. That's the discipline: every token cut ships with a quality number next to it. Section 8 makes that number automatic.
 
 [SLIDE 3: Diet plus caching]
 - The two levers stack: fewer tokens, and the ones left are cheaper
-- Trim from the front on turn boundaries, so the prefix still matches
-- Diet + caching on the same day: $61.29 → $29.22 (−52%)
+- Trim from the oldest end, whole turns at a time, so the prefix still matches
+- Diet + caching on the same day: $56.70 → $22.88 (−60%)
 - Retries and escalations still at baseline rates; that's 6.6 and 6.7
 
 [AVATAR]
 
-And they stack. Trimming from the front on turn boundaries keeps the cached prefix intact on most steps, so with caching and the diet together the day comes down to twenty-nine twenty-two. Fifty-two percent. [PAUSE] We haven't touched the escalation model or the retries yet. That's the next two lectures.
+And they stack. Trimming from the oldest end keeps the cached prefix intact on every step, so with caching and the diet together the day comes down to twenty-two eighty-eight. Sixty percent. [PAUSE] We haven't touched the escalation model or the retries yet. That's the next two lectures.
 
-[SCREEN: `tests/unit/test_tokens.py`, three tests visible]
+[SCREEN: `tests/unit/test_tokens.py`, `test_truncate_tool_result_keeps_json_valid`, `test_truncate_tool_result_plain_text_marker` and `test_trim_history_keeps_system_and_tail` visible]
 
-Three unit tests protect the diet: truncation keeps the marker, trimming keeps the last four turns whole, and the estimator is within ten percent of tiktoken when tiktoken is cached. Run them offline with everything else.
+The unit tests protect the diet: truncation keeps JSON valid and plain text keeps its marker, trimming keeps the system prompt and the tail, and the estimator stays in a plausible range. Run them offline with everything else.
 
 ### Recap
 
-Trim history to the last few turns plus a summary, cap tool results at 600 tokens with a marker, drop retrieval top-k from 5 to 3, and the day falls 24% on its own and 52% with caching, with the grounded score unchanged.
+Cap tool results at 1,400 tokens (JSON stays valid), trim history to an 8,000-token budget with a summary line, keep top-k a measured knob, and the day falls 25% on its own and 60% with caching, with the grounded score unchanged.
 
 ### Transition
 
@@ -837,10 +1023,10 @@ The remaining cost is concentrated in one place: the ten percent of requests tha
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Trimming in the middle.** Deleting middle turns changes the prefix and kills the cache for the rest of the session. Cut from the front, on turn boundaries.
+- **Trimming in the middle.** Deleting middle turns changes the prefix and kills the cache for the rest of the session. `trim_history` cuts from the oldest end, whole turns at a time.
 - **Truncating without a marker.** The model doesn't know it saw half a document and answers confidently. The marker lets it ask `search_knowledge_base` again with a narrower query.
-- **Top-k as a global.** Different features may need different k. Keep it in config per tool; the default here is 3.
-- **tiktoken and network.** `tiktoken` downloads encodings on first use. `estimate_tokens` falls back to the approximation, so CI never needs the download. Show the fallback path once.
+- **Top-k as a global.** Different features may need different k. Keep it in config (`ATLAS_TOP_K`, default 4; the budget guard's degrade mode caps it at 2); Incident 1 is what 12 looks like.
+- **tiktoken and network.** `tiktoken` downloads encodings on first use. `count_tokens` only tries it with `ATLAS_USE_TIKTOKEN=1` and otherwise approximates, so CI never needs the download. Show the fallback path once.
 - **The grounded score.** Comes from the Section 8 judge run on the replay. If a student asks how we know, point ahead to 8.2 and to the simulator's ground-truth labels.
 
 ---
@@ -853,143 +1039,174 @@ The remaining cost is concentrated in one place: the ten percent of requests tha
 | Title | Small-model-first routing with LiteLLM Router |
 | Type | SC (screencast code-along; upload as Part A "the Router" and Part B "the escalation rule and cost impact") |
 | Target duration | 9:00 (about 750 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
-| One idea | Run every request on gpt-4.1-mini, escalate to gpt-4.1 only on a measurable signal, and cut the escalation bill from $10.84 to about $3 a day. |
+| One idea | Send the simple intents to gpt-4.1-nano, keep gpt-4.1-mini as the default and gpt-4.1 for escalation, and cut the day by 17% with the same answers. |
 | Prerequisites | 6.5; `litellm` installed |
 | Files used | `app/agent.py` (router mode), `src/northwind/config.py`, `telemetry/metrics.py` |
 
 **Learning objectives**
 
 1. Configure a LiteLLM `Router` with a `model_list`, `fallbacks`, `num_retries`, `timeout`, `allowed_fails` and `cooldown_time` (verified kwargs on litellm 1.103).
-2. Implement an escalation rule based on signals you can log: low confidence, repeated tool failure, a sensitive feature, or a step budget exceeded.
-3. Measure escalation rate and cost per model before and after, and log every escalation with a reason.
+2. Read `_choose_deployment`: an intent-based routing rule where the budget guard's degrade decision always wins, plus the `[ESCALATE]` marker as the model's own signal to move one step up.
+3. Measure generations and cost per model before and after, and see every routing decision on the span (`gen_ai.request.model`) and the counter (`model` label).
 
 ### Script
 
 [AVATAR]
 
-Ten dollars eighty-four. That's what the escalation model cost on the baseline day. One in ten requests, and the final step alone costs a cent, ten times a mini step. [PAUSE] Here's the question I want you to sit with. Did all thousand of those requests need the big model? Or did someone write `if feature == "create_ticket": use gpt-4.1` in March because it felt safer? Let's find out with a router.
+Fifty-six dollars of mini. That's the baseline day: every step of every request on gpt-4.1-mini, whether it was a payroll policy question or "where is shipment SHP-88213". [PAUSE] Here's the question I want you to sit with. Did a shipment lookup, a ticket status check or a ticket creation need the mid-size model? A third of Atlas's generations are that kind of request: the answer is a tool result read back. Let's find out with a router.
 
 [SLIDE 1: Small-model-first]
 - Default: gpt-4.1-mini for every step
-- Escalate to gpt-4.1 only on a signal: low self-reported confidence, a tool failing twice, a sensitive feature, step budget exceeded
-- Escalate the *step*, not the whole request
-- Log the reason on the span; count it in Prometheus
+- Simple intents (`SIMPLE_INTENTS`: `ticket_status`, `shipment`, `create_ticket`, `smalltalk`) go to gpt-4.1-nano
+- The `escalation` intent goes straight to gpt-4.1; the model can also ask for one step on gpt-4.1 with the `[ESCALATE]` marker
+- The budget guard's degrade decision always wins
 - Also use the Router for fallbacks (Section 7) so there's one place for model selection
 
 [AVATAR]
 
-Small-model-first means the default is always the cheap model, and moving up costs you a logged reason. Not a feature name. A signal from this request. And you escalate one step, not the whole conversation. The router also gives us fallbacks and cooldowns, which we'll lean on in Section 7, so model selection lives in exactly one place.
+Small-model-first means the cheapest model that can do the job is the default for that job, and moving up is a decision you can point at: an intent, a marker in the model's own output, or the budget guard. And you escalate one step, not the whole conversation. The router also gives us fallbacks and cooldowns, which we'll lean on in Section 7, so model selection lives in exactly one place.
 
 [SCREEN: VS Code, `app/agent.py`, router mode]
 
 [CODE: `app/agent.py` (excerpt): building the Router]
 
 ```python
-from litellm import Router
-
-
-def build_router(cfg: Settings) -> Router:
-    return Router(
-        model_list=[
-            {"model_name": "atlas-default",
-             "litellm_params": {"model": cfg.default_model, "api_key": cfg.openai_api_key}},   # gpt-4.1-mini
-            {"model_name": "atlas-strong",
-             "litellm_params": {"model": cfg.escalation_model, "api_key": cfg.openai_api_key}},  # gpt-4.1
-        ],
-        fallbacks=[{"atlas-default": ["atlas-strong"]}],   # only on errors, not on quality (Section 7)
-        num_retries=2,
-        timeout=cfg.llm_timeout_s,        # 20 s per call
-        allowed_fails=3,
-        cooldown_time=30,
+def build_router_config(settings: Settings) -> dict[str, Any]:
+    """LiteLLM Router kwargs (verified against litellm 1.103): model_list, fallbacks,
+    num_retries, timeout, allowed_fails, cooldown_time. Pure data — testable offline."""
+    models = sorted(
+        {
+            settings.model,
+            settings.escalation_model,
+            settings.routing_model,
+            settings.degraded_model,
+            "gpt-4o-mini",
+        }
     )
+    return {
+        "model_list": [
+            {
+                "model_name": m,
+                "litellm_params": {"model": f"openai/{m}", "api_key": settings.openai_api_key},
+            }
+            for m in models
+        ],
+        "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
+        "num_retries": settings.max_retries,
+        "timeout": settings.request_timeout_s,
+        "allowed_fails": 3,
+        "cooldown_time": 30,
+    }
+
+
+class RouterClient:
+    """LiteLLM Router mode (Section 6.6 / 7.4). Imported lazily: LiteLLM is heavy."""
+
+    def __init__(self, settings: Settings) -> None:
+        from litellm import Router
+
+        self.router = Router(**build_router_config(settings))
+
+    def chat(self, **kwargs: Any) -> Any:
+        kwargs.pop("scenario", None)
+        kwargs.pop("prompt_cache_key", None)  # not all providers accept it
+        if kwargs.get("stream"):
+            kwargs.setdefault("stream_options", {"include_usage": True})
+        return self.router.completion(**kwargs)
 ```
 
-The `model_list` gives each deployment a logical name. `atlas-default` is gpt-4.1-mini, `atlas-strong` is gpt-4.1, both from config, so swapping models is an environment variable. `fallbacks` says: if `atlas-default` errors out, try `atlas-strong`. That's for outages, not for quality; we'll tune it in Section 7. Keep the two ideas apart in your head. A fallback fires when a call fails. An escalation fires when a call succeeds and we don't trust the answer. The Router knows about the first. Only our code can know about the second. Two retries, a twenty-second timeout, and after three failures a deployment cools down for thirty seconds. All of these are verified kwargs on litellm one point one oh three.
+`build_router_config` is pure data, verified against litellm one point one oh three, so it's unit-tested offline. The `model_list` names every deployment Atlas can use, all from settings: the default, gpt-4.1-mini; the escalation model, gpt-4.1; the routing model, gpt-5-mini; the degraded model, gpt-4.1-nano; and gpt-4o-mini as a cross-family fallback. Swapping any of them is an environment variable. `fallbacks` comes from the `FALLBACKS` table: if gpt-4.1-mini errors out, try gpt-4o-mini. That's for outages, not for quality; we'll tune it in Section 7. Keep the two ideas apart in your head. A fallback fires when a call fails. An escalation fires when a call succeeds and we don't trust the answer. The Router knows about the first. Only our code can know about the second. Two retries, a twenty-second timeout, and after three failures a deployment cools down for thirty seconds. `RouterClient` puts the Router behind the same `chat()` interface as the OpenAI client and the offline mock, which is why `ATLAS_ROUTER_MODE=1` is the only switch.
 
 Now the escalation rule, which is ours, not the router's.
 
-[CODE: `app/agent.py` (excerpt): choosing the deployment per step]
+[CODE: `app/agent.py` (excerpt): choosing the deployment]
 
 ```python
-def _choose_deployment(self, ctx: RequestContext, state: StepState) -> tuple[str, str | None]:
-    """Return (deployment_name, escalation_reason)."""
-    if state.tool_failures >= 2:
-        return "atlas-strong", "tool_failed_twice"
-    if state.step >= self.cfg.escalate_after_step:            # default 4
-        return "atlas-strong", "step_budget"
-    if ctx.feature == "password_reset" and state.about_to_call("reset_password"):
-        return "atlas-strong", "sensitive_action"
-    if state.last_confidence is not None and state.last_confidence < self.cfg.min_confidence:  # 0.6
-        return "atlas-strong", "low_confidence"
-    return "atlas-default", None
+    def _choose_deployment(self, intent: str, *, degraded: bool = False) -> str:
+        """Small-model-first routing (Section 6.6).
 
-
-deployment, reason = self._choose_deployment(ctx, state)
-if reason:
-    lf.update_current_span(level="WARNING", status_message=f"escalated: {reason}",
-                           metadata={"escalation_reason": reason, "from": "atlas-default", "to": deployment})
-    ESCALATIONS.labels(reason=reason, tenant=ctx.tenant).inc()
-
-response = self.router.completion(model=deployment, messages=messages, tools=self.tool_schemas,
-                                  prompt_cache_key=self._cache_key(ctx))
+        Without router mode every request uses ``settings.model``. With router mode
+        (``ATLAS_ROUTER_MODE=1``) simple intents go to the cheap model and sensitive
+        ones to the escalation model; the budget guard's *degrade* decision always wins.
+        """
+        s = self.settings
+        if degraded:
+            return s.degraded_model
+        if not s.router_mode:
+            return s.model
+        if intent in SIMPLE_INTENTS:
+            return s.degraded_model  # gpt-4.1-nano
+        if intent == "escalation":
+            return s.escalation_model
+        return s.model
 ```
 
-Four signals, in order of confidence. A tool failed twice: the small model is stuck, escalate. Step four or later: the small model is wandering, escalate. About to reset a password: a sensitive action where the extra cent is cheap insurance. And low confidence: Atlas's final answer includes a self-reported confidence field in its structured output, and below zero point six we redo that step on the strong model.
+```python
+# app/agent.py, run()
+        intent = classify_intent(message)
+        ...
+        model = model or self._choose_deployment(intent)
+        ...
+                if decision.decision is Decision.DEGRADE:
+                    ga.add_event(
+                        root, "budget.degraded", reason=decision.reason, model=s.degraded_model
+                    )
+                    model, top_k = self._choose_deployment(intent, degraded=True), min(top_k, 2)
+```
 
-Where does that confidence number come from? Atlas answers through a JSON schema with three fields: the answer text, a refusal flag, and `confidence` from zero to one, with the instruction to score low when the retrieved context didn't contain the answer. It's a weak signal on its own; models are optimistic. But it's cheap, it's on every request, and on the replay it correlates with the judge's grounded score at about point six. That's good enough to be the last check in the list, and not good enough to be the first. [PAUSE] Tune the threshold on the replay, not by feel: at zero point six, three percent of requests escalate; at zero point seven, nine percent, and the resolved gain flattens. Zero point six is where the curve bends. [PAUSE] Every escalation writes a reason onto the span, marks it as a warning, and increments a counter with the reason as a label. So tomorrow you can ask: which reason is costing me money?
+Three rules, in order. If the budget guard said degrade, the degraded model, gpt-4.1-nano, full stop; the budget always wins. Without router mode, everything is `settings.model`; that's the baseline. With router mode, a simple intent goes to nano: ticket status, shipment tracking, ticket creation, small talk, the requests where the answer is a tool result read back. The `escalation` intent, an employee asking for a person, goes straight to gpt-4.1. Everything else, every policy question, stays on mini. [PAUSE] And there's a fourth path that isn't in this function: the model itself can start its answer with `[ESCALATE]`, and the loop re-runs that step on the escalation model, records an `escalation` event and marks the result. Every routing decision ends up on the generation span as `gen_ai.request.model` and in Prometheus under the `model` label, so tomorrow you can ask: which model is costing me money, for which intent?
 
 Part B. The cost impact.
 
 [SCREEN: terminal]
 
 ```bash
-OFFLINE=1 ROUTER=1 make replay
-uv run python -m northwind.report --day 2026-09-22 --by model --escalations
+OFFLINE=1 make replay ROUTER=1
+make report                      # the "Cost by model" section
 ```
 
-[DEMO: output table, then escalation reasons]
+[DEMO: the replay summary, then the report's "Cost by model" table]
 
 [SLIDE 2: Before and after on the same day (routing only, verify current pricing)]
 
-| | Before (rule: feature-based) | After (signal-based) |
+| | Before (everything on mini) | After (`ROUTER=1`) |
 |---|---|---|
-| Requests escalated | 1,000 (10%) | 300 (3%) |
-| gpt-4.1 cost | $10.84 | $3.25 |
-| Retried generations | 1,200 (4% of steps) | 450 (1.5%, bounded retries) |
-| Retry cost | $2.05 | $0.77 |
-| Day | $61.29 | **$52.42** |
-| Saving | | **$8.87 a day, 15%** |
+| gpt-4.1-nano generations | 0 | 6,700 (33%) |
+| gpt-4.1-mini generations | 20,087 | 13,344 |
+| gpt-4.1 generations (escalation) | 43 | 43 |
+| gpt-4.1-nano cost | $0 | $3.07 |
+| gpt-4.1-mini cost | $56.38 | $43.98 |
+| Day | $56.70 | **$47.37** |
+| Saving | | **$9.33 a day, 17%** |
 
 [AVATAR]
 
-Escalations drop from a thousand a day to three hundred. Not zero. Three hundred requests had a real signal. The gpt-4.1 line falls from ten eighty-four to three twenty-five. And because the router's bounded retries replaced the agent's old retry-until-it-works loop, retried generations fall by more than half too. Eight dollars eighty-seven a day, fifteen percent. [PAUSE] Smaller than caching. But this lever is the one that protects quality, because it sends the hard cases up instead of hoping.
+A third of the generations move to nano, at a quarter of mini's price per token. The mini line falls from fifty-six thirty-eight to forty-three ninety-eight. Nine dollars thirty-three a day, seventeen percent. [PAUSE] Smaller than caching. But this lever is the one that changes which model answers, so it's the one that needs a quality number next to it, and the one that needs its decisions on the span.
 
-[SLIDE 3: Escalation reasons on the replayed day]
+[SLIDE 3: What went where on the replayed day]
 
-| Reason | Count | Share |
+| Intent group | Generations | Model with `ROUTER=1` |
 |---|---|---|
-| low_confidence | 141 | 47% |
-| sensitive_action | 96 | 32% |
-| tool_failed_twice | 48 | 16% |
-| step_budget | 15 | 5% |
+| `ticket_status`, `shipment`, `create_ticket`, `smalltalk` (`SIMPLE_INTENTS`) | 6,700 (33%) | gpt-4.1-nano |
+| policy questions (`general`, `payroll`, `leave`, `vpn`, ...) and `password_reset` | 13,344 (66%) | gpt-4.1-mini |
+| `escalation` | 43 (0.2%) | gpt-4.1 |
 
 [AVATAR]
 
-And here's why the reason label matters. Half the escalations are low confidence, and most of those are policy questions where retrieval came back thin. That's a retrieval problem wearing a model-cost costume. Fix the knowledge base article, and the escalation disappears. You only know that because the reason is on the span.
+And here's why the intent is on every span. If nano's answers to shipment questions come back with a lower grounded score next week, you'll see it by intent and by model in one filter, and you move that intent back to mini with one line in `SIMPLE_INTENTS`. That's a routing decision you can defend, because it's one you can measure.
 
 [SLIDE 4: Did quality hold?]
-- Judge "resolved" on the replay: 0.82 before, 0.83 after
-- 700 requests that used to get gpt-4.1 got mini and resolved at the same rate
-- The 300 that escalated resolved at 0.88, up from 0.79 for the same requests on mini alone
-- Routing moved the expensive model to where it changed the outcome
+- Judge `resolved` on the replay: 0.89 before, 0.89 after; `grounded` 0.94 both
+- 6,700 generations that used to run on mini ran on nano at the same score
+- Routing moved the cheap model to where it changed nothing but the bill
 
 [AVATAR]
 
-Quality held. Resolved rate went from eighty-two to eighty-three percent. And for the three hundred requests that did escalate, resolved went up nine points. The big model is now spent where it changes the outcome, instead of on a feature name. [PAUSE] That's the whole idea of small-model-first: not "use the cheap model," but "make the expensive one earn its place, request by request."
+Quality held. On the mock that is by construction; on a real model, this is the slide you have to earn, per intent, on the same replayed day. [PAUSE] That's the whole idea of small-model-first: not "use the cheap model," but "make each model earn its place, request by request."
 
 ### Recap
 
-Put both models behind a LiteLLM Router, default every step to gpt-4.1-mini, escalate one step at a time on a logged signal, and the escalation bill falls from $10.84 to $3.25 a day with resolved rate unchanged.
+Put every model behind a LiteLLM Router built from `build_router_config`, route by intent with `_choose_deployment` (nano for simple intents, mini by default, gpt-4.1 for escalation), and the day falls from $56.70 to $47.37 with the judge scores unchanged.
 
 ### Transition
 
@@ -997,10 +1214,10 @@ Three levers, each measured. Now the guard rail: per-tenant budgets that degrade
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Self-reported confidence.** It's a weak signal alone; that's why it's last in the list and combined with a threshold you tune on the replay. Say so; students over-trust it.
+- **Confidence-based escalation.** Students ask for it; a self-reported confidence field is a weak signal alone. The shipped rule is intent-based plus the model's `[ESCALATE]` marker; a confidence threshold tuned on the replay is a good capstone extension.
 - **Escalating the whole conversation.** Re-running all steps on gpt-4.1 costs 5× the request, not 5× one step. The code escalates a step.
-- **Router fallbacks vs escalation.** `fallbacks` fire on errors and timeouts; escalation fires on quality signals. Both end up on `atlas-strong` but for different reasons, and both are logged with different labels.
-- **`gpt-5-mini` in the demo.** Add it as a third deployment for a routing experiment; its reasoning tokens show up in `output_tokens_details.reasoning_tokens` and change the cost math (6.1).
+- **Router fallbacks vs escalation.** `fallbacks` fire on errors and timeouts; escalation fires on quality signals. Both change `gen_ai.request.model` on the span, and fallbacks also count in `atlas_model_fallbacks_total{from_model,to_model}`.
+- **`gpt-5-mini` in the demo.** It is `ATLAS_ROUTING_MODEL` and already in the `model_list`; route an intent to it for a routing experiment, and its reasoning tokens show up in `output_tokens_details.reasoning_tokens` and change the cost math (6.1).
 - **Part A / Part B split.** Cut after the `_choose_deployment` code block.
 
 ---
@@ -1020,8 +1237,8 @@ Three levers, each measured. Now the guard rail: per-tenant budgets that degrade
 **Learning objectives**
 
 1. Describe LiteLLM's `BudgetManager` concept and why Atlas uses its own `budget.py` for per-tenant caps.
-2. Implement `BudgetGuard.check(tenant, spend_today)` returning `OK`, `DEGRADE` or `REFUSE`, and wire the degraded mode into the agent.
-3. Implement `EwmaAnomaly` and emit a Prometheus counter for budget events, so a spike is visible before the day's total is.
+2. Read `BudgetGuard.decide(tenant, now, next_cost_usd=)`, which returns a `BudgetDecision` with `ALLOW`, `DEGRADE` or `REFUSE`, and see how `run()` wires the degraded mode into the agent.
+3. Read `EWMAAnomalyDetector` and the `atlas_budget_decisions_total` counter, so a spike is visible before the day's total is.
 
 ### Script
 
@@ -1032,14 +1249,14 @@ Three levers, each measured. Now the guard rail: per-tenant budgets that degrade
 You've seen this clip. A loop, a weekend, four thousand dollars. [PAUSE] Everything we've done in this section makes the normal day cheaper. None of it stops an abnormal one. A budget does. And a budget that just says "no" at midnight is a budget nobody will let you ship. So we'll build one with two levels and an early warning.
 
 [SLIDE 1: Two caps and a detector]
-- Soft cap (80% of daily budget): degrade. Mini only, no escalation, top-k 2, shorter answers. Users barely notice.
-- Hard cap (100%): refuse politely. "Atlas is over budget for your department today; a ticket has been created."
-- EWMA anomaly: spend per 5-minute window vs. its smoothed history; flag at 3 standard deviations
-- Everything emits a counter: `atlas_budget_events_total{tenant, action}`
+- Soft cap ($25 by default, rolling 24 h): degrade. Nano model, top-k 2. Users barely notice.
+- Hard cap ($40 by default): refuse politely, before any model call. "Atlas has reached the budget for your department today; please open a ticket."
+- EWMA anomaly: each request's cost vs. the tenant's smoothed history; flag at 3 standard deviations (`BudgetDecision.anomaly`)
+- Everything emits a counter: `atlas_budget_decisions_total{tenant, decision}`, plus the gauge `atlas_budget_spent_usd{tenant}`
 
 [AVATAR]
 
-Two caps. At eighty percent of the day's budget, degrade: turn off escalation, lower retrieval, ask for shorter answers. The tenant keeps getting service, just the economy version. At a hundred percent, refuse, politely, and still create a ticket so nobody is stranded. And separately, a detector that watches spend per five-minute window against its own smoothed history. A loop shows up as a spike in the first window, hours before the daily cap would.
+Two caps over a rolling twenty-four hours. At the soft cap, twenty-five dollars by default, degrade: the nano model, top-k two. The tenant keeps getting service, just the economy version. At the hard cap, forty dollars, refuse, politely, before any model call, and point the user at a ticket so nobody is stranded. And separately, a detector that watches each request's cost against the tenant's own smoothed history. A loop shows up as a run of anomalous requests in the first minutes, hours before the daily cap would.
 
 [SLIDE 2: LiteLLM `BudgetManager` (concept) vs our `budget.py`]
 - `BudgetManager(project_name=...)`: `create_budget(total_budget, user, duration)`, `update_cost(...)`, `get_current_cost(user)`, `projected_cost(...)`
@@ -1049,124 +1266,163 @@ Two caps. At eighty percent of the day's budget, degrade: turn off escalation, l
 
 [AVATAR]
 
-LiteLLM ships a `BudgetManager`: create a budget per user with a duration, update cost after each call, read the current and projected cost. If you run a LiteLLM gateway, use it. Atlas needs the tenant dimension, two levels, a degraded mode and a detector, so we write our own eighty lines with the same shape, and test them offline.
+LiteLLM ships a `BudgetManager`: create a budget per user with a duration, update cost after each call, read the current and projected cost. If you run a LiteLLM gateway, use it. Atlas needs the tenant dimension, two levels, a degraded mode and a detector, so we write our own two hundred lines with the same shape, and test them offline.
 
 [SCREEN: VS Code, `src/northwind/budget.py`]
 
 [CODE: `src/northwind/budget.py` (excerpt)]
 
 ```python
-from dataclasses import dataclass, field
-from enum import Enum
-import math
+class Decision(StrEnum):
+    """What the request path should do."""
 
-
-class Decision(str, Enum):
-    OK = "ok"
+    ALLOW = "allow"
     DEGRADE = "degrade"
     REFUSE = "refuse"
 
 
 @dataclass(frozen=True)
 class TenantBudget:
-    daily_usd: float
-    soft_ratio: float = 0.80
+    """Caps in USD over a rolling window (default: 24 h)."""
 
-
-class BudgetGuard:
-    def __init__(self, budgets: dict[str, TenantBudget]) -> None:
-        self.budgets = budgets
-
-    def check(self, tenant: str, spend_today_usd: float) -> Decision:
-        b = self.budgets[tenant]
-        if spend_today_usd >= b.daily_usd:
-            return Decision.REFUSE
-        if spend_today_usd >= b.daily_usd * b.soft_ratio:
-            return Decision.DEGRADE
-        return Decision.OK
+    tenant: str
+    soft_cap_usd: float
+    hard_cap_usd: float
+    window_s: int = 86_400
 
 
 @dataclass
-class EwmaAnomaly:
-    """Flags a window whose value is more than k smoothed standard deviations above the smoothed mean."""
-    alpha: float = 0.3
-    k: float = 3.0
-    warmup: int = 6
-    mean: float = 0.0
-    var: float = 0.0
-    n: int = field(default=0)
+class EWMAAnomalyDetector:
+    """Exponentially weighted moving average with a running variance.
 
-    def observe(self, x: float) -> bool:
-        if self.n < self.warmup:
-            self.mean += (x - self.mean) / (self.n + 1)
-            self.n += 1
-            return False
-        std = math.sqrt(self.var) if self.var > 0 else max(self.mean * 0.1, 1e-9)
-        is_anomaly = x > self.mean + self.k * std
-        diff = x - self.mean
-        self.mean += self.alpha * diff
-        self.var = (1 - self.alpha) * (self.var + self.alpha * diff * diff)
+    ``update(x)`` returns a z-score-like deviation; ``is_anomaly(x)`` is True when
+    the deviation exceeds ``threshold`` after ``warmup`` observations.
+    """
+
+    alpha: float = 0.3
+    threshold: float = 3.0
+    warmup: int = 5
+    mean: float | None = None
+    var: float = 0.0
+    n: int = 0
+
+    def deviation(self, x: float) -> float:
+        """z-like score of ``x`` against the current state without updating."""
+        if self.mean is None or self.n < self.warmup:
+            return 0.0
+        std = math.sqrt(self.var) if self.var > 0 else 0.0
+        if std == 0:
+            return 0.0 if x == self.mean else math.inf
+        return (x - self.mean) / std
+
+    def update(self, x: float) -> float:
+        """Fold ``x`` in and return its deviation *before* the update."""
+        dev = self.deviation(x)
+        if self.mean is None:
+            self.mean = x
+            self.var = 0.0
+        else:
+            diff = x - self.mean
+            self.mean += self.alpha * diff
+            self.var = (1 - self.alpha) * (self.var + self.alpha * diff * diff)
         self.n += 1
-        return is_anomaly
+        return dev
+
+    def is_anomaly(self, x: float) -> bool:
+        return self.deviation(x) > self.threshold
+
+
+class BudgetGuard:
+    """Tracks spend per tenant and decides allow / degrade / refuse."""
+
+    def record(self, tenant: str, usd: float, ts: float) -> float:
+        """Add a spend and return its anomaly deviation (z-like)."""
+        self._window(tenant).add(usd, ts)
+        return self._detector(tenant).update(usd)
+
+    def decide(self, tenant: str, now: float, *, next_cost_usd: float = 0.0) -> BudgetDecision:
+        """Decide for the *next* request. ``next_cost_usd`` may pre-charge an estimate."""
+        b = self.budget_for(tenant)
+        spent = self.spent(tenant, now)
+        projected = spent + max(next_cost_usd, 0.0)
+        anomaly = self._detector(tenant).is_anomaly(next_cost_usd) if next_cost_usd else False
+        if projected >= b.hard_cap_usd:
+            d, reason = Decision.REFUSE, f"hard cap {b.hard_cap_usd:.2f} USD reached"
+        elif projected >= b.soft_cap_usd:
+            d, reason = Decision.DEGRADE, f"soft cap {b.soft_cap_usd:.2f} USD reached"
+        else:
+            d, reason = Decision.ALLOW, "within budget"
+        self.decisions.setdefault(tenant, {}).setdefault(d.value, 0)
+        self.decisions[tenant][d.value] += 1
+        return BudgetDecision(tenant, d, spent, b.soft_cap_usd, b.hard_cap_usd, reason, anomaly)
+
+
+#: Short name used in the lecture scripts.
+EwmaAnomaly = EWMAAnomalyDetector
 ```
 
-`BudgetGuard.check` is three comparisons. Spend at or above the daily budget, refuse. At or above eighty percent, degrade. Otherwise fine. The spend comes from the cost records in 6.3, summed for the tenant since midnight. [PAUSE] `EwmaAnomaly` is an exponentially weighted moving average with a moving variance. Each five-minute window's spend is compared with the smoothed mean plus three smoothed standard deviations. Six windows of warm-up so it doesn't fire at startup. Alpha zero point three means it forgets in about ten windows, so a slow Tuesday doesn't make Wednesday morning look like an attack.
+`BudgetGuard.decide` is three comparisons on the projected spend: the rolling-window total plus an estimate for the request about to run. At or above the hard cap, refuse. At or above the soft cap, degrade. Otherwise allow. The spend comes from a `SpendWindow` per tenant, a rolling sum of the cost records from 6.3, fed by `record` after every request. [PAUSE] `EWMAAnomalyDetector` is an exponentially weighted moving average with a running variance. Each new cost is compared with the smoothed mean plus three smoothed standard deviations. Five observations of warm-up so it doesn't fire at startup. Alpha zero point three means it forgets in about ten observations, so a slow Tuesday doesn't make Wednesday morning look like an attack. `EwmaAnomaly` is an alias, if you prefer the short name.
 
 Now the wiring.
 
-[SCREEN: `app/server.py`]
+[SCREEN: `app/agent.py`, `run()`]
 
-[CODE: `app/server.py` (excerpt)]
+[CODE: `app/agent.py` (excerpt): the budget guard in `run()`]
 
 ```python
-decision = budget_guard.check(tenant, cost_store.spend_today(tenant))
-BUDGET_EVENTS.labels(tenant=tenant, action=decision.value).inc()
-
-if decision is Decision.REFUSE:
-    ticket = tools.create_ticket(subject=f"Atlas over budget: {tenant}", body=req.question, priority="normal")
-    return ChatResponse(answer=f"Atlas has reached today's budget for {tenant}. I've opened ticket {ticket.id} "
-                               f"so a colleague can help.", degraded=True)
-
-mode = AgentMode.ECONOMY if decision is Decision.DEGRADE else AgentMode.NORMAL   # economy: no escalation, k=2, max_output=120
-answer = agent.run(req, mode=mode)
-
-if anomaly[tenant].observe(cost_store.spend_last_window(tenant, minutes=5)):
-    ANOMALIES.labels(tenant=tenant).inc()
-    log.warning("cost anomaly", extra={"tenant": tenant, "window_usd": ..., "trace_id": ...})
+            # 2. budget guard ----------------------------------------------------------------
+            if self.budget_guard is not None:
+                decision = self.budget_guard.decide(
+                    tenant, time.time(), next_cost_usd=self.budget_guard.estimate(tenant)
+                )
+                result.budget_decision = decision.decision.value
+                root.set_attribute(ga.ATLAS_BUDGET_DECISION, decision.decision.value)
+                metrics.BUDGET_DECISIONS.labels(tenant, decision.decision.value).inc()
+                metrics.BUDGET_SPENT.labels(tenant).set(decision.spent_usd)
+                if decision.decision is Decision.REFUSE:
+                    result.answer, result.outcome = BUDGET_REFUSAL, "refused"
+                    ga.add_event(root, "budget.refused", reason=decision.reason)
+                    return self._finish(root, result, tenant, started)
+                if decision.decision is Decision.DEGRADE:
+                    ga.add_event(
+                        root, "budget.degraded", reason=decision.reason, model=s.degraded_model
+                    )
+                    model, top_k = self._choose_deployment(intent, degraded=True), min(top_k, 2)
+                    result.model = model
 ```
 
-Before the agent runs, check the budget and count the decision. Refuse creates a ticket and answers honestly. Degrade switches the agent to economy mode: mini only, top-k two, a hundred-twenty-token answer cap. And after the request, feed the tenant's last five-minute spend to its detector; a hit increments a counter and writes a warning log with the trace id. [PAUSE] Section 9 turns those two counters into alerts. Today we just make them exist.
+Before the loop, right after the injection guardrail, check the budget and count the decision. The estimate for the next request is the tenant's EWMA of past requests, so the projection is honest. Refuse answers with `BUDGET_REFUSAL`, records an event on the root span and never calls the model; the server turns that outcome into a 429. Degrade switches the request to the degraded model, gpt-4.1-nano, and caps top-k at two. `BUDGET_SPENT` is a gauge of the rolling spend per tenant, so Grafana can draw the two caps as lines, and the decision is on the root span as `atlas.budget.decision`. [PAUSE] Section 9 turns the counter and the gauge into alerts. Today we just make them exist.
 
 [SLIDE 3: Setting the budgets (from the showback, 6.3)]
 
-| Tenant | Baseline day | After the three levers | Daily budget (1.5× after) | Soft cap |
+| Tenant | Baseline day | After the three levers | Daily budget (1.5× after) | Soft cap (80%) |
 |---|---|---|---|---|
-| operations | $24.52 | $9.94 | $15.00 | $12.00 |
-| warehouse | $18.39 | $7.46 | $11.00 | $8.80 |
-| finance | $11.03 | $4.47 | $7.00 | $5.60 |
-| sales | $7.36 | $2.98 | $4.50 | $3.60 |
+| ops | $20.43 | $6.02 | $9.00 | $7.20 |
+| eng | $12.60 | $4.35 | $6.50 | $5.20 |
+| finance | $12.00 | $4.52 | $6.80 | $5.40 |
+| hr | $11.67 | $4.32 | $6.50 | $5.20 |
 
 [AVATAR]
 
-Where do the numbers come from? From the showback. Take each tenant's normal day after the levers, and set the budget at one and a half times that. Enough headroom for a busy Monday, tight enough that a loop hits the soft cap in under an hour. [PAUSE] Budgets you invent get ignored. Budgets derived from the report get approved.
+Where do the numbers come from? From the showback. Take each tenant's normal day after the levers, and set the budget at one and a half times that. Enough headroom for a busy Monday, tight enough that a loop hits the soft cap in under an hour. The repo ships one pair for every tenant, `TENANT_SOFT_CAP_USD=25` and `TENANT_HARD_CAP_USD=40`, sized for the baseline day so the incident labs can reach them; once your levers are in, tighten them from the report. [PAUSE] Budgets you invent get ignored. Budgets derived from the report get approved.
 
 [SCREEN: terminal]
 
 Now break it.
 
 ```bash
-OFFLINE=1 make replay SCENARIO=retry_storm TENANT=operations
+OFFLINE=1 make replay SCENARIO=retry_storm      # the preset hits the ops tenant from 10:00 to 12:00
 ```
 
-[DEMO: Ops Console budgets page. Operations spend line rises steeply at 10:05. At 10:10 the anomaly marker fires (window spend $1.42 vs smoothed mean $0.21). At 10:47 the soft cap triggers: `budget_events{action="degrade"}` climbs; the line flattens. Hard cap is never reached. Alongside: a tenant without the guard for comparison, reaching $12 by 11:00 and $19 by noon.]
+[DEMO: Ops Console budgets page. The ops spend line rises steeply at 10:05. At 10:10 the anomaly marker fires (window spend $1.42 vs smoothed mean $0.21). At 10:47 the soft cap triggers: `budget_events{action="degrade"}` climbs; the line flattens. Hard cap is never reached. Alongside: a tenant without the guard for comparison, reaching $12 by 11:00 and $19 by noon.]
 
-The retry storm scenario: a tool starts failing for operations, and every request retries. Ten oh five, spend accelerates. Ten ten, one window later, the detector fires: a dollar forty-two in five minutes against a smoothed twenty-one cents. That's your page. Ten forty-seven, the soft cap. Economy mode kicks in and the line bends. The hard cap never fires, and nobody in operations got refused. [PAUSE] Without the guard, the same storm is at nineteen dollars by noon on a nine-dollar day, and still climbing.
+The retry storm scenario: the provider starts timing out on ops requests, and every request retries. Ten oh five, spend accelerates. Ten ten, one window later, the detector fires: a dollar forty-two in five minutes against a smoothed twenty-one cents. That's your page. Ten forty-seven, the soft cap. Economy mode kicks in and the line bends. The hard cap never fires, and nobody in ops got refused. [PAUSE] Without the guard, the same storm is at nineteen dollars by noon on a nine-dollar day, and still climbing.
 
 Unguarded, that storm roughly quadruples the tenant's hourly spend for as long as the tool keeps failing. With the guard, the detector spoke five minutes in, and the soft cap capped the damage. Cheap insurance.
 
 ### Recap
 
-A soft cap degrades to economy mode, a hard cap refuses politely with a ticket, an EWMA detector flags a spend spike within one five-minute window, and every decision is a Prometheus counter waiting for an alert.
+A soft cap degrades to the nano model, a hard cap refuses politely before any model call, an EWMA detector flags an abnormal request cost within a handful of requests, and every decision is a Prometheus counter waiting for an alert.
 
 ### Transition
 
@@ -1174,11 +1430,11 @@ You now have four measured tools: caching, the diet, routing and budgets. Time t
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Hard cap without a fallback.** Refusing with no ticket strands users and gets the budget removed within a week. Always create the ticket.
+- **Hard cap without a fallback.** Refusing with no way forward strands users and gets the budget removed within a week. `BUDGET_REFUSAL` tells the user how to reach a human; creating the ticket automatically is a good capstone extension.
 - **Budget spend from Prometheus.** Counters reset on restart; compute spend from the cost store, and use the counter for alerting only.
-- **EWMA warm-up and quiet hours.** Overnight windows near zero make the morning look anomalous. Either use a per-hour-of-day baseline or a minimum std floor (the code uses 10% of mean). Mention both.
+- **EWMA warm-up and quiet hours.** Overnight requests near zero make the morning look anomalous. The detector warms up for five observations (`warmup`); a per-hour-of-day baseline or a minimum std floor are the two standard extensions. Mention both.
 - **Anomaly vs budget.** They answer different questions: "is this abnormal?" vs "have we spent the money?". Keep both.
-- **Coding exercise.** The Udemy in-browser exercise "EWMA anomaly" is this class with stdlib only; point students to `06-assessments/coding-exercises.md`.
+- **Coding exercise.** The Udemy in-browser exercise "EWMA anomaly" is `EWMAAnomalyDetector` with stdlib only; point students to `06-assessments/coding-exercises.md`.
 
 ---
 
@@ -1190,7 +1446,7 @@ You now have four measured tools: caching, the diet, routing and budgets. Time t
 | Title | Challenge: cut Atlas's daily cost by 40% |
 | Type | CH (pause-then-solution challenge) |
 | Target duration | 7:00 (about 580 spoken words at ~140 wpm; the student pause is off-video, 30 to 60 minutes) |
-| One idea | Take the $61.29 replayed day below $36.77 using the levers from this section, prove it in the Ops Console, and prove quality held. |
+| One idea | Take the $56.70 replayed day below $34.02 using the levers from this section, prove it in the Ops Console, and prove quality held. |
 | Prerequisites | 6.1 to 6.7 |
 | Files used | `simulator/replay.py`, `src/northwind/config.py`, `console/ops_console.py`, `05-projects/challenges.md` |
 
@@ -1204,11 +1460,11 @@ You now have four measured tools: caching, the diet, routing and budgets. Time t
 
 [AVATAR]
 
-Here's the brief, and then I'm going to stop talking. [PAUSE] Atlas's replayed day costs sixty-one dollars twenty-nine. Get it under thirty-six seventy-seven, a forty percent cut, without the resolved score dropping more than two points. Prove it on the Ops Console with before and after. You have every tool you need from the last six lectures.
+Here's the brief, and then I'm going to stop talking. [PAUSE] Atlas's replayed day costs fifty-six dollars seventy. Get it under thirty-four oh two, a forty percent cut, without the resolved score dropping more than two points. Prove it on the Ops Console with before and after. You have every tool you need from the last six lectures.
 
 [SLIDE 1: The challenge]
-- Start: `OFFLINE=1 make replay` on seed 2026-09-22 → $61.29, resolved 0.82, grounded 0.91
-- Target: ≤ $36.77 (−40%), resolved ≥ 0.80, grounded ≥ 0.89
+- Start: `OFFLINE=1 make replay` on seed 7 → $56.70, resolved 0.89, grounded 0.94
+- Target: ≤ $34.02 (−40%), resolved ≥ 0.87, grounded ≥ 0.92
 - Allowed: anything in `src/northwind/config.py` and `app/`: caching, history and tool budgets, top-k, routing thresholds, budgets
 - Not allowed: dropping traffic, refusing requests, changing the seed
 - Deliver: a before/after screenshot of the console cost page and one paragraph on what you changed and why
@@ -1220,7 +1476,7 @@ Three rules. You can change configuration and agent code. You can't make the day
 
 One hint. [PAUSE] Apply one lever at a time and replay after each. The order you choose will teach you something the final number won't.
 
-Pause the video now. Thirty to sixty minutes. Come back when the console says thirty-six or less.
+Pause the video now. Thirty to sixty minutes. Come back when the console says thirty-four or less.
 
 [SLIDE 2: PAUSE. Come back with a number.]
 
@@ -1233,60 +1489,60 @@ You're back. Here's how I did it, one lever at a time, in the order I'd do it in
 [SCREEN: terminal and Ops Console side by side]
 
 ```bash
-OFFLINE=1 make replay                       # baseline
-OFFLINE=1 CACHE=1 make replay               # + caching
-OFFLINE=1 CACHE=1 DIET=1 make replay        # + context diet
-OFFLINE=1 CACHE=1 DIET=1 ROUTER=1 make replay   # + routing
+OFFLINE=1 make replay                            # baseline
+OFFLINE=1 make replay CACHE=1                    # + caching
+OFFLINE=1 make replay CACHE=1 DIET=1             # + context diet
+OFFLINE=1 make replay CACHE=1 DIET=1 ROUTER=1    # + routing
 ```
 
 [SLIDE 3: Reference solution, one lever at a time (verify current pricing)]
 
 | Step | Day | Saving vs baseline | Resolved | Grounded |
 |---|---|---|---|---|
-| Baseline | $61.29 | | 0.82 | 0.91 |
-| + Caching (`prompt_cache_key`, sorted prompt) | $39.58 | −35% | 0.82 | 0.91 |
-| + Context diet (history 1,200, tool 600, k=3) | $29.22 | −52% | 0.82 | 0.90 |
-| + Routing (signal-based escalation, bounded retries) | **$24.86** | **−59%** | **0.83** | 0.90 |
+| Baseline | $56.70 | | 0.89 | 0.94 |
+| + Caching (`CACHE=1`: `prompt_cache_key`, stable prefix) | $37.24 | −34% | 0.89 | 0.94 |
+| + Context diet (`DIET=1`: tool results 1,400, history 8,000) | $22.88 | −60% | 0.89 | 0.94 |
+| + Routing (`ROUTER=1`: nano for simple intents) | **$19.21** | **−66%** | **0.89** | 0.94 |
 
 [AVATAR]
 
-Caching first, because it changes nothing about the answers. Thirty-five percent, and every quality score is identical to the decimal. That's why I do it first: it's the lever with no quality risk, and it tells you how much of the remaining bill is genuinely new tokens.
+Caching first, because it changes nothing about the answers. Thirty-four percent, and every quality score is identical to the decimal. That's why I do it first: it's the lever with no quality risk, and it tells you how much of the remaining bill is genuinely new tokens.
 
-Then the diet. Down to twenty-nine twenty-two, fifty-two percent. Target passed. Grounded dropped one point, from ninety-one to ninety, because top-k three misses the right chunk on four percent of policy questions. Within the two-point rule. If you set k to two, you'd have seen grounded fall to eighty-six and you'd have put it back. That's the lesson the order teaches: the diet is where quality can move, so measure it there.
+Then the diet. Down to twenty-two eighty-eight, sixty percent. Target passed. The grounded score didn't move, because a fourteen-hundred-token cap still holds the article the answer needs. Push the tool budget to four hundred, or top-k to one, and the mock still answers, but a real model starts missing the exception clauses, and grounded is where you'd see it. That's the lesson the order teaches: the diet is where quality can move, so measure it there.
 
-Then routing. Twenty-four eighty-six, fifty-nine percent, and resolved actually goes up a point, because the three hundred hard requests now get the strong model on purpose. [PAUSE] Sixty-one dollars to twenty-five. About seven hundred fifty a month instead of eighteen hundred. Thirteen thousand a year, on a helpdesk for four departments, with the answers as good or better.
+Then routing. Nineteen twenty-one, sixty-six percent, and the scores hold, because the requests that moved to nano are the ones where the answer is a tool result read back. [PAUSE] Fifty-seven dollars to nineteen. About five hundred eighty a month instead of seventeen hundred. Eleven thousand a year, on a helpdesk for four departments, with the answers as good.
 
 [SLIDE 4: After, by tenant and by feature]
 
 | Tenant | Before | After | | Feature | Before | After |
 |---|---|---|---|---|---|---|
-| operations | $24.52 | $9.94 | | policy_question | $35.15 | $12.30 |
-| warehouse | $18.39 | $7.46 | | ticket_lookup | $8.75 | $3.85 |
-| finance | $11.03 | $4.47 | | create_ticket | $8.25 | $3.71 |
-| sales | $7.36 | $2.98 | | password_reset | $4.47 | $3.10 |
-| | | | | shipment_status | $4.69 | $1.90 |
+| ops | $20.43 | $6.02 | | policy_question | $43.23 | $17.71 |
+| eng | $12.60 | $4.35 | | create_ticket | $6.71 | $0.64 |
+| finance | $12.00 | $4.52 | | ticket_lookup | $3.23 | $0.30 |
+| hr | $11.67 | $4.32 | | shipment_status | $2.23 | $0.19 |
+| | | | | password_reset | $0.79 | $0.25 |
 
 [AVATAR]
 
-By tenant, everyone saved the same share, which is what you'd expect from structural changes. By feature, policy questions saved the most, sixty-five percent, because they carried the biggest tool results. Password resets saved the least, thirty-one percent, because they were already lean and now escalate to gpt-4.1 on purpose as a sensitive action. [PAUSE] That table is your one paragraph: the saving is structural, it's largest where the context was largest, and it cost nothing in quality.
+By tenant, everyone saved a similar share: ops the most, seventy-one percent, because dispatchers ask the simple questions that now run on nano; the other three sixty-two to sixty-five. By feature, the tool-driven requests saved the most: ticket lookups, ticket creation and shipment checks are down ninety percent, cached prefix plus nano. Policy questions saved the least, fifty-nine percent, because their cost is retrieved policy text that the diet caps but can't remove, on mini on purpose. [PAUSE] That table is your one paragraph: the saving is structural, it's largest where the request was simplest, and it cost nothing in quality.
 
 [SLIDE 5: Common ways to hit 40% the wrong way]
 - Top-k 1 or tool budget 200: cost drops, grounded drops to the low 80s
-- Escalation off entirely: $3.25 saved, resolved drops 3 points on the hard cases
+- Policy questions on nano too: another $10 saved, and the exception clauses go missing on a real model
 - History budget 300: sessions lose the thread on turn 3; resolved drops for multi-turn
-- Hard cap at $30: the day "costs" $30 and 2,000 users get refused
+- Hard cap at $5 per tenant: the day "costs" $20 and a thousand sessions get refused
 
 [AVATAR]
 
-Four wrong ways to hit the number, and I've seen all of them. Starving retrieval. Turning escalation off. Cutting history so hard that turn three forgets turn one. And the budget trick, where the day costs thirty dollars because two thousand people got a refusal. [PAUSE] Every one of them passes the cost test and fails the quality test. Which is why the challenge had two numbers, and why the console shows them side by side.
+Four wrong ways to hit the number, and I've seen all of them. Starving retrieval. Putting policy questions on the smallest model. Cutting history so hard that turn three forgets turn one. And the budget trick, where the day costs twenty dollars because a thousand sessions got a refusal. [PAUSE] Every one of them passes the cost test and fails the quality test. Which is why the challenge had two numbers, and why the console shows them side by side.
 
 [AVATAR]
 
-If you got under thirty-six seventy-seven with quality intact, post your before and after in the Q&A with the one-paragraph explanation. If you got there a different way than I did, I especially want to see it.
+If you got under thirty-four oh two with quality intact, post your before and after in the Q&A with the one-paragraph explanation. If you got there a different way than I did, I especially want to see it.
 
 ### Recap
 
-Caching, then the diet, then routing, each measured on the same replayed day, take Atlas from $61.29 to $24.86 with resolved and grounded scores intact, and the order teaches you where quality can move.
+Caching, then the diet, then routing, each measured on the same replayed day, take Atlas from $56.70 to $19.21 with resolved and grounded scores intact, and the order teaches you where quality can move.
 
 ### Transition
 
@@ -1294,9 +1550,9 @@ You've done the engineering. Now turn it into the document that gets you the bud
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Students who only cache and call it done.** 35% is short of 40% on purpose, so the challenge needs at least two levers. Say so in the solution if the Q&A shows confusion.
-- **"My numbers differ slightly."** The replay is deterministic per seed, but the cache hit rate is simulated at 70%. If they changed `CACHE_HIT_RATE` in config, the numbers move. That's allowed, but it must be declared.
-- **Quality scores on the replay.** They come from the simulator's ground truth and the Section 8 judge on sampled traces. Students who haven't reached Section 8 see them on the console anyway.
+- **Students who only cache and call it done.** 34% is short of 40% on purpose, so the challenge needs at least two levers. Say so in the solution if the Q&A shows confusion.
+- **"My numbers differ slightly."** The replay is deterministic per seed; the cache hit rate is simulated by the mock LLM (`CACHE_MIN_PREFIX`, 128-token blocks in `app/mock_llm.py`) and is not a setting. A student who edits the mock has changed the world, not the agent; that must be declared. Also: `python simulator/replay.py` without the Makefile uses the `.env` defaults, where cache and diet are already on.
+- **Quality scores on the replay.** They come from the offline judge (`evals/online_judge.py::OfflineJudge`) on sampled traces. Students who haven't reached Section 8 see them on the console anyway.
 - **Order.** Any order reaches the same final number. The order changes the intermediate rows, which is where the learning is.
 
 ---
@@ -1315,7 +1571,7 @@ You've done the engineering. Now turn it into the document that gets you the bud
 
 **Learning objectives**
 
-1. Generate a seven-day replay and run `report.py` by tenant and by feature.
+1. Replay the day and run `make report` (`northwind.report.weekly_report`: by tenant, feature and model).
 2. Write three recommendations that each cite a number from the report and estimate a saving.
 3. Present cost per resolved session as the headline metric.
 
@@ -1327,10 +1583,10 @@ Project one is the document that turns this section into budget. A one-page week
 
 [SCREEN: `05-projects/project-1-showback-report.md`: the brief and rubric.]
 
-Replay seven days with `make replay DAYS=7`. Run `report.py` by tenant and by feature. The report must show total cost, cost per session, cost per resolved session, and the trend across the week. Then three recommendations. Each one has to cite a number from your report and estimate the saving in dollars per month. "Enable caching for the sales tenant" is not a recommendation. "Sales has a 41% cache hit rate against 72% elsewhere because its policy prefix is 940 tokens, under the minimum; padding it to 1,100 tokens would save about $11 a month" is.
+Replay the day with `make replay` and render the report with `make report`, which runs `weekly_report` over the local store; the replayed day stands in for the week, and the Makefile flags give you the other configurations for the comparison rows. The report must show total cost, cost per session, cost per resolved session, and the trend across the configurations. Then three recommendations. Each one has to cite a number from your report and estimate the saving in dollars per month. "Enable caching for the eng tenant" is not a recommendation. "Eng has a 41% cache hit ratio against 52% elsewhere because its policy prefix is 940 tokens, under the minimum; padding it to 1,100 tokens would save about $11 a month" is.
 
 [SLIDE 1: Project 1 rubric]
-- Report by tenant and by feature, seven days, with trend: 40%
+- Report by tenant and by feature, with the trend across configurations: 40%
 - Cost per resolved session as headline, with the resolved rate stated: 20%
 - Three recommendations, each with a cited number and a monthly saving: 30%
 - Prices marked with a date and "verify current pricing": 10%

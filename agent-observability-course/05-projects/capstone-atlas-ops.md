@@ -146,7 +146,7 @@ Each test states its layer: **U** unit, **I** integration (offline, in-memory ex
 | AT-01 | Trace shape | When any request is served, one trace contains an agent span, step spans, generation spans and tool spans, all in one tree, with `gen_ai.agent.name=atlas` on the root | I |
 | AT-02 | GenAI attributes | Every generation carries `gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens` and, when present, `gen_ai.usage.cache_read_input_tokens`; every tool span carries `gen_ai.tool.name` and `gen_ai.tool.call.arguments` | I |
 | AT-03 | No double counting | With OpenInference enabled, exactly one generation span exists per model call | I |
-| AT-04 | Session and identity | Two requests with the same `X-Session-Id` land in one Langfuse session; `user_id` is a hash, never the raw employee id | I + M |
+| AT-04 | Session and identity | Two requests with the same `X-Session` land in one Langfuse session; `user_id` is a hash, never the raw employee id | I + M |
 | AT-05 | Guardrail | A prompt-injection message produces a `guardrail` observation with a boolean score and the agent refuses without calling a tool | I |
 | AT-06 | Redaction | A tool result containing an email, a phone and an employee id reaches the exporter with all three masked; the collector's file export shows the same | I + M |
 | AT-07 | Cost per generation | For a generation with 1,200 input (900 cached) and 180 output tokens on gpt-4.1-mini, the span cost is $0.000498 ± 1e-6 | U |
@@ -163,7 +163,7 @@ Each test states its layer: **U** unit, **I** integration (offline, in-memory ex
 | AT-18 | Slow provider | On the `slow_provider` day, p95 ≤ 4,000 ms, error rate ≤ 2%, fallbacks occur, and cost per session ≤ $0.05 | R |
 | AT-19 | Prompt regression | On the `prompt_regression` week, the drift report flags `grounded` (PSI ≥ 0.1) and the by-prompt-version table isolates v2; rolling the `production` label back to v1 restores scores in a re-replay | R + E |
 | AT-20 | Judge cost | The judge's own cost is recorded and reported as a percentage of serving cost, and tail sampling keeps 100% of error traces at ≤ 30% of judge calls | E |
-| AT-21 | Metrics cardinality | `/metrics` exposes no label named `user_id`, `session_id`, `trace_id` or `employee_id`, and `atlas_request_duration_seconds` has ≤ 40 series | U |
+| AT-21 | Metrics cardinality | `/metrics` exposes no label named `user_id`, `session_id`, `trace_id` or `employee_id`, and `atlas_request_latency_seconds` has ≤ 40 series | U |
 | AT-22 | Alerts and runbooks | Three alert rules exist, each with a `runbook_url` that resolves to a file in the repo, and each has been seen `FIRING` in a recorded replay | M |
 | AT-23 | Backend chaos | With Langfuse (or the collector) stopped for 5 minutes under 2 RPS, Atlas p95 changes by less than 10% and `/healthz` stays green; dropped-span count is reported | M |
 | AT-24 | CI gate | A PR that sets `ATLAS_TOP_K=12` fails the budget gate with a comment showing cost per session over budget; the revert passes; the deployed commit has a green run | M |

@@ -3,7 +3,7 @@
 **Used in:** 2.3, 4.1-4.7, 5.2, 8.2, 8.6, 10.2, 13.1
 **Scope:** only the API forms verified for the course in curriculum §6 (**langfuse 4.15**, the OpenTelemetry-based SDK).
 
-> **APIs verified on langfuse 4.15; check the repo README for updates.** Anything not on this sheet: check the official docs for your installed version before using it. In particular, **verify the exact name of the trace-update method on your installed SDK** (the curriculum flags `update_current_trace`). Do **not** use v2/v3 idioms (`langfuse.trace(...)`, `langfuse_context`, `Langfuse().generation(...)`); they are not what this course teaches.
+> **APIs verified on langfuse 4.15; check the repo README for updates.** Anything not on this sheet: check the official docs for your installed version before using it. In particular, **there is no `update_current_trace` on langfuse 4.x**: trace-level `session_id`, `user_id`, `tags` and `metadata` are set with the `propagate_attributes(...)` context manager. Do **not** use v2/v3 idioms (`langfuse.trace(...)`, `langfuse_context`, `Langfuse().generation(...)`); they are not what this course teaches.
 
 ---
 
@@ -61,7 +61,8 @@ client.update_current_generation(
 client.update_current_span(metadata={...}, level="WARNING", status_message="tool retried")
 
 # on the trace (session / user / tenant slicing, 4.3)
-client.update_current_trace(session_id=session_id, user_id=user_id, tags=[tenant, feature], metadata={...})
+with propagate_attributes(session_id=session_id, user_id=user_id, tags=[tenant, feature], metadata={...}):
+    ...  # every span opened inside carries session.id, user.id, langfuse.trace.tags
 # ^ verify exact name on the installed SDK
 ```
 

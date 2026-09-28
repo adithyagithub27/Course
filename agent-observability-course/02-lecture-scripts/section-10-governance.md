@@ -2,14 +2,14 @@
 
 > **Course:** AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse
 > **Section runtime:** about 32 minutes (5 lectures, including one quiz intro)
-> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `operations`, `warehouse`, `finance`, `sales`)
+> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `ops`, `finance`, `hr`, `eng`)
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Any trace shown on screen in this section uses the synthetic Northwind data only; never a real employee record.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on langfuse 4.15 (`mask=`, `mask_otel_spans=`) / OpenTelemetry Collector contrib (processor names: verify against the current collector docs)."
 > **Standing disclaimer (lecture 10.4, on screen for the whole lecture):** "This lecture is not legal advice. Verify obligations with your counsel and your data protection officer."
 
 **Cue legend:** [AVATAR] avatar on camera · [SLIDE n: title] full-screen slide with the listed bullets · [SCREEN: ...] OBS recording · [CODE: ...] code on screen, exact code in the fenced block · [DEMO: ...] live run · [B-ROLL] cutaway · [PAUSE] one-beat pause.
 
-**Code names used in this section (to match `03-code/`):** `northwind.pii` (`mask_text`, `mask_fn`, `stable_hash`, `PATTERNS`), `telemetry/langfuse_setup.py` (`Langfuse(mask=mask_fn, ...)`), `telemetry/otel_setup.py`, `deploy/otel-collector.yaml` (`redaction` and `transform` processors), `app/tools.py` (`summarise_for_span`), `tests/unit/test_pii.py`, `tests/integration/test_no_pii_in_spans.py`, `10-resources/telemetry-governance-checklist.md`.
+**Code names used in this section (to match `03-code/`):** `northwind.pii` (`mask_text`, `mask_fn`, `stable_hash`, `PATTERNS`), `telemetry/langfuse_setup.py` (`Langfuse(mask=mask_fn, ...)`), `telemetry/otel_setup.py`, `deploy/otel-collector.yaml` (`redaction` and `transform` processors), `app/tools.py` (`summarise_for_span`), `tests/unit/test_pii.py`, `tests/integration/test_spans.py`, `10-resources/telemetry-governance-checklist.md`.
 
 **The numbers card (one replayed day, synthetic data):**
 
@@ -131,7 +131,7 @@ Next, the code-along: masking in the Langfuse SDK, in the OpenTelemetry collecto
 | Target duration | 8:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
 | One idea | Mask PII in three layers, at the source in tool results, in the Langfuse SDK with `mask=`, and in the collector for everything else, and replace identifiers with a keyed hash so joins still work. |
 | Prerequisites | 10.1; 4.6 (`mask=` introduced) |
-| Files used | `src/northwind/pii.py`, `telemetry/langfuse_setup.py`, `deploy/otel-collector.yaml`, `app/tools.py`, `tests/unit/test_pii.py`, `tests/integration/test_no_pii_in_spans.py` |
+| Files used | `src/northwind/pii.py`, `telemetry/langfuse_setup.py`, `deploy/otel-collector.yaml`, `app/tools.py`, `tests/unit/test_pii.py`, `tests/integration/test_spans.py` |
 
 **Learning objectives**
 
@@ -283,9 +283,9 @@ Two processors, in front of every exporter. `redaction` takes a list of regexes 
 
 Now the test that makes this permanent.
 
-[SCREEN: `tests/integration/test_no_pii_in_spans.py`, then terminal]
+[SCREEN: `tests/integration/test_spans.py`, then terminal]
 
-[CODE: `tests/integration/test_no_pii_in_spans.py` (excerpt)]
+[CODE: `tests/integration/test_spans.py`, the PII assertion this lecture adds]
 
 ```python
 RAW = ["dana.whitfield@northwind.example", "+1 415 555 0142", "NW-004471", "4111 1111 1111 1111"]
@@ -303,7 +303,7 @@ def test_no_raw_pii_reaches_any_span(atlas_offline, in_memory_exporter):
 Send a question containing all four kinds of PII, through the offline agent, with an in-memory exporter. Serialise every span. Assert none of the raw values is anywhere in the blob, and that the placeholders are. [PAUSE] This test runs on every pull request. If anyone adds a tool that copies a record into a span, it goes red. That's the control that lasts after you've stopped paying attention.
 
 ```bash
-uv run pytest tests/unit/test_pii.py tests/integration/test_no_pii_in_spans.py -q
+uv run pytest tests/unit/test_pii.py tests/integration/test_spans.py -q
 ```
 
 [DEMO: 9 passed. Then the Langfuse UI: the same trace as the 10.1 hook, now reading `"employee": "[emp:3f9a1c2b]", "phone": "[phone]", "issue": "expense card ending [card] declined"`.]

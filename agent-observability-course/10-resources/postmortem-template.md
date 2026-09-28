@@ -71,7 +71,7 @@
 | 1 | <e.g., add `gen_ai`-attributed tool span status and a tool-error-rate metric> | Instrumentation | | | | [ ] |
 | 2 | <e.g., per-tenant soft and hard budget caps in budget.py, default on> | Budget / guard | | | | [ ] |
 | 3 | <e.g., step limit AGENT_MAX_STEPS enforced, with an event on the trace> | Budget / guard | | | | [ ] |
-| 4 | <e.g., alert AtlasCostAnomaly with runbook> | Instrumentation | | | | [ ] |
+| 4 | <e.g., alert AtlasTenantCostAnomaly with runbook> | Instrumentation | | | | [ ] |
 | 5 | <e.g., CI budget gate asserts cost per session on the replayed day> | Test | | | | [ ] |
 | 6 | <e.g., prompt label promotion requires a passing offline eval on the dataset> | Test | | | | [ ] |
 | 7 | <e.g., add this incident's spans as a regression fixture in incidents/> | Test | | | | [ ] |
@@ -93,7 +93,7 @@
 1. **Names of people never appear as causes.** "The on-call engineer restarted the service" is a timeline fact; "the engineer should have noticed" is not allowed.
 2. **Numbers, not adjectives.** "Cost was 6.2× baseline for 5 h 40 m" beats "cost was very high for a while". Label simulated figures as simulated with the price-table date.
 3. **Every contributing factor gets an action item or an explicit "accepted, not fixing because…".**
-4. **Action items are small and verifiable.** "Improve monitoring" is not an action item; "add `AtlasToolErrorSpike` alert with runbook, owner X, due date Y" is.
+4. **Action items are small and verifiable.** "Improve monitoring" is not an action item; "add `AtlasToolErrorRate` alert with runbook, owner X, due date Y" is.
 5. **Review it with someone outside the team.** They catch the jargon and the blame that slipped in.
 6. **Re-read it after the actions are done.** Did the actions actually prevent a replay of the incident? Re-run `OFFLINE=1 make replay` with the incident scenario injected and confirm the alert fires and the guard holds. That re-run is the best possible closing line.
 

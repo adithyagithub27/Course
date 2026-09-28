@@ -64,7 +64,7 @@
 
 *Related lecture: 14.3 Reference solution part B: quality, dashboards, alerts, CI*
 
-- **A.** `AtlasToolErrorSpike` with a ratio expression, a minimum-traffic guard, `for: 2m`, severity, and a `runbook_url` pointing to a repo file whose first section answers "what do I do in the first five minutes"; versus the same expression with no `for`, no guard and no runbook.
+- **A.** `AtlasToolErrorRate` with a ratio expression, a minimum-traffic guard, `for: 2m`, severity, and a `runbook_url` pointing to a repo file whose first section answers "what do I do in the first five minutes"; versus the same expression with no `for`, no guard and no runbook.
   - *Explanation:* Correct. The first can be handed to an on-call engineer who has never seen Atlas; the second pages them with nothing to do. Every capstone alert must have been seen `FIRING` in a recorded replay.
 - **B.** An alert in Grafana versus the same alert in Prometheus.
   - *Explanation:* Incorrect. Where the rule is evaluated does not change its quality.

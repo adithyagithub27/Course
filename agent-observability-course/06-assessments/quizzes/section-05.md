@@ -17,7 +17,7 @@
   - *Explanation:* Incorrect. A counter tells you how often escalation happens at step 2 across all requests, not why this request escalated.
 - **B.** Add the step number to the span name of every generation.
   - *Explanation:* Incorrect. It helps you eyeball order, but it does not group a step's generation with its tool calls, nor record why escalation happened.
-- **C.** Wrap each loop iteration in a step span (`atlas.step N`) that is the parent of that step's generation and tool spans, and set attributes on it such as `northwind.step`, `northwind.context_tokens`, `northwind.escalated` and `northwind.escalation_reason`.
+- **C.** Wrap each loop iteration in a step span (`atlas.step N`) that is the parent of that step's generation and tool spans, and set attributes on it such as `atlas.step`, `atlas.context_tokens`, `atlas.escalated` and `atlas.escalation_reason`.
   - *Explanation:* Correct. The waterfall then shows step 2 escalated because of a stale ticket, its gpt-4.1 generation nested under it with its own cost, and context growing from step to step. Lab 3 builds exactly this.
 - **D.** Log the decision with `print` and correlate by timestamp.
   - *Explanation:* Incorrect. Logs without `trace_id` correlation are the anti-pattern lecture 5.5 warns about, and timestamps do not survive concurrency.
@@ -37,7 +37,7 @@
 - **C.** Because retrieval is the most expensive step in tokens.
   - *Explanation:* Incorrect. Retrieval itself uses no LLM tokens; it *determines* how many tokens go into the prompt, which is a different point.
 - **D.** Because the empty-result rate, the score distribution and the chosen top-k explain both quality (ungrounded answers follow empty or low-score retrievals) and cost (top-k times chunk size is a large share of input tokens), so a change in either shows up here first.
-  - *Explanation:* Correct. Incident 2 is found through `northwind.retrieval.top_k` on the retriever span, and Lab 5's grounded score correlates with retrieval scores. If retrieval is not a span, both stories are invisible.
+  - *Explanation:* Correct. Incident 2 is found through `atlas.retrieval.top_k` on the retriever span, and Lab 5's grounded score correlates with retrieval scores. If retrieval is not a span, both stories are invisible.
 
 **Correct answer: D**
 
@@ -77,7 +77,7 @@
 
 ---
 
-### Q5. In the `loop` scenario, Atlas calls `lookup_ticket` with a malformed id, gets an error, tries again with the same id, and repeats until the step limit. In the trace, `northwind.context_tokens` per step reads 1,150, 1,720, 2,290, 2,860, ... What does the pattern tell you about cost, and what would you see without step spans?
+### Q5. In the `loop` scenario, Atlas calls `lookup_ticket` with a malformed id, gets an error, tries again with the same id, and repeats until the step limit. In the trace, `atlas.context_tokens` per step reads 1,150, 1,720, 2,290, 2,860, ... What does the pattern tell you about cost, and what would you see without step spans?
 
 *Related lecture: 5.6 Break it: the loop you can only see in a trace*
 

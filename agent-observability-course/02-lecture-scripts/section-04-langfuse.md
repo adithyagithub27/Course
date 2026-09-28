@@ -240,7 +240,7 @@ And the retriever. Type `retriever`. Here I set the output explicitly with `upda
 
 [SCREEN: Terminal 1: `OFFLINE=1 make run`. Terminal 2: the ticket question with headers. Browser: Langfuse, newest trace.]
 
-[DEMO: Trace `atlas` with typed children: retriever `search_knowledge_base`, generation `chat` with model, usage (input/output/cache_read), cost, model parameters; tool `lookup_ticket` with input `{"ticket_id": "INC-2231"}` and output; second generation. Header shows cost and tokens totalled.]
+[DEMO: Trace `atlas` with typed children: retriever `search_knowledge_base`, generation `chat` with model, usage (input/output/cache_read), cost, model parameters; tool `lookup_ticket` with input `{"ticket_id": "TCK-100231"}` and output; second generation. Header shows cost and tokens totalled.]
 
 Run offline and send the ticket question. There's the typed trace. Agent root. Retriever with document names and scores. A generation with model, three usage lines, cost, and parameters. The tool with its arguments and result. And the header totals the generations' cost. Offline, from the mock, with the real price table.
 
@@ -588,7 +588,7 @@ Diagram: Production trace (user_feedback=0) → `create_dataset_item(source_trac
 
 Here's the loop. A trace with bad feedback becomes a dataset item, linked to its source trace. The dataset grows all week. Before you promote prompt version two, you run it against the dataset and compare. Production writes your regression suite for you.
 
-[SCREEN: VS Code, `evals/to_dataset.py`.]
+[SCREEN: VS Code, `evals/to_dataset.py`. The shipped file selects failures from the local store with `select_bad_traces` and pushes them with `push_to_langfuse`; the sketch below does the same directly against the Langfuse API, and Section 8 shows the shipped version.]
 
 [CODE: step 3, promote bad traces to a dataset]
 ```python

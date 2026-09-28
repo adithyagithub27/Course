@@ -30,7 +30,7 @@
 
 *Related lecture: 4.2 Code-along: `@observe` and observation types*
 
-- **A.** `get_client().update_current_trace(usage={"tokens": 1380})`
+- **A.** `propagate_attributes(metadata={"tokens": 1380})` around the call
   - *Explanation:* Incorrect. Usage belongs on the generation, not the trace, and a single token total loses the input/output/cached split that pricing needs.
 - **B.** `get_client().update_current_span(metadata={"tokens": 1380, "model": "gpt-4.1-mini"})`
   - *Explanation:* Incorrect. Metadata is free-form and not used for cost; Langfuse's usage and cost views read `usage_details` and `cost_details` on generations.
@@ -47,7 +47,7 @@
 
 *Related lecture: 4.3 Sessions, users, tenants and tags*
 
-- **A.** Department as a tag and metadata (`tenant`), employee as `user_id` (hashed), conversation as `session_id`, set via `update_current_trace(session_id=..., user_id=..., tags=[...], metadata={...})`.
+- **A.** Department as a tag and metadata (`tenant`), employee as `user_id` (hashed), conversation as `session_id`, set with the `propagate_attributes(session_id=..., user_id=..., tags=[...], metadata={...})` context manager around the request.
   - *Explanation:* Correct. Tags and metadata filter and group; `user_id` powers the Users view; `session_id` powers the Sessions view. Low-cardinality dimensions (tenant) go in tags, high-cardinality identity goes in the dedicated fields.
 - **B.** Department as `user_id`, employee as `session_id`.
   - *Explanation:* Incorrect. That misuses both fields: a department is not a user, and an employee is not a conversation; per-conversation grouping would be lost.

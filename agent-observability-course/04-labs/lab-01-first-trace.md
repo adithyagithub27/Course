@@ -121,7 +121,7 @@ make run
 Expected:
 
 ```text
-INFO:     Atlas starting (offline=True, exporter=console, tenants=logistics-ops,warehouse,hr,finance)
+INFO:     Atlas starting (offline=True, exporter=console, tenants=ops,finance,hr,eng)
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```
 
@@ -131,8 +131,8 @@ Terminal 2:
 curl -s http://localhost:8000/chat \
   -H 'Content-Type: application/json' \
   -H 'X-Tenant: hr' \
-  -H 'X-User-Id: NW-10433' \
-  -H 'X-Session-Id: lab1-session-1' \
+  -H 'X-User: NW-10433' \
+  -H 'X-Session: lab1-session-1' \
   -d '{"message": "How many days of parental leave do I get?"}' | python3 -m json.tool
 ```
 
@@ -150,7 +150,7 @@ Expected response (offline wording is deterministic; online wording varies):
 }
 ```
 
-Keep the `trace_id`; you will look it up next. The three headers matter: `X-Tenant` becomes a trace tag and a Prometheus label, `X-User-Id` becomes `user_id`, `X-Session-Id` groups turns into a session. Send a second message with the same `X-Session-Id` and notice `steps` and `usage` change.
+Keep the `trace_id`; you will look it up next. The three headers matter: `X-Tenant` becomes a trace tag and a Prometheus label, `X-User` becomes `user_id`, `X-Session` groups turns into a session. Send a second message with the same `X-Session` and notice `steps` and `usage` change.
 
 > **Checkpoint 4:** you received a JSON answer with a `trace_id`, `usage` and `cost_usd`.
 
@@ -189,8 +189,8 @@ Look at Terminal 1. With `OTEL_EXPORTER=console` every span is printed as JSON w
         "gen_ai.usage.input_tokens": 1184,
         "gen_ai.usage.output_tokens": 58,
         "gen_ai.usage.cache_read_input_tokens": 0,
-        "northwind.cost_usd": 0.000566,
-        "northwind.tenant": "hr"
+        "atlas.cost_usd": 0.000566,
+        "atlas.tenant": "hr"
     },
     ...
 }
@@ -215,12 +215,12 @@ OFFLINE=1 make replay
 Expected:
 
 ```text
-Replaying day 2026-09-21 seed=42 tenants=4 scenario=none
-  logistics-ops   612 requests   218 sessions   $ 9.84
-  warehouse       488 requests   171 sessions   $ 7.91
-  hr              734 requests   256 sessions   $11.02
-  finance         402 requests   139 sessions   $ 6.47
-Wrote 8,412 spans to .atlas/spans.sqlite in 3.9s   total $35.24   p95 2,140 ms
+Replay seed=7  requests=10184  sessions=4000  spans=70560  scores=11884  feedback=1291
+Total cost $56.70   p95 latency 3827 ms   elapsed 19.5s
+Cost by tenant: eng=$12.60, finance=$12.00, hr=$11.67, ops=$20.43
+Outcomes: escalated=43, guardrail=72, resolved=10069
+Scenarios: none=10184
+Store: .atlas/spans.sqlite  (total spans now 70560)
 ```
 
 Then open the Ops Console:
@@ -264,7 +264,7 @@ Reference answers for the offline replay with seed 42 are in the solution notes 
 
 ## Stretch goal
 
-Send the same question three times with the same `X-Session-Id`, then once with a new session id. In Langfuse (**Sessions** view) or the Ops Console (**Sessions** tab), confirm the first three turns are grouped and the fourth is not. Then look at the `gen_ai.usage.input_tokens` of the three grouped turns: they grow, because Atlas re-sends the history each turn. Write down the three numbers; you will come back to them in lecture 6.5 (the context diet).
+Send the same question three times with the same `X-Session`, then once with a new session id. In Langfuse (**Sessions** view) or the Ops Console (**Sessions** tab), confirm the first three turns are grouped and the fourth is not. Then look at the `gen_ai.usage.input_tokens` of the three grouped turns: they grow, because Atlas re-sends the history each turn. Write down the three numbers; you will come back to them in lecture 6.5 (the context diet).
 
 Online only: send the same request five times in one minute and look at `gen_ai.usage.cache_read_input_tokens` on the later generations. If it is greater than zero, you have just seen prompt caching (lecture 6.4) without doing anything.
 
@@ -278,10 +278,10 @@ Online only: send the same request five times in one minute and look at `gen_ai.
 | `uv sync` fails on `arize-phoenix` or `streamlit` | Optional extra failing to build on your platform | `uv sync --extra dev` for now; the dashboards extra is only needed from Step 6 |
 | `make test` shows `ModuleNotFoundError: northwind` | Ran pytest outside `uv run`, or `pythonpath` missing | Use `make test` or `uv run pytest`; check `[tool.pytest.ini_options] pythonpath = [".", "src"]` |
 | `openai_enabled=False` although the key is set | `OFFLINE=1` still set, or key has whitespace | Set `OFFLINE=0`; re-paste the key without spaces |
-| `curl` returns `{"detail":"X-Tenant header required"}` | Missing header | Add `-H 'X-Tenant: hr'` (one of `logistics-ops`, `warehouse`, `hr`, `finance`) |
+| `curl` returns `{"detail":"X-Tenant header required"}` | Missing header | Add `-H 'X-Tenant: hr'` (one of `ops`, `finance`, `hr`, `eng`; `logistics-ops`, `warehouse` and `operations` are accepted aliases for `ops`) |
 | `401 Unauthorized` from Langfuse in the server log | Public/secret keys swapped or from another project | Re-copy both keys; `LANGFUSE_BASE_URL` must match the region you signed up in |
 | No trace in Langfuse after a successful request | Spans still buffered in the batch processor | Wait 5 seconds, refresh; the server flushes on shutdown (Ctrl+C) |
-| Trace appears but the generation has no cost | Model name unknown to Langfuse's price table | Cost is still on the span as `northwind.cost_usd`; Langfuse cost shows once the model is in its table (Section 6 covers overrides) |
+| Trace appears but the generation has no cost | Model name unknown to Langfuse's price table | Cost is still on the span as `atlas.cost_usd`; Langfuse cost shows once the model is in its table (Section 6 covers overrides) |
 | `make replay` says `database is locked` | Server still running and holding the SQLite store | Stop `make run` before replaying, or set `ATLAS_LOCAL_STORE=.atlas/replay.sqlite` for the replay |
 | Streamlit opens but shows "no spans" | Console pointed at a different store path | Check `ATLAS_LOCAL_STORE` is the same in both commands |
 

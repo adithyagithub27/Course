@@ -86,7 +86,7 @@
 - **B.** Because traces cannot store booleans.
   - *Explanation:* Incorrect. Traces store the per-request fact (the guardrail observation and its boolean score from Challenge 4.7).
 - **C.** Because safety questions are about *rates over time* ("did injection attempts triple this week?", "is PII leaking after the release?"), which are cheap to answer from low-cardinality counters in Prometheus and expensive to answer by scanning every trace; the trace still holds the evidence for any individual case.
-  - *Explanation:* Correct. Counters like `atlas_guardrail_blocks_total{tenant,kind}` and `atlas_pii_in_output_total{tenant}` give alertable trends; the trace gives the example when the alert fires.
+  - *Explanation:* Correct. Counters like `atlas_guardrail_events_total{tenant,kind}` and `atlas_pii_in_output_total{tenant}` give alertable trends; the trace gives the example when the alert fires.
 - **D.** Because Langfuse deletes guardrail observations after a day.
   - *Explanation:* Incorrect. Retention is configurable and not the reason.
 

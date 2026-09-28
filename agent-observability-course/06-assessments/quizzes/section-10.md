@@ -60,7 +60,7 @@
 
 ---
 
-### Q4. Northwind wants dev, staging and production telemetry kept apart, and HR data kept from being visible to the warehouse team's analysts. Which arrangement follows lecture 10.3?
+### Q4. Northwind wants dev, staging and production telemetry kept apart, and HR data kept from being visible to the engineering team's analysts. Which arrangement follows lecture 10.3?
 
 *Related lecture: 10.3 Retention, access and tenant separation*
 

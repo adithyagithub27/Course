@@ -36,28 +36,28 @@ curl -s http://localhost:8000/metrics | grep -E '^atlas_' | head -30
 Expected (after at least one request; send a curl from Lab 1 if the list is empty):
 
 ```text
-atlas_requests_total{tenant="hr",outcome="resolved"} 1.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="0.5"} 0.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="1.0"} 1.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="2.0"} 1.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="4.0"} 1.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="8.0"} 1.0
-atlas_request_duration_seconds_bucket{tenant="hr",le="+Inf"} 1.0
-atlas_request_duration_seconds_count{tenant="hr"} 1.0
-atlas_request_duration_seconds_sum{tenant="hr"} 0.812
+atlas_requests_total{tenant="hr",model="gpt-4.1-mini",outcome="resolved"} 1.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="0.5"} 0.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="1.0"} 1.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="2.0"} 1.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="4.0"} 1.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="8.0"} 1.0
+atlas_request_latency_seconds_bucket{tenant="hr",le="+Inf"} 1.0
+atlas_request_latency_seconds_count{tenant="hr"} 1.0
+atlas_request_latency_seconds_sum{tenant="hr"} 0.812
 atlas_tokens_total{tenant="hr",model="gpt-4.1-mini",kind="input"} 1184.0
 atlas_tokens_total{tenant="hr",model="gpt-4.1-mini",kind="output"} 58.0
-atlas_cost_usd_total{tenant="hr",model="gpt-4.1-mini"} 0.000566
-atlas_tool_calls_total{tool="search_knowledge_base",status="ok"} 1.0
-atlas_tool_errors_total{tool="lookup_ticket"} 0.0
+atlas_cost_usd_total{tenant="hr",model="gpt-4.1-mini",feature="policy_question"} 0.000566
+atlas_tool_calls_total{tool="search_knowledge_base",outcome="ok"} 1.0
+atlas_tool_calls_total{tool="lookup_ticket",outcome="error"} 0.0
 atlas_budget_decisions_total{tenant="hr",decision="allow"} 1.0
-atlas_budget_anomalies_total{tenant="hr"} 0.0
-atlas_fallbacks_total{from_model="gpt-4.1-mini",to_model="gpt-4.1-nano"} 0.0
+atlas_budget_spent_usd{tenant="hr"} 0.000566
+atlas_model_fallbacks_total{from_model="gpt-4.1-mini",to_model="gpt-4.1-nano"} 0.0
 ```
 
 Look at the label sets. `tenant` has 4 values, `model` 3 to 4, `tool` 5, `outcome` 3, `decision` 3. There is **no** `user_id`, `session_id` or `trace_id` label anywhere. That is the cardinality rule from lecture 5.5: each unique label combination is a separate time series in Prometheus memory, and a user id label on a histogram with 7 buckets across 4 tenants and 2,000 employees would be 56,000 series for one metric.
 
-Questions for your notes: how many time series does `atlas_request_duration_seconds` produce at most? (Answer in the solution notes.)
+Questions for your notes: how many time series does `atlas_request_latency_seconds` produce at most? (Answer in the solution notes.)
 
 > **Checkpoint 1:** you can read a counter, a histogram bucket and explain why no per-user labels exist.
 
@@ -81,7 +81,7 @@ atlas-grafana        grafana/grafana                   Up 10 seconds  0.0.0.0:30
 
 `deploy/prometheus/prometheus.yml` scrapes `host.docker.internal:8000/metrics` every 15 s (on Linux the compose file adds `extra_hosts: host.docker.internal:host-gateway`). Check the target is up: open `http://localhost:9090/targets`; `atlas` should be `UP`.
 
-If it says `DOWN` with a connection refused, Atlas is not running or is bound to `127.0.0.1` only; start it with `make run HOST=0.0.0.0`.
+If it says `DOWN` with a connection refused, Atlas is not running or is bound to `127.0.0.1` only; start it with `make run` (uvicorn binds 0.0.0.0).
 
 > **Checkpoint 2:** Prometheus target `atlas` is UP.
 
@@ -102,7 +102,7 @@ sum(rate(atlas_requests_total[1m])) by (tenant)
 ```
 
 ```promql
-histogram_quantile(0.95, sum(rate(atlas_request_duration_seconds_bucket[5m])) by (le))
+histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le))
 ```
 
 ```promql
@@ -110,7 +110,7 @@ sum(increase(atlas_cost_usd_total[1h])) by (tenant)
 ```
 
 ```promql
-sum(rate(atlas_tool_errors_total[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)
+sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)
 ```
 
 Expected after two minutes of swarm: requests ≈ 0.5/s per tenant, p95 ≈ 2.1 s, cost accumulating, tool error ratio ≈ 0.01 to 0.02 for `lookup_ticket` (the mock has a 1.5% base error rate) and 0 for the rest.
@@ -131,12 +131,12 @@ Panels, one per SLI from lecture 9.1:
 |---|---|---|
 | Requests / s by tenant | `sum(rate(atlas_requests_total[1m])) by (tenant)` | traffic |
 | Task success rate | `sum(rate(atlas_requests_total{outcome="resolved"}[5m])) / sum(rate(atlas_requests_total[5m]))` | task success |
-| p95 latency | `histogram_quantile(0.95, sum(rate(atlas_request_duration_seconds_bucket[5m])) by (le))` with a 4 s threshold line | latency |
+| p95 latency | `histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le))` with a 4 s threshold line | latency |
 | Tool error rate | errors / calls by tool | tool reliability |
 | Cost per hour by tenant | `sum(increase(atlas_cost_usd_total[1h])) by (tenant)` | cost |
-| Cost per resolved session | `sum(increase(atlas_cost_usd_total[1h])) / sum(increase(atlas_sessions_resolved_total[1h]))` | the number leadership asks for |
+| Cost per resolved session | `sum(increase(atlas_cost_usd_total[1h])) / sum(increase(atlas_requests_total{outcome="resolved"}[1h]))` (per resolved request; per resolved *session* comes from the span store) | the number leadership asks for |
 | Budget decisions | `sum(increase(atlas_budget_decisions_total[1h])) by (decision)` | budget health |
-| Fallbacks and circuit state | `atlas_fallbacks_total`, `atlas_circuit_open` | reliability |
+| Fallbacks and circuit state | `atlas_model_fallbacks_total`, `atlas_llm_retries_total` | reliability |
 
 Use the **tenant** variable at the top to filter to `finance`. Add an annotation: **Dashboard settings → Annotations → New**, query `changes(atlas_build_info[1m]) > 0`, so a redeploy (which changes the `release` label on `atlas_build_info`) draws a vertical line. That is how you will see "the regression started at the release" in Section 11.
 
@@ -152,10 +152,10 @@ Open `deploy/prometheus/alerts.yml`. It has one example rule (cost anomaly). Add
 groups:
   - name: atlas
     rules:
-      - alert: AtlasToolErrorSpike
+      - alert: AtlasToolErrorRate
         expr: |
           (
-            sum(rate(atlas_tool_errors_total[5m])) by (tool)
+            sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool)
             /
             sum(rate(atlas_tool_calls_total[5m])) by (tool)
           ) > 0.10
@@ -183,7 +183,7 @@ Reload Prometheus:
 curl -X POST http://localhost:9090/-/reload
 ```
 
-Open `http://localhost:9090/alerts`. `AtlasToolErrorSpike` should show as **Inactive** (green).
+Open `http://localhost:9090/alerts`. `AtlasToolErrorRate` should show as **Inactive** (green).
 
 > **Checkpoint 5:** the rule is loaded and inactive.
 
@@ -213,7 +213,7 @@ In Grafana, **Alerting → Alert rules** shows the same rule (Grafana reads Prom
 
 Then stop the scenario (`Ctrl+C`, restart with `OFFLINE=1 make run`, run the swarm again) and watch the alert resolve after the error rate falls under 0.10 for the `for` window.
 
-> **Checkpoint 6:** screenshot of `AtlasToolErrorSpike` in FIRING with the `lookup_ticket` label, and evidence it resolved.
+> **Checkpoint 6:** screenshot of `AtlasToolErrorRate` in FIRING with the `lookup_ticket` label, and evidence it resolved.
 
 ---
 
@@ -222,7 +222,7 @@ Then stop the scenario (`Ctrl+C`, restart with `OFFLINE=1 make run`, run the swa
 Create `10-resources/runbooks/tool-error-spike.md` from `10-resources/runbook-template.md`. Minimum content:
 
 ```markdown
-# Runbook: AtlasToolErrorSpike
+# Runbook: AtlasToolErrorRate
 
 **Alert:** tool error ratio > 10% for 2 minutes on one tool.
 **Impact:** users get "I couldn't look that up" answers; retries multiply cost (see Incident 1).
@@ -253,7 +253,7 @@ Link it from the alert's `runbook_url`.
 ## Stretch goal
 
 1. Add a **multi-window burn-rate alert** for the task-success SLO (99% resolved): fire when the 1 h burn rate > 14.4 **and** the 5 m burn rate > 14.4 (fast burn), and a second rule for 6 h / 30 m > 6 (slow burn). `src/northwind/slo.py::burn_rate` has the maths; lecture 9.1 has the reasoning.
-2. Add a cost anomaly alert from `atlas_budget_anomalies_total` (increase > 0 in 10 m) and make it fire with `ATLAS_SCENARIO=context_bloat`.
+2. Load the `AtlasTenantCostAnomaly` rule from `deploy/alerts.yml` (hourly `increase(atlas_cost_usd_total[1h])` per tenant against the daily average) and make it fire with `make run PROM=1 SCENARIO=context_bloat` in one terminal and `make swarm RPS=5 DURATION=1200 SCENARIO=context_bloat` in another.
 3. Route alerts to a webhook with Alertmanager (`deploy/alertmanager.yml`) and confirm the JSON payload includes the runbook URL.
 
 ---
@@ -262,7 +262,7 @@ Link it from the alert's `runbook_url`.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Prometheus target DOWN, "connection refused" | Atlas bound to 127.0.0.1 or not running | `make run HOST=0.0.0.0`; on Linux confirm `extra_hosts` is in the compose file |
+| Prometheus target DOWN, "connection refused" | Atlas bound to 127.0.0.1 or not running | `make run` (uvicorn binds 0.0.0.0); on Linux confirm `extra_hosts` is in the compose file |
 | Target UP but `atlas_*` metrics missing | No requests yet | Counters appear after the first observation; run the swarm |
 | `histogram_quantile` returns NaN | No samples in the window | Wait for the swarm; check the `[5m]` window has data |
 | Grafana shows "No data" but Prometheus has data | Datasource URL wrong inside Docker | Datasource must be `http://atlas-prometheus:9090`, not `localhost` |
@@ -277,9 +277,9 @@ Link it from the alert's `runbook_url`.
 
 Reference files: `03-code/deploy/docker-compose.observability.yml`, `03-code/deploy/prometheus/prometheus.yml`, `03-code/deploy/prometheus/alerts.yml`, `03-code/deploy/grafana/dashboards/atlas-ops.json`, `03-code/telemetry/metrics.py`.
 
-Answer to the cardinality question: `atlas_request_duration_seconds` has one `tenant` label with 4 values and 7 buckets (6 boundaries plus `+Inf`), plus `_count` and `_sum`, so at most 4 × (7 + 2) = **36 series**. Add a `user_id` label for 2,000 employees and it becomes 72,000. Add `session_id` and it is unbounded. Identity belongs in spans (Langfuse `user_id`, `session_id`), never in metric labels.
+Answer to the cardinality question: `atlas_request_latency_seconds` has one `tenant` label with 4 values and 7 buckets (6 boundaries plus `+Inf`), plus `_count` and `_sum`, so at most 4 × (7 + 2) = **36 series**. Add a `user_id` label for 2,000 employees and it becomes 72,000. Add `session_id` and it is unbounded. Identity belongs in spans (Langfuse `user_id`, `session_id`), never in metric labels.
 
-A good alert rule in this lab has all four properties: a ratio, a minimum-traffic guard, a `for` duration, and a runbook URL. Missing any one loses points in the peer review. The most common weak submission alerts on `rate(atlas_tool_errors_total[5m]) > 0.5` (a count that means different things at different traffic levels and has no guard).
+A good alert rule in this lab has all four properties: a ratio, a minimum-traffic guard, a `for` duration, and a runbook URL. Missing any one loses points in the peer review. The most common weak submission alerts on `rate(atlas_tool_calls_total{outcome="error"}[5m]) > 0.5` (a count that means different things at different traffic levels and has no guard).
 
 Key takeaways:
 

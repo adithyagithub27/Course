@@ -12,17 +12,20 @@
 
 ## Scenario
 
-It is Thursday 2026-09-24, 16:10. You are on call for Atlas. This page arrives:
+It is Monday 2026-09-14. You are on call for Atlas. Two pages arrive in one day:
 
-> **[PAGE] AtlasCostAnomaly** tenant=warehouse. Hourly spend 3.4× EWMA baseline for 3 consecutive hours. Daily spend projected $61 against a $40 hard cap. Runbook: cost-anomaly.
+> **10:35 [PAGE] AtlasToolErrorRate** tool=`lookup_ticket`. Tool error rate above 5% for 10 minutes. Runbook: tool-errors.
 
-Ten minutes later, a Slack message from the warehouse operations lead:
+> **15:20 [PAGE] AtlasLatencyP95High**. Atlas p95 latency above 4 s for 10 minutes. Runbook: latency.
 
-> "Not sure if related but Atlas is answering shipment questions fine, people are happy with it, it just feels a bit slower since this morning. We rolled out the new shipment-tracking FAQ to the floor team yesterday, so more people are using it."
+What on-call sees on the Grafana dashboard and in the Ops Console:
 
-And from the Grafana dashboard, at a glance: total requests flat week on week; task success rate 94% (normal); p95 latency 2.9 s (up from 2.2 s, under the 4 s budget); tool error rate normal; judge scores normal; **cost per resolved session for `warehouse` up 60% since 09:00**; the other three tenants flat.
+- `atlas_tool_calls_total{tool="lookup_ticket",outcome="error"}` spikes between 10:00 and 12:00; every tenant that looks up tickets is affected.
+- Several sessions in that window have many `step` spans and `atlas.steps` at or near the limit (`ATLAS_MAX_STEPS`, 6).
+- Between 15:00 and 16:00, p95 latency is roughly double the morning; cost per request is up a little; tool errors are normal again.
+- Nobody deployed anything.
 
-Nothing is red except money. You have the day's spans. Find the root cause, propose the fix, and write the postmortem.
+The team lead wants **one postmortem covering both pages**, and wants to know whether they are related. You have the day's spans and scores. Find the root cause of each page, decide whether they share one, propose the fixes, and write the postmortem.
 
 Unlike Incidents 1 to 3, there is **no reveal lecture** for this one. The instructor's solution is only visible after you submit.
 
@@ -32,21 +35,28 @@ Unlike Incidents 1 to 3, there is **no reveal lecture** for this one. The instru
 
 ```text
 03-code/incidents/incident-04-project/
-├── brief.md            # the page, the Slack message and the dashboard glance above
-├── spans.jsonl         # 2026-09-24 00:00 to 18:00, all four tenants, ~31,000 spans
-├── metrics.csv         # per-hour Prometheus-style aggregates (requests, cost, p95, tool calls) per tenant
-├── releases.txt        # release tags and prompt label changes with timestamps
-└── kb-changelog.md     # knowledge base edits in the last 7 days
+├── brief.md            # the two pages and the dashboard glance above
+├── spans.jsonl         # Monday 2026-09-14, 00:00 to 24:00, all four tenants (ops, finance, hr, eng)
+└── scores.jsonl        # judge scores (sampled) and user feedback for the same traces
 ```
 
-Load it into the local store and the Ops Console:
+(`solution.md` exists in the instructor repo only; `make student-repo` strips it.)
+
+Load it into the text Ops Console, or into a store you can query:
 
 ```bash
-uv run python -m telemetry.local_store import incidents/incident-04-project/spans.jsonl --label incident-04
-make console        # select label incident-04
+cd 03-code
+make incident N=4        # temporary store + text console: hourly cost, p95, tool errors and the alerts that would fire
 ```
 
-Or query the JSONL directly with `jq`, `duckdb`, pandas or SQL through `telemetry.local_store query`. All of it is offline.
+```python
+from telemetry.local_store import LocalSpanStore
+d = "incidents/incident-04-project/"
+store = LocalSpanStore.from_jsonl(d + "spans.jsonl", d + "scores.jsonl")
+store.count(), store.tool_stats(), store.time_range()
+```
+
+`LocalSpanStore` is SQLite underneath (`spans` and `scores` tables, one row per span with `tenant`, `session_id`, `model`, `tool`, `intent`, `outcome`, token counts, `cost_usd`, `duration_ms` and the full `attributes` JSON), so `sqlite3`, pandas or DuckDB work too. All of it is offline.
 
 ---
 
@@ -56,15 +66,15 @@ Follow the method from lecture 11.1: **timeline, blast radius, hypotheses, evide
 
 | ID | Requirement |
 |---|---|
-| R1 | **Timeline** with timestamps from the data: when cost per resolved session started rising, when the alert fired, when (if) it plateaued, and every release or KB change in the window. |
+| R1 | **Timeline** with timestamps from the data for both pages: when `lookup_ticket` errors started and stopped, when each alert fired, when p95 started climbing and when it recovered, and any change you can find (there is no deploy). |
 | R2 | **Blast radius**: which tenants, which features (intents), which users as a *count* (never ids), what share of the day's spend. |
 | R3 | **At least three hypotheses**, each with the query that would confirm or refute it, and the result. Hypotheses that were refuted stay in the document; that is what makes the next investigator faster. |
 | R4 | **Root cause** stated in one sentence and supported by at least two independent pieces of evidence from spans (for example: a per-step token attribute and a tool-result size distribution). |
 | R5 | **Contributing factors**: what allowed the root cause to become an incident (a missing budget, a missing test, a missing attribute). |
-| R6 | **Why nothing was red**: explain, per dashboard panel, why task success, latency, tool errors and judge scores stayed normal while cost rose 60%. |
-| R7 | **Immediate fix** you would apply at 16:30 and **the evidence you would watch** to confirm it worked, with an expected value. |
+| R6 | **Are the two pages one incident?** Decide, with evidence, whether the 10:35 page and the 15:20 page share a cause. Explain, per dashboard panel, why the morning shows tool errors but only a modest latency change and why the afternoon shows latency but no tool errors. |
+| R7 | **Immediate fix** for each page (at 10:45 and at 15:30) and **the evidence you would watch** to confirm it worked, with an expected value. |
 | R8 | **Prevention**: at least three action items that map to course tools (an instrumentation change, a budget or alert change, a CI gate or test), each with an owner role and a check that it was done. |
-| R9 | **Cost of the incident**: dollars above baseline for the day, and the projected monthly cost if it had gone unnoticed. |
+| R9 | **Cost of the incident**: dollars above baseline for each window (the morning's re-billed tool retries; the afternoon's slower, longer generations), and what one such day a week would cost in a month. |
 | R10 | Blameless: no person or team is named as the cause; systems and decisions are. |
 
 ---
@@ -79,82 +89,97 @@ Copy this into `projects/p2/INVESTIGATION.md` and fill it in as you go. Reviewer
 ## 1. Timeline (from data, not from memory)
 | Time | Source | Event |
 |---|---|---|
-| | metrics.csv | first hour where warehouse cost/resolved session > 1.3× 08:00 value |
-| | releases.txt | |
-| | kb-changelog.md | |
-| | alert | AtlasCostAnomaly fired |
+| | spans.jsonl | first hour where `lookup_ticket` error share > 5% |
+| | alert | AtlasToolErrorRate fired (10:35) |
+| | spans.jsonl | `lookup_ticket` error share back to baseline |
+| | spans.jsonl | first hour where p95 > 4 s |
+| | alert | AtlasLatencyP95High fired (15:20) |
+| | spans.jsonl | p95 back under 4 s |
 
 ## 2. Blast radius
-- Tenants affected:               Share of daily spend:
-- Features/intents affected:      Requests affected (count):
-- Distinct users affected (count only):
+- Tenants affected (per page):      Share of daily spend:
+- Intents affected (per page):      Requests affected (count):
+- Distinct users and sessions affected (count only):
 - Did quality or latency budgets breach? (yes/no, numbers)
 
 ## 3. Hypotheses
 | # | Hypothesis | Query / evidence I will look at | Result | Verdict |
 |---|---|---|---|---|
-| H1 | More traffic (the FAQ rollout) | requests per hour, warehouse vs others | | |
-| H2 | Retry storm / tool errors | tool error rate, retries per request | | |
-| H3 | Context bloat (history or tool results) | `northwind.context_tokens` per step; tool result size distribution | | |
+| H1 | More traffic | requests per hour, per tenant | | |
+| H2 | Tool retry storm | `execute_tool lookup_ticket` spans per trace, `error.type`, `atlas.steps` on the agent span | | |
+| H3 | Context bloat (history or tool results) | `atlas.context_tokens` per step; `gen_ai.usage.input_tokens` per generation | | |
 | H4 | Model mix changed (escalation / routing) | generations by `gen_ai.request.model` per hour | | |
-| H5 | Prompt or KB change | `northwind.prompt_version`, releases.txt, kb-changelog.md | | |
-| H6 | (your own) | | | |
+| H5 | Provider slowdown | `gen_ai.response.time_to_first_chunk` / `atlas.ttft_ms` per hour, output tokens per second | | |
+| H6 | The two pages share one cause | do the afternoon's slow traces call `lookup_ticket`? is the morning's TTFT normal? | | |
+| H7 | (your own) | | | |
 
-## 4. Root cause (one sentence)
+## 4. Root cause (one sentence per page, and whether they are related)
 
-## 5. Evidence (at least two independent)
+## 5. Evidence (at least two independent, per page)
 1.
 2.
 
-## 6. Why nothing was red
-| Panel | Why it stayed normal |
-|---|---|
-| Task success | |
-| p95 latency | |
-| Tool error rate | |
-| Judge scores | |
+## 6. Why each panel looked the way it did
+| Panel | 10:00-12:00 | 15:00-16:00 |
+|---|---|---|
+| Tool error rate | | |
+| p95 latency | | |
+| Cost per request | | |
+| Judge scores | | |
 
-## 7. Immediate fix and the number I will watch
+## 7. Immediate fixes and the numbers I will watch
 
 ## 8. Cost of the incident
-- Above-baseline spend on 2026-09-24:
-- Projected monthly if unnoticed:
+- Above-baseline spend 10:00-12:00:
+- Above-baseline spend 15:00-16:00:
+- One such day a week, per month:
 ```
 
-Suggested queries (adapt to your tooling):
+Suggested queries (Python against the store; adapt to pandas or SQL if you prefer):
 
-```sql
--- per-hour cost and cost per resolved session for one tenant
-SELECT hour, tenant, sum(cost_usd) cost, sum(cost_usd)/sum(resolved) cost_per_resolved
-FROM request_view WHERE tenant='warehouse' GROUP BY hour, tenant;
+```python
+from collections import Counter, defaultdict
+from datetime import UTC, datetime
+from northwind.latency import percentile
 
--- model mix per hour
-SELECT hour, json_extract(attributes,'$."gen_ai.request.model"') model, count(*)
-FROM spans WHERE name LIKE 'openai.chat%' AND tenant='warehouse' GROUP BY hour, model;
+hour = lambda s: datetime.fromtimestamp(s.start_time, tz=UTC).hour
 
--- tool result size distribution by tool, before vs after 09:00
-SELECT json_extract(attributes,'$."gen_ai.tool.name"') tool,
-       CASE WHEN start_time < '2026-09-24T09:00' THEN 'before' ELSE 'after' END period,
-       avg(length(json_extract(attributes,'$."gen_ai.tool.call.result"'))) avg_chars,
-       max(length(json_extract(attributes,'$."gen_ai.tool.call.result"'))) max_chars
-FROM spans WHERE name LIKE 'execute_tool%' AND tenant='warehouse' GROUP BY tool, period;
+# tool calls and errors per hour and tool
+calls, errors = Counter(), Counter()
+for s in store.spans(kind="tool"):
+    key = (hour(s), s.attr("gen_ai.tool.name"))
+    calls[key] += 1
+    if s.status == "ERROR":
+        errors[key] += 1
 
--- context tokens per step
-SELECT json_extract(attributes,'$."northwind.step"') step,
-       avg(json_extract(attributes,'$."northwind.context_tokens"')) ctx
-FROM spans WHERE name LIKE 'atlas.step%' AND tenant='warehouse' AND start_time >= '2026-09-24T09:00'
-GROUP BY step;
+# lookup_ticket calls per trace, and steps per request, in the morning window
+per_trace = Counter(s.trace_id for s in store.spans(kind="tool") if s.attr("gen_ai.tool.name") == "lookup_ticket")
+steps = {a.trace_id: a.attr("atlas.steps") for a in store.spans(kind="agent")}
+
+# p95 end-to-end latency and TTFT per hour
+lat, ttft = defaultdict(list), defaultdict(list)
+for a in store.spans(kind="agent"):
+    lat[hour(a)].append(a.duration_ms)
+for g in store.spans(kind="generation"):
+    if g.attr("atlas.ttft_ms") is not None:
+        ttft[hour(g)].append(g.attr("atlas.ttft_ms"))
+p95_by_hour = {h: percentile(v, 95) for h, v in sorted(lat.items())}
+
+# judge scores by hour
+by_hour = defaultdict(list)
+for sc in store.scores(name="judge_overall"):
+    by_hour[datetime.fromtimestamp(sc.timestamp, tz=UTC).hour].append(sc.value)
 ```
 
 ---
 
 ## Acceptance criteria
 
-1. The timeline has at least five timestamped rows sourced from the dataset, including the alert and every release/KB change in the window.
+1. The timeline has at least six timestamped rows sourced from the dataset, including both alerts and the start and end of each window.
 2. Blast radius names the tenant(s), the feature(s), a request count and a user count, and states whether any latency or quality budget breached.
 3. At least three hypotheses are documented with their query and a verdict; at least one is refuted with evidence.
 4. The root cause is one sentence, and two independent span-level facts support it.
-5. The "why nothing was red" table has an entry for all four panels, each consistent with the data.
+5. The "why each panel looked the way it did" table has an entry for all four panels in both windows, and the document states whether the two pages are related, consistent with the data.
 6. The immediate fix names a concrete setting or code change and the metric plus expected value that confirms it.
 7. Three prevention items map to course tools (instrumentation, budget/alert, test/gate), each with an owner role and a verification.
 8. The incident cost and the projected monthly cost are computed from the data.
@@ -179,8 +204,8 @@ GROUP BY step;
 | Criterion | Excellent | Good | Needs work |
 |---|---|---|---|
 | **Method** (20) | 18-20: Timeline from data, blast radius quantified, hypotheses with queries and verdicts including a refuted one | 12-17: Method followed but a hypothesis lacks its query or the timeline has guessed times | 0-11: Jumped to a conclusion; no worksheet |
-| **Root cause and evidence** (25) | 23-25: Correct root cause in one sentence with two independent span-level proofs | 15-22: Correct cause but evidence is aggregate only (metrics.csv) or single-source | 0-14: Wrong cause, or a symptom presented as the cause |
-| **Why nothing was red** (10) | 9-10: All four panels explained correctly with numbers | 6-8: Three of four | 0-5: Missing or hand-waved |
+| **Root cause and evidence** (25) | 23-25: Correct root cause for each page in one sentence, the relation between the pages decided, with two independent span-level proofs each | 15-22: Correct causes but evidence is aggregate only (console output) or single-source | 0-14: Wrong cause, the two pages treated as one without evidence, or a symptom presented as the cause |
+| **Panels and the relation between the pages** (10) | 9-10: All four panels explained for both windows with numbers | 6-8: Three of four | 0-5: Missing or hand-waved |
 | **Fix and verification** (15) | 14-15: Concrete change, the metric to watch, expected value, and a rollback condition | 9-13: Concrete change, vague verification | 0-8: "Optimise the prompt" |
 | **Prevention** (15) | 14-15: Three items mapped to instrumentation, budget/alert and test/gate, each with owner role and check | 9-13: Three items but not mapped or unverifiable | 0-8: Fewer than three or generic |
 | **Cost of incident** (5) | 5: Daily excess and monthly projection computed | 3-4: One of the two | 0-2: Missing |
@@ -192,13 +217,13 @@ GROUP BY step;
 
 ## Hints
 
-1. Read `metrics.csv` first and find the hour the slope changes. Then and only then open the spans for that hour and the hour before. Comparing "before" and "after" is the whole game.
-2. A cost rise with flat request counts means cost **per request** rose. Cost per request is tokens × price, so either tokens per request rose or the price per token rose (model mix). Check both; they are not mutually exclusive.
-3. Tokens per request rise for three reasons in this course: more steps, longer history, or bigger tool results. Step spans (`northwind.context_tokens`) and tool spans (result length) separate them.
-4. Anything that changed yesterday is a suspect, but correlation is not cause. The Slack message contains two suspects; test both.
-5. The "why nothing was red" section is not filler. If p95 rose only 0.7 s while cost rose 60%, that tells you something about *where* the tokens were (input tokens are cheap in latency and expensive in dollars).
-6. Prevention items must be checkable. "Add a test" is not checkable; "add `test_tool_result_under_budget` in `tests/integration/test_spans.py` asserting every tool result attribute is under `tool_result_token_budget`, owner: agent team, verified by CI" is.
-7. For the cost of the incident: baseline is the same tenant's mean cost per resolved session over the previous week (there is a `baseline.csv` inside `metrics.csv`'s header comment), times resolved sessions on the day.
+1. Run `make incident N=4` first: the text console prints hourly cost, p95 and tool errors and the alerts that would fire. Find the two windows. Then and only then open the spans for each window and the hour before it. Comparing "before" and "after" is the whole game.
+2. A tool error rate spike with flat request counts means something per request changed. Count `execute_tool lookup_ticket` spans per trace and read `error.type` and `gen_ai.tool.call.result` on the failed ones; then read `atlas.steps` on the agent span. What does Atlas do after a tool error, and what stops it (`ATLAS_MAX_TOOL_RETRIES`, lecture 5.6)?
+3. A p95 rise with normal tool errors and only a slightly higher cost per request points at the model calls: compare `gen_ai.response.time_to_first_chunk` / `atlas.ttft_ms` and output tokens per second before and after 15:00, for the same model and similar token counts. Slower is not more tokens.
+4. "Related" is a hypothesis, not a fact. Two pages on one day feel like one incident; test it with the data: do the afternoon's slow traces involve `lookup_ticket`? Is the morning's TTFT normal?
+5. Prevention items must be checkable. "Add a test" is not checkable; "set `ATLAS_MAX_TOOL_RETRIES=2` and add `test_tool_retries_are_bounded` in `tests/unit/test_agent.py` asserting at most three `execute_tool` spans for the `ticket_flaky` scenario, owner: agent team, verified by CI" is.
+6. For the cost of the incident: baseline is the same tenant and intent outside the window. A tool retry re-bills the whole prompt, so count the extra generations and their `gen_ai.usage.input_tokens`; for the afternoon, compare `atlas.cost_usd` per request with the morning's for the same intents.
+7. Blameless: "the model kept retrying" is a system behaviour with a missing bound, not a character flaw.
 
 ---
 
@@ -208,20 +233,20 @@ Submit through the **Project 2: Incident 4 postmortem** assignment in lecture 11
 
 **Assignment questions:**
 
-1. Paste the link to your postmortem and worksheet. State the root cause in one sentence and the two pieces of span-level evidence that support it.
-2. Which hypothesis did you refute, and what query refuted it? Why did every dashboard panel except cost stay normal?
-3. Paste your three prevention action items with owner role and verification. Which one would have caught this incident earliest, and how many dollars would it have saved on the day?
+1. Paste the link to your postmortem and worksheet. State the root cause of each page in one sentence, say whether they are related, and give the span-level evidence that supports each.
+2. Which hypothesis did you refute, and what query refuted it? Why did the afternoon page show no tool errors, and why did the morning page barely move p95?
+3. Paste your three prevention action items with owner role and verification. Which one would have caught the morning page earliest, and how many dollars would it have saved on the day?
 
 ---
 
 ## Peer-review checklist
 
-- [ ] Timeline rows carry timestamps from the dataset, including the alert and the changes in `releases.txt` / `kb-changelog.md`.
+- [ ] Timeline rows carry timestamps from the dataset, including both alerts and the start and end of each window.
 - [ ] Blast radius includes a request count and a user count, never user ids.
 - [ ] At least one hypothesis is refuted with a query result.
-- [ ] Root cause is one sentence and is a cause, not a symptom ("cost went up" is a symptom).
+- [ ] Each page has a one-sentence root cause that is a cause, not a symptom ("tool errors went up" is a symptom), and the relation between the pages is decided with evidence.
 - [ ] Two independent span-level facts support the root cause.
-- [ ] "Why nothing was red" covers task success, latency, tool errors and judge scores.
+- [ ] The panel table covers tool errors, latency, cost per request and judge scores for both windows.
 - [ ] The immediate fix names a setting or code path and the metric that confirms it.
 - [ ] Prevention items map to instrumentation, budget/alert and test/gate, with owner role and check.
 - [ ] Incident cost and monthly projection are computed.

@@ -220,7 +220,7 @@ Step four, escalation. When the trigger fires, emit an `escalated` event with fr
 
 And `_call_model` now takes the model as an argument. The generation's model field is whatever answered, so the two generations in a conversation can differ, and cost per model separates cleanly in Section six.
 
-[SCREEN: Terminal 1: `OFFLINE=1 make run`. Terminal 2: send "Where is my ticket INC-2231?" with `SCENARIO=ticket_flaky` so the first lookup fails once, then succeeds. Browser: the trace.]
+[SCREEN: Terminal 1: `OFFLINE=1 make run`. Terminal 2: send "Where is my ticket TCK-100231?" with `SCENARIO=ticket_flaky` so the first lookup fails once, then succeeds. Browser: the trace.]
 
 [DEMO: Trace: `atlas` → `injection_check` → `step 1` { `search_knowledge_base`, `chat` (gpt-4.1-mini, finish tool_calls) } → `step 2` { `lookup_ticket` (ERROR, "ticketing API 503"), `chat` } → `step 3` { `lookup_ticket` (OK), `chat` (finish stop) }. Scores: resolved true, steps 3. No escalation, because only one consecutive error.]
 
@@ -560,7 +560,7 @@ atlas_tool_calls_total{tenant, tool, outcome}
 atlas_step_limit_total{tenant}
 atlas_budget_hits_total{tenant, level}           level = soft | hard
 atlas_ttft_seconds{model}     histogram
-atlas_request_seconds{tenant} histogram
+atlas_request_latency_seconds{tenant} histogram
 ```
 
 Here's what Atlas exposes at slash metrics, and every label set is small and fixed. Tokens by kind, so cached and reasoning tokens are visible as series. Cost by tenant and model. Tool calls by outcome. Step limits and budget hits. Two histograms. Section nine builds the dashboard and alerts on exactly these.
@@ -685,7 +685,7 @@ Sixty-one steps to four. Three ninety to two cents. And the reason it stopped is
 [CODE: the regression test]
 ```python
 def test_loop_scenario_stops_early(atlas_offline_loop, spans):
-    result = atlas_offline_loop.run("Where is my ticket INC-2231?", tenant="ops", user_id="u", session_id="s")
+    result = atlas_offline_loop.run("Where is my ticket TCK-100231?", tenant="ops", user_id="u", session_id="s")
     steps = [s for s in spans.get_finished_spans() if s.name.startswith("step ")]
     assert len(steps) <= 4
     assert result.resolved is False

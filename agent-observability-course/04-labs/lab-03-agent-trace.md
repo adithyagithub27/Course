@@ -37,7 +37,7 @@ OFFLINE=1 OTEL_EXPORTER=console make run
 
 ```bash
 curl -s http://localhost:8000/chat -H 'Content-Type: application/json' \
-  -H 'X-Tenant: hr' -H 'X-User-Id: NW-10433' -H 'X-Session-Id: lab3-esc-1' \
+  -H 'X-Tenant: hr' -H 'X-User: NW-10433' -H 'X-Session: lab3-esc-1' \
   -d '{"message": "My payslip for August is missing and TCK-4471 has been open for two weeks, can you escalate it?"}' \
   | python3 -m json.tool
 ```
@@ -87,16 +87,16 @@ tracer = trace.get_tracer("atlas.agent")
 
 for step in range(1, self.settings.max_steps + 1):
     with tracer.start_as_current_span(f"atlas.step {step}") as step_span:
-        step_span.set_attribute("northwind.step", step)
-        step_span.set_attribute("northwind.context_tokens", self.tokens.count_messages(messages))
+        step_span.set_attribute("atlas.step", step)
+        step_span.set_attribute("atlas.context_tokens", self.tokens.count_messages(messages))
 
         model = self._pick_model(step, messages)
         if model != self.settings.model:
-            step_span.set_attribute("northwind.escalated", True)
-            step_span.set_attribute("northwind.escalation_reason", self._escalation_reason)
+            step_span.set_attribute("atlas.escalated", True)
+            step_span.set_attribute("atlas.escalation_reason", self._escalation_reason)
 
         response = self._call_model(messages, model=model)     # creates the generation span (child)
-        step_span.set_attribute("northwind.tool_calls", len(response.tool_calls or []))
+        step_span.set_attribute("atlas.tool_calls", len(response.tool_calls or []))
 
         if not response.tool_calls:
             break
@@ -112,7 +112,7 @@ else:
 
 Two details worth getting right:
 
-- `northwind.context_tokens` on every step is what makes context growth visible per step (lecture 6.5 and Incident 1).
+- `atlas.context_tokens` on every step is what makes context growth visible per step (lecture 6.5 and Incident 1).
 - The step-limit event goes on the **agent** span, not on a step span, because it describes the request outcome. It is an event, not an attribute, because it has a timestamp and happens at most once.
 
 Restart and re-run the curl. After:
@@ -137,11 +137,11 @@ Now the waterfall answers all six questions from lecture 5.1: which tool, with w
 
 ## Step 3: Make the escalation generation carry its own cost
 
-Click (or print) the `openai.chat gpt-4.1` span. It must have its own `gen_ai.request.model = gpt-4.1`, its own usage and its own `northwind.cost_usd`. If your `_call_model` sets the model attribute from `self.settings.model` instead of the `model` argument, the escalation is billed as a mini call, which understates cost by roughly 5×. Check:
+Click (or print) the `openai.chat gpt-4.1` span. It must have its own `gen_ai.request.model = gpt-4.1`, its own usage and its own `atlas.cost_usd`. If your `_call_model` sets the model attribute from `self.settings.model` instead of the `model` argument, the escalation is billed as a mini call, which understates cost by roughly 5×. Check:
 
 ```bash
 uv run python -m telemetry.local_store spans --last 1 --name "openai.chat gpt-4.1" \
-  | jq '.attributes | {model: ."gen_ai.request.model", inp: ."gen_ai.usage.input_tokens", out: ."gen_ai.usage.output_tokens", cost: ."northwind.cost_usd"}'
+  | jq '.attributes | {model: ."gen_ai.request.model", inp: ."gen_ai.usage.input_tokens", out: ."gen_ai.usage.output_tokens", cost: ."atlas.cost_usd"}'
 ```
 
 Expected:
@@ -180,7 +180,7 @@ OFFLINE=1 OTEL_EXPORTER=console ATLAS_SCENARIO=loop ATLAS_MAX_STEPS=6 make run
 
 ```bash
 curl -s http://localhost:8000/chat -H 'Content-Type: application/json' \
-  -H 'X-Tenant: finance' -H 'X-User-Id: NW-33091' -H 'X-Session-Id: lab3-loop-1' \
+  -H 'X-Tenant: finance' -H 'X-User: NW-33091' -H 'X-Session: lab3-loop-1' \
   -d '{"message": "What is the status of ticket 4471?"}' | python3 -m json.tool
 ```
 
@@ -231,23 +231,23 @@ def test_escalation_trace_shape(app_client, span_exporter):
 
     agent = span_by_name(spans, "atlas.chat")
     steps = sorted((s for s in spans if s.name.startswith("atlas.step ")),
-                   key=lambda s: s.attributes["northwind.step"])
-    assert [s.attributes["northwind.step"] for s in steps] == [1, 2, 3]
+                   key=lambda s: s.attributes["atlas.step"])
+    assert [s.attributes["atlas.step"] for s in steps] == [1, 2, 3]
     assert all(s.parent.span_id == agent.context.span_id for s in steps)
 
     # context grows monotonically step to step
-    ctx = [s.attributes["northwind.context_tokens"] for s in steps]
+    ctx = [s.attributes["atlas.context_tokens"] for s in steps]
     assert ctx == sorted(ctx) and ctx[0] < ctx[-1]
 
     # escalation happens exactly once, on step 2, and the expensive generation is its child
-    escalated = [s for s in steps if s.attributes.get("northwind.escalated")]
-    assert len(escalated) == 1 and escalated[0].attributes["northwind.step"] == 2
+    escalated = [s for s in steps if s.attributes.get("atlas.escalated")]
+    assert len(escalated) == 1 and escalated[0].attributes["atlas.step"] == 2
     gens = [c for c in children_of(spans, escalated[0]) if c.attributes.get("gen_ai.operation.name") == "chat"]
     assert len(gens) == 1
     big = gens[0]
     assert big.attributes["gen_ai.request.model"] == "gpt-4.1"
     assert big.attributes["gen_ai.usage.input_tokens"] > 0
-    assert big.attributes["northwind.cost_usd"] > 0.003   # gpt-4.1 pricing, not mini
+    assert big.attributes["atlas.cost_usd"] > 0.003   # gpt-4.1 pricing, not mini
 
     # tools sit under their step, not directly under the agent
     lookup = span_by_name(spans, "execute_tool lookup_ticket")
@@ -327,8 +327,8 @@ What a good solution looks like:
 
 | Element | Reference behaviour |
 |---|---|
-| Step spans | `atlas.step N`, children of `atlas.chat`, with `northwind.step`, `northwind.context_tokens`, `northwind.tool_calls` |
-| Escalation | `northwind.escalated=true` and `northwind.escalation_reason` on the step; the `gpt-4.1` generation is that step's child with its own usage and cost |
+| Step spans | `atlas.step N`, children of `atlas.chat`, with `atlas.step`, `atlas.context_tokens`, `atlas.tool_calls` |
+| Escalation | `atlas.escalated=true` and `atlas.escalation_reason` on the step; the `gpt-4.1` generation is that step's child with its own usage and cost |
 | Step limit | `step_limit_reached` event plus `ERROR` status on the agent span; a graceful answer to the user; `stopped_reason="step_limit"` in the response |
 | Redaction | All tool arguments and results via `genai_attrs` helpers |
 | Test | Asserts shape (parentage), monotonic context growth, single escalation on step 2, model and cost on the big generation, redaction, and the loop's event and error count |

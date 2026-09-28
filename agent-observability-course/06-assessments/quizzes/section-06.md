@@ -94,16 +94,16 @@
 
 ---
 
-### Q6. Atlas runs a LiteLLM `Router` with `gpt-4.1-mini` as default and `gpt-4.1` as the escalation model, chosen when a rule fires (stale ticket, payroll). On the baseline day 6% of generations escalate. A student proposes routing *everything* through `gpt-4.1` "for quality" and another proposes never escalating. What does the course's evidence say?
+### Q6. Atlas runs a LiteLLM `Router` with `gpt-4.1-mini` as default and `gpt-4.1` as the escalation model, chosen when a rule fires (stale ticket, payroll). On the baseline day 0.4% of requests escalate, and with `ATLAS_ROUTER_MODE=1` a third of generations run on gpt-4.1-nano. A student proposes routing *everything* through `gpt-4.1` "for quality" and another proposes never escalating. What does the course's evidence say?
 
 *Related lecture: 6.6 Small-model-first routing with LiteLLM Router*
 
 - **A.** Route everything to gpt-4.1: quality is priceless.
   - *Explanation:* Incorrect. At 5× the price per token, the day would cost roughly 4 to 5× more for a judge score change the course measures as negligible on routine policy questions.
-- **B.** Small-model-first with rule- or confidence-based escalation: the mini model handles the ~94% of routine requests at a fifth of the price, gpt-4.1 handles the cases where the judge shows it matters, and the trade-off is measured on the same replayed day (Challenge 6.8 measures −9.8% cost for −0.004 resolved when tightening the rules).
+- **B.** Small-model-first with intent-based routing and signal-based escalation: nano handles the simple intents (a third of generations) at a quarter of mini's price, mini handles the policy questions, gpt-4.1 handles the cases where the judge shows it matters, and the trade-off is measured on the same replayed day (Challenge 6.8 measures −17% cost for routing alone with the judge scores unchanged).
   - *Explanation:* Correct. The Router also gives fallbacks and cooldowns for reliability (Section 7). The decision is empirical: measure cost and judge score per routing policy on the same seed.
 - **C.** Never escalate: gpt-4.1-mini is good enough for everything.
-  - *Explanation:* Incorrect. The escalation paths (stale tickets, payroll) show a measurable resolved-score drop without the larger model; that is what the rules protect.
+  - *Explanation:* Incorrect. The escalation paths (an employee asking for a person, the `[ESCALATE]` marker) show a measurable resolved-score drop without the larger model; that is what the rules protect.
 - **D.** Alternate models randomly to average out cost.
   - *Explanation:* Incorrect. Random routing buys the average cost with none of the targeting; quality on hard cases still suffers half the time.
 
@@ -128,17 +128,17 @@
 
 ---
 
-### Q8. In Challenge 6.8 a student reports a 44% saving by combining caching, context diet, routing and `top_k=3`, and the reference solution ships only the first three (41.5%). What is the reasoning?
+### Q8. In Challenge 6.8 a student reports a 69% saving by combining caching, context diet, routing and `top_k=2`, and the reference solution ships only the first three (66%). What is the reasoning?
 
 *Related lecture: 6.8 Challenge: cut Atlas's daily cost by 40%*
 
 - **A.** `top_k` cannot be changed without a redeploy.
   - *Explanation:* Incorrect. `ATLAS_TOP_K` is configuration; the objection is quality, not mechanics.
 - **B.** Retrieval is free, so `top_k` has no cost effect.
-  - *Explanation:* Incorrect. Each retrieved chunk adds input tokens to every generation; Incident 2 shows `top_k` 4 → 12 adding 25% cost.
+  - *Explanation:* Incorrect. Each retrieved chunk adds input tokens to every generation; Incident 2 shows `top_k` 4 → 20 adding input tokens to every step-2 prompt.
 - **C.** 44% exceeds the target, so the reference is being conservative for no reason.
   - *Explanation:* Incorrect. The target had two parts: cost down at least 40% *and* judge `resolved` within 0.02 of baseline.
-- **D.** `top_k=3` saved another 4% but took the cumulative judge drop to 0.018, close to the 0.02 limit, and later evidence (Lab 5) shows `grounded` is more sensitive to `top_k` than `resolved` is; a saving that spends most of the quality budget on the least valuable 4% is rejected.
+- **D.** `top_k=2` saved another 3% but took the cumulative judge drop to 0.018, close to the 0.02 limit, and later evidence (Lab 5) shows `grounded` is more sensitive to `top_k` than `resolved` is; a saving that spends most of the quality budget on the least valuable 3% is rejected.
   - *Explanation:* Correct. Each change is measured cumulatively on the same seed, judged on the uniform slice, and accepted only if both criteria hold. The rejected change is documented with its quality cost.
 
 **Correct answer: D**

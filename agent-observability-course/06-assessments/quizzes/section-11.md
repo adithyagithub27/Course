@@ -37,7 +37,7 @@
 - **C.** The provider raised prices.
   - *Explanation:* Incorrect. Prices are pinned and the other tenants were unaffected.
 - **D.** The finance ticket API began failing intermittently; Atlas retried `lookup_ticket` per step up to `max_retries` and kept every failed result (about 560 tokens each) in the conversation, so a retry storm at the tool level compounded with context bloat, making each successive model call larger until the step limit.
-  - *Explanation:* Correct. Two mechanisms, one cause. Evidence: `execute_tool lookup_ticket` spans per trace rose from 1.1 to 11.4, and `northwind.context_tokens` climbed from 1,180 to 5,900 across steps. The tool error alert threshold (10%) was just above the observed 9%.
+  - *Explanation:* Correct. Two mechanisms, one cause. Evidence: `execute_tool lookup_ticket` spans per trace rose from 1.1 to 11.4, and `atlas.context_tokens` climbed from 1,180 to 5,900 across steps. The tool error alert threshold (10%) was just above the observed 9%.
 
 **Correct answer: D**
 
@@ -66,7 +66,7 @@
 
 - **A.** Celebrate the 8% saving and ask HR for examples.
   - *Explanation:* Incorrect. The saving *is* the symptom.
-- **B.** Slice judge scores by `northwind.prompt_version` (v2 grounded 0.77 vs v1 0.90), confirm output tokens fell 26% from the promotion time, then move the `production` label in Langfuse back to v1 so every instance picks it up within `cache_ttl_seconds` with no deploy; the trap is that shorter, vaguer answers are *cheaper*, so a cost-only view rewards the regression.
+- **B.** Slice judge scores by `atlas.prompt_version` (v2 grounded 0.77 vs v1 0.90), confirm output tokens fell 26% from the promotion time, then move the `production` label in Langfuse back to v1 so every instance picks it up within `cache_ttl_seconds` with no deploy; the trap is that shorter, vaguer answers are *cheaper*, so a cost-only view rewards the regression.
   - *Explanation:* Correct. Task success is self-reported and stayed high; only judge scores, feedback and answer length moved, none of which had an alert before Sections 8 and 9. Prevention: offline eval on the failures dataset before promotion, and a drift alert on judge scores.
 - **C.** Redeploy Atlas with the old prompt hard-coded.
   - *Explanation:* Incorrect. Unnecessary: the prompt is managed by label, and hard-coding removes the versioning that made diagnosis possible.

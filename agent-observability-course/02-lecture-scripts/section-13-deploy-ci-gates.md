@@ -29,7 +29,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | 13.5 | Chaos demo: kill the observability backend | DM | 5:00 | ~598 |
 | 13.6 | Lab 7: Self-hosted stack end to end | LAB | 4:00 | ~362 |
 
-**Names used in this section (match `03-code/`).** Deploy files (planned in the curriculum; only `deploy/grafana/dashboards` and `deploy/grafana/provisioning` existed at scripting time): `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml`, `deploy/otel-collector.yaml`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/Dockerfile`. Budget gate: `tests/budget/test_budget_gate.py` (not yet written) with `test_cost_per_session_within_budget`, `test_p95_latency_within_budget`, `test_input_tokens_per_generation_within_budget`; budgets from `Settings`: `budget_cost_per_session_usd` [`BUDGET_COST_PER_SESSION_USD`, 0.05], `budget_p95_latency_ms` [`BUDGET_P95_LATENCY_MS`, 4000]; the per-generation token cap (8000) is a constant in the test. Simulator: `simulator/scenarios.py::generate_day(seed, sessions=, incidents=)`, `INCIDENT_PRESETS`; `simulator/replay.py::replay_day(plan, settings)` assumed. Telemetry: `telemetry/otel_setup.py::configure_tracing`, `SafeSpanExporter`, `FailingSpanExporter`, `exporter_health()`, `shutdown_tracing(timeout_ms=)`; `telemetry/metrics.py::EXPORTER_FAILURES` (`atlas_telemetry_export_failures_total{name}`). `.github/workflows/ci.yml` jobs: `unit`, `budget-gate`, `live-evals`. Makefile targets assumed: `make budget-check`, `make stack-up`, `make stack-down`, `make swarm RPS=`. Langfuse env: `LANGFUSE_BASE_URL=http://localhost:3000`, `LANGFUSE_RELEASE`.
+**Names used in this section (match `03-code/`).** Deploy files: `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml`, `deploy/otel-collector.yaml`, `deploy/prometheus.yml`, `deploy/alerts.yml`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/grafana/provisioning/`, `deploy/Dockerfile`. Budget gate: `tests/budget/test_budget_gate.py` with `test_cost_per_session_within_budget`, `test_p95_latency_within_budget`, `test_no_tenant_over_its_daily_soft_cap`, `test_task_success_slo_holds`; budgets from `Settings`: `budget_cost_per_session_usd` [`BUDGET_COST_PER_SESSION_USD`, 0.05], `budget_p95_latency_ms` [`BUDGET_P95_LATENCY_MS`, 4000], `tenant_soft_cap_usd` [`TENANT_SOFT_CAP_USD`, 25]; gate knobs `BUDGET_GATE_SESSIONS` (300), `BUDGET_GATE_INCIDENTS` (`none`), `BUDGET_GATE_SEED` (7). Simulator: `simulator/scenarios.py::generate_day(seed, sessions=, incidents=)`, `INCIDENT_PRESETS`; `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=, judge_rate=, settings=) -> (ReplaySummary, LocalSpanStore)`. Telemetry: `telemetry/otel_setup.py::configure_tracing`, `SafeSpanExporter`, `FailingSpanExporter`, `exporter_health()`, `shutdown_tracing(timeout_ms=)`; `telemetry/metrics.py::EXPORTER_FAILURES` (`atlas_telemetry_export_failures_total{name}`). `.github/workflows/ci.yml` jobs: `test`, `budget-gate`, `live-evals`. Makefile targets: `make budget-check`, `make langfuse-up` / `make langfuse-down`, `make stack` / `make stack-down`, `make swarm RPS=`. Langfuse env: `LANGFUSE_BASE_URL=http://localhost:3000`, `LANGFUSE_RELEASE`.
 
 ---
 
@@ -97,11 +97,11 @@ Look at the environment block, because this is where laptop and production diver
 [CODE: bring it up]
 ```bash
 cp .env.example .env            # then fill the LANGFUSE_* and secret values
-make stack-up                   # docker compose -f deploy/docker-compose.langfuse.yml up -d
+make langfuse-up                # docker compose -f deploy/docker-compose.langfuse.yml up -d
 docker compose -f deploy/docker-compose.langfuse.yml ps
 ```
 
-Copy the env example, fill the secrets, and `make stack-up`. First start pulls images and runs migrations, so give it two to three minutes. `ps` should show every service healthy. If ClickHouse is restarting, it's almost always memory: it wants a few gigabytes. Check Docker's resource limit before you check anything else.
+Copy the env example, fill the secrets, and `make langfuse-up`. First start pulls images and runs migrations, so give it two to three minutes. `ps` should show every service healthy. If ClickHouse is restarting, it's almost always memory: it wants a few gigabytes. Check Docker's resource limit before you check anything else.
 
 [DEMO: Browser, `localhost:3000`. Sign up the first user. Create organisation "Northwind", project "atlas-dev". Settings → API keys → create. Copy public and secret keys into `.env` as `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and set `LANGFUSE_BASE_URL=http://localhost:3000`.]
 
@@ -264,7 +264,7 @@ Exporters. Two `otlphttp` exporters with different names, one to Langfuse's OTLP
 
 And the pipeline. Receivers, processors in order, memory limiter first and batch last, then both exporters. Every span goes to both. That is the escape hatch from Lecture 12.1 in eleven lines.
 
-[SCREEN: `deploy/docker-compose.observability.yml`, the collector service, then `make stack-up STACK=observability`.]
+[SCREEN: `deploy/docker-compose.observability.yml`, the collector service, then `make stack`.]
 
 [CODE: Atlas points at the Collector now]
 ```bash
@@ -338,59 +338,51 @@ MAX_INPUT_TOKENS_PER_GENERATION = 8000       # system prompt + 4 snippets + hist
 REPLAY_SEED = 7
 ```
 
-Budgets live in `Settings`, with a comment on where each number came from. Five cents per session, when the baseline day costs about six tenths of a cent; that's generous headroom while the product is young, and you tighten it as you learn. Four seconds p95, which is the SLO. And in the test itself, a cap of eight thousand input tokens on any single generation, derived from the system prompt, four snippets, the history budget and the tool result budget, with headroom. Plus a fixed seed, because a gate that flakes is a gate people learn to ignore.
+Budgets live in `Settings`, with a comment on where each number came from. Five cents per session, when the baseline day costs about six tenths of a cent; that's generous headroom while the product is young, and you tighten it as you learn. Four seconds p95, which is the SLO. And two more assertions in the same file: no tenant over its daily soft cap, and the task-success SLO holding on the replayed day. Plus a fixed seed, because a gate that flakes is a gate people learn to ignore.
 
 Now the test.
 
 [CODE: `tests/budget/test_budget_gate.py`]
 ```python
-import pytest
-from northwind.config import reload_settings
-from northwind.cost import cost_per_session
-from northwind.latency import percentile
-from simulator.replay import replay_day
-from simulator.scenarios import generate_day
+SESSIONS = int(os.environ.get("BUDGET_GATE_SESSIONS", "300"))
+INCIDENTS = os.environ.get("BUDGET_GATE_INCIDENTS", "none")
+SEED = int(os.environ.get("BUDGET_GATE_SEED", "7"))
+STORE_PATH = os.environ.get("BUDGET_GATE_STORE", ".atlas/budget-gate.sqlite")
 
-pytestmark = pytest.mark.budget
 
 @pytest.fixture(scope="module")
-def day():
-    settings = reload_settings({"OFFLINE": "1", "OTEL_EXPORTER": "memory"})
-    plan = generate_day(seed=REPLAY_SEED, sessions=400)            # no incidents: the baseline day
-    return replay_day(plan, settings)                                # -> LocalSpanStore
-
-def test_cost_per_session_within_budget(day):
-    cps = float(cost_per_session(day.cost_records()))
-    budget = reload_settings().budget_cost_per_session_usd
-    assert cps <= budget, f"cost/session ${cps:.4f} > ${budget:.4f} budget"
-
-def test_p95_latency_within_budget(day):
-    p95 = percentile([s.total_ms for s in day.latency_samples()], 95)
-    budget = reload_settings().budget_p95_latency_ms
-    assert p95 <= budget, f"p95 {p95:.0f} ms > {budget:.0f} ms budget"
-
-def test_input_tokens_per_generation_within_budget(day):
-    worst = max(s.attr("gen_ai.usage.input_tokens", 0) for s in day.spans(kind="generation"))
-    assert worst <= MAX_INPUT_TOKENS_PER_GENERATION, (
-        f"largest generation {worst} tokens > {MAX_INPUT_TOKENS_PER_GENERATION} budget"
+def gate():
+    settings = Settings.from_env()
+    store = LocalSpanStore(STORE_PATH)
+    store.clear()
+    summary, _ = replay_day(
+        SEED, sessions=SESSIONS, incidents=INCIDENTS, store=store, judge_rate=0.3, settings=settings
     )
+    return settings, store, summary
+
+
+def test_cost_per_session_within_budget(gate):
+    settings, store, summary = gate
+    cps = float(cost_per_session(store.cost_records("request")))
+    ...
+    assert cps <= settings.budget_cost_per_session_usd
+
+
+def test_p95_latency_within_budget(gate):
+    ...
+
+
+def test_no_tenant_over_its_daily_soft_cap(gate):
+    ...
+
+
+def test_task_success_slo_holds(gate):
+    ...
 ```
 
-Three tests, one fixture. The fixture forces offline mode with the in-memory exporter, plans the baseline day with four hundred sessions and no incidents, and replays it once for the whole module into a local span store; about ninety seconds. Then three assertions.
+The fixture replays a three-hundred-session day with a fixed seed and no incidents, the baseline, into its own store, and the four tests read that store. `cost_per_session` over the request-level cost records against `budget_cost_per_session_usd`. `percentile` of the latency samples against `budget_p95_latency_ms`. Every tenant's rollup against its soft cap. And `compute_slis` against `DEFAULT_SLOS` for task success. [PAUSE] Three environment variables make the gate a demo: `BUDGET_GATE_INCIDENTS=latency_regression make budget-check` replays a bad day and fails; `BUDGET_P95_LATENCY_MS=2500` tightens the budget and fails; `BUDGET_GATE_SESSIONS=1000` makes it slower and more precise.
 
-Cost per session, from `cost.py`, over the store's cost records. p95 latency, from `latency.py`, over the store's latency samples. And the largest single generation, read straight off the `gen_ai.usage.input_tokens` attribute. That last one is the test Incident 1 was missing. Turn the context diet off and the largest generation balloons, and this fails before a provider storm ever gets a chance to multiply it.
-
-Notice the failure messages. They print the number and the budget. A red check that says "assertion failed" wastes the reviewer's time. A red check that says "p95 four thousand three hundred and ten, budget four thousand" starts the conversation.
-
-[SCREEN: Terminal, `make budget-check`. Output: three passed in 1m 34s.]
-
-`make budget-check` runs just this marker. Green on main. Now let's make it red.
-
-[DEMO: `ATLAS_TOP_K=20 make budget-check`. One failure: p95 4,310 > 4,000. Cost per session $0.0075, within the $0.05 budget. Unset.]
-
-Set top-k to twenty through the environment, the Incident 2 change. Run the gate. One failure, with the numbers. p95 four point three seconds. Cost per session rose twenty-five percent but stayed inside the five-cent budget, which is exactly what production showed on Tuesday: a latency regression first, a cost regression second.
-
-[DEMO: `ATLAS_CONTEXT_DIET=0 ATLAS_TOP_K=12 make budget-check`. `test_input_tokens_per_generation_within_budget` fails: largest generation 24,000 > 8,000. Unset.]
+[DEMO: `BUDGET_GATE_INCIDENTS=latency_regression make budget-check`. `test_p95_latency_within_budget` fails: p95 above the 4,000 ms budget. Unset.]
 
 Now the Incident 1 change. Diet off, top-k twelve. The tokens test fails with twenty-four thousand. That's the same number you read off turn two of the trace in Lecture 11.2, on a Monday morning, without a provider or a tenant involved.
 
@@ -399,44 +391,74 @@ Now CI.
 [CODE: `.github/workflows/ci.yml`, abbreviated]
 ```yaml
 name: ci
-on: [pull_request, push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: 03-code
+
+env:
+  OFFLINE: "1"
+  OTEL_EXPORTER: none
+  PYTHONPATH: ${{ github.workspace }}/03-code:${{ github.workspace }}/03-code/src
 
 jobs:
-  unit:
+  test:
+    name: unit + integration (offline)
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
-      - run: uv sync --all-extras
-      - run: uv run pytest tests/unit tests/integration -q
-        env: { OFFLINE: "1" }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: uv pip install --system -e ".[dev]"
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Unit tests
+        run: pytest -q tests/unit
+      - name: Integration tests
+        run: pytest -q tests/integration
+      - name: Incident datasets are deterministic
+        run: |
+          python incidents/generate.py --out /tmp/incidents-regen
+          for d in incidents/incident-0*; do
+            n=$(basename "$d"); cmp "$d/spans.jsonl" "/tmp/incidents-regen/$n/spans.jsonl"; cmp "$d/scores.jsonl" "/tmp/incidents-regen/$n/scores.jsonl";
+          done
 
   budget-gate:
+    name: budget gate (cost/session + p95, offline replay)
     runs-on: ubuntu-latest
-    needs: unit
+    needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: uv sync --all-extras
-      - run: uv run pytest -m budget tests/budget -q
-        env: { OFFLINE: "1" }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - name: Replay the day and enforce budgets
+        env:
+          BUDGET_COST_PER_SESSION_USD: "0.05"
+          BUDGET_P95_LATENCY_MS: "4000"
+        run: pytest -q tests/budget -ra
+      - name: Publish summary
+        if: always()
+        run: python console/ops_console.py --text --store .atlas/budget-gate.sqlite --seed -1 >> "$GITHUB_STEP_SUMMARY" || true
 
   live-evals:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    name: live judge (only when secrets exist)
     runs-on: ubuntu-latest
-    needs: budget-gate
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: uv sync --all-extras
-      - run: uv run python -m evals.online_judge --dataset atlas-failures --limit 50
-        env:
-          OFFLINE: "0"
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_BASE_URL: ${{ secrets.LANGFUSE_BASE_URL }}
-          LANGFUSE_RELEASE: ${{ github.sha }}
+    needs: test
+    if: github.event_name == 'push'
+    ...
 ```
 
 Three jobs. Unit and integration tests, offline, on every pull request and push. The budget gate, offline, after unit passes, also on every pull request. No secrets needed for either, which means a contributor's fork can run them and nothing leaks.
@@ -469,7 +491,7 @@ What the gate catches: anything deterministic that changes tokens, steps or simu
 [AVATAR]
 Ninety seconds in CI, zero dollars, and two of the three incidents from Section 11 never happen. Next, the checklist that makes the whole stack production-ready.
 
-**Recap:** The budget gate replays a deterministic offline day and asserts cost per session, p95 and input tokens per generation against budgets in `Settings`, runs on every pull request without secrets, and release tags make anything that slips through attributable to a commit.
+**Recap:** The budget gate replays a deterministic offline day and asserts cost per session, p95, tenant soft caps and the task-success SLO against budgets in `Settings`, runs on every pull request without secrets, and release tags make anything that slips through attributable to a commit.
 
 **Transition:** Next, the production readiness checklist: sampling, back-pressure, secrets, dashboards as code and alert ownership.
 
@@ -478,7 +500,7 @@ Ninety seconds in CI, zero dollars, and two of the three incidents from Section 
 - Mistake: budgets set to the current baseline with no headroom. Every legitimate change fails and the gate gets disabled. The shipped default of $0.05 against a $0.006 baseline is deliberately loose for a young product; discuss tightening to 2-3x baseline once traffic is real.
 - Mistake: a random seed. Show the flake once if you have time; a gate that fails randomly is worse than none.
 - "Why mean cost per session, not p95?" Either works; p95 catches one runaway session, mean catches broad drift. Suggest both for the capstone.
-- `simulator/replay.py::replay_day(plan, settings)` returning a `LocalSpanStore` is the assumed interface (not yet written at scripting time); `LocalSpanStore.cost_records()`, `latency_samples()` and `spans(kind=)` exist in `telemetry/local_store.py`. Adjust the fixture to the final `replay.py` signature.
+- `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=, judge_rate=, settings=)` returns `(ReplaySummary, LocalSpanStore)`; `LocalSpanStore.cost_records()`, `latency_samples()` and `spans(kind=)` in `telemetry/local_store.py` are what the assertions read.
 - The replay must be fast enough for CI. If the day takes more than three minutes, reduce `sessions=` and say so.
 - Verify `actions/checkout`, `astral-sh/setup-uv` versions before recording.
 
@@ -667,7 +689,7 @@ Add this to your integration tests: configure tracing with an unreachable OTLP e
 Everything from this section, running together, on your machine. That's Lab 7. It's the longest lab in the course, and it's the one that goes on your CV, because at the end you'll have a screenshot of a self-hosted observability stack you built and a green CI run you configured.
 
 [SLIDE 1: Lab 7 checklist]
-1. `make stack-up` for both compose files: Langfuse, Collector, Prometheus, Grafana all healthy
+1. `make langfuse-up` and `make stack`: Langfuse, Collector, Prometheus, Grafana all healthy
 2. Atlas exporting to the Collector only; no Langfuse keys in Atlas's env
 3. `OFFLINE=1 make replay`: a day of traffic visible in Langfuse and on the Grafana Atlas Ops dashboard
 4. Proof of masking: a tool span in Langfuse shows a hash, not a payload
@@ -709,5 +731,5 @@ Budget ninety minutes. When it's done, you have the deployment half of the capst
 
 - Windows students: Docker Desktop with WSL2 works; file permissions on volumes are the usual issue. Point to the lab's troubleshooting section.
 - Low-spec machines: the lab allows running Langfuse Cloud instead of self-hosted for steps 3 to 6, with the Collector still local. Say so in Q&A; it's in the lab file.
-- The CI step requires the student's own fork with Actions enabled; no secrets are needed for `unit` and `budget-gate`.
+- The CI step requires the student's own fork with Actions enabled; no secrets are needed for `test` and `budget-gate`.
 - Grafana specifics (provisioning path, datasource UID in `atlas-ops.json`): verify against current Grafana docs and the dashboard file before recording.

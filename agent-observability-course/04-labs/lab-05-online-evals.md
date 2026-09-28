@@ -26,20 +26,27 @@ Two simulated weeks of Atlas traffic. In week 2, prompt version `v2` went live o
 ## Step 1: Replay two weeks
 
 ```bash
-OFFLINE=1 uv run python -m simulator.replay --days 7 --start 2026-09-14 --seed 42 --label week1
-OFFLINE=1 ATLAS_SCENARIO=prompt_regression uv run python -m simulator.replay --days 7 --start 2026-09-21 --seed 43 --label week2
+OFFLINE=1 uv run python simulator/replay.py --seed 42 --sessions 4000 --store .atlas/week1.sqlite --clear
+OFFLINE=1 uv run python simulator/replay.py --seed 43 --sessions 4000 --incidents quality_drift --store .atlas/week2.sqlite --clear
 ```
+
+(Each replayed day stands in for one week; `week1` is a clean day, `week2` carries the `quality_drift` preset.)
 
 Expected (second command):
 
 ```text
-Replaying 7 days from 2026-09-21 seed=43 scenario=prompt_regression (prompt v2 from day 3)
-Wrote 58,940 spans, 15,660 requests, 5,410 sessions to .atlas/spans.sqlite   total $246.10
+Replay seed=43  requests=10173  sessions=4000  spans=70450  scores=12148  feedback=1276
+Total cost $20.29   p95 latency 3504 ms   elapsed 17.9s
+Cost by tenant: eng=$4.38, finance=$3.97, hr=$4.21, ops=$7.72
+Outcomes: escalated=63, guardrail=73, resolved=10037
+Scenarios: none=3729, prompt_regression=6444
+Incidents: prompt_regression@11-24h
+Store: .atlas/week2.sqlite  (total spans now 70450)
 ```
 
-The `prompt_regression` scenario switches `ATLAS_PROMPT_VERSION` to `v2` for days 3 to 7 and makes the mock LLM produce shorter, less grounded answers for policy questions. Each generation carries `northwind.prompt_version` so you can slice by it later.
+The `quality_drift` preset (`simulator.scenarios.INCIDENT_PRESETS`) runs the `prompt_regression` scenario from 11:00, which switches the prompt to `v2` and makes the mock LLM produce shorter, less grounded answers for policy questions. Each generation carries `atlas.prompt_version` so you can slice by it later.
 
-> **Checkpoint 1:** the store holds two weeks with labels `week1` and `week2`.
+> **Checkpoint 1:** two stores exist, `.atlas/week1.sqlite` and `.atlas/week2.sqlite` (treat the store path as the "label" in the code you write below).
 
 ---
 
@@ -156,14 +163,15 @@ Read the last line carefully. The silent majority scores 0.87, the thumbs-up gro
 ## Step 5: Drift: this week versus last week
 
 ```bash
-uv run python -m evals.drift_report --store .atlas/spans.sqlite --baseline week1 --current week2 --out evals/out/drift-report.md
+mkdir -p evals/out
+uv run python evals/drift_report.py --baseline-store .atlas/week1.sqlite --store .atlas/week2.sqlite > evals/out/drift-report.md
 cat evals/out/drift-report.md
 ```
 
 Expected (abridged):
 
 ```markdown
-# Drift report: week2 vs week1
+# Drift report: .atlas/week1.sqlite -> .atlas/week2.sqlite
 
 | Metric | week1 | week2 | delta | PSI | status |
 |---|---|---|---|---|---|
@@ -202,7 +210,7 @@ st.title("Quality")
 
 label = st.sidebar.selectbox("Window", ["week2", "week1"])
 baseline = "week1" if label == "week2" else None
-tenant = st.sidebar.selectbox("Tenant", ["all", "logistics-ops", "warehouse", "hr", "finance"])
+tenant = st.sidebar.selectbox("Tenant", ["all", "ops", "finance", "hr", "eng"])
 
 scores = judge_scores_by_day(label, tenant=tenant, slice="uniform")
 c1, c2, c3, c4 = st.columns(4)

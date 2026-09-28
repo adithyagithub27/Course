@@ -45,7 +45,7 @@ OFFLINE=1 OTEL_EXPORTER=console make run
 
 ```bash
 curl -s http://localhost:8000/chat -H 'Content-Type: application/json' \
-  -H 'X-Tenant: warehouse' -H 'X-User-Id: NW-22011' -H 'X-Session-Id: lab2-a' \
+  -H 'X-Tenant: ops' -H 'X-User: NW-22011' -H 'X-Session: lab2-a' \
   -d '{"message": "Where is shipment SHP-88213?"}' | python3 -m json.tool
 ```
 
@@ -124,19 +124,19 @@ def check_shipment(shipment_id: str, *, tool_call_id: str = "") -> dict:
         except ShipmentNotFound as exc:
             ga.record_tool_error(span, exc)
             raise
-        span.set_attribute("northwind.shipment.status", result["status"])
+        span.set_attribute("atlas.shipment.status", result["status"])
         ga.set_tool_result(span, result)
         return result
 ```
 
-The extra `northwind.shipment.status` attribute is a low-cardinality domain attribute (`in_transit`, `delivered`, `delayed`, `unknown`), useful for filtering in Langfuse. Do **not** add the shipment id as its own attribute: it is already in the arguments, and high-cardinality attributes belong in arguments, not in filterable fields.
+The extra `atlas.shipment.status` attribute is a low-cardinality domain attribute (`in_transit`, `delivered`, `delayed`, `unknown`), useful for filtering in Langfuse. Do **not** add the shipment id as its own attribute: it is already in the arguments, and high-cardinality attributes belong in arguments, not in filterable fields.
 
 Restart the server and repeat the curl from Step 1. Expected (after):
 
 ```text
 atlas.chat
 ├── openai.chat gpt-4.1-mini        (tool_calls: check_shipment)
-├── execute_tool check_shipment     312 ms   gen_ai.tool.name=check_shipment  northwind.shipment.status=in_transit
+├── execute_tool check_shipment     312 ms   gen_ai.tool.name=check_shipment  atlas.shipment.status=in_transit
 └── openai.chat gpt-4.1-mini        (final answer)
 ```
 
@@ -154,7 +154,7 @@ uv run python -m telemetry.local_store spans --last 1 --name "execute_tool check
     "gen_ai.tool.call.arguments": "{\"shipment_id\": \"SHP-88213\"}",
     "gen_ai.tool.call.result": "{\"shipment_id\": \"SHP-88213\", \"status\": \"in_transit\", \"location\": \"Rotterdam hub\", \"eta\": \"2026-09-23\", \"consignee_email\": \"[EMAIL]\"}",
     "gen_ai.agent.name": "atlas",
-    "northwind.shipment.status": "in_transit"
+    "atlas.shipment.status": "in_transit"
 }
 ```
 
@@ -196,7 +196,7 @@ from tests.integration.conftest import chat, finished_spans, span_by_name
 
 
 def test_check_shipment_has_tool_span(app_client, span_exporter):
-    chat(app_client, "Where is shipment SHP-88213?", tenant="warehouse", session="t-ship-1")
+    chat(app_client, "Where is shipment SHP-88213?", tenant="ops", session="t-ship-1")
     spans = finished_spans(span_exporter)
 
     tool = span_by_name(spans, "execute_tool check_shipment")
@@ -212,12 +212,12 @@ def test_check_shipment_has_tool_span(app_client, span_exporter):
     result = json.loads(attrs["gen_ai.tool.call.result"])
     assert result["status"] == "in_transit"
     assert "@" not in attrs["gen_ai.tool.call.result"], "consignee email must be masked"
-    assert attrs["northwind.shipment.status"] == "in_transit"
+    assert attrs["atlas.shipment.status"] == "in_transit"
     assert tool.status.status_code == StatusCode.UNSET
 
 
 def test_check_shipment_unknown_id_sets_error_status(app_client, span_exporter):
-    chat(app_client, "Where is shipment SHP-00000?", tenant="warehouse", session="t-ship-2")
+    chat(app_client, "Where is shipment SHP-00000?", tenant="ops", session="t-ship-2")
     spans = finished_spans(span_exporter)
 
     tool = span_by_name(spans, "execute_tool check_shipment")
@@ -231,7 +231,7 @@ def test_check_shipment_unknown_id_sets_error_status(app_client, span_exporter):
 
 def test_exactly_one_tool_span_per_call(app_client, span_exporter):
     """Guards against double instrumentation (lecture 3.6, mistake 3)."""
-    chat(app_client, "Where is shipment SHP-88213?", tenant="warehouse", session="t-ship-3")
+    chat(app_client, "Where is shipment SHP-88213?", tenant="ops", session="t-ship-3")
     spans = finished_spans(span_exporter)
     tool_spans = [s for s in spans if s.name == "execute_tool check_shipment"]
     assert len(tool_spans) == 1

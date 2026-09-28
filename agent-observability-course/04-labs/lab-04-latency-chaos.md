@@ -94,7 +94,7 @@ uv run python -m telemetry.local_store query \
   "SELECT strftime('%H', start_time) h, count(*) n,
           round(avg(duration_ms)) mean_ms,
           sum(case when status='ERROR' then 1 else 0 end) errors,
-          round(avg(json_extract(attributes,'$.\"northwind.retries\"')),2) retries
+          round(avg(json_extract(attributes,'$.\"atlas.retries\"')),2) retries
    FROM spans WHERE name LIKE 'openai.chat%' GROUP BY h"
 ```
 
@@ -193,7 +193,7 @@ uv run python -m telemetry.local_store spans --where "json_extract(attributes,'$
 ```text
 atlas.chat                                            7,240 ms
 └── atlas.step 1
-    ├── openai.chat gpt-4.1-mini   status=ERROR timeout   6,010 ms   northwind.retries=0
+    ├── openai.chat gpt-4.1-mini   status=ERROR timeout   6,010 ms   atlas.retries=0
     └── openai.chat gpt-4.1-nano   fallback=true            1,190 ms
 ```
 
@@ -296,7 +296,7 @@ Fast and cheap is not the whole story. Two more numbers before you declare victo
 
 1. Add the per-tenant concurrency limit from lecture 7.5: `ATLAS_TENANT_MAX_INFLIGHT=8`. Replay with `slow_provider` and check that `finance` (the noisiest tenant in the window) is shed with `429` while other tenants keep their p95.
 2. Make `create_ticket` idempotent with an idempotency key derived from `(session_id, step, arguments hash)`, then run `ATLAS_SCENARIO=retry_storm` and assert with a query that no session created two tickets with the same key. Retries that create duplicate tickets are a cost event *and* a data quality event.
-3. Add a Prometheus counter `atlas_fallbacks_total{from_model,to_model}` and a gauge `atlas_circuit_open{deployment}` in `telemetry/metrics.py`. You will alert on them in Lab 6.
+3. Use the shipped counter `atlas_model_fallbacks_total{from_model,to_model}` and add a gauge `atlas_circuit_open{model}` in `telemetry/metrics.py` (fed from `CircuitBreaker.state`). You will alert on them in Lab 6.
 
 ---
 

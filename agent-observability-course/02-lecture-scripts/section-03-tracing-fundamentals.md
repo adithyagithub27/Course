@@ -196,7 +196,7 @@ class AtlasAgent:
 
     def run(self, message: str, *, tenant: str, user_id: str, session_id: str) -> AgentResult:
         with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
-            agent_span.set_attribute("northwind.tenant", tenant)
+            agent_span.set_attribute("atlas.tenant", tenant)
             result = self._loop(message)
             agent_span.set_attribute("atlas.steps", result.steps)
             return result
@@ -340,7 +340,7 @@ Now the attributes on a model call. Operation name, `chat`. Provider name, `open
 gen_ai.operation.name       "execute_tool"
 gen_ai.tool.name            "lookup_ticket"
 gen_ai.tool.call.id         "call_8f2..."
-gen_ai.tool.call.arguments  {"ticket_id": "INC-2231"}
+gen_ai.tool.call.arguments  {"ticket_id": "TCK-100231"}
 gen_ai.tool.call.result     {"status": "open", ...}   (redacted, truncated)
 ```
 
@@ -396,7 +396,7 @@ The conventions don't stop at spans. There are standard metric names too, in a s
 
 [SLIDE 10: What the conventions don't cover]
 - Cost in dollars: not a standard attribute; Langfuse computes it or you set `cost_details` (4.2)
-- Your business dimensions: tenant, feature, ticket type → your own namespace, e.g. `northwind.tenant`
+- Your business dimensions: tenant, feature, ticket type → your own namespace, e.g. `atlas.tenant`
 - Quality scores: backend feature, not a span attribute (4.5)
 
 And what they don't cover. Dollars. There's no standard cost attribute; the backend computes it from tokens and a price table, or you set it explicitly, which you'll do in 4.2. Your business dimensions, like tenant and feature. Those go in your own namespace; ours is `northwind.`. And quality scores, which are a backend feature.
@@ -511,7 +511,7 @@ from telemetry.genai_attrs import set_agent_attrs, set_llm_attrs, set_tool_attrs
     def run(self, message, *, tenant, user_id, session_id):
         with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
             set_agent_attrs(agent_span, name="atlas", conversation_id=session_id)
-            agent_span.set_attribute("northwind.tenant", tenant)
+            agent_span.set_attribute("atlas.tenant", tenant)
             ...
 
     def _call_model(self, messages):
@@ -528,11 +528,11 @@ from telemetry.genai_attrs import set_agent_attrs, set_llm_attrs, set_tool_attrs
             return result
 ```
 
-Now the three call sites. In `run`, the agent helper, keeping our own `northwind.tenant` alongside it. In `_call_model`, the LLM helper replaces the two `atlas.` attributes from 3.2. And a new span in `_run_tool`, named `execute_tool` plus the tool name, with the tool helper after the tool returns. Because `_run_tool` is called from inside the agent's `with` block, it nests correctly.
+Now the three call sites. In `run`, the agent helper, keeping our own `atlas.tenant` alongside it. In `_call_model`, the LLM helper replaces the two `atlas.` attributes from 3.2. And a new span in `_run_tool`, named `execute_tool` plus the tool name, with the tool helper after the tool returns. Because `_run_tool` is called from inside the agent's `with` block, it nests correctly.
 
-[SCREEN: Terminal 1: `OTEL_EXPORTER=console OFFLINE=1 make run`. Terminal 2: curl "Where is my ticket INC-2231?" with the three headers.]
+[SCREEN: Terminal 1: `OTEL_EXPORTER=console OFFLINE=1 make run`. Terminal 2: curl "Where is my ticket TCK-100231?" with the three headers.]
 
-[DEMO: Console prints four spans: `chat gpt-4.1-mini` (finish_reasons tool_calls), `execute_tool lookup_ticket` with `gen_ai.tool.call.arguments: {"ticket_id": "INC-2231"}`, a second `chat gpt-4.1-mini`, and `invoke_agent atlas` with `gen_ai.conversation.id: sess-demo-1`.]
+[DEMO: Console prints four spans: `chat gpt-4.1-mini` (finish_reasons tool_calls), `execute_tool lookup_ticket` with `gen_ai.tool.call.arguments: {"ticket_id": "TCK-100231"}`, a second `chat gpt-4.1-mini`, and `invoke_agent atlas` with `gen_ai.conversation.id: sess-demo-1`.]
 
 Ask about a ticket this time, and read the console. Four spans. The first model call finishes with `tool_calls`. Then `execute_tool lookup_ticket`, with the arguments the model chose. A second model call, finishing with `stop`. And the agent span with the conversation ID. Every attribute has a `gen_ai.` name.
 
@@ -541,7 +541,7 @@ Ask about a ticket this time, and read the console. Four spans. The first model 
 [CODE: the assertion in `tests/integration/test_spans.py`]
 ```python
 def test_ticket_question_emits_tagged_tool_span(atlas_offline, spans):
-    atlas_offline.run("Where is my ticket INC-2231?", tenant="ops", user_id="emp-1042", session_id="s1")
+    atlas_offline.run("Where is my ticket TCK-100231?", tenant="ops", user_id="emp-1042", session_id="s1")
     tool = next(s for s in spans.get_finished_spans() if s.name == "execute_tool lookup_ticket")
     agent = next(s for s in spans.get_finished_spans() if s.name == "invoke_agent atlas")
     assert tool.attributes[g.GEN_AI_TOOL_NAME] == "lookup_ticket"
@@ -561,7 +561,7 @@ Three helpers, three call sites, one test. Atlas now speaks the standard. Next l
 
 - Mistake: passing a dict directly to `set_attribute`. OTel drops it with a warning. Always JSON-encode via `_clip`.
 - Mistake: setting usage attributes before the response exists (e.g. in a streaming path). Set them when usage is known; 5.4 handles streaming.
-- "Why keep `northwind.tenant` when there's `gen_ai.conversation.id`?" Tenant is a business dimension the conventions don't define. Own namespace, always.
+- "Why keep `atlas.tenant` when there's `gen_ai.conversation.id`?" Tenant is a business dimension the conventions don't define. Own namespace, always.
 - If the repo's helper names differ at recording time, match the file and mention the change in the README; the narration depends only on there being one helper per span kind.
 
 ---
@@ -771,7 +771,7 @@ def test_no_orphan_spans(spans):
     assert [s.name for s in roots] == ["invoke_agent atlas"]
 
 def test_one_generation_per_model_call(atlas_offline, spans):
-    result = atlas_offline.run("Where is my ticket INC-2231?", tenant="ops", user_id="u", session_id="s")
+    result = atlas_offline.run("Where is my ticket TCK-100231?", tenant="ops", user_id="u", session_id="s")
     gens = [s for s in spans.get_finished_spans() if s.name.startswith("chat ")]
     assert len(gens) == result.model_calls
 ```

@@ -2,7 +2,7 @@
 
 > **Course:** AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse
 > **Section runtime:** about 42 minutes (7 lectures, including one lab intro and one quiz intro)
-> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `operations`, `warehouse`, `finance`, `sales`)
+> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `ops`, `finance`, `hr`, `eng`)
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Dashboard recordings: one panel per metric, the key number annotated, dark Grafana theme, 1920×1080 with the browser zoomed to 125%.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on prometheus-client (current) / langfuse 4.15. Grafana and Langfuse screens change: verify against the current UI before recording."
 
@@ -16,9 +16,9 @@
 |---|---|---|
 | Task success (judge `resolved` ≥ 0.7 on head sample, or thumbs up) | 83% | ≥ 80% weekly |
 | Containment (sessions resolved without a human ticket, question intents only) | 78% | ≥ 75% weekly |
-| Tool error rate (`atlas_tool_errors_total / atlas_tool_calls_total`) | 1.8% | < 3% over 1 h |
+| Tool error rate (`atlas_tool_calls_total{outcome="error"} / atlas_tool_calls_total`) | 1.8% | < 3% over 1 h |
 | First visible token p95 | 3.4 s | 95% of requests under 4 s, 30-day window |
-| Cost per resolved session ($24.86 ÷ (4,000 × 0.83)) | $0.0075 | ≤ $0.010 weekly |
+| Cost per resolved session ($19.21 ÷ (4,000 × 0.89)) | $0.0054 | ≤ $0.010 weekly |
 | Judge grounded (head sample) | 0.90 | ≥ 0.85 weekly |
 | Error budget, latency SLO | 5% of 300,000 requests per 30 days = 15,000 slow requests | |
 | `slow_provider` untuned (7.6): 72% of requests slow for 45 min | burn rate 14.5× | Atlas fast-burn page (6× over 30 m and 5 m) fires at 12:15 |
@@ -56,7 +56,7 @@
 | Task success | "Did people get their answer?" | judge `resolved` head sample, or thumbs up (8.2, 8.3) |
 | Containment | "How often did it need a human?" | sessions without a human ticket, question intents only (5.2) |
 | Tool error rate | "Are the systems it talks to healthy?" | `tool_errors / tool_calls` (7.3) |
-| First visible token p95 | "Is it fast?" | `atlas_first_token_seconds` (7.2) |
+| First visible token p95 | "Is it fast?" | `atlas_request_latency_seconds` (7.2) |
 | Cost per resolved session | "What does an answer cost?" | cost ÷ resolved sessions (6.3) |
 | Judge grounded | "Is it making things up?" | judge `grounded` head sample (8.2) |
 
@@ -225,43 +225,103 @@ One file, one convention. Counters end in `_total` with a unit. Histograms end i
 [CODE: `telemetry/metrics.py` (the full set, excerpt)]
 
 ```python
-from prometheus_client import Counter, Gauge, Histogram
+REGISTRY = CollectorRegistry()
 
-LATENCY_BUCKETS = (0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 20.0)
+LATENCY_BUCKETS = (0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 20.0)
+TTFT_BUCKETS = (0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0)
 
-# traffic and latency (numerators and denominators for the latency SLO)
-REQUESTS = Counter("atlas_requests_total", "Requests served", ["tenant", "feature", "outcome"])   # outcome: ok|refused|degraded|error
-FIRST_TOKEN_SECONDS = Histogram("atlas_first_token_seconds", "Time to first visible token", ["feature"], buckets=LATENCY_BUCKETS)
-REQUEST_SECONDS = Histogram("atlas_request_seconds", "Full answer time", ["feature"], buckets=LATENCY_BUCKETS)
+REQUESTS = Counter(
+    "atlas_requests_total", "Chat requests", ["tenant", "model", "outcome"], registry=REGISTRY
+)
+TOKENS = Counter(
+    "atlas_tokens_total",
+    "LLM tokens by kind (input|output|cached|reasoning)",
+    ["tenant", "model", "kind"],
+    registry=REGISTRY,
+)
+COST = Counter(
+    "atlas_cost_usd_total", "LLM cost in USD", ["tenant", "model", "feature"], registry=REGISTRY
+)
+LATENCY = Histogram(
+    "atlas_request_latency_seconds",
+    "End-to-end request latency",
+    ["tenant"],
+    buckets=LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+TTFT = Histogram(
+    "atlas_ttft_seconds",
+    "Time to first token of the final answer",
+    ["model"],
+    buckets=TTFT_BUCKETS,
+    registry=REGISTRY,
+)
+STEPS = Histogram(
+    "atlas_agent_steps",
+    "Tool-loop steps per request",
+    ["tenant"],
+    buckets=(1, 2, 3, 4, 5, 6, 8, 10),
+    registry=REGISTRY,
+)
+TOOL_CALLS = Counter(
+    "atlas_tool_calls_total", "Tool invocations", ["tool", "outcome"], registry=REGISTRY
+)
+TOOL_LATENCY = Histogram(
+    "atlas_tool_latency_seconds",
+    "Tool execution time",
+    ["tool"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
+    registry=REGISTRY,
+)
+LLM_RETRIES = Counter(
+    "atlas_llm_retries_total", "LLM call retries", ["model", "reason"], registry=REGISTRY
+)
+FALLBACKS = Counter(
+    "atlas_model_fallbacks_total",
+    "Model fallbacks fired",
+    ["from_model", "to_model"],
+    registry=REGISTRY,
+)
+BUDGET_DECISIONS = Counter(
+    "atlas_budget_decisions_total",
+    "Budget guard decisions",
+    ["tenant", "decision"],
+    registry=REGISTRY,
+)
+BUDGET_SPENT = Gauge(
+    "atlas_budget_spent_usd", "Rolling-window spend per tenant", ["tenant"], registry=REGISTRY
+)
+GUARDRAIL = Counter(
+    "atlas_guardrail_events_total",
+    "Guardrail triggers (injection, pii_in_output, refusal)",
+    ["tenant", "kind"],
+    registry=REGISTRY,
+)
+JUDGE_SCORE = Histogram(
+    "atlas_judge_score",
+    "Online judge scores",
+    ["name"],
+    buckets=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+    registry=REGISTRY,
+)
+FEEDBACK = Counter(
+    "atlas_feedback_total", "User feedback", ["tenant", "outcome"], registry=REGISTRY
+)
+EXPORTER_FAILURES = Counter(
+    "atlas_telemetry_export_failures_total", "Span export failures", ["name"], registry=REGISTRY
+)
 
-# tools (tool error SLO)
-TOOL_CALLS = Counter("atlas_tool_calls_total", "Tool invocations", ["tool"])
-TOOL_ERRORS = Counter("atlas_tool_errors_total", "Tool invocations that raised", ["tool"])
-
-# tokens and cost (Section 6)
-LLM_TOKENS = Counter("atlas_llm_tokens_total", "Tokens by kind", ["model", "kind"])                 # kind: input|cached|output|reasoning
-LLM_COST = Counter("atlas_llm_cost_usd_total", "LLM spend in USD", ["model", "tenant", "feature"])
-BUDGET_EVENTS = Counter("atlas_budget_events_total", "Budget guard decisions", ["tenant", "action"])  # action: ok|degrade|refuse
-ANOMALIES = Counter("atlas_cost_anomalies_total", "EWMA cost anomalies", ["tenant"])
-
-# reliability (Section 7)
-RETRIES = Counter("atlas_retries_total", "Retried calls", ["kind", "reason", "tenant"])
-FALLBACKS = Counter("atlas_llm_fallbacks_total", "Model fallbacks", ["from_model", "to_model", "reason"])
-ESCALATIONS = Counter("atlas_escalations_total", "Small-to-strong escalations", ["reason", "tenant"])
-
-# quality and safety (Section 8)
-GUARDRAIL_EVENTS = Counter("atlas_guardrail_events_total", "Guardrail outcomes", ["kind"])
-JUDGE_SCORE = Histogram("atlas_judge_score", "Online judge scores", ["metric"], buckets=(0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 1.0))
-JUDGE_COST = Counter("atlas_judge_cost_usd_total", "Judge spend in USD", ["model"])
-FEEDBACK = Counter("atlas_feedback_total", "User feedback", ["tenant", "value", "reason"])
-
-# release annotations (9.3)
-BUILD_INFO = Gauge("atlas_build_info", "Always 1; labels carry the version", ["version", "prompt_version", "default_model"])
+BUILD_INFO = Gauge(
+    "atlas_build_info",
+    "Build / release info (value is always 1)",
+    ["version", "model", "prompt_version"],
+    registry=REGISTRY,
+)
 ```
 
-There's the whole set, and you've met most of it already in Sections 6 to 8. Two additions. `REQUESTS` with an `outcome` label, which is the denominator for almost everything and the numerator for refused and degraded rates. And `BUILD_INFO`, a gauge that's always one, whose labels carry the version, the prompt version and the default model. That's how Grafana draws a vertical line on the chart when you deploy. [PAUSE] Count the labels on each line. None has more than three, and every value is from a fixed set.
+There's the whole set, and you've met most of it already in Sections 6 to 8. Two additions. `REQUESTS` with an `outcome` label, which is the denominator for almost everything and the numerator for refused and degraded rates. And `BUILD_INFO`, a gauge that's always one, whose labels carry the version, the default model and the prompt version. That's how Grafana draws a vertical line on the chart when you deploy. [PAUSE] Count the labels on each line. None has more than three, and every value is from a fixed set.
 
-Why is cost a counter and not a gauge? Because a counter only goes up, and Prometheus can take its rate. `increase(atlas_llm_cost_usd_total[1h])` is spend per hour, `[1d]` is spend per day, `[7d]` is the week, all from one series, and a restart doesn't corrupt it because `increase` understands resets. A gauge of "today's spend" would need your code to know when today ends. Counters for anything you add up; gauges for anything you read off, like in-flight requests. Histograms for anything you take a percentile of.
+Why is cost a counter and not a gauge? Because a counter only goes up, and Prometheus can take its rate. `increase(atlas_cost_usd_total[1h])` is spend per hour, `[1d]` is spend per day, `[7d]` is the week, all from one series, and a restart doesn't corrupt it because `increase` understands resets. A gauge of "today's spend" would need your code to know when today ends. Counters for anything you add up; gauges for anything you read off, like in-flight requests. Histograms for anything you take a percentile of.
 
 Now the endpoint.
 
@@ -270,15 +330,16 @@ Now the endpoint.
 [CODE: `app/server.py` (excerpt)]
 
 ```python
-from prometheus_client import make_asgi_app
-
-app = FastAPI(title="Atlas")
-app.mount("/metrics", make_asgi_app())          # Prometheus exposition at GET /metrics
-
-BUILD_INFO.labels(version=settings.release, prompt_version=settings.prompt_version, default_model=settings.default_model).set(1)
+    app = FastAPI(title="Atlas helpdesk agent", version="1.0.0", lifespan=lifespan)
+    app.mount("/metrics", metrics.metrics_app())
 ```
 
-One line mounts it. `make_asgi_app` gives you an ASGI app that renders the registry in exposition format, and FastAPI serves it at `/metrics`. Set `BUILD_INFO` once at startup.
+```python
+# telemetry/metrics.py
+def set_build_info(*, version: str, model: str, prompt_version: str) -> None:
+```
+
+One line mounts it. `metrics_app` wraps `prometheus_client.make_asgi_app` over our own `REGISTRY`, an ASGI app that renders it in exposition format, and FastAPI serves it at `/metrics`. Set `BUILD_INFO` once at startup with `set_build_info`.
 
 One security note before we scrape it. The metrics endpoint has no PII, but it does show your traffic, your spend and your model names, and it's on the same port as the chat API. In production, bind it to an internal interface or put it behind the network policy that only Prometheus can reach. The compose stack keeps everything on one Docker network, which is fine for the lab and not a production design. [PAUSE] And one Prometheus habit: the scrape interval is fifteen seconds, so any `rate()` window should be at least a minute, four scrapes, or you'll get gaps. Our panels use five minutes.
 
@@ -286,15 +347,15 @@ One security note before we scrape it. The metrics endpoint has no PII, but it d
 
 ```bash
 make run &
-curl -s localhost:8000/metrics | grep -E "^atlas_(requests_total|first_token_seconds_bucket\{feature=\"policy_question\",le=\"4.0\"\}|llm_cost_usd_total)"
+curl -s localhost:8000/metrics | grep -E "^atlas_(requests_total|request_latency_seconds_bucket\{le=\"4.0\",tenant=\"ops\"\}|cost_usd_total)"
 ```
 
 [DEMO: output (after a few requests):]
 
 ```
-atlas_requests_total{feature="policy_question",outcome="ok",tenant="operations"} 14.0
-atlas_first_token_seconds_bucket{feature="policy_question",le="4.0"} 13.0
-atlas_llm_cost_usd_total{feature="policy_question",model="gpt-4.1-mini",tenant="operations"} 0.04211
+atlas_requests_total{model="gpt-4.1-mini",outcome="resolved",tenant="ops"} 14.0
+atlas_request_latency_seconds_bucket{le="4.0",tenant="ops"} 13.0
+atlas_cost_usd_total{feature="policy_question",model="gpt-4.1-mini",tenant="ops"} 0.04211
 ```
 
 That's the format Prometheus scrapes. Fourteen requests. Thirteen of them under the four-second bucket. Four cents of spend. [PAUSE] The `le="4.0"` bucket is the whole latency SLO: requests under four seconds over all requests, straight from the histogram, no interpolation, because we put a bucket edge at the budget in 7.2.
@@ -406,19 +467,19 @@ It's already there, provisioned from the compose volume. If you're importing by 
 
 ```promql
 # p95 first visible token, last 5 minutes
-histogram_quantile(0.95, sum by (le) (rate(atlas_first_token_seconds_bucket{feature=~"$feature"}[5m])))
+histogram_quantile(0.95, sum by (le) (rate(atlas_request_latency_seconds_bucket{feature=~"$feature"}[5m])))
 
 # latency SLO ratio over 30 days: fraction under the 4 s bucket edge
-sum(increase(atlas_first_token_seconds_bucket{le="4.0"}[30d])) / sum(increase(atlas_first_token_seconds_count[30d]))
+sum(increase(atlas_request_latency_seconds_bucket{le="4.0"}[30d])) / sum(increase(atlas_request_latency_seconds_count[30d]))
 
 # error budget remaining (target 0.95)
-1 - (1 - (sum(increase(atlas_first_token_seconds_bucket{le="4.0"}[30d])) / sum(increase(atlas_first_token_seconds_count[30d])))) / 0.05
+1 - (1 - (sum(increase(atlas_request_latency_seconds_bucket{le="4.0"}[30d])) / sum(increase(atlas_request_latency_seconds_count[30d])))) / 0.05
 
 # tool error rate, 1 h
-sum(rate(atlas_tool_errors_total[1h])) / sum(rate(atlas_tool_calls_total[1h]))
+sum(rate(atlas_tool_calls_total{outcome="error"}[1h])) / sum(rate(atlas_tool_calls_total[1h]))
 
 # cost per resolved session, 7 d (resolved sessions ≈ sessions × head-sample resolved rate)
-sum(increase(atlas_llm_cost_usd_total{tenant=~"$tenant"}[7d]))
+sum(increase(atlas_cost_usd_total{tenant=~"$tenant"}[7d]))
   / (sum(increase(atlas_requests_total{tenant=~"$tenant",outcome="ok"}[7d])) / 2.5 * 0.83)
 ```
 
@@ -435,13 +496,13 @@ Five queries, and they're the five SLIs. The p95 is `histogram_quantile` over th
 
 ```promql
 # spend per hour by tenant
-sum by (tenant) (increase(atlas_llm_cost_usd_total[1h]))
+sum by (tenant) (increase(atlas_cost_usd_total[1h]))
 
 # cache hit rate
-sum(rate(atlas_llm_tokens_total{kind="cached"}[15m])) / sum(rate(atlas_llm_tokens_total{kind=~"input|cached"}[15m]))
+sum(rate(atlas_tokens_total{kind="cached"}[15m])) / sum(rate(atlas_tokens_total{kind=~"input|cached"}[15m]))
 
 # fallback rate (fallbacks per request)
-sum(rate(atlas_llm_fallbacks_total[5m])) / sum(rate(atlas_requests_total[5m]))
+sum(rate(atlas_model_fallbacks_total[5m])) / sum(rate(atlas_requests_total[5m]))
 
 # refused and degraded share
 sum(rate(atlas_requests_total{outcome=~"refused|degraded"}[5m])) / sum(rate(atlas_requests_total[5m]))
@@ -471,14 +532,14 @@ changes(atlas_build_info[2m]) > 0
 
 The tenant variable is a `label_values` query, so it fills itself, and every panel filters on `tenant=~"$tenant"`. Pick finance and the whole dashboard becomes finance's dashboard. The feature variable does the same. [PAUSE] And the annotation. `changes(atlas_build_info[2m]) > 0` is true for one minute whenever the version labels change, which happens exactly when you deploy. Grafana draws a vertical line with the version, the prompt version and the model.
 
-[DEMO: replay the seven days from 8.4 into Prometheus (`OFFLINE=1 make replay DAYS=7 PROM=1`). On the quality row, the judge `resolved` line drops on Wednesday. A vertical annotation line at Wednesday 14:10 reads "v1.6.0 / prompt v2 / gpt-4.1-mini". Hover shows the text.]
+[DEMO: replay the seven days from 8.4 into Prometheus (`OFFLINE=1 make replay PROM=1`). On the quality row, the judge `resolved` line drops on Wednesday. A vertical annotation line at Wednesday 14:10 reads "v1.6.0 / prompt v2 / gpt-4.1-mini". Hover shows the text.]
 
 Here's why the annotation earns its place. Seven days replayed. The resolved line drops on Wednesday. And right there, at ten past two on Wednesday, a vertical line: version one point six, prompt v2. [PAUSE] Nobody had to correlate a deploy log with a chart. The chart correlated itself. That's the difference between a dashboard and a diagnosis, and it's one gauge and one query.
 
 [SLIDE 3: Dashboard hygiene]
 - Every panel has a unit and a threshold, or it's a diagnostic and lives in a collapsed row
 - Top row is stats, not time series: red or green at a glance
-- The JSON is in git; edits happen in the UI, then export, then commit (`make dashboard-export`)
+- The JSON is in git; edits happen in the UI, then export, then commit (export the JSON to `deploy/grafana/dashboards/atlas-ops.json`)
 - One dashboard per audience: Ops (this one), Finance (cost row only, weekly), Leadership (row 1 only)
 - Annotations for releases, prompt label changes and incidents
 
@@ -597,83 +658,132 @@ Dashboards are for when you're looking. Next, alerts, for when you're not: burn-
 | Title | Alert rules and the runbook |
 | Type | SC (screencast code-along) |
 | Target duration | 7:00 (about 520 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
-| One idea | Write three alert rules, latency burn rate, cost anomaly and tool error spike, each linked to a runbook entry, and adopt the rules that stop alert fatigue before it starts. |
+| One idea | Read the shipped alert rules in three groups, SLO, cost and quality, each with a severity and a runbook entry, and adopt the rules that stop alert fatigue before it starts. |
 | Prerequisites | 9.1 to 9.3; 6.7 (anomaly counter) |
 | Files used | `deploy/alerts.yml`, `10-resources/runbook-template.md` |
 
 **Learning objectives**
 
 1. Write the multi-window burn-rate alert for the latency SLO in Prometheus rule syntax.
-2. Write a cost anomaly alert on `atlas_cost_anomalies_total` and a tool error spike alert on the error ratio.
+2. Write a cost anomaly alert on hourly `atlas_cost_usd_total` per tenant against its daily average, and a tool error rate alert on the error ratio.
 3. Fill the runbook template so every alert has an owner, a first query and a known fix.
 
 ### Script
 
 [AVATAR]
 
-An alert that fires and nobody knows what to do is noise with a pager attached. [PAUSE] Three rules today, and each one has a runbook entry before it goes live. That's not process for its own sake. It's the difference between "Atlas is slow, good luck" and "Atlas is slow; check fallback rate; if it's zero, lower the first-token timeout; here's the config line."
+An alert that fires and nobody knows what to do is noise with a pager attached. [PAUSE] Ten rules in three groups today, and each one has a severity and a runbook entry before it goes live. That's not process for its own sake. It's the difference between "Atlas is slow, good luck" and "Atlas is slow; check fallback rate; if it's zero, lower the first-token timeout; here's the config line."
 
 [SCREEN: VS Code, `deploy/alerts.yml`]
 
 [CODE: `deploy/alerts.yml`]
 
 ```yaml
+# Alert rules for Atlas (Section 9.5). Severities: page (wake someone) / ticket (next business day).
 groups:
   - name: atlas-slo
     rules:
-      # Latency SLO: 95% of requests under 4 s over 30 d. Atlas fast burn: 6x (30% slow) over 30 m AND 5 m (9.1).
-      - alert: AtlasLatencyBurnRateFast
-        expr: |
-          (1 - sum(rate(atlas_first_token_seconds_bucket{le="4.0"}[30m])) / sum(rate(atlas_first_token_seconds_count[30m]))) / 0.05 > 6
-          and
-          (1 - sum(rate(atlas_first_token_seconds_bucket{le="4.0"}[5m])) / sum(rate(atlas_first_token_seconds_count[5m]))) / 0.05 > 6
-        for: 2m
-        labels: {severity: page, slo: latency}
+      - alert: AtlasLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le)) > 4
+        for: 10m
+        labels: { severity: page }
         annotations:
-          summary: "Atlas latency burn rate {{ $value | printf \"%.1f\" }}x: 30%+ of requests over 4 s for 30 min"
-          runbook: "10-resources/runbook-template.md#latency-burn"
-      - alert: AtlasLatencyBurnRateSlow
+          summary: "Atlas p95 latency above 4 s"
+          runbook: "10-resources/runbook-template.md#latency"
+
+      - alert: AtlasTaskSuccessBurnRateFast
+        # 1h burn rate on the 95% task-success SLO: bad = error/step_limit/tool_error outcomes
         expr: |
-          (1 - sum(rate(atlas_first_token_seconds_bucket{le="4.0"}[3d])) / sum(rate(atlas_first_token_seconds_count[3d]))) / 0.05 > 1
-          and
-          (1 - sum(rate(atlas_first_token_seconds_bucket{le="4.0"}[6h])) / sum(rate(atlas_first_token_seconds_count[6h]))) / 0.05 > 1
+          (
+            sum(rate(atlas_requests_total{outcome=~"error|step_limit|tool_error"}[1h]))
+            / sum(rate(atlas_requests_total[1h]))
+          ) / (1 - 0.95) > 14.4
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "Task-success SLO burning 14.4x (1h window)"
+
+      - alert: AtlasTaskSuccessBurnRateSlow
+        expr: |
+          (
+            sum(rate(atlas_requests_total{outcome=~"error|step_limit|tool_error"}[6h]))
+            / sum(rate(atlas_requests_total[6h]))
+          ) / (1 - 0.95) > 6
         for: 30m
-        labels: {severity: ticket, slo: latency}
-        annotations: {summary: "Atlas latency on track to exhaust the 30-day budget", runbook: "10-resources/runbook-template.md#latency-burn"}
+        labels: { severity: ticket }
+        annotations:
+          summary: "Task-success SLO burning 6x (6h window)"
+
+      - alert: AtlasToolErrorRate
+        expr: |
+          sum(rate(atlas_tool_calls_total{outcome="error"}[10m])) by (tool)
+          / sum(rate(atlas_tool_calls_total[10m])) by (tool) > 0.05
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Tool {{ $labels.tool }} error rate above 5%"
 
   - name: atlas-cost
     rules:
-      - alert: AtlasCostAnomaly
-        expr: sum by (tenant) (increase(atlas_cost_anomalies_total[10m])) >= 2
-        for: 0m
-        labels: {severity: page, slo: cost}
+      - alert: AtlasTenantCostAnomaly
+        # spend in the last hour vs the average hourly spend over the previous day
+        expr: |
+          sum(increase(atlas_cost_usd_total[1h])) by (tenant)
+          > 2.5 * (sum(increase(atlas_cost_usd_total[1d] offset 1h)) by (tenant) / 24)
+          and sum(increase(atlas_cost_usd_total[1h])) by (tenant) > 1
+        for: 15m
+        labels: { severity: ticket }
         annotations:
-          summary: "Cost anomaly for {{ $labels.tenant }}: EWMA detector fired twice in 10 min"
-          runbook: "10-resources/runbook-template.md#cost-anomaly"
-      - alert: AtlasBudgetDegraded
-        expr: sum by (tenant) (increase(atlas_budget_events_total{action="degrade"}[15m])) > 0
-        labels: {severity: ticket, slo: cost}
-        annotations: {summary: "{{ $labels.tenant }} is in economy mode (soft cap)", runbook: "10-resources/runbook-template.md#budget"}
+          summary: "Tenant {{ $labels.tenant }} hourly spend is 2.5x its daily average"
 
-  - name: atlas-tools
-    rules:
-      - alert: AtlasToolErrorSpike
-        expr: sum by (tool) (rate(atlas_tool_errors_total[10m])) / sum by (tool) (rate(atlas_tool_calls_total[10m])) > 0.10
-        for: 5m
-        labels: {severity: page, slo: tools}
+      - alert: AtlasBudgetHardCapHit
+        expr: increase(atlas_budget_decisions_total{decision="refuse"}[15m]) > 0
+        labels: { severity: page }
         annotations:
-          summary: "{{ $labels.tool }} failing {{ $value | humanizePercentage }} of calls"
-          runbook: "10-resources/runbook-template.md#tool-errors"
+          summary: "Tenant {{ $labels.tenant }} is being refused: hard budget cap reached"
+
+      - alert: AtlasRetryStorm
+        expr: sum(rate(atlas_llm_retries_total[10m])) / sum(rate(atlas_requests_total[10m])) > 0.2
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "More than 0.2 LLM retries per request: retry storm (and a cost event)"
+
+  - name: atlas-quality
+    rules:
+      - alert: AtlasJudgeScoreLow
+        expr: |
+          sum(rate(atlas_judge_score_sum{name="judge_grounded"}[2h]))
+          / sum(rate(atlas_judge_score_count{name="judge_grounded"}[2h])) < 0.75
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Judge 'grounded' score below 0.75 for 2h: check prompt version / retrieval"
+
+      - alert: AtlasNegativeFeedbackSpike
+        expr: |
+          sum(rate(atlas_feedback_total{outcome="negative"}[2h]))
+          / sum(rate(atlas_feedback_total[2h])) > 0.4
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: "More than 40% of feedback is negative"
+
+      - alert: AtlasTelemetryExportFailures
+        expr: increase(atlas_telemetry_export_failures_total[10m]) > 20
+        labels: { severity: ticket }
+        annotations:
+          summary: "Span exporter failing: observability backend down (requests keep serving)"
 ```
 
-Three groups. The burn-rate alerts are the 9.1 recipe in PromQL: the bad fraction, one minus the under-four-seconds ratio, divided by the five percent allowance, over the long window and the short window, both above the threshold. The fast one uses Atlas's tightened numbers, six times over thirty minutes and five minutes, and pages after two minutes. The slow one uses the textbook one times over three days and six hours, and opens a ticket after thirty minutes. [PAUSE] Cost: the EWMA detector from 6.7 firing twice in ten minutes for one tenant pages, because one firing can be a lunch rush; two is a pattern. Economy mode is a ticket, because the guard already handled it. Tools: any tool failing more than ten percent of calls for five minutes pages, with the tool name in the summary. And every rule has a `runbook` annotation. That's the link in the page.
+Three groups. SLO first. `AtlasLatencyP95High` is the latency SLO in PromQL: `histogram_quantile` over the request histogram, above four seconds for ten minutes, page. The two burn-rate alerts are the 9.1 recipe on the task-success SLO: the bad fraction, error, step-limit and tool-error outcomes over all requests, divided by the five percent allowance; fourteen point four over an hour pages, six over six hours opens a ticket. And the tool error rate, per tool, above five percent for ten minutes. [PAUSE] Cost: a tenant whose spend in the last hour is two and a half times its average hour of the previous day, and more than a dollar, is a ticket, because one hour can be a lunch rush and the guard from 6.7 is already degrading it; a hard-cap refusal pages, because users are being turned away; and more than a fifth of a retry per request is a retry storm, which is a cost event before it is a latency one. Quality: the judge's grounded mean under point seven five for two hours, negative feedback over forty percent, and the exporter failing, all tickets. Every rule has a severity label and the ones that need a decision tree carry a `runbook` annotation. That's the link in the page.
 
-[SCREEN: `10-resources/runbook-template.md`, the `#latency-burn` entry filled in]
+[SCREEN: `10-resources/runbook-template.md`, the `#latency` entry filled in]
 
 [CODE: runbook entry (excerpt)]
 
 ```markdown
-## latency-burn  (AtlasLatencyBurnRateFast / Slow)
+## latency  (AtlasLatencyP95High; AtlasTaskSuccessBurnRateFast / Slow)
 Owner: Atlas on-call (#atlas-ops). Severity: page (fast) / ticket (slow).
 First look (2 min): Grafana "Atlas Ops" row 3: fallback rate, retries by reason, in-flight by tenant.
 Decision tree:
@@ -681,7 +791,7 @@ Decision tree:
   - fallback rate high, cost rising → fallbacks working; check which to_model; if gpt-4.1 > 50%, add capacity on atlas-fast. (7.4)
   - one tenant's in-flight at its cap → burst; raise that tenant's semaphore temporarily; open a showback ticket. (7.5)
   - retries by reason = RateLimitError → 429s; check provider status; consider second provider. (7.5)
-Verify: p95 panel back under 4 s for 10 min; burn rate < 1.
+Verify: p95 panel back under 4 s for 10 min; task-success burn rate < 1.
 Postmortem needed if: fast burn > 30 min, or budget remaining < 20%.
 ```
 
@@ -690,12 +800,13 @@ Owner, severity, and a two-minute first look: three panels to open. Then a decis
 [SCREEN: terminal, then Prometheus Alerts page]
 
 ```bash
-OFFLINE=1 RELIABILITY=v1 make replay SCENARIO=slow_provider PROM=1
+make run PROM=1 SCENARIO=slow_provider                 # terminal 1: Atlas + collector, Prometheus, Grafana
+make swarm RPS=5 DURATION=900 SCENARIO=slow_provider   # terminal 2: traffic Prometheus can scrape
 ```
 
-[DEMO: Prometheus → Alerts. At 12:13 `AtlasLatencyBurnRateFast` goes PENDING, at 12:15 FIRING, with the summary and runbook link. Nothing else fires. Then the tuned replay: the alert never leaves inactive; `AtlasCostAnomaly` stays quiet; the Grafana cost row shows the $1.20 fallback bump but no alert, correctly.]
+[DEMO: Prometheus → Alerts. Two minutes into the swarm `AtlasLatencyP95High` goes PENDING, ten minutes later FIRING, with the summary and runbook link. Nothing else fires. Then the tuned run (`ATLAS_REQUEST_TIMEOUT_S=6`): the alert never leaves inactive; `AtlasTenantCostAnomaly` stays quiet; the Grafana cost row shows the fallback bump but no alert, correctly.]
 
-The untuned slow provider. Twelve thirteen, pending. Twelve fifteen, firing, with the runbook link. Nothing else fires: no cost alert, no tool alert, because nothing else is wrong. Then the tuned run: the alert never fires, the cost row shows the dollar-twenty of fallbacks, and the anomaly detector correctly ignores it, because a dollar twenty over forty-five minutes is inside three standard deviations. [PAUSE] One alert, for the one real problem, with the fix attached. That's the standard.
+The untuned slow provider. Two minutes in, pending. Ten minutes later, firing, with the runbook link. Nothing else fires: no cost alert, no tool alert, because nothing else is wrong. Then the tuned run: the alert never fires, the cost row shows the dollar-twenty of fallbacks, and the anomaly detector correctly ignores it, because a dollar twenty over forty-five minutes is inside three standard deviations. [PAUSE] One alert, for the one real problem, with the fix attached. That's the standard.
 
 [SLIDE 1: Alert fatigue rules]
 - Page only on user-facing symptoms and budget burn; everything else is a ticket
@@ -710,7 +821,7 @@ Five rules against fatigue. Page only for symptoms users feel and for budget bur
 
 ### Recap
 
-Three rule groups, latency burn rate with two windows, cost anomaly twice in ten minutes, and tool error ratio over ten percent, each with a runbook entry that has an owner, a two-minute first look and a decision tree.
+Three rule groups, SLO (p95 latency, task-success burn rate with two windows, tool error ratio over five percent), cost (hourly spend against the daily average, hard-cap refusals, retry storms) and quality (judge score, negative feedback, exporter failures), each with a severity and a runbook entry that has an owner, a two-minute first look and a decision tree.
 
 ### Transition
 
@@ -754,13 +865,13 @@ Lab six is the one where it all appears on screen. [PAUSE] Compose stack up. Das
 
 Bring up the stack with the compose file, confirm the `atlas` target is up in Prometheus, and replay a normal day with `PROM=1` so the metrics flow. Open the Atlas Ops dashboard and check every panel in the top row has a number. Then add one panel of your own: the lab suggests escalation rate by reason, but anything from the metric set counts, and it has to have a unit and a threshold.
 
-Then the alert. Replay the `retry_storm` scenario. `AtlasToolErrorSpike` should go pending, then firing, for `create_ticket`. Screenshot it. Fix it: the lab tells you which config flag ends the storm. Replay again, and screenshot the alert clearing.
+Then the alert. Replay the `retry_storm` scenario. `AtlasToolErrorRate` should go pending, then firing, for `create_ticket`. Screenshot it. Fix it: the lab tells you which config flag ends the storm. Replay again, and screenshot the alert clearing.
 
 [SLIDE 1: Lab 6 checklist]
 - `docker compose up`, target UP
 - Top row populated during a normal replay
 - One new panel with unit and threshold, exported to `atlas-ops.json`
-- `retry_storm`: `AtlasToolErrorSpike` firing, screenshot; fixed and cleared, screenshot
+- `retry_storm`: `AtlasToolErrorRate` firing, screenshot; fixed and cleared, screenshot
 - Stretch: write a fourth alert for refusal rate (8.4) with its runbook entry
 - Submit: three screenshots and the exported JSON diff
 
@@ -780,7 +891,7 @@ Before the lab, the Section 9 quiz.
 
 - **Metrics not appearing.** Usually `host.docker.internal` on Linux; the lab has the `extra_hosts` fix.
 - **Alert stuck pending.** The `for:` clause needs the condition to hold; the storm scenario runs 2 hours of replay in a few minutes, so check the replay's time compression flag.
-- **Editing JSON by hand.** Edit in the UI, export with `make dashboard-export`.
+- **Editing JSON by hand.** Edit in the UI, export the JSON and commit it to `deploy/grafana/dashboards/atlas-ops.json`.
 
 ---
 

@@ -94,7 +94,7 @@ A third, less common one: calling `injection_check` twice (once for the score, o
 - [ ] Guardrail observation is a child of the agent span, type `guardrail`, level `WARNING` when flagged.
 - [ ] Boolean trace score `injection_flagged` present on every trace (0 on clean requests too, so the rate has a denominator).
 - [ ] Flagged requests make no generation and no tool call.
-- [ ] `atlas_guardrail_blocks_total{tenant,kind}` increments.
+- [ ] `atlas_guardrail_events_total{tenant,kind}` increments.
 - [ ] The test above passes; `make test` stays green.
 
 ---
@@ -160,8 +160,13 @@ Each incident lecture runs in two parts. **Part A (investigate):** the brief app
 Load any incident:
 
 ```bash
-uv run python -m telemetry.local_store import incidents/incident-01-cost-spike/spans.jsonl --label incident-01
-make console      # choose the label in the sidebar
+cd 03-code && make incident N=1      # text console over incidents/incident-01-cost-spike/ (N=2, N=3 for the others)
+```
+
+```python
+from telemetry.local_store import LocalSpanStore
+d = "incidents/incident-01-cost-spike/"
+store = LocalSpanStore.from_jsonl(d + "spans.jsonl", d + "scores.jsonl")   # for your own queries
 ```
 
 ### Investigation worksheet (one per incident)
@@ -200,34 +205,34 @@ Scoring for the in-lecture challenge (self-assessed): root cause correct = 3 poi
 
 ### Brief (shown on screen; pause the video here)
 
-> **Monday 2026-09-21.** At 11:40 the finance controller forwards the OpenAI usage page: "Today is already 3× a normal day and it is not even lunch." The Atlas dashboard shows requests per hour normal for all tenants; task success 93% (normal); p95 3.1 s (up from 2.2 s but under budget); tool error rate for `lookup_ticket` **elevated at 9%** (normal is 1.5%); cost per hour for `finance` at $14.80 (normal $0.70). Other tenants normal. No release since Friday. Dataset: `incidents/incident-01-cost-spike/` (spans 06:00 to 12:00, metrics.csv, releases.txt).
+> **Monday 2026-09-14, 11:40.** The `cost_anomaly` rule pages: one tenant's hourly cost per request is above 2.5× its median hour (the EWMA detector in `BudgetGuard` had flagged `ops` at 10:05 already). The Langfuse cost view tracks at roughly **2× last Monday's spend** by noon, almost all of it one tenant. `atlas_cost_usd_total{tenant="ops"}` rate tripled between 09:00 and 13:00; other tenants are flat. `atlas_llm_retries_total{model="gpt-4.1-mini",reason="APITimeoutError"}` started climbing at 10:00. No 5xx from Atlas, `/healthz` green, no user complaints, although p95 crept up mid-morning (some requests took 40 s+). A deploy went out at 08:55 ("retrieval recall improvements", PR #412). Dataset: `incidents/incident-01-cost-spike/` (`spans.jsonl`, `scores.jsonl`, `brief.md`).
 >
-> Eight minutes. Find the root cause and the two mechanisms that compounded it.
+> Eight minutes. Find the root cause and the second contributing factor hiding behind the first.
 
 ### Hints (shown after four minutes)
 
-1. One tenant, flat request count, 20× hourly cost: cost per request is the lens. Split it into tokens per request and price per token.
-2. `lookup_ticket` errors at 9% is a symptom **and** a mechanism. What does Atlas do after a tool error?
-3. Look at `northwind.context_tokens` across steps for the affected sessions. Linear? Quadratic? Flat?
+1. One tenant, flat request count, 3× hourly cost: cost per request is the lens. Split it into tokens per request and price per token, and compare `gen_ai.usage.input_tokens` on generation spans before and after 09:00.
+2. The timeouts at 10:00 are a symptom **and** a mechanism. What does Atlas bill for a call that timed out, and how many times does it retry?
+3. Look at `atlas.retrieval.top_k` and `atlas.retrieval.hits` on the retriever spans, and at `atlas.context_tokens` across steps for ops sessions.
 
 ### Instructor only: the reveal
 
-**Root cause (one sentence):** the finance ticketing API started returning `503`s intermittently at 08:52 (their deploy), and Atlas's tool-error path retried `lookup_ticket` up to `max_retries=2` **per step** while appending every failed attempt's error text to the conversation, so a single stale-ticket question produced up to six failed tool results, each one making the next model call's input larger, until the six-step limit.
+**Root cause (one sentence):** PR #412, deployed at 08:55 to "improve recall" for the `ops` tenant, raised retrieval `top_k` from 4 to 12, dropped the relevance floor (`KB_MIN_SCORE=0`) and switched the context diet off so whole articles would not be truncated, so every ops request from 09:00 carried 8 to 12 full articles (thousands of input tokens) into step 2 and again on every follow-up turn; from 10:00 the provider started timing out under the bigger prompts and Atlas retried each call up to 2 times, re-billing the bloated context every time.
 
 **Two compounding mechanisms:**
 
-1. **Retry storm** at the tool level: 2 retries × up to 6 steps = up to 18 `lookup_ticket` calls per request (evidence: `execute_tool lookup_ticket` spans per trace, mean 11.4 for finance sessions after 08:52 vs 1.1 before; `northwind.retries` attribute).
-2. **Context bloat** from the error text: each failed result (about 560 tokens of stack-trace-like JSON from the API) stayed in history, so `northwind.context_tokens` per step grew from 1,180 to 5,900 across six steps; input tokens per request rose 7.4×, and because input tokens dominate cost, cost per request rose from $0.031 to $0.62.
+1. **Context bloat** from the retrieval change: retriever spans show `atlas.retrieval.top_k = 12` and `atlas.retrieval.hits = 12` after 09:00 (versus 4 and 1 to 3 before), `gen_ai.tool.call.result` holds whole articles instead of snippets, and `gen_ai.usage.input_tokens` per request is 3 to 5× the pre-09:00 median, as is `atlas.cost_usd`.
+2. **Retry storm** on the model: generation spans between 10:00 and 12:00 with `status = ERROR`, `error.type = "APITimeoutError"` and `atlas.retries = 1..2` still carry `gen_ai.usage.input_tokens` and `atlas.cost_usd`, because a timed-out call still bills its input tokens; the retries re-sent the same bloated prompt.
 
-**Why other panels stayed calm:** request count was flat (same users, same questions); task success only dipped to 93% because most affected requests still ended with a graceful hand-off (counted as `handed_off`, not `failed`); p95 rose but stayed under 4 s because each individual model call was fast, just many of them; tool error rate at 9% is *all* of the signal that was red, and 9% was under the 10% alert threshold.
+**Why other panels stayed calm:** request count was flat (same users, same questions); no 5xx, because every retry storm eventually succeeded; p95 crept up but only for ops requests in the storm; the retry counter was the one panel that was red, and nobody had an alert on it (lecture 9.5 adds `AtlasRetryStorm`).
 
-**Timeline:** 08:52 first `503` from the ticket API; 09:00 to 09:59 finance cost $6.10 (normal $0.70); 10:00 to 10:59 $14.80; 11:40 finance controller notices; 11:52 investigation starts. The cost anomaly alert (EWMA) would have fired at 09:20 had it existed; it is added in lecture 6.7 and the Grafana rule in 9.5.
+**Timeline:** 08:55 deploy PR #412; 09:00 ops `top_k` 12, diet off, input tokens per request 3 to 5×; 10:00 provider timeouts begin; 10:05 the EWMA detector in `BudgetGuard` flags ops (`BudgetDecision.anomaly`, not wired to a metric); 11:40 the `cost_anomaly` rule pages.
 
-**Fix now:** set `ATLAS_MAX_RETRIES=0` for `lookup_ticket` (idempotent reads should retry at the HTTP client with backoff, not at the agent step), enable the context diet's tool-result truncation (`tool_result_token_budget=400`) so error payloads are capped, and drop failed tool results from history after the step that consumed them. Cost per request for finance returns to $0.031 within one hour (the metric to watch: `sum(increase(atlas_cost_usd_total{tenant="finance"}[1h]))`).
+**Fix now:** roll `ATLAS_TOP_K` back to 4 and `KB_MIN_SCORE` to 0.5, keep the context diet on (`ATLAS_CONTEXT_DIET=1`); retrieval quality is measured with `atlas.retrieval.hits` and the judge's `grounded` score, not with "more context". Bound retries under load (`ATLAS_MAX_RETRIES=1`), add jitter, and let the circuit breaker move the request to the fallback model instead of re-billing the same prompt. Cost per request for ops returns to its morning value within one hour (the metric to watch: `sum(increase(atlas_cost_usd_total{tenant="ops"}[1h]))`).
 
-**Prevent:** (a) instrumentation: `northwind.retries` and `northwind.context_tokens` on every step (already added in Lab 3), and a `tool_result_bytes` histogram; (b) budget/alert: the EWMA anomaly per tenant plus the tool error spike alert with threshold **5%** not 10% for `lookup_ticket`; (c) test/gate: `test_retry_storm_cost_bounded` in `tests/budget/`, replaying the `retry_storm` scenario and asserting the day costs at most 1.3× baseline.
+**Prevent:** (a) instrumentation: `atlas.retrieval.top_k` and `atlas.retrieval.hits` on retriever spans and `atlas.retries` on generations (all exist), plus an alert on `sum(rate(atlas_tokens_total{kind="input"}[5m])) by (tenant)` per request, not only on dollars; (b) budget/alert: the per-tenant budget guard in front of the loop (`northwind.budget.BudgetGuard`) would have degraded ops to `gpt-4.1-nano` at the soft cap and the `AtlasRetryStorm` rule would have paged at 10:10; (c) test/gate: the CI budget gate (`tests/budget/test_budget_gate.py`) fails PR #412 on cost per session, and retrieval changes need an eval on `judge_grounded` plus a replayed cost delta before merge.
 
-**Cost of the incident:** $52.40 above baseline by noon; projected $210 for the day and $6,300 for the month had it continued.
+**Cost of the incident:** roughly a doubling of the whole company's day by noon, almost all of it ops; compute the exact excess from `spans.jsonl` as the ops spend between 09:00 and 13:00 minus the same hours at the pre-09:00 cost per request.
 
 ---
 
@@ -235,31 +240,31 @@ Scoring for the in-lecture challenge (self-assessed): root cause correct = 3 poi
 
 ### Brief (shown on screen; pause the video here)
 
-> **Tuesday 2026-09-22.** 14:05: the warehouse floor lead reports Atlas "taking ages". Dashboard: p95 **4.9 s** since 13:10 (budget 4.0 s, morning 2.2 s), all tenants; error rate 3.1% (budget 2%); cost per hour up 25%; task success 91%; judge scores normal; tool error rate normal. `releases.txt` shows a deploy at 12:30 tagged `v1.3.0: retrieval tuning`. Dataset: `incidents/incident-02-latency-regression/` (spans 09:00 to 15:00).
+> **Monday 2026-09-14, 14:20.** The `latency_p95` rule pages: p95 above 4 s for 15 minutes. Grafana: `atlas_request_latency_seconds` p95 went from about 3 s to **6 to 8 s** starting about 13:00, all tenants; TTFT p95 (`atlas_ttft_seconds`) roughly tripled; tokens per request slightly up; cost up only about 10%; error rate flat; no retries to speak of. The provider status page shows "elevated latency" for one region since 12:50. Someone mentions a config change at 12:30: "bumped retrieval top-k to 20 for the FAQ pilot". Dataset: `incidents/incident-02-latency-regression/` (`spans.jsonl`, `scores.jsonl`, `brief.md`).
 >
-> Eight minutes. There are two causes. Find both and say which one the release is responsible for.
+> Eight minutes. There are two causes. Find both and say which one the config change is responsible for.
 
 ### Hints (shown after four minutes)
 
 1. Split latency by span type: where did the extra seconds go, model calls or tool calls or retrieval?
-2. Compare generation duration for the same model before and after 13:10, then compare input tokens before and after 12:30. Two different times, two different causes.
-3. `northwind.retrieval.top_k` is on the retriever span. What does the release change?
+2. Compare `gen_ai.response.time_to_first_chunk` for the same model before and after 13:00, then compare input tokens before and after 12:30. Two different times, two different causes.
+3. `atlas.retrieval.top_k` is on the retriever span. What does the 12:30 config change do to it, and to the duration of the retriever span?
 
 ### Instructor only: the reveal
 
-**Root cause (one sentence):** the primary provider's latency for `gpt-4.1-mini` degraded from 13:10 (a provider-side incident: TTFT p50 from 410 ms to 2,900 ms, no errors until timeouts started), and the 12:30 release had raised retrieval `top_k` from 4 to 12, which added about 1,900 input tokens per generation, so every already-slow model call had 2.4× more input to process and every retry after a timeout cost 2.4× more.
+**Root cause (one sentence):** the provider's regional slowdown multiplied TTFT by about 3.5 and halved tokens per second from about 13:00 (`slow_provider`), which on its own would have pushed p95 to about 5 s, and the 12:30 config change had raised retrieval `top_k` from 4 to 20 for a pilot, which made every retriever span longer and every step-2 prompt larger, and a slow provider is slowest on long prompts; the two compound into the 6 to 8 s p95.
 
-**Which cause belongs to the release:** the `top_k` change. The provider slowdown would have pushed p95 to about 3.6 s on its own (still under budget); the `top_k` change on its own added 300 ms and 25% cost (under budget). Together: 4.9 s and the error rate over 2% (timeouts at 20 s on the longest prompts). Neither alone breaches; both together do. That is why "no single change caused it" is a real answer and why the CI budget gate (lecture 13.3) tests cost **and** latency per PR: the `top_k` PR would have failed the cost gate at +25% before it ever met the slow provider.
+**Which cause belongs to the config change:** the `top_k` change. Requests before 13:00 that already carried `top_k = 20` are slightly slower than the morning: the k change alone was a small regression that the provider then amplified. The provider alone would have breached the budget mildly; together they doubled p95. That is why "no single change caused it" is a real answer and why the CI budget gate (lecture 13.3) tests cost **and** latency per change: `BUDGET_GATE_INCIDENTS=latency_regression make budget-check` fails on p95 before the pilot ever meets a slow provider.
 
-**Evidence:** (1) `openai.chat gpt-4.1-mini` spans: mean duration 690 ms before 13:10, 2,940 ms after, with `gen_ai.response.time_to_first_chunk` moving the same way and `gen_ai.usage.output_tokens` unchanged, so it is provider time, not output length; (2) retriever spans: `northwind.retrieval.top_k` 4 → 12 from 12:30, generation `gen_ai.usage.input_tokens` mean 1,840 → 3,760 from 12:30 for all tenants.
+**Evidence:** (1) generation spans after 13:00: `gen_ai.response.time_to_first_chunk` 3 to 4× higher for the same model and similar token counts, so it is provider time, not output length; `invoke_agent atlas` durations by hour: p95 about 3.0 s until 13:00, then 6 to 8 s until 17:00; (2) retriever spans after 12:30: `atlas.retrieval.top_k = 20` (was 4), longer durations, more `atlas.retrieval.hits`, and `atlas.context_tokens` higher in step 2.
 
 **Why judge scores stayed normal:** the extra chunks did not hurt grounding (they helped slightly); slowness is invisible to a judge that reads text. **Why tool errors stayed normal:** tools were fine; the timeouts were on generations and show as generation errors, which the dashboard rolled into the request error rate.
 
-**Fix now:** enable Router fallback to the secondary provider with a 4 s timeout (Lab 4) for the outage, and roll `top_k` back to 4 by setting `ATLAS_TOP_K=4` (config, no redeploy). Metrics to watch: p95 back under 3 s within 15 minutes; `atlas_fallbacks_total` rising while the provider is slow; input tokens per generation back to about 1,840.
+**Fix now:** roll `ATLAS_TOP_K` back to 4 (config, no redeploy; the judge's `grounded` score did not improve with 20), tune `ATLAS_REQUEST_TIMEOUT_S` to the TTFT budget, and let the circuit breaker plus `FALLBACKS` in `app/agent.py` (or the LiteLLM Router with `ATLAS_ROUTER_MODE=1`, `fallbacks=`, `cooldown_time=`) move requests to `gpt-4o-mini` while the primary region is slow; stream the final answer so users see the first token early. Metrics to watch: p95 back under 4 s within 15 minutes; `atlas_model_fallbacks_total` rising while the provider is slow; `atlas.retrieval.top_k` back at 4.
 
-**Prevent:** (a) instrumentation: `northwind.retrieval.top_k` and chunk token count on the retriever span, `gen_ai.response.time_to_first_chunk` on generations (both exist now); (b) alert: provider TTFT p95 per model with a 1.5 s threshold, separate from end-to-end p95, so provider slowness is named as such; (c) gate: the budget gate replays the day per PR; `top_k=12` fails it at +25% cost per session, as Lab 7 demonstrates.
+**Prevent:** (a) instrumentation: `atlas.retrieval.top_k` and chunk token count on the retriever span, `gen_ai.response.time_to_first_chunk` on generations (both exist now); (b) alert: provider TTFT p95 per model with a 1.5 s threshold, separate from end-to-end p95, so provider slowness is named as such; (c) gate: the budget gate replays the day per change; `BUDGET_GATE_INCIDENTS=latency_regression` fails it on p95, as Lab 4 and Lab 7 demonstrate.
 
-**Cost of the incident:** 25% extra tokens for 2.5 hours across all tenants, about $4.10, plus the timeouts' retries, about $1.60; the real cost was 1,900 slow requests and a floor team that stopped trusting the tool for a day.
+**Cost of the incident:** about 10% extra spend for four hours across all tenants (compute it from `spans.jsonl`); the real cost was every afternoon request over budget and a floor team that stopped trusting the tool for a day.
 
 ---
 
@@ -267,26 +272,26 @@ Scoring for the in-lecture challenge (self-assessed): root cause correct = 3 poi
 
 ### Brief (shown on screen; pause the video here)
 
-> **Friday 2026-09-25.** The HR business partner writes: "People are saying Atlas has got worse this week. It answers, but the answers are vague, and two people were told the wrong number of leave days." Dashboard for the week: requests flat; task success 94%; p95 2.2 s; cost per session **down 8%**; tool error rate normal; no alerts fired. `releases.txt`: Wednesday 09:15 "prompt atlas-system v2 promoted to production label (shorter, friendlier tone)". Dataset: `incidents/incident-03-quality-drift/` (spans for the week, judge scores from a 10% uniform sample, feedback).
+> **Tuesday 2026-09-15, 09:10.** The HR business partner writes: "Atlas answers feel curt and people don't trust them any more." Nothing paged. Grafana for Monday: latency, error rate, cost all **green**; cost is actually down about 10%. `atlas_feedback_total{outcome="negative"}` doubled on Monday afternoon. Langfuse scores: the sampled judge's `judge_grounded` mean dropped from about 0.9 to about 0.6 at about 11:00 Monday; `judge_resolved` is down too. The weekly drift report shows `judge_overall` PSI above 0.25. Nobody deployed code on Monday. Dataset: `incidents/incident-03-quality-drift/` (`spans.jsonl`, `scores.jsonl` with judge scores and feedback, `brief.md`).
 >
 > Eight minutes. Explain why every dashboard panel is green, what actually changed, and how to roll back without a deploy.
 
 ### Hints (shown after four minutes)
 
 1. Task success counts a request as resolved when the agent *says* it resolved it. Who checks whether it was right?
-2. Slice the judge scores by `northwind.prompt_version`. Then slice by tenant.
+2. Slice the judge scores by `atlas.prompt_version`. Then slice by tenant.
 3. Cost went **down**. What gets cheaper when answers get vaguer?
 
 ### Instructor only: the reveal
 
-**Root cause (one sentence):** prompt `atlas-system` version 2 was promoted to the `production` label on Wednesday without an offline eval, and its instruction to "keep answers short and friendly" made the model drop the policy citations and specific numbers that the `grounded` criterion rewards, so answers became shorter (cheaper), still confident (counted as resolved), and less accurate.
+**Root cause (one sentence):** at 11:00 on Monday the `production` label of the Langfuse prompt `atlas-system` was moved from v1 to v2 ("tidy-up: shorter answers") without an offline eval; v2 dropped the instructions to *cite the knowledge-base article* and *end with a clear next step* and told the model to "avoid unnecessary references", so answers became shorter (cheaper), still confident (counted as resolved), and stopped being grounded or actionable.
 
-**Why nothing was red:** task success is self-reported by the agent and v2 is as confident as v1; p95 and tool errors are untouched because the tool loop did not change; cost fell because output tokens fell 26% (96 → 71 mean); no alert existed on judge scores or on feedback. The only signals were the judge's `grounded` mean (0.90 → 0.77 on v2 traces), the thumbs-down rate (1.4% → 2.0%), and answer length, none of which had a panel or an alert before Section 8 and 9.
+**Why nothing was red:** task success is self-reported by the agent and v2 is as confident as v1; p95 and tool errors are untouched because the tool loop did not change; cost fell because `gen_ai.usage.output_tokens` fell after 11:00; no alert existed on judge scores or on feedback. The only signals were the judge's `grounded` and `overall` means (about 0.9 before 11:00, 0.6 to 0.75 after), the negative feedback share rising in the afternoon, lagging the judge by one to two hours, and answer length, none of which had a panel or an alert before Sections 8 and 9.
 
-**Evidence:** (1) judge scores by `northwind.prompt_version` (uniform slice): v1 resolved 0.92 / grounded 0.90, v2 resolved 0.86 / grounded 0.77, sharpest in `hr` (grounded 0.71); (2) generation spans: `gen_ai.usage.output_tokens` mean 96 → 71 from Wednesday 09:15 with input tokens unchanged, and `northwind.prompt_version=v2` on every affected generation because Atlas links generations to the prompt version it fetched (lecture 4.4). The two employees told the wrong leave entitlement are traces `…3f9a` and `…b21c`: v2 answered "around three months" instead of the KB's "16 weeks for primary carers".
+**Evidence:** (1) `scores.jsonl`: `judge_grounded` / `judge_overall` by hour, mean about 0.9 before 11:00 and 0.6 to 0.75 after, with no difference by tenant, intent or model, which points at a shared component; (2) agent spans: `atlas.prompt_version` is `v1` before 11:00 and `v2` after, the only attribute that changes, and `langfuse.observation.output` after 11:00 has no `(Source: …)` and no "Next step:", with `gen_ai.usage.output_tokens` lower. `python evals/drift_report.py` on the dataset flags `judge_overall`, `judge_grounded` and `judge_resolved` as `alert` and `cost_per_request_usd` as an *improvement*: the tell-tale pattern of a prompt that does less.
 
-**Roll back without a deploy:** in Langfuse, move the `production` label back to `atlas-system` version 1 (**Prompts → atlas-system → v1 → Labels → production**). Atlas fetches `get_prompt("atlas-system", label="production", cache_ttl_seconds=60)`, so every instance picks up v1 within a minute, no restart. Confirm with the judge on the next hour's traces: `grounded` back above 0.88.
+**Roll back without a deploy:** in Langfuse, move the `production` label back to `atlas-system` version 1 (**Prompts → atlas-system → v1 → Labels → production**), or locally `ATLAS_PROMPT_VERSION=v1`. Atlas fetches the prompt with `get_prompt_text("atlas-system", label="production", cache_ttl_seconds=60)`, so every instance picks up v1 within a minute, no restart. Confirm with the judge on the next hour's traces: `grounded` back above 0.85.
 
-**Prevent:** (a) instrumentation: `northwind.prompt_version` on generations (exists) and answer-length as a metric; (b) alert: drift alert on judge `grounded` with PSI ≥ 0.1 week over week, and a thumbs-down rate alert; (c) gate: promote to `production` only after the Course 2 style offline eval on the `atlas-failures` dataset passes, and CI's `live-evals` job scores 50 requests per prompt change. Also process: `staging` label first, judge a day of shadow traffic, then `production`.
+**Prevent:** (a) instrumentation: `atlas.prompt_version` on generations (exists) and answer-length as a metric; (b) alert: `AtlasJudgeScoreLow` (`judge_grounded` hourly mean under 0.75 for two hours) and `AtlasNegativeFeedbackSpike` in `deploy/alerts.yml`, plus the weekly drift report's PSI; (c) gate: promote to `production` only after the Course 2 style offline eval on the `atlas-failures` dataset passes, and CI's `live-evals` job scores 50 requests per prompt change. Also process: `staging` label first, judge a day of shadow traffic, then `production`.
 
-**Cost of the incident:** negative in dollars (-8%), which is the trap; the cost is two wrong HR answers with potential legal exposure and a week of eroded trust. Write that sentence in the postmortem, because it is the argument for spending 0.7% of serving cost on the judge.
+**Cost of the incident:** negative in dollars (about -10%), which is the trap; the cost is two wrong HR answers with potential legal exposure and a week of eroded trust. Write that sentence in the postmortem, because it is the argument for spending 0.7% of serving cost on the judge.

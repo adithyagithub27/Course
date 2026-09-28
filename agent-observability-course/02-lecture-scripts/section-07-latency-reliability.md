@@ -2,7 +2,7 @@
 
 > **Course:** AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse
 > **Section runtime:** about 50 minutes (8 lectures, including one chaos demo, one lab intro and one quiz intro)
-> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `operations`, `warehouse`, `finance`, `sales`)
+> **Running example:** Atlas, the IT and HR helpdesk agent at Northwind Logistics (tenants `ops`, `finance`, `hr`, `eng`)
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Latency charts: one metric per chart, p95 annotated with a callout, budget line drawn in red.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on litellm 1.103 / langfuse 4.15 / opentelemetry-semantic-conventions 0.66b0 (GenAI attributes are incubating; names may change)."
 > **Companion course tie-in:** Lecture 7.1 links once to *Production Voice AI Agents* for the 800 ms voice budget. Never require it.
@@ -251,7 +251,7 @@ Now the source: the local span store.
 
 ```bash
 OFFLINE=1 make replay
-uv run python -m northwind.latency --day 2026-09-22
+make console-text            # the latency section: p50 / p95 / p99, hourly p95, per-tool p95, all from northwind.latency
 ```
 
 [DEMO: output:]
@@ -276,27 +276,42 @@ Now the metrics.
 [CODE: `telemetry/metrics.py` (excerpt)]
 
 ```python
-from prometheus_client import Counter, Histogram
+LATENCY_BUCKETS = (0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 20.0)
+TTFT_BUCKETS = (0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0)
 
-LATENCY_BUCKETS = (0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 20.0)   # bracket the 4 s and 8 s budgets
-
-FIRST_TOKEN_SECONDS = Histogram("atlas_first_token_seconds", "Time to first visible token per request",
-                                ["feature"], buckets=LATENCY_BUCKETS)
-REQUEST_SECONDS = Histogram("atlas_request_seconds", "Full answer time per request",
-                            ["feature"], buckets=LATENCY_BUCKETS)
-STEP_SECONDS = Histogram("atlas_step_seconds", "Model call + tool time per step",
-                         ["model"], buckets=(0.25, 0.5, 0.75, 1.0, 1.2, 1.5, 2.0, 3.0, 5.0))
-TOOL_CALLS = Counter("atlas_tool_calls_total", "Tool invocations", ["tool"])
-TOOL_ERRORS = Counter("atlas_tool_errors_total", "Tool invocations that raised", ["tool"])
+LATENCY = Histogram(
+    "atlas_request_latency_seconds",
+    "End-to-end request latency",
+    ["tenant"],
+    buckets=LATENCY_BUCKETS,
+    registry=REGISTRY,
+)
+TTFT = Histogram(
+    "atlas_ttft_seconds",
+    "Time to first token of the final answer",
+    ["model"],
+    buckets=TTFT_BUCKETS,
+    registry=REGISTRY,
+)
+TOOL_CALLS = Counter(
+    "atlas_tool_calls_total", "Tool invocations", ["tool", "outcome"], registry=REGISTRY
+)
+TOOL_LATENCY = Histogram(
+    "atlas_tool_latency_seconds",
+    "Tool execution time",
+    ["tool"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
+    registry=REGISTRY,
+)
 ```
 
-Two rules in this file. First, the buckets bracket the budget: there's a bucket edge at exactly four seconds and at eight, so `histogram_quantile` can answer "what fraction was under budget" precisely, not by interpolation. Second, labels: `feature` and `model`, nothing else. Never tenant on a latency histogram, and never user. Four tenants times five features times eleven buckets is fine; four thousand users is not. [PAUSE] Tenant latency lives in the span store, where cardinality is free.
+Two rules in this file. First, the buckets bracket the budget: there's a bucket edge at exactly four seconds and at eight, so `histogram_quantile` can answer "what fraction was under budget" precisely, not by interpolation. Second, labels: `tenant` on the request histogram, `model` on time to first token, `tool` on tool latency, nothing else, and never user or session. Four tenants times thirteen buckets is fine; four thousand users is not. [PAUSE] Per-user latency lives in the span store, where cardinality is free.
 
-[SCREEN: `app/agent.py`, one line: `FIRST_TOKEN_SECONDS.labels(feature=ctx.feature).observe(timing.first_visible_token)`; then the Ops Console latency page]
+[SCREEN: `app/agent.py`, `_finish`: `metrics.record_request(tenant=tenant, model=result.model, outcome=result.outcome, latency_s=..., steps=result.steps)`, and in `_call_model`: `metrics.record_generation(..., ttft_s=ttft_s)`; then the Ops Console latency page]
 
-One `observe` call at the end of the request, and the Ops Console latency page lights up: p50, p95, p99 lines, the four-second budget in red, per-step breakdown, per-tool p95. Same functions, same numbers as the terminal.
+One `record_request` call at the end of the request, one `record_generation` per model call, and the Ops Console latency page lights up: p50, p95, p99 lines, the four-second budget in red, per-step breakdown, per-tool p95. Same functions, same numbers as the terminal.
 
-Two habits with histograms. Observe once per request, at the end, with the value you computed from spans; don't wrap the whole request in a timer and observe that, because then you've measured total time when the SLI is first visible token. And choose buckets before you have a month of data, because changing buckets later makes old and new data incomparable. Ours run from a quarter second to twenty, with edges at the two budgets. [PAUSE] If you ever find yourself wanting p99.9 from a histogram, stop: eleven buckets can't give you that, and neither can a provider you don't control.
+Two habits with histograms. Observe once per request, at the end, with the value you computed from spans; don't wrap the whole request in a timer and observe that, because then you've measured total time when the SLI is first visible token. And choose buckets before you have a month of data, because changing buckets later makes old and new data incomparable. Ours run from a tenth of a second to twenty, with edges at the two budgets. [PAUSE] If you ever find yourself wanting p99.9 from a histogram, stop: thirteen buckets can't give you that, and neither can a provider you don't control.
 
 [SCREEN: `tests/unit/test_latency.py`]
 
@@ -339,7 +354,7 @@ Now you can see where the time goes. Next, the controls that hold it: timeouts, 
 
 ### Script
 
-[B-ROLL: Ops Console. Operations tenant, 10:05. A tool error rate line jumps to 40%. Below it, the cost line for operations bends upward. Caption: `retry_storm`.]
+[B-ROLL: Ops Console. Ops tenant, 10:05. The LLM retry line (`atlas_llm_retries_total{reason="APITimeoutError"}`) jumps. Below it, the cost line for ops bends upward. Caption: `retry_storm`.]
 
 [AVATAR]
 
@@ -370,32 +385,77 @@ Timeouts. The step budget is one point two seconds at p95, and the model's first
 [CODE: `app/agent.py` (excerpt): timeouts and bounded retries]
 
 ```python
-RETRYABLE = (litellm.exceptions.Timeout, litellm.exceptions.RateLimitError,
-             litellm.exceptions.APIConnectionError, litellm.exceptions.InternalServerError)
+RETRYABLE: tuple[type[BaseException], ...]
+try:
+    import openai
 
-
-def _call_model(self, ctx: RequestContext, deployment: str, messages: list[dict]) -> ModelResult:
-    attempt = 0
-    while True:
-        try:
-            stream = self.router.completion(
-                model=deployment, messages=messages, tools=self.tool_schemas, stream=True,
-                timeout=self.cfg.llm_total_timeout_s,                 # 25 s
-                prompt_cache_key=self._cache_key(ctx),
-            )
-            return self._consume(stream, first_token_timeout=self.cfg.llm_first_token_timeout_s,   # 6 s
-                                 idle_timeout=self.cfg.llm_stream_idle_timeout_s)                 # 5 s
-        except RETRYABLE as exc:
-            if attempt >= self.cfg.llm_max_retries or getattr(exc, "streamed_tokens", 0) > 0:   # max 2; never retry a partial answer
-                raise
-            attempt += 1
-            RETRIES.labels(kind="llm", reason=type(exc).__name__, tenant=ctx.tenant).inc()
-            delay = random.uniform(0, min(self.cfg.retry_cap_s, self.cfg.retry_base_s * 2 ** attempt))  # full jitter: 0..min(8, 0.5*2^n)
-            lf.update_current_span(level="WARNING", status_message=f"retry {attempt}: {type(exc).__name__} after {delay:.2f}s")
-            time.sleep(delay)
+    RETRYABLE = (
+        openai.APITimeoutError,
+        openai.RateLimitError,
+        openai.APIConnectionError,
+        openai.InternalServerError,
+    )
+except Exception:  # noqa: BLE001 - pragma: no cover
+    RETRYABLE = (TimeoutError, ConnectionError)
 ```
 
-Read the `except`. Four things happen. Only `RETRYABLE` errors get here: timeouts, rate limits, connection errors, server errors. A bad request or an auth error is raised immediately, because retrying it is pointless. Then the bound: two retries, and never if the call already streamed tokens to the user, because a retry would produce a second, different answer. Then the counter, with the reason and the tenant. Then full-jitter backoff: a random delay between zero and half a second times two to the attempt, capped at eight. [PAUSE] Jitter is not optional. Without it, a thousand clients that failed at the same instant retry at the same instant, and you've built a synchronised storm.
+```python
+    def _backoff(self, attempt: int) -> float:
+        if self.settings.offline:
+            return 0.0
+        return min(2.0**attempt * 0.25, 4.0) * (0.5 + 0.5 * (hash(attempt) % 100) / 100)
+```
+
+```python
+        # _call_model(): one logical LLM call with bounded retries, fallback and one generation span per attempt
+        attempts = 0
+        current = model
+        last_exc: BaseException | None = None
+        while attempts <= self.settings.max_retries:
+            attempts += 1
+            if self.breaker.is_open(current) and current in FALLBACKS:
+                nxt = FALLBACKS[current]
+                metrics.FALLBACKS.labels(current, nxt).inc()
+                result.fallbacks += 1
+                log.warning("circuit open for %s; falling back to %s", current, nxt)
+                current = nxt
+            gen = GenerationRecord(model=current, step=step, attempt=attempts)
+            with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
+                ...
+                if attempts > 1:
+                    span.set_attribute(ga.ATLAS_RETRIES, attempts - 1)
+                try:
+                    kwargs: dict[str, Any] = dict(
+                        model=current,
+                        messages=messages,
+                        tools=TOOL_SCHEMAS,
+                        stream=stream,
+                        scenario=scenario,
+                        timeout=self.settings.request_timeout_s,
+                    )
+                    ...
+                    resp = self.llm.chat(**kwargs)
+                    ...
+                    self.breaker.record_success(current)
+                    return message, finish, current
+                except RETRYABLE as exc:
+                    last_exc = exc
+                    # A timed-out call still cost tokens on the provider side: estimate and record it.
+                    inp = count_message_tokens(messages)
+                    cost = self._price(current, inp, 0, 0, 0)
+                    ga.set_llm_usage(span, input_tokens=inp, output_tokens=0)
+                    ga.set_cost(span, cost)
+                    ga.set_error(span, exc)
+                    ...
+                    result.retries += 1
+                    metrics.LLM_RETRIES.labels(current, type(exc).__name__).inc()
+                    ...
+                    self.breaker.record_failure(current)
+            self._sleep(self._backoff(attempts))
+        raise RuntimeError(f"LLM unavailable after {attempts} attempts") from last_exc
+```
+
+Read the `except`. Five things happen. Only `RETRYABLE` errors get here: timeouts, rate limits, connection errors, server errors. A bad request or an auth error propagates immediately, because retrying it is pointless. Then the honest bill: a timed-out call still cost input tokens on the provider side, so the attempt gets its own generation span with the estimated input tokens, the cost and the error type. That is the line Incident 1 is about. Then the counter, `atlas_llm_retries_total`, with the model and the reason. Then the breaker learns about the failure, and the loop bound, `ATLAS_MAX_RETRIES`, two by default, decides whether there is another attempt. Then jittered backoff: a quarter second doubling per attempt, capped at four seconds, with up to fifty percent of random jitter, and zero when offline so the replay stays fast. [PAUSE] Jitter is not optional. Without it, a thousand clients that failed at the same instant retry at the same instant, and you've built a synchronised storm.
 
 Now tools, which have their own retry problem.
 
@@ -421,11 +481,11 @@ Tool retries follow the same shape: at most two, jittered, counted with `kind="t
 Replay the storm, before and after.
 
 ```bash
-OFFLINE=1 make replay SCENARIO=retry_storm TENANT=operations          # v1 retry loop
-OFFLINE=1 BOUNDED_RETRIES=1 make replay SCENARIO=retry_storm TENANT=operations
+OFFLINE=1 ATLAS_MAX_RETRIES=10 make replay SCENARIO=retry_storm   # v1: retry until it works (the preset hits ops 10:00-12:00)
+OFFLINE=1 ATLAS_MAX_RETRIES=2 make replay SCENARIO=retry_storm    # bounded, jittered: the shipped default
 ```
 
-[SLIDE 3: The storm, before and after (two hours, operations, baseline prices)]
+[SLIDE 3: The storm, before and after (two hours, ops, baseline prices)]
 
 | | Unbounded retries (v1) | Bounded, jittered, idempotent |
 |---|---|---|
@@ -504,60 +564,74 @@ Three states. Closed is normal: requests flow, failures get counted. Open: after
 
 [SCREEN: VS Code, `app/agent.py`, `build_router`]
 
-[CODE: `app/agent.py` (excerpt): fallback lists]
+[CODE: `app/agent.py` (excerpt): fallback table, Router config and the breaker]
 
 ```python
-def build_router(cfg: Settings) -> Router:
-    return Router(
-        model_list=[
-            {"model_name": "atlas-default",
-             "litellm_params": {"model": "gpt-4.1-mini", "api_key": cfg.openai_api_key}},
-            {"model_name": "atlas-default",                      # same logical name, second provider
-             "litellm_params": {"model": "azure/gpt-4.1-mini", "api_base": cfg.azure_base,
-                                "api_key": cfg.azure_api_key, "api_version": cfg.azure_api_version}},
-            {"model_name": "atlas-strong",
-             "litellm_params": {"model": "gpt-4.1", "api_key": cfg.openai_api_key}},
-            {"model_name": "atlas-fast",
-             "litellm_params": {"model": "gpt-5-mini", "api_key": cfg.openai_api_key}},
-        ],
-        fallbacks=[
-            {"atlas-default": ["atlas-fast", "atlas-strong"]},   # cheapest viable first, strongest last
-            {"atlas-strong": ["atlas-default"]},                 # if the strong model is down, answer anyway
-        ],
-        context_window_fallbacks=[{"atlas-default": ["atlas-strong"]}],
-        num_retries=0,                # the agent loop owns retries (7.3)
-        timeout=cfg.llm_total_timeout_s,
-        allowed_fails=3,
-        cooldown_time=30,
-        retry_after=1,
-        routing_strategy="latency-based-routing",
-    )
+FALLBACKS: dict[str, str] = {
+    "gpt-4.1-mini": "gpt-4o-mini",
+    "gpt-4o-mini": "gpt-4.1",
+    "gpt-4.1": "gpt-4.1-mini",
+    "gpt-5-mini": "gpt-4.1-mini",
+    "gpt-4.1-nano": "gpt-4.1-mini",
+}
 ```
 
-Four deployments, three logical names. `atlas-default` appears twice: once on OpenAI, once on Azure, same model. When two deployments share a name, the Router load-balances between them, and with `routing_strategy="latency-based-routing"` it prefers the one that has been faster recently. That's the provider fallback, and it's automatic.
+```python
+def build_router_config(settings: Settings) -> dict[str, Any]:
+    """LiteLLM Router kwargs (verified against litellm 1.103): model_list, fallbacks,
+    num_retries, timeout, allowed_fails, cooldown_time. Pure data — testable offline."""
+    models = sorted(
+        {
+            settings.model,
+            settings.escalation_model,
+            settings.routing_model,
+            settings.degraded_model,
+            "gpt-4o-mini",
+        }
+    )
+    return {
+        "model_list": [
+            {
+                "model_name": m,
+                "litellm_params": {"model": f"openai/{m}", "api_key": settings.openai_api_key},
+            }
+            for m in models
+        ],
+        "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
+        "num_retries": settings.max_retries,
+        "timeout": settings.request_timeout_s,
+        "allowed_fails": 3,
+        "cooldown_time": 30,
+    }
+```
 
-Then the model fallback lists. If `atlas-default` fails, try `atlas-fast`, a different small model, then `atlas-strong`. Cheapest viable first, strongest last, because a fallback step on gpt-4.1 costs a cent. If `atlas-strong` fails, fall back down to `atlas-default`, because a slightly weaker answer beats no answer. And `context_window_fallbacks`: if a prompt is too long for the default, send it up rather than error. [PAUSE] `num_retries` is zero here, because the agent loop from 7.3 owns retries and we want one place to count them.
+```python
+class CircuitBreaker:
+    """Per-model breaker: open after ``threshold`` consecutive failures, half-open after cooldown."""
+```
+
+Five deployments and one fallback each, in a plain table. `gpt-4.1-mini` falls back to `gpt-4o-mini`, a different model family so a family-wide slowdown doesn't take both; `gpt-4o-mini` falls back up to `gpt-4.1`, because a slightly dearer answer beats no answer; and `gpt-4.1` falls back down to `gpt-4.1-mini`, because if the strong model is down you still answer. Cheapest viable first, strongest last, because a fallback step on gpt-4.1 costs a cent. The Router gets the same table through `build_router_config`, plus `allowed_fails` and `cooldown_time`: after three failures a deployment cools down for thirty seconds. [PAUSE] And because Atlas also runs without the Router, offline and in tests, `CircuitBreaker` does the same job in-process: it opens for a model after a threshold of consecutive failures and half-opens after a cooldown, and `_call_model` consults it before every attempt.
 
 One thing the Router does not tell you by default: that a fallback happened. We need that on the span and on a counter.
 
 [CODE: `app/agent.py` (excerpt): logging fallbacks]
 
 ```python
-result = self._call_model(ctx, deployment, messages)
-served = result.response.model                                     # the model that actually answered
-requested = self.router.get_model_list(model_name=deployment)[0]["litellm_params"]["model"]
-if served.split("/")[-1] != requested.split("/")[-1]:
-    reason = result.fallback_reason or "router_fallback"          # Timeout | RateLimitError | cooldown | ...
-    FALLBACKS.labels(from_model=requested, to_model=served, reason=reason).inc()
-    lf.update_current_generation(model=served, level="WARNING", status_message=f"fallback: {requested} -> {served} ({reason})",
-                                 metadata={"fallback": True, "fallback_reason": reason, "requested_model": requested})
+            if self.breaker.is_open(current) and current in FALLBACKS:
+                nxt = FALLBACKS[current]
+                metrics.FALLBACKS.labels(current, nxt).inc()
+                result.fallbacks += 1
+                log.warning("circuit open for %s; falling back to %s", current, nxt)
+                current = nxt
+            gen = GenerationRecord(model=current, step=step, attempt=attempts)
+            with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
 ```
 
-After each call, compare the model that answered with the model we asked for. If they differ, a fallback fired. Count it with from, to and reason, and mark the generation as a warning with the requested model in the metadata. [PAUSE] Two things this buys you. Cost attribution stays honest: the generation is priced on the model that answered. And the fallback rate becomes a time series, which is the first thing you look at in the chaos demo.
+Before each attempt, if the breaker is open for the model we wanted, switch to its fallback, count it with from and to, log a warning with both names, and then open the generation span under the model that will actually answer. [PAUSE] Two things this buys you. Cost attribution stays honest: `_price` runs on `current`, the model that answered, and the span is named after it. And the fallback rate becomes a time series, `atlas_model_fallbacks_total`, which is the first thing you look at in the chaos demo.
 
 [SLIDE 2: What to log when a fallback fires]
 - On the generation: served model (for cost), requested model, reason, `level="WARNING"`
-- Counter: `atlas_llm_fallbacks_total{from_model,to_model,reason}`
+- Counter: `atlas_model_fallbacks_total{from_model,to_model}`; the reason is in the warning log and on the failed attempt's span (`error.type`)
 - Not on the span: the full error body (size and PII); put it in the structured log with the trace id
 - A fallback is not an error to the user; it's a warning to you
 
@@ -575,15 +649,15 @@ Log the served model, the requested model and the reason. Keep the error body in
 
 Resilience has a price, and you can read it in the showback by model. On a normal day, fallbacks are a third of a percent of steps, forty cents, mostly rate-limit blips at lunchtime. During a slow-provider window, tuned the way we'll do in 7.6, eighteen percent of requests fall back one step, about a hundred ten of them to gpt-4.1: a dollar twenty. [PAUSE] A dollar twenty to keep two hundred users under four seconds. That's the cheapest reliability you'll ever buy. And watch the weekly number: a fallback baseline that creeps up is a provider quietly degrading before it has an incident.
 
-[SCREEN: terminal, `uv run pytest tests/integration/test_router_fallback.py -q`]
+[SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "retry or fallback or breaker"`]
 
-[DEMO: 4 passed. Tests use the mock LLM with a scripted `Timeout` on the first deployment and assert: served model differs, `FALLBACKS` incremented once, generation level WARNING, cost computed on the served model.]
+[DEMO: green. The tests use the mock LLM with the `retry_storm` scenario and assert: the failed attempts get their own generation spans with `error.type` and an estimated cost, `atlas.retries` is set, the breaker opens after the threshold and the next call goes to `FALLBACKS[model]`, and the cost is computed on the served model.]
 
-Four integration tests, offline, using the mock LLM with a scripted timeout. They assert the served model, the counter, the warning level, and that the cost was computed on the model that actually answered.
+Unit tests, offline, using the mock LLM's scripted timeouts. They assert the retry spans, the counter, the breaker, and that the cost was computed on the model that actually answered.
 
 ### Recap
 
-Give the Router a second provider under the same name, ordered model fallbacks from cheapest viable to strongest, and `allowed_fails` plus `cooldown_time` as the circuit breaker; log every fallback as a warning with the served model, and read its cost in the showback.
+Give every model a fallback in `FALLBACKS`, cheapest viable first, put the Router's `allowed_fails` plus `cooldown_time` and our own `CircuitBreaker` in front of it; count every fallback in `atlas_model_fallbacks_total{from_model,to_model}`, price the generation on the served model, and read its cost in the showback by model.
 
 ### Transition
 
@@ -593,9 +667,9 @@ Fallbacks handle a slow model. Next, the provider says no: rate limits, per-tena
 
 - **Fallback to the same model on the same provider.** It fails the same way. Different provider or different model, never the same deployment.
 - **Strongest model first in the list.** It works and costs 5× for the whole outage. Cheapest viable first.
-- **Silent fallbacks.** The Router does not annotate spans. The served-vs-requested comparison is our code; without it, the trace says gpt-4.1-mini and the bill says gpt-4.1.
+- **Silent fallbacks.** The Router does not annotate spans. Opening the generation span under `current`, the model that answers, is our code; without it, the trace says gpt-4.1-mini and the bill says gpt-4.1.
 - **Cooldown too long.** 30 s means a 45-minute slowdown costs you many probes, which is fine. 30 minutes means you miss the recovery. Keep it short; the half-open probe is cheap.
-- **Verify Router kwargs** on the installed litellm: `model_list`, `fallbacks`, `context_window_fallbacks`, `num_retries`, `timeout`, `allowed_fails`, `cooldown_time`, `retry_after`, `routing_strategy` all present on 1.103.
+- **Verify Router kwargs** on the installed litellm: `build_router_config` uses `model_list`, `fallbacks`, `num_retries`, `timeout`, `allowed_fails`, `cooldown_time`, all present on 1.103; `context_window_fallbacks`, `retry_after` and `routing_strategy` are available extensions for a second provider under the same logical name.
 
 ---
 
@@ -635,7 +709,7 @@ Twelve thirty on the busiest day of the quarter. Operations opens a hundred sess
 A 429 is the provider telling you you've exceeded a per-minute limit for tokens or requests. It usually carries a `Retry-After` header. Honour that number. Don't guess, and don't retry immediately, because everyone else on the same key is retrying too. Our retry loop from 7.3 handles it: bounded, jittered, counted, and the Router counts it toward the cooldown, so a rate-limited deployment gets bypassed. [PAUSE] But if 429s are persistent, that's not an error. It's capacity. And capacity has three answers: pay for more, add a second provider under the same name like we did in 7.4, or decide who waits.
 
 [SLIDE 2: Per-tenant concurrency]
-- One semaphore per tenant, sized from the showback share: operations 12, warehouse 10, finance 6, sales 4 (32 total)
+- One semaphore per tenant, sized from the showback share: ops 13, eng 7, finance 6, hr 6 (32 total)
 - A tenant at its limit waits in its own queue, up to 3 s, then gets degraded mode
 - No tenant can consume more than its share of the provider limit
 - Metrics: `atlas_inflight{tenant}` gauge, `atlas_queue_wait_seconds{tenant}` histogram
@@ -645,7 +719,7 @@ A 429 is the provider telling you you've exceeded a per-minute limit for tokens 
 
 [AVATAR]
 
-Per-tenant concurrency. One semaphore per tenant, sized from the tenant's share of the bill: operations gets twelve slots, warehouse ten, finance six, sales four. When operations fills its twelve, the hundred-and-first pallet question waits in operations' queue, up to three seconds, and then gets degraded mode. Finance's six slots are untouched. [PAUSE] That's the whole trick. The provider's limit is shared, so somebody has to divide it before the provider does it for you, and the provider divides it by who asked first.
+Per-tenant concurrency. One semaphore per tenant, sized from the tenant's share of the bill: ops gets thirteen slots, eng seven, finance six, hr six. When ops fills its thirteen, the hundred-and-first pallet question waits in operations' queue, up to three seconds, and then gets degraded mode. Finance's six slots are untouched. [PAUSE] That's the whole trick. The provider's limit is shared, so somebody has to divide it before the provider does it for you, and the provider divides it by who asked first.
 
 Two metrics: an in-flight gauge per tenant, and a queue-wait histogram, both low cardinality. When queue wait shows up on the dashboard for one tenant, that tenant has outgrown its slots, and the showback tells you whether to give it more.
 
@@ -740,7 +814,7 @@ The scenario. Forty-five minutes at lunchtime. Traffic up forty percent. About a
 Run one. Version-one settings.
 
 ```bash
-OFFLINE=1 RELIABILITY=v1 make replay SCENARIO=slow_provider
+OFFLINE=1 ATLAS_REQUEST_TIMEOUT_S=20 make replay SCENARIO=slow_provider     # untuned: the shipped default timeout
 ```
 
 [DEMO: the three panels fill in. From 12:00 the p95 line climbs: 3.4 → 6.1 → 9.8 → 11.2 s by 12:20 and stays there until 12:45. Fallback rate: flat zero. Cost per hour: flat, $2.50, unchanged. Requests in flight (fourth small panel): climbing to the concurrency ceiling. Error rate: 0.2%, unchanged.]
@@ -766,7 +840,7 @@ llm_max_retries: int = 0                    # for a slow provider, don't retry t
 Note the last line. For this scenario we set the agent's retries to zero, because retrying a slow deployment is waiting twice. The Router's fallback list takes over. Run two.
 
 ```bash
-OFFLINE=1 RELIABILITY=tuned make replay SCENARIO=slow_provider
+OFFLINE=1 ATLAS_REQUEST_TIMEOUT_S=6 ATLAS_MAX_RETRIES=1 make replay SCENARIO=slow_provider   # tuned: tight timeout, one retry, breaker + FALLBACKS
 ```
 
 [DEMO: p95 climbs to 4.4 s at 12:05, then settles at 3.8 s from 12:10 to 12:45. Fallback rate: rises to 18% by 12:10 and holds; a small panel shows to_model split: `gpt-5-mini` 62%, `gpt-4.1` 38%. Cost per hour: $2.50 → $3.70 for the window. Cooldown events: a step chart showing the OpenAI mini deployment cycling open/half-open every 30 s.]
@@ -790,13 +864,13 @@ Side by side. Eleven point two to three point eight. Users over eight seconds: t
 
 [SLIDE 3: What we did not change]
 - Fallback list: already right, never fired
-- Concurrency limits: held; operations queued for 1.1 s at worst
+- Concurrency limits: held; ops queued for 1.1 s at worst
 - Budget guard: never triggered; $1.20 is inside every tenant's headroom
 - The agent's prompt, models or tools: untouched
 
 [AVATAR]
 
-And what we didn't touch. The fallback list. The concurrency limits, which held; operations queued for a second at worst. The budget guard, which never fired, because a dollar twenty is inside everyone's headroom. The prompt, the models, the tools. One timeout was the whole fix, and the reason we knew which one was that three charts told us fallbacks were at zero while p95 was at eleven.
+And what we didn't touch. The fallback list. The concurrency limits, which held; ops queued for a second at worst. The budget guard, which never fired, because a dollar twenty is inside everyone's headroom. The prompt, the models, the tools. One timeout was the whole fix, and the reason we knew which one was that three charts told us fallbacks were at zero while p95 was at eleven.
 
 One more run for you to try yourself: set the first-token timeout to two seconds instead of six and watch what happens. [PAUSE] Fallback rate goes to forty percent on a normal day, cost goes up a third, and p95 barely moves. Too tight is its own incident. The lab is about finding the number in between.
 
@@ -832,7 +906,7 @@ Your turn. Lab 4 hands you the same scenario with a different seed and asks you 
 
 **Learning objectives**
 
-1. Run the `slow_provider` scenario with seed `lab4` and read the three charts.
+1. Run the `slow_provider` scenario with seed `4` and read the three charts.
 2. Adjust `llm_first_token_timeout_s`, fallback order, `allowed_fails`, `cooldown_time` and per-tenant concurrency until `make budget-check` passes.
 3. Justify every changed setting with a row from the latency budget worksheet.
 
@@ -844,12 +918,12 @@ Lab four. Same scenario as the demo, different seed, and this time the slow call
 
 [SCREEN: `04-labs/lab-04-latency-chaos.md`, the checklist]
 
-The lab starts with `OFFLINE=1 make replay SCENARIO=slow_provider SEED=lab4`, then `make budget-check`. The gate asserts three things: p95 first visible token under four seconds, cost per session under seventy-five hundredths of a cent, and zero duplicate tickets. On the lab seed, the default settings fail the first one and, if you're not careful with retries, the second.
+The lab starts with `OFFLINE=1 make replay SCENARIO=slow_provider SEED=4`, then `make budget-check`. The gate asserts three things: p95 first visible token under four seconds, cost per session under seventy-five hundredths of a cent, and zero duplicate tickets. On the lab seed, the default settings fail the first one and, if you're not careful with retries, the second.
 
-Then you tune. `llm_first_token_timeout_s`. The order of the fallback list. `allowed_fails` and `cooldown_time`. And the per-tenant concurrency numbers, because on this seed the slow window hits the warehouse tenant's burst.
+Then you tune. `llm_first_token_timeout_s`. The order of the fallback list. `allowed_fails` and `cooldown_time`. And the per-tenant concurrency numbers, because on this seed the slow window hits the ops tenant's burst.
 
 [SLIDE 1: Lab 4 checklist]
-- Replay `slow_provider` with seed `lab4`; screenshot the three charts, gate red
+- Replay `slow_provider` with seed `4`; screenshot the three charts, gate red
 - Tune config until `make budget-check` is green; screenshot again
 - Fill the worksheet row for each changed setting
 - Stretch: make it pass with fallback cost under $1.00 for the window

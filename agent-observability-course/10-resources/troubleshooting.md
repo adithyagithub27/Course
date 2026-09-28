@@ -86,7 +86,7 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 | Symptom | Fix |
 |---|---|
 | I opened `solution.md` by accident | Close it, write your hypothesis anyway, and do the next incident blind; the fourth (Project 2) has no solution in the repo |
-| The incident spans don't load in the Ops Console | Use the loader in the incident README (`make console STORE=incidents/incident-01-cost-spike/spans.jsonl`, see README for the exact flag) |
+| The incident spans don't load in the Ops Console | `make incident N=1` (text console over `incidents/incident-01-cost-spike/`), or `LocalSpanStore.from_jsonl(spans_path, scores_path)` in your own script |
 | My root cause differs from the reveal | Post it in the pinned incident thread with a spoiler tag; alternative explanations that fit the evidence are worth discussing |
 
 ## 7. Tests and CI

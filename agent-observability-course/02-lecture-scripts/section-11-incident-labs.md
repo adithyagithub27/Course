@@ -33,7 +33,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | 11.6 | Project 2: Investigate a fourth incident | AS | 3:00 | ~389 |
 | 11.7 | Quiz: Incident response | QZ | 3:00 (1:00 video intro) | ~114 |
 
-**Names used in this section (match `03-code/`).** Tenants (`northwind.config.TENANTS`): `logistics-ops`, `warehouse`, `hr`, `finance`. Settings (`src/northwind/config.py`, env in brackets): `context_diet` [`ATLAS_CONTEXT_DIET`], `retrieval_top_k` [`ATLAS_TOP_K`, default 4], `history_token_budget` [`ATLAS_HISTORY_TOKENS`, 3000], `tool_result_token_budget` [`ATLAS_TOOL_RESULT_TOKENS`, 400], `max_steps` [`ATLAS_MAX_STEPS`, 6], `max_retries` [`ATLAS_MAX_RETRIES`, 2], `request_timeout_s` [`ATLAS_REQUEST_TIMEOUT_S`, 20], `prompt_version` [`ATLAS_PROMPT_VERSION`], `tenant_soft_cap_usd` [25], `tenant_hard_cap_usd` [40], `degraded_model` (`gpt-4.1-nano`). Agent: `app/agent.py::AtlasAgent.run`, `_call_llm`, `CircuitBreaker`, `FALLBACKS`, `build_router_config`; `northwind.tokens.context_diet(messages, history_budget=, tool_result_budget=)`, `truncate_tool_result`; `northwind.budget.BudgetGuard.decide` → `Decision.ALLOW | DEGRADE | REFUSE`, `BudgetDecision.anomaly`, `EWMAAnomalyDetector`. Prompts: `app/prompts.py::PROMPT_NAME = "atlas-system"`, `ATLAS_SYSTEM_V1`, `ATLAS_SYSTEM_V2`, `V2_MARKER`; `telemetry.langfuse_setup.get_prompt_text(name, label="production", fallback=, cache_ttl_seconds=60)`, `push_prompts(PROMPTS, production_version=)`. Span attributes: `atlas.tenant`, `atlas.prompt_version`, `atlas.retrieval.top_k`, `atlas.ttft_ms`, `atlas.cost_usd`, `atlas.steps`, `atlas.retries`, `atlas.budget.decision`, `gen_ai.usage.input_tokens`, `gen_ai.tool.name`, `session.id`, `deployment.release`. Metrics (`telemetry/metrics.py`): `atlas_cost_usd_total{tenant,model,feature}`, `atlas_llm_retries_total{model,reason}`, `atlas_model_fallbacks_total`, `atlas_budget_decisions_total{tenant,decision}`, `atlas_tool_calls_total{tool,outcome}`, `atlas_ttft_seconds`, `atlas_request_latency_seconds`, `atlas_judge_score{name}`, `atlas_feedback_total`. Loading an incident (Makefile target assumed, not yet written): `make replay SPANS=incidents/<incident>/spans.jsonl` then `make console`. Each incident folder holds `spans.jsonl`, `brief.md` and `solution.md`. Session ids follow the simulator format `s07-01843`.
+**Names used in this section (match `03-code/`).** Tenants (`northwind.config.TENANTS`): `ops`, `finance`, `hr`, `eng` (`logistics-ops`, `warehouse` and `operations` are accepted aliases for `ops`, see `TENANT_ALIASES`). Settings (`src/northwind/config.py`, env in brackets): `context_diet` [`ATLAS_CONTEXT_DIET`], `retrieval_top_k` [`ATLAS_TOP_K`, default 4], `history_token_budget` [`ATLAS_HISTORY_TOKENS`, 8000], `tool_result_token_budget` [`ATLAS_TOOL_RESULT_TOKENS`, 1400], `kb_min_score` [`KB_MIN_SCORE`, 0.5], `max_steps` [`ATLAS_MAX_STEPS`, 6], `max_retries` [`ATLAS_MAX_RETRIES`, 2], `request_timeout_s` [`ATLAS_REQUEST_TIMEOUT_S`, 20], `prompt_version` [`ATLAS_PROMPT_VERSION`], `tenant_soft_cap_usd` [25], `tenant_hard_cap_usd` [40], `degraded_model` (`gpt-4.1-nano`). Agent: `app/agent.py::AtlasAgent.run`, `_call_model`, `CircuitBreaker`, `FALLBACKS`, `build_router_config`; `northwind.tokens.context_diet(messages, history_budget=, tool_result_budget=)`, `truncate_tool_result`; `northwind.budget.BudgetGuard.decide` → `Decision.ALLOW | DEGRADE | REFUSE`, `BudgetDecision.anomaly`, `EWMAAnomalyDetector`. Prompts: `app/prompts.py::PROMPT_NAME = "atlas-system"`, `ATLAS_SYSTEM_V1`, `ATLAS_SYSTEM_V2`, `V2_MARKER`; `telemetry.langfuse_setup.get_prompt_text(name, label="production", fallback=, cache_ttl_seconds=60)`, `push_prompts(PROMPTS, production_version=)`. Span attributes: `atlas.tenant`, `atlas.prompt_version`, `atlas.retrieval.top_k`, `atlas.ttft_ms`, `atlas.cost_usd`, `atlas.steps`, `atlas.retries`, `atlas.budget.decision`, `gen_ai.usage.input_tokens`, `gen_ai.tool.name`, `session.id`, `deployment.release`. Metrics (`telemetry/metrics.py`): `atlas_cost_usd_total{tenant,model,feature}`, `atlas_llm_retries_total{model,reason}`, `atlas_model_fallbacks_total`, `atlas_budget_decisions_total{tenant,decision}`, `atlas_tool_calls_total{tool,outcome}`, `atlas_ttft_seconds`, `atlas_request_latency_seconds`, `atlas_judge_score{name}`, `atlas_feedback_total`. Loading an incident: `make incident N=<n>` (imports the JSONL into a temporary store and prints the text console) or `LocalSpanStore.from_jsonl(spans_path, scores_path)` in your own script. Each incident folder holds `spans.jsonl`, `scores.jsonl`, `brief.md` and `solution.md` (incident 4's `solution.md` is instructor-only and stripped by `make student-repo`). Days: every dataset is Monday 2026-09-14 (`simulator.scenarios.DEFAULT_DATE`). Session ids follow the simulator format `s07-01843`.
 
 **Investigation rule for students (say it in 11.1 and repeat before every pause):** open `brief.md`, load `spans.jsonl`, do not open `solution.md` until Part B.
 
@@ -52,7 +52,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 
 ### Script
 
-[B-ROLL: A phone on a desk lights up at 11:20. The alert text reads: "ATLAS budget: tenant logistics-ops reached soft cap ($25). Responses degraded." Cut to a laptop opening.]
+[B-ROLL: A phone on a desk lights up at 11:20. The alert text reads: "ATLAS budget: tenant ops reached soft cap ($25). Responses degraded." Cut to a laptop opening.]
 
 [AVATAR]
 It's eleven twenty on a Monday morning and your phone just told you that Atlas has spent twenty-five dollars for one department before lunch, when that department normally spends nine dollars in a whole day.
@@ -119,11 +119,11 @@ Open `10-resources/incident-template.md`. It's a one-page markdown file with sev
 
 The block that matters most is hypotheses. Three columns: the claim, the prediction, and the status. Open, confirmed, or killed. Killing a hypothesis is progress. Write it down and move on.
 
-The evidence block is a list of exhibits. Each one says where it lives, so the next person can open it. "Cost page, tenant filter logistics-ops, 09:00 to 12:00" is an exhibit. "I looked at the dashboard" is not.
+The evidence block is a list of exhibits. Each one says where it lives, so the next person can open it. "Cost page, tenant filter ops, 09:00 to 12:00" is an exhibit. "I looked at the dashboard" is not.
 
 [SLIDE 4: How the incident labs work]
 - Each incident: a dataset in `incidents/`, a `brief.md`, and a `solution.md`
-- Load it: `make replay SPANS=incidents/<incident>/spans.jsonl`, then `make console`
+- Load it: `make incident N=<n>` (imports `incidents/incident-0<n>-*/spans.jsonl` and `scores.jsonl` into a temporary store and prints the text console; `LocalSpanStore.from_jsonl(...)` for your own scripts)
 - Part A gives you the brief and the exhibits, then an eight-minute pause
 - Part B walks the evidence to root cause, the fix and the prevention
 - Rule: do not open `solution.md` until Part B
@@ -173,21 +173,21 @@ Ready? Monday morning. Your phone is ringing.
 
 ### Script: Part A — the page and the evidence
 
-[B-ROLL: Ops Console cost page. Four lines from 06:00. At 09:00 one line, labelled `logistics-ops`, bends upward; at 10:00 it goes almost vertical. Red tint.]
+[B-ROLL: Ops Console cost page. Four lines from 06:00. At 09:00 one line, labelled `ops`, bends upward; at 10:00 it goes almost vertical. Red tint.]
 
 [AVATAR]
-Monday, eleven twenty. Your phone: "Budget: tenant logistics-ops reached soft cap, twenty-five dollars. Responses degraded."
+Monday, eleven twenty. Your phone: "Budget: tenant ops reached soft cap, twenty-five dollars. Responses degraded."
 
 Two minutes later, a message from the logistics lead: "Atlas has been slow all morning and now the answers are rubbish. Two-sentence replies that miss the point. What is going on?"
 
 You have the trace store, the Ops Console and the brief. Let's read the brief together, then I'll show you the exhibits, and then you're on your own for eight minutes.
 
 [SLIDE 1: On-call brief, Incident 1]
-- 11:20 Monday: soft-cap alert, tenant `logistics-ops`, $25/day; the budget guard has switched that tenant to the degraded model and two articles
+- 11:20 Monday: soft-cap alert, tenant `ops`, $25/day; the budget guard has switched that tenant to the degraded model and two articles
 - On the current trend the $40 hard cap trips at about 12:40, and Atlas will refuse the tenant
-- Normal Atlas spend: about $24 per day across all four tenants; `logistics-ops` about $9 per day
+- Normal Atlas spend: about $24 per day across all four tenants; `ops` about $9 per day
 - Other three tenants: normal
-- Last code deploy: Thursday. No deploy today
+- Deploy at 08:55 today: "retrieval recall improvements" (PR #412)
 - Provider status page: "investigating elevated error rates" posted at 10:14
 - Dataset: `incidents/incident-01-cost-spike/spans.jsonl`, Monday 06:00 to 12:00
 
@@ -195,7 +195,7 @@ Here's what the brief tells you. Atlas normally costs about twenty-four dollars 
 
 The soft cap from Lecture 6.7 did what it should. It slowed the bleeding. But it also made the answers worse for a whole department, and it took until eleven twenty to fire. Your job is to explain the sixteen dollars before then, and stop the next fifteen.
 
-[SCREEN: Terminal. `make replay SPANS=incidents/incident-01-cost-spike/spans.jsonl`, then `make console`. The Ops Console opens on the cost page.]
+[SCREEN: Terminal. `make incident N=1`. The Ops Console opens on the cost page.]
 
 Load the dataset. One command replays the spans into the local store, one opens the console. Now the exhibits. I'm going to show you six, and I'm not going to interpret any of them. That's your job.
 
@@ -203,10 +203,10 @@ Load the dataset. One command replays the spans into the local store, one opens 
 Exhibit one. Cost per hour by tenant. Three flat lines. One line bends at nine and breaks at ten. Two bends. Remember that.
 
 [EVIDENCE 2: Ops Console, traffic page, requests per minute by tenant, same window, with last Monday as a shadow line]
-Exhibit two. Requests per minute, same window, same tenant filter. Compare logistics-ops with last Monday's shadow.
+Exhibit two. Requests per minute, same window, same tenant filter. Compare ops with last Monday's shadow.
 
-[EVIDENCE 3: Ops Console, cost page, cost per session and mean `gen_ai.usage.input_tokens` per generation, logistics-ops, hourly]
-Exhibit three. Two numbers for logistics-ops, hour by hour. Cost per session. And mean input tokens per generation. Look at eight o'clock, nine o'clock and ten o'clock.
+[EVIDENCE 3: Ops Console, cost page, cost per session and mean `gen_ai.usage.input_tokens` per generation, ops, hourly]
+Exhibit three. Two numbers for ops, hour by hour. Cost per session. And mean input tokens per generation. Look at eight o'clock, nine o'clock and ten o'clock.
 
 [EVIDENCE 4: Ops Console, reliability page, `atlas_tool_calls_total` error share per tool, and `atlas_llm_retries_total` by reason, all tenants]
 Exhibit four. Two panels. Tool error share, per tool. And LLM retries, by reason. One of these panels does something at ten o'clock. The other doesn't.
@@ -215,7 +215,7 @@ Exhibit four. Two panels. Tool error share, per tool. And LLM retries, by reason
 Exhibit five. The retrieval page. Top-k per retriever span and the size of what came back, in tokens, split by tenant.
 
 [EVIDENCE 6: Trace waterfall for session `s07-01843` in the console's trace view (or Langfuse if you replayed there). Two turns. Six generation spans; from 10:00 each generation shows three attempts, two red. One `search_knowledge_base` tool span per turn, one `check_shipment`.]
-Exhibit six. One trace. Session `s07-01843`, a dispatcher in logistics-ops asking about a delayed shipment and then a follow-up. Two turns, six generations. Open any generation span and read `gen_ai.usage.input_tokens`. Count the attempts under it. Open the `search_knowledge_base` tool span and look at the size of the result and its `atlas.retrieval.top_k`. Then open the *second turn* and read the input tokens again.
+Exhibit six. One trace. Session `s07-01843`, a dispatcher in ops asking about a delayed shipment and then a follow-up. Two turns, six generations. Open any generation span and read `gen_ai.usage.input_tokens`. Count the attempts under it. Open the `search_knowledge_base` tool span and look at the size of the result and its `atlas.retrieval.top_k`. Then open the *second turn* and read the input tokens again.
 
 [SLIDE 2: Your eight minutes]
 - Fill in `10-resources/incident-template.md`
@@ -247,25 +247,25 @@ Timeline first. Two bends. Nine o'clock and ten o'clock.
 
 What changed at ten is the easy one, because the provider told you. Exhibit four.
 
-[EVIDENCE 4 again: tool error share flat for all five tools; `atlas_llm_retries_total{reason="timeout"}` jumps from near zero to about 1.4 per generation at 10:00, logistics-ops and, at a much lower rate, the other tenants]
+[EVIDENCE 4 again: tool error share flat for all five tools; `atlas_llm_retries_total{reason="timeout"}` jumps from near zero to about 1.4 per generation at 10:00, ops and, at a much lower rate, the other tenants]
 
 Tool errors: flat. Every tool, all morning. If your first hypothesis was "a failing tool", the exhibit killed it, and that's fine; that's what hypotheses are for. But LLM retries, reason timeout, jump at ten o'clock. About seventy percent of model calls started timing out on their first two attempts and succeeding on the third. That's the provider incident. Twenty-second timeout, two retries, so every generation now takes forty seconds longer and is sent three times.
 
-That's the trigger. But look at the other tenants in the same panel. They got the same timeouts at a lower rate and their cost barely moved. So why did logistics-ops explode?
+That's the trigger. But look at the other tenants in the same panel. They got the same timeouts at a lower rate and their cost barely moved. So why did ops explode?
 
 Because of what happened at nine. Exhibit five.
 
-[EVIDENCE 5 again: `atlas.retrieval.top_k` is 4 for three tenants all day; for logistics-ops it becomes 12 at 09:00. Retriever result size for logistics-ops jumps from about 400 tokens to about 8,600 tokens.]
+[EVIDENCE 5 again: `atlas.retrieval.top_k` is 4 for three tenants all day; for ops it becomes 12 at 09:00. Retriever result size for ops jumps from about 400 tokens to about 8,600 tokens.]
 
-At nine o'clock, logistics-ops retriever spans start carrying top-k twelve, while everyone else stays on four. And the result size goes from about four hundred tokens to eight thousand six hundred. That's not twelve snippets. That's twelve *whole articles*. Something turned the context diet off for one tenant and tripled its retrieval.
+At nine o'clock, ops retriever spans start carrying top-k twelve, while everyone else stays on four. And the result size goes from about four hundred tokens to eight thousand six hundred. That's not twelve snippets. That's twelve *whole articles*. Something turned the context diet off for one tenant and tripled its retrieval.
 
-Nobody deployed. So what changed? A config override. The knowledge base team had a real complaint: Atlas kept truncating the shipment policy article, so answers missed the exceptions. Their fix, at nine on Monday, was a per-tenant override in the config service: `context_diet=false`, `top_k=12`, logistics-ops only, as an experiment. Full articles, more of them, for the tenant that asks about shipments. No deploy. No review from anyone who owned the cost budget.
+The eight fifty-five deploy. PR #412, "retrieval recall improvements". The knowledge base team had a real complaint: Atlas kept truncating the shipment policy article, so answers missed the exceptions. Their fix was a per-tenant change for ops: `top_k` from four to twelve, the relevance floor `KB_MIN_SCORE` dropped to zero, and, because whole articles would otherwise be truncated, the context diet switched off. Full articles, more of them, for the tenant that asks about shipments. No deploy. No review from anyone who owned the cost budget.
 
-Blast radius answered too. One tenant, because the override was for one tenant.
+Blast radius answered too. One tenant, because the change was for one tenant.
 
 Now exhibit three, because this is where the two causes meet.
 
-[EVIDENCE 3 again: logistics-ops cost per session $0.006 at 08:00, $0.037 at 09:00, $0.13 from 10:00; mean input tokens per generation 1,900 → 11,400 at 09:00, unchanged at 10:00]
+[EVIDENCE 3 again: ops cost per session $0.006 at 08:00, $0.037 at 09:00, $0.13 from 10:00; mean input tokens per generation 1,900 → 11,400 at 09:00, unchanged at 10:00]
 
 Cost per session: six tenths of a cent at eight. Three point seven cents at nine. Thirteen cents from ten. Mean input tokens per generation: nineteen hundred at eight, eleven thousand four hundred from nine, and *unchanged* at ten. The prompts didn't get bigger at ten. They got sent three times.
 
@@ -286,7 +286,7 @@ Let's do the arithmetic on this one session.
 
 Six generations, a hundred and five thousand input tokens, sent three times: three hundred and sixteen thousand billed tokens. At forty cents a million on `gpt-4.1-mini`, thirteen cents. Output is noise. Thirteen cents a session, twenty times normal, and the session took over four minutes because of the timeouts, which is why the lead said "slow all morning".
 
-Now the line that matters. Same timeouts, same retries, with the diet on: history trimmed to three thousand tokens, tool results to four hundred. About thirty-six thousand billed tokens. Two cents. The provider storm alone was a two-cent problem. The override alone was a four-cent problem. Together, thirteen.
+Now the line that matters. Same timeouts, same retries, with the diet on: history trimmed to eight thousand tokens, tool results to fourteen hundred. About thirty-six thousand billed tokens. Two cents. The provider storm alone was a two-cent problem. The override alone was a four-cent problem. Together, thirteen.
 
 [SLIDE 4: Hypotheses and verdicts]
 | Hypothesis | Prediction | Exhibit | Verdict |
@@ -300,11 +300,11 @@ Now the line that matters. Same timeouts, same retries, with the diet on: histor
 Traffic? Killed. A failing tool? Killed, and I'm glad the dataset let you kill it, because "retry storm" made most of you look at tools first. The retries were on the model. Provider timeouts? Confirmed, trigger. Bigger prompts? Confirmed, cause. And the nano share rising at eleven twenty is the soft cap doing its job, which is also why the answers got worse.
 
 [SLIDE 5: Root cause, one sentence]
-> A per-tenant config override at 09:00 switched the context diet off and raised retrieval top-k to 12 for logistics-ops, so every generation carried 11,000+ tokens of whole articles and untrimmed history; from 10:00 a provider timeout storm made Atlas send each of those prompts three times, and the soft cap degraded the tenant at 11:20.
+> PR #412, deployed at 08:55, switched the context diet off and raised retrieval top-k to 12 for ops, so every generation carried 11,000+ tokens of whole articles and untrimmed history; from 10:00 a provider timeout storm made Atlas send each of those prompts three times, and the soft cap degraded the tenant at 11:20.
 
-If your sentence had the timeouts, good. If it had the override, very good. If it had both and said which one multiplied the other, you're ready to be on call.
+If your sentence had the timeouts, good. If it had the retrieval change, very good. If it had both and said which one multiplied the other, you're ready to be on call.
 
-Now the fix. Right now, one flag flip: remove the override, so logistics-ops is back on the diet with top-k four. That stops the spend within a minute and undoes the degradation once spend drops below the soft cap at midnight, or sooner if you reset the window. Then four changes for this week.
+Now the fix. Right now, roll the retrieval settings back: `ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, `ATLAS_CONTEXT_DIET=1`, so ops is back on the diet with top-k four. That stops the spend within a minute and undoes the degradation once spend drops below the soft cap at midnight, or sooner if you reset the window. Then four changes for this week.
 
 [CODE: `app/tools.py`, `app/agent.py` and `src/northwind/config.py`, the fix]
 ```python
@@ -335,7 +335,7 @@ Three. The circuit breaker from Lecture 7.4 has a threshold of three consecutive
 
 Four. `BudgetGuard.decide` already computes an EWMA anomaly flag on every request, from Lecture 6.7. It was never wired to a metric. Now it increments the decisions counter with `anomaly`, and an alert rule watches it. In the replay, that alert fires at ten oh nine, seventy-one minutes before the soft cap.
 
-[SCREEN: Replay the `cost_spike` preset against the fix. Ops Console cost page: the logistics-ops line bends slightly at 10:00 and flattens. Callout: cost per session $0.021 during the storm; soft cap never reached; anomaly alert at 10:09.]
+[SCREEN: Replay the `cost_spike` preset against the fix. Ops Console cost page: the ops line bends slightly at 10:00 and flattens. Callout: cost per session $0.021 during the storm; soft cap never reached; anomaly alert at 10:09.]
 
 Replay the same Monday against the fix. Same override attempt, ignored above six. Same provider storm. Cost per session during the storm: two cents. The soft cap is never reached. And the page arrives at ten oh nine with the word "anomaly" in it, not at eleven twenty with the word "degraded".
 
@@ -350,15 +350,15 @@ Thirty seconds on prevention. Lecture 6.5 gave you the diet. What it didn't insi
 [AVATAR]
 Two lessons to carry into the next incident. Config changes are deploys, even when nothing is deployed. And the trigger is rarely the root cause; ask what made it expensive.
 
-**Recap:** A per-tenant override turned off the context diet and tripled retrieval for one tenant, a provider timeout storm sent every bloated prompt three times, and the fix is a diet that cannot be switched off, a shorter timeout, a breaker that counts timeouts and an anomaly alert per tenant.
+**Recap:** A retrieval PR turned off the context diet and tripled retrieval for one tenant, a provider timeout storm sent every bloated prompt three times, and the fix is a diet that cannot be switched off, a shorter timeout, a breaker that counts timeouts and an anomaly alert per tenant.
 
-**Transition:** Next, Incident 2: Tuesday afternoon, latency doubles across every tenant at once, and the obvious cause is only half the story.
+**Transition:** Next, Incident 2: Monday afternoon, latency doubles across every tenant at once, and the obvious cause is only half the story.
 
 ### Speaker notes: common student mistakes / Q&A
 
 - Most common wrong answer in beta: "a failing tool". The preset's `retry_storm` is LLM timeouts (`app/mock_llm.py::_maybe_fail`, `retry_storm_failures=2`), not tool errors. Exhibit four is designed to kill the tool hypothesis early.
 - Second: "the provider". Push back with exhibit three: prompts got big at 09:00, an hour before the provider. Ask "why did the other tenants survive the same timeouts?"
-- Dataset generation note for the code author: `INCIDENT_PRESETS["cost_spike"]` = `context_bloat` 09:00-13:00 on logistics-ops (85%, `context_diet=False`, `top_k=12`) plus `retry_storm` 10:00-12:00 (70%). The dataset must record each timed-out attempt as an ERROR generation span with its input tokens so cost triples; if the replay does not bill failed attempts, change Slide 3 to "sent three times, billed once" and recompute ($0.045 per session, the multiplier becomes latency rather than cost).
+- Dataset generation note for the code author: `INCIDENT_PRESETS["cost_spike"]` = `context_bloat` 09:00-13:00 on ops (85%, `context_diet=False`, `top_k=12`) plus `retry_storm` 10:00-12:00 (70%). The dataset must record each timed-out attempt as an ERROR generation span with its input tokens so cost triples; if the replay does not bill failed attempts, change Slide 3 to "sent three times, billed once" and recompute ($0.045 per session, the multiplier becomes latency rather than cost).
 - "Why did the soft cap make answers worse?" `Decision.DEGRADE` switches to `degraded_model` (`gpt-4.1-nano`) and `top_k=2` in `AtlasAgent.run`. That's the intended trade: cheaper, worse, still answering.
 - Students who replayed to Langfuse Cloud can filter by `atlas.tenant` and sort traces by cost; the same exhibits exist there.
 
@@ -380,26 +380,26 @@ Two lessons to carry into the next incident. Config changes are deploys, even wh
 [B-ROLL: Grafana panel "Atlas p95 end-to-end latency". Flat at 3.1 s all morning. At 13:00 it climbs to 6.4 s and stays. A red threshold line at 4.0 s.]
 
 [AVATAR]
-Tuesday, thirteen twenty-two. The burn-rate alert from Lecture 9.5 fires: "Atlas latency SLO, p95 above four seconds for fifteen minutes, burning error budget at fourteen times the sustainable rate."
+Monday, fourteen twenty. The `AtlasLatencyP95High` alert from Lecture 9.5 fires: "Atlas p95 latency above 4 s", and it has been above four seconds for fifteen minutes.
 
 Nobody is complaining yet. In ten minutes they will be, because six-second answers from a helpdesk feel broken.
 
 Same routine. Brief, exhibits, eight minutes.
 
 [SLIDE 1: On-call brief, Incident 2]
-- 13:22 Tuesday: latency SLO burn-rate alert; p95 end-to-end 6.4 s against a 4.0 s budget; p50 2.7 s (was 1.4 s)
+- 14:20 Monday: `latency_p95` alert (p95 above 4 s for 15 minutes); p95 end-to-end 6.4 s against a 4.0 s budget; p50 2.7 s (was 1.4 s)
 - All four tenants affected
 - Error rate flat at 0.3%; no 429s, no timeouts, no retries
 - Cost per session up 25% since 12:30
 - Deploys today: `v1.8.2` at 12:30, "KB retrieval tuning" (config only, from the knowledge base team)
 - Provider status page: "investigating elevated latency" posted at 13:05
-- Dataset: `incidents/incident-02-latency-regression/spans.jsonl`, Tuesday 10:00 to 18:00
+- Dataset: `incidents/incident-02-latency-regression/spans.jsonl`, Monday 2026-09-14, 10:00 to 18:00
 
 Here's the brief. p95 has more than doubled. p50 nearly doubled too. All four tenants. No errors, no rate limits, no timeouts, no retries. Cost per session is up twenty-five percent, which is odd for a latency incident. There was a config-only deploy at twelve thirty from the knowledge base team. And the provider posted "investigating elevated latency" at thirteen oh five.
 
 You might think you already know the answer. Hold that thought, and look at the exhibits. The dataset runs to six p.m., and the end of it matters.
 
-[SCREEN: `make replay SPANS=incidents/incident-02-latency-regression/spans.jsonl`, `make console`. Ops Console latency page.]
+[SCREEN: `make incident N=2`. Ops Console latency page.]
 
 [EVIDENCE 1: Ops Console, latency page, p50 and p95 end-to-end, 10:00 to 18:00, budget line at 4.0 s]
 Exhibit one. p50 and p95, end to end, from ten to six. Note the exact minute p95 leaves the budget. And note what happens after sixteen fifty.
@@ -487,12 +487,12 @@ Fallbacks: zero. Retries: zero. Breaker: closed all afternoon. You configured a 
 [CODE: `app/agent.py::build_router_config`, as deployed]
 ```python
 {
-    "model_list": [...],                                      # gpt-4.1-mini, gpt-4.1, gpt-5-mini, gpt-4.1-nano
+    "model_list": [...],                                      # gpt-4.1, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, gpt-5-mini
     "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
     "num_retries": settings.max_retries,                      # 2
     "timeout": settings.request_timeout_s,                    # 20.0: a 5-second generation never times out
     "allowed_fails": 3,
-    "cooldown_time": 60,
+    "cooldown_time": 30,
 }
 ```
 
@@ -527,7 +527,7 @@ Part three, and this is the one Lecture 7.4 didn't teach you: slowness as failur
 
 And one more, not in the code: config changes that touch tokens go through the same review as code changes. Top-k is a cost and latency setting wearing a quality costume. You saw that yesterday too.
 
-[SCREEN: Replay Tuesday against the fix. p95 curve stays under 4.0 s through the provider slowdown; callout: fallback rate 30% between 13:00 and 16:50; p95 3.5 s.]
+[SCREEN: Replay Monday against the fix. p95 curve stays under 4.0 s through the provider slowdown; callout: fallback rate 30% between 13:00 and 16:50; p95 3.5 s.]
 
 [SLIDE 5: What would have prevented this]
 - Lecture 5.3, RAG spans: top-k and hits are attributes on every retriever span, so the change is visible in one filter
@@ -571,29 +571,29 @@ Carry this one forward: when an external cause recovers, whatever latency is lef
 [B-ROLL: Grafana Atlas Ops dashboard. Every panel green. The cost panel is even trending down. Cut to an email subject line: "Atlas got worse?"]
 
 [AVATAR]
-Wednesday, sixteen forty. No alert. No page. An email from the HR tenant lead.
+Tuesday, nine ten. No alert. No page. An email from the HR business partner.
 
-"Hi. Since late morning Atlas has got noticeably worse. Answers are two lines, no source, and it doesn't tell people what to do next, so they're opening tickets themselves in ServiceHub. Three people asked me if it's broken. Dashboard looks fine to me though. Is something going on?"
+"Hi. Since late morning yesterday Atlas has got noticeably worse. Answers are two lines, no source, and it doesn't tell people what to do next, so they're opening tickets themselves in ServiceHub. Three people asked me if it's broken. Dashboard looks fine to me though. Is something going on?"
 
 You open the Ops dashboard. Latency, green. Error rate, green. Cost, green, and actually *down*. Nothing is red.
 
 This is the hardest kind of incident, because the tools you'd normally trust are telling you everything is fine, and one of them is telling you things got better. Let's read the brief.
 
 [SLIDE 1: On-call brief, Incident 3]
-- Wednesday 16:40: HR lead reports Atlas answers are "two lines, no source, no next step" since late morning; employees opening tickets themselves
+- Tuesday 09:10: HR business partner reports Atlas answers have been "two lines, no source, no next step" since Monday late morning; employees opening tickets themselves
 - p95 3.0 s (budget 4.0 s), error rate 0.2%, cost per session down 12%: all within SLO
 - ServiceHub: manually opened tickets up 40% since 11:00 (from the ticketing system, not from Atlas)
-- Deploys since Monday: none
-- Langfuse prompt `atlas-system`: version 2 created Tuesday; label history visible in the UI
-- Dataset: `incidents/incident-03-quality-drift/spans.jsonl`, Wednesday 08:00 to 17:00, includes scores and feedback
+- Deploys this week: none
+- Langfuse prompt `atlas-system`: version 2 created last week; label history visible in the UI
+- Dataset: `incidents/incident-03-quality-drift/spans.jsonl` and `scores.jsonl`, Monday 2026-09-14, 08:00 to 17:00, includes judge scores and feedback
 
-Nothing you'd call an alert. Latency inside budget. Errors near zero. Cost down twelve percent, which finance would call good news. No code deploys since Monday. But two odd facts: the ticketing system shows forty percent more manually opened tickets since eleven, and the Langfuse prompt `atlas-system` has a version two that was created on Tuesday.
+Nothing you'd call an alert. Latency inside budget. Errors near zero. Cost down twelve percent, which finance would call good news. No code deploys this week. But two odd facts: the ticketing system shows forty percent more manually opened tickets since eleven, and the Langfuse prompt `atlas-system` has a version two that was created on Tuesday.
 
 This dataset is different from the first two. It includes the judge scores from Lecture 8.2 and the thumbs feedback from Lecture 8.3. Use them.
 
-[SCREEN: `make replay SPANS=incidents/incident-03-quality-drift/spans.jsonl`, `make console`. Ops Console quality page.]
+[SCREEN: `make incident N=3`. Ops Console quality page.]
 
-[EVIDENCE 1: Ops Console, quality page, judge scores `judge_grounded` and `judge_resolved`, hourly, Wednesday 08:00 to 17:00]
+[EVIDENCE 1: Ops Console, quality page, judge scores `judge_grounded` and `judge_resolved`, hourly, Monday 08:00 to 17:00]
 Exhibit one. The two judge scores from Lecture 8.2. Grounded: did the answer cite and use the retrieved policy. Resolved: did the employee get what they needed, including a next step. Hourly. Find the hour where the lines bend.
 
 [EVIDENCE 2: Ops Console, quality page, thumbs-down rate hourly and the ten most common feedback comments since 11:00]
@@ -605,10 +605,10 @@ Exhibit three. The same judge scores, but split by the prompt version each gener
 [EVIDENCE 4: Ops Console, cost page, mean output tokens per generation and cost per session, hourly; tools page, calls per hour by tool]
 Exhibit four. Output tokens per generation and cost per session, hourly. And, on the tools page, calls per hour by tool. One of these changes shape at eleven. The other doesn't.
 
-[EVIDENCE 5: Two traces, same question "how many days of parental leave do I get?", `s07-01120` Wednesday 09:20 and `s07-02875` Wednesday 14:05. Show the retriever span, the generation output and the `atlas.prompt_version` attribute.]
+[EVIDENCE 5: Two traces, same question "how many days of parental leave do I get?", `s07-01120` Monday 09:20 and `s07-02875` Monday 14:05. Show the retriever span, the generation output and the `atlas.prompt_version` attribute.]
 Exhibit five. Two traces for the same question, one at nine twenty and one at two oh five. In both, open the retriever span and check what it returned. Then read the final answer, word by word. Then read `atlas.prompt_version` on the root span.
 
-[EVIDENCE 6: Langfuse prompt page for `atlas-system`: version list, labels, the diff between v1 and v2, and the label change event at Wednesday 11:02]
+[EVIDENCE 6: Langfuse prompt page for `atlas-system`: version list, labels, the diff between v1 and v2, and the label change event at Monday 11:02]
 Exhibit six. The prompt page in Langfuse. Versions one and two, their labels, the diff, and the audit entry for when the `production` label moved. Read the diff line by line.
 
 [SLIDE 2: Your eight minutes]
@@ -643,9 +643,9 @@ Grounded runs at point nine one all morning, then drops to point seven two in th
 
 What happened at eleven? No deploy. But exhibit six.
 
-[EVIDENCE 6 again: audit entry "label `production` moved from v1 to v2, Wednesday 11:02, by a product manager account"]
+[EVIDENCE 6 again: audit entry "label `production` moved from v1 to v2, Monday 11:02, by a product manager account"]
 
-Wednesday eleven oh two. The `production` label on `atlas-system` moved from version one to version two. Through the UI, by a product manager, after a tone review. No deploy, because prompts don't deploy. Atlas fetches the production label through `get_prompt_text` with a sixty-second cache, Lecture 4.4. Within a minute of that click, every Atlas response in every tenant was running on a prompt that had never been evaluated. The root spans say so: `atlas.prompt_version` flips from `langfuse:1` to `langfuse:2` at eleven oh three.
+Monday eleven oh two. The `production` label on `atlas-system` moved from version one to version two. Through the UI, by a product manager, after a tone review. No deploy, because prompts don't deploy. Atlas fetches the production label through `get_prompt_text` with a sixty-second cache, Lecture 4.4. Within a minute of that click, every Atlas response in every tenant was running on a prompt that had never been evaluated. The root spans say so: `atlas.prompt_version` flips from `langfuse:1` to `langfuse:2` at eleven oh three.
 
 Blast radius. All four tenants, because every tenant uses the same prompt. But HR noticed first, and exhibit four tells you why.
 
@@ -655,11 +655,11 @@ Output tokens per generation fell from two hundred and ten to a hundred and thir
 
 Now the traces, because this is where you see *what* changed, not just when.
 
-[SCREEN: Trace `s07-01120`, Wednesday 09:20, `atlas.prompt_version = langfuse:1`. Retriever returns `leave-policy.md`. Answer: "Northwind offers 16 weeks of paid parental leave for primary carers and 4 weeks for secondary carers. Both need at least 6 months of service. (Source: Leave Policy) Next step: submit the parental leave request form in ServiceHub at least 8 weeks before your start date." Judge: grounded 1, resolved 1.]
+[SCREEN: Trace `s07-01120`, Monday 09:20, `atlas.prompt_version = langfuse:1`. Retriever returns `leave-policy.md`. Answer: "Northwind offers 16 weeks of paid parental leave for primary carers and 4 weeks for secondary carers. Both need at least 6 months of service. (Source: Leave Policy) Next step: submit the parental leave request form in ServiceHub at least 8 weeks before your start date." Judge: grounded 1, resolved 1.]
 
 Nine twenty, version one. Retriever finds the leave policy. Answer: sixteen weeks primary, four weeks secondary, the service requirement, a source line, and a next step with a deadline. Judge scores it grounded and resolved.
 
-[SCREEN: Trace `s07-02875`, Wednesday 14:05, `atlas.prompt_version = langfuse:2`. Retriever returns the same `leave-policy.md` chunk. Answer: "Primary carers get 16 weeks of paid parental leave and secondary carers get 4 weeks." Judge: grounded 0, resolved 0. Feedback: thumbs down, comment "ok but where is this from and what do I do now?"]
+[SCREEN: Trace `s07-02875`, Monday 14:05, `atlas.prompt_version = langfuse:2`. Retriever returns the same `leave-policy.md` chunk. Answer: "Primary carers get 16 weeks of paid parental leave and secondary carers get 4 weeks." Judge: grounded 0, resolved 0. Feedback: thumbs down, comment "ok but where is this from and what do I do now?"]
 
 Two oh five, version two. Same question. The retriever returns the *same* article. The answer is one sentence. The numbers are right. No source. No service requirement. No next step. Judge: not grounded, because nothing in the answer points at the policy, and not resolved, because the employee still doesn't know what to do. The employee's comment says it better than the judge: "ok but where is this from and what do I do now?"
 
@@ -690,7 +690,7 @@ Two changes that look like copy-editing. "Be brief, one or two sentences, avoid 
 Exhibit three is the one that kills the alternatives. Split by prompt version, version one generations still score point nine one grounded right up to the moment there stopped being any. Version two scores point seven two from its first hour. Same model, same retriever, same day. Only the prompt differs. That's as clean as causality gets in production.
 
 [SLIDE 4: Root cause, one sentence]
-> Prompt version 2 of `atlas-system` received the `production` label through the UI at Wednesday 11:02 without an offline eval; it removed the citation and next-step rules, so grounded fell from 0.91 to 0.72, resolved from 0.86 to 0.74, containment from 78% to 64%, and every SLO on the dashboard stayed green while cost went down.
+> Prompt version 2 of `atlas-system` received the `production` label through the UI at Monday 11:02 without an offline eval; it removed the citation and next-step rules, so grounded fell from 0.91 to 0.72, resolved from 0.86 to 0.74, containment from 78% to 64%, and every SLO on the dashboard stayed green while cost went down.
 
 Now the fix. One call.
 
@@ -706,7 +706,7 @@ lf.update_prompt(name="atlas-system", version=1, new_labels=["production"])
 
 `update_prompt`, name, version one, new labels production. Labels are unique across versions, so assigning `production` to version one removes it from version two. Atlas calls `get_prompt_text` with the production label and a sixty-second cache on every request, so within a minute every tenant is back on version one. No deploy, no restart. The same property that caused the incident makes the rollback instant.
 
-[SCREEN: Ops Console quality page, Wednesday 16:55 onward: `judge_grounded` returns to 0.90, `atlas.prompt_version` back to `langfuse:1`; manual ticket rate falls within the hour.]
+[SCREEN: Ops Console quality page, after the rollback: `judge_grounded` returns to 0.90, `atlas.prompt_version` back to `langfuse:1`; manual ticket rate falls within the hour.]
 
 Sixteen fifty-five. Grounded climbs back to point nine within the hour. The HR lead gets a reply that says what happened, in plain language, with a time.
 
@@ -732,7 +732,7 @@ And add the two signals that were missing from the dashboard. Judge grounded, se
 
 [SLIDE 5: What would have prevented this]
 - Lecture 4.4, prompt labels: the label is a deploy; treat it like one
-- Lecture 8.2 and 8.5, online judge and drift: an hourly drift check on `judge_grounded` pages at 12:10, not an email at 16:40
+- Lecture 8.2 and 8.5, online judge and drift: an hourly drift check on `judge_grounded` pages at 12:10, not an email the next morning
 - Lecture 8.6, bad trace to regression test: v2 fails the `atlas-failures` dataset before it ever gets a label
 - Lecture 9.1, SLIs: judge score and containment on the dashboard, with an SLO
 
@@ -792,12 +792,12 @@ Open `10-resources/postmortem-template.md`. Eight blocks. Most of them you alrea
 
 [CODE: summary block]
 ```markdown
-# Postmortem: Incident 1, logistics-ops cost spike (Monday)
+# Postmortem: Incident 1, ops cost spike (Monday)
 
 ## Summary
-Between 09:00 and 11:20 on Monday, Atlas spent $25 for the logistics-ops tenant, against a normal
+Between 09:00 and 11:20 on Monday, Atlas spent $25 for the ops tenant, against a normal
 $9 per day, and the budget guard then degraded that tenant's answers for the rest of the day. A
-per-tenant configuration override had disabled the context diet and raised retrieval to 12 whole
+per-tenant retrieval change (PR #412) had disabled the context diet and raised retrieval to 12 whole
 articles; a provider timeout storm from 10:00 then caused every oversized prompt to be sent three
 times. No other tenant was affected and no data was lost.
 ```
@@ -811,8 +811,8 @@ Summary. Three sentences a finance manager can read. What happened, in numbers. 
 |---|---|---|
 | Extra spend | $22 above the normal morning; projected $40 hard cap at 12:40 if unfixed | Ops Console cost page, tenant filter, 09:00-11:20 |
 | Sessions affected | ~540 sessions; cost per session $0.037 (09:00-10:00) and $0.13 (10:00-11:20), normal $0.006 | Ops Console sessions view |
-| Latency | p95 for logistics-ops 3.1 s → 68 s during the timeout storm | `atlas_request_latency_seconds{tenant="logistics-ops"}` |
-| Degraded answers | logistics-ops on `gpt-4.1-nano` with 2 articles from 11:20 until the fix at 11:47 | `atlas_budget_decisions_total{decision="degrade"}` |
+| Latency | p95 for ops 3.1 s → 68 s during the timeout storm | `atlas_request_latency_seconds{tenant="ops"}` |
+| Degraded answers | ops on `gpt-4.1-nano` with 2 articles from 11:20 until the fix at 11:47 | `atlas_budget_decisions_total{decision="degrade"}` |
 | Upstream load | ~3x the normal request rate to the provider from this tenant | generation spans, attempts per generation |
 | Other tenants | none | Ops Console cost page |
 ```
@@ -824,14 +824,14 @@ Impact. Every number has a source column. That's not bureaucracy. It means the n
 ## Timeline (local time)
 | Time | Event | Source |
 |---|---|---|
-| Mon 09:00 | config override for logistics-ops: `context_diet=false`, `top_k=12` (KB team experiment) | config service audit log; `atlas.retrieval.top_k` on spans |
-| Mon 09:00 | cost per session for logistics-ops rises 6x; input tokens per generation 1,900 → 11,400 | Ops Console |
+| Mon 08:55 | deploy PR #412 "retrieval recall improvements": ops `top_k` 4 → 12, `KB_MIN_SCORE` 0, context diet off | deploy log; `atlas.retrieval.top_k` on spans |
+| Mon 09:00 | cost per session for ops rises 6x; input tokens per generation 1,900 → 11,400 | Ops Console |
 | Mon 10:00 | provider timeouts begin; ~70% of calls fail twice then succeed | `atlas_llm_retries_total{reason="APITimeoutError"}` |
 | Mon 10:09 | (would have fired) per-tenant EWMA anomaly on spend rate | `BudgetDecision.anomaly`, not wired to a metric |
 | Mon 10:14 | provider status page: "investigating elevated error rates" | status page |
 | Mon 11:20 | soft cap $25 reached; tenant degraded; page sent **(detection)** | `BudgetGuard.decide` → `Decision.DEGRADE`, alert |
 | Mon 11:38 | root cause identified from trace `s07-01843` and the retrieval page | investigation notes |
-| Mon 11:47 | override removed; spend window reset; tenant restored **(resolution)** | config service audit log |
+| Mon 11:47 | retrieval settings rolled back (`ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, `ATLAS_CONTEXT_DIET=1`); spend window reset; tenant restored **(resolution)** | deploy log |
 | Mon 12:00 | provider timeouts end | `atlas_llm_retries_total` |
 ```
 
@@ -843,7 +843,7 @@ The timeline. Time, event, source. Mark detection and resolution explicitly, bec
 - Incident 1 root cause: the context diet and top-k could be overridden per tenant with no review, test or gate
 - Contributing: provider timeout storm (trigger), 20 s timeout with stacked retries, breaker that ignores timeouts, anomaly flag not wired, whole-article tool results
 
-Root cause versus contributing factor. The root cause is the thing that, if removed, means the incident doesn't happen. Here that's an override path with no review, no test and no gate. The provider storm is a trigger. If it hadn't happened Monday, the override alone would have cost four cents a session until someone noticed, maybe weeks later. The long timeout, the breaker that ignores timeouts, the unwired anomaly flag and the whole-article tool results are contributing factors. Each one removed makes the incident smaller or shorter, not impossible.
+Root cause versus contributing factor. The root cause is the thing that, if removed, means the incident doesn't happen. Here that's a retrieval change with no eval, no cost check and no gate. The provider storm is a trigger. If it hadn't happened Monday, the override alone would have cost four cents a session until someone noticed, maybe weeks later. The long timeout, the breaker that ignores timeouts, the unwired anomaly flag and the whole-article tool results are contributing factors. Each one removed makes the incident smaller or shorter, not impossible.
 
 Get this distinction right and your action items write themselves.
 
@@ -907,7 +907,7 @@ Your turn. Write the postmortems for Incidents 2 and 3 using the same template. 
 | Target duration | 3:00 (~390 spoken words); assignment itself about 2 to 4 hours |
 | Learning objectives | 1. Run a full investigation on an unrevealed incident dataset with no hints. 2. Submit a postmortem that meets the template and the rubric. 3. Propose at least one action item that would have prevented or shortened the incident, with verification. |
 | Prerequisites | 11.1 to 11.5 |
-| Files used | `05-projects/project-2-incident-postmortem.md`, `incidents/incident-04/spans.jsonl` and `brief.md` (no `solution.md` in the student repo), `10-resources/incident-template.md`, `10-resources/postmortem-template.md` |
+| Files used | `05-projects/project-2-incident-postmortem.md`, `incidents/incident-04-project/spans.jsonl` and `brief.md` (no `solution.md` in the student repo), `10-resources/incident-template.md`, `10-resources/postmortem-template.md` |
 
 ### Script
 
@@ -917,8 +917,8 @@ Three incidents with me. Now one without me.
 Project 2 is a fourth incident dataset. It has a brief and spans. It does not have a solution file in your repo. There's no Part B. Nobody is going to walk the evidence for you.
 
 [SLIDE 1: Project 2 brief]
-- Dataset: `incidents/incident-04/spans.jsonl` and `brief.md`, linked from `05-projects/project-2-incident-postmortem.md`
-- Load it the same way: `make replay SPANS=...`, then `make console`
+- Dataset: `incidents/incident-04-project/spans.jsonl` and `brief.md`, linked from `05-projects/project-2-incident-postmortem.md`
+- Load it the same way: `make incident N=4`
 - Deliverable: `postmortem.md` using `10-resources/postmortem-template.md`
 - Time box: 2 to 4 hours, including writing
 - No `solution.md`. The Q&A thread for this project is for method questions, not answers

@@ -30,13 +30,13 @@
 
 *Related lecture: 9.2 Code-along: Prometheus metrics from Atlas*
 
-- **A.** `quantile(0.95, atlas_request_duration_seconds_count)`; counts are quantile-able.
+- **A.** `quantile(0.95, atlas_request_latency_seconds_count)`; counts are quantile-able.
   - *Explanation:* Incorrect. `quantile` over a count series computes the quantile of counts across label sets, not of durations.
-- **B.** `avg(atlas_request_duration_seconds_sum / atlas_request_duration_seconds_count)`; it is exact.
+- **B.** `avg(atlas_request_latency_seconds_sum / atlas_request_latency_seconds_count)`; it is exact.
   - *Explanation:* Incorrect. That is the mean, which hides the tail (Section 7).
-- **C.** `max(atlas_request_duration_seconds_bucket)`; buckets hold the slowest request.
+- **C.** `max(atlas_request_latency_seconds_bucket)`; buckets hold the slowest request.
   - *Explanation:* Incorrect. Buckets are cumulative counts of observations at or below `le`, not durations.
-- **D.** `histogram_quantile(0.95, sum(rate(atlas_request_duration_seconds_bucket[5m])) by (le))`; the result is interpolated within the bucket that contains the 95th percentile, so precision is limited by bucket boundaries, which is why Atlas's buckets include the 4 s budget as a boundary.
+- **D.** `histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le))`; the result is interpolated within the bucket that contains the 95th percentile, so precision is limited by bucket boundaries, which is why Atlas's buckets include the 4 s budget as a boundary.
   - *Explanation:* Correct. Summing by `le` across tenants first, then applying `histogram_quantile`, gives the global p95 at bucket resolution. For millisecond precision on a single day, use the spans (Lab 4's report).
 
 **Correct answer: D**
@@ -60,7 +60,7 @@
 
 ---
 
-### Q4. Two alert rules for tool errors are proposed. Rule 1: `rate(atlas_tool_errors_total[5m]) > 0.5`. Rule 2: `(sum(rate(atlas_tool_errors_total[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)) > 0.10 and sum(rate(atlas_tool_calls_total[5m])) by (tool) > 0.1` with `for: 2m` and a `runbook_url`. Which is better and why?
+### Q4. Two alert rules for tool errors are proposed. Rule 1: `rate(atlas_tool_calls_total{outcome="error"}[5m]) > 0.5`. Rule 2: `(sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)) > 0.10 and sum(rate(atlas_tool_calls_total[5m])) by (tool) > 0.1` with `for: 2m` and a `runbook_url`. Which is better and why?
 
 *Related lecture: 9.5 Alert rules and the runbook*
 

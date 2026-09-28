@@ -94,7 +94,7 @@ processors:
     actions:
       - key: user.email
         action: delete
-      - key: northwind.user_id_raw
+      - key: atlas.user_id_raw
         action: hash            # SHA-256; keeps joins, drops identity
       - key: gen_ai.tool.call.result
         action: update

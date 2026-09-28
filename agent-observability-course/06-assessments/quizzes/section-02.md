@@ -77,7 +77,7 @@
 
 ---
 
-### Q5. You send two `curl` requests to Atlas with the same `X-User-Id` and different `X-Session-Id` values, then two more with the same `X-Session-Id`. How does Langfuse group them?
+### Q5. You send two `curl` requests to Atlas with the same `X-User` and different `X-Session` values, then two more with the same `X-Session`. How does Langfuse group them?
 
 *Related lecture: 2.5 Lab 1: Environment and first trace*
 
@@ -88,6 +88,6 @@
 - **C.** All four are one session, because they come from the same user.
   - *Explanation:* Incorrect. A user can have many sessions; sessions are keyed by `session_id`, not by user.
 - **D.** Three sessions: two single-turn sessions for the first two requests, and one two-turn session for the last two, all attributed to the same user in the Users view.
-  - *Explanation:* Correct. `X-Session-Id` becomes the trace's `session_id`, and traces sharing it are shown together in the Sessions view; `X-User-Id` becomes `user_id`, which groups sessions under a user. Tenant is a tag/metadata on each trace.
+  - *Explanation:* Correct. `X-Session` becomes the trace's `session_id`, and traces sharing it are shown together in the Sessions view; `X-User` becomes `user_id`, which groups sessions under a user. Tenant is a tag/metadata on each trace.
 
 **Correct answer: D**
