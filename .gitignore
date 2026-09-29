@@ -1,0 +1,8 @@
+
+# Production outputs
+*.mp4
+*.wav
+*.mov
+**/09-production/generated/
+.env
+.venv/
