@@ -50,7 +50,7 @@ cost_per_minute = ( STT_minutes × STT_price
                   + telephony_minutes × telephony_price ) / call_minutes
 ```
 
-`metrics.UsageCollector().get_summary()` gives you the usage numbers. `src/maple/costs.py` multiplies them by your price table.
+`session.usage.model_usage` gives you the usage numbers per model (read it in a shutdown callback, as `agents/s10_observed_agent.py` does). `usage_from_model_usage()` in `src/maple/costs.py` turns them into `UsageNumbers`, and `cost_breakdown()` multiplies them by your price table. (`metrics.UsageCollector` from older tutorials is deprecated in livekit-agents 1.8; the course does not use it.)
 
 **Worked example with made-up round numbers (NOT real prices):** a 3-minute call with 1.5 min of caller audio sent to STT, 6,000 LLM input tokens, 400 output tokens and 1,500 TTS characters. With hypothetical prices of STT $0.01/min, LLM $1 per 1M input / $4 per 1M output, TTS $0.05 per 1K chars and platform $0.01/min:
 - STT 1.5 × 0.01 = $0.015

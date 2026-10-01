@@ -77,7 +77,7 @@
 
 ---
 
-### Q5. You add a `join_waitlist(name, phone, preferred_day)` tool with the docstring `"""Waitlist."""`. In testing, Riley never offers the waitlist when a day is full. What is the most likely cause?
+### Q5. You add a `join_waitlist(patient_name, phone, preferred_day)` tool with the docstring `"""Waitlist."""`. In testing, Riley never offers the waitlist when a day is full. What is the most likely cause?
 
 *Related lecture: 5.9 Challenge: add a waitlist tool*
 

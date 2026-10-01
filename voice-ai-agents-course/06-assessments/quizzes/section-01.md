@@ -111,7 +111,7 @@
 
 ---
 
-### Q7. Riley recognises speech almost perfectly when you test in the browser, but on real phone calls she keeps mishearing names and numbers. What is the most likely technical reason?
+### Q7. Riley recognises speech almost perfectly when you test in the browser, but on real phone calls it keeps mishearing names and numbers. What is the most likely technical reason?
 
 *Related lecture: 1.2 What a voice agent actually is (preview of 8.1)*
 

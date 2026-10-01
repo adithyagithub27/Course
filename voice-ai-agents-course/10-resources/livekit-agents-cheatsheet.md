@@ -109,16 +109,20 @@ Use fictional `555-01XX` numbers in docs and videos.
 ## 7. Metrics and usage
 
 ```python
-usage = metrics.UsageCollector()
-
-@session.on("metrics_collected")
+@session.on("metrics_collected")      # still works in 1.8 (logs a deprecation notice)
 def _on_metrics(ev):                  # MetricsCollectedEvent
-    metrics.log_metrics(ev.metrics)
-    usage.collect(ev.metrics)
+    metrics.log_metrics(ev.metrics)   # per-stage detail: EOU, STT, LLM TTFT, TTS TTFB
 
-# at shutdown
-summary = usage.get_summary()
+# totals and cost: read session.usage when the call ends
+async def log_usage():
+    model_usage = [u.model_dump() for u in session.usage.model_usage]
+    usage = usage_from_model_usage(model_usage, call_seconds)   # src/maple/costs.py
+    report = cost_breakdown(usage)
+
+ctx.add_shutdown_callback(log_usage)
 ```
+
+Per-turn latency is also on each assistant message: `ChatMessage.metrics["e2e_latency"]`. `metrics.UsageCollector` is deprecated in livekit-agents 1.8 and the course does not use it. Full version: `attach_observers` in `agents/s10_observed_agent.py`.
 
 ## 8. Testing (pytest-asyncio)
 
@@ -130,7 +134,7 @@ async with AgentSession(llm=judge_llm) as session:
     result.expect.skip_next_event_if(type="message", role="assistant")
     result.expect.next_event().is_function_call(name="find_available_slots", arguments={...})
     result.expect.next_event().is_function_call_output(is_error=False)
-    result.expect.next_event().is_message(role="assistant").judge(
+    await result.expect.next_event().is_message(role="assistant").judge(
         judge_llm, intent="Offers available times without inventing any"
     )
     result.expect.no_more_events()
@@ -143,13 +147,13 @@ with mock_tools(Riley, {"find_available_slots": fake_no_slots}):
     ...
 ```
 
-> `.judge(...)` is shown exactly as in curriculum §6. Check `tests/agent/test_greeting.py` for how the course calls it on your installed version (for example, whether it needs to be awaited).
+> `.judge(...)` is a coroutine in livekit-agents 1.8, so it is awaited, as in `tests/agent/test_greeting.py`.
 
 ## 9. Pipecat 1.12 names (Section 14)
 
 | Concept | Name / module |
 |---|---|
-| Pipeline | `Pipeline`, `PipelineTask`, `PipelineParams`, `PipelineRunner` |
+| Pipeline | `Pipeline`, `PipelineWorker` + `PipelineParams` (`pipecat.pipeline.worker`), `WorkerRunner` (`pipecat.workers.runner`). `PipelineTask` and `PipelineRunner` are deprecated aliases since 1.3 |
 | Services | `DeepgramSTTService`, `OpenAILLMService`, `CartesiaTTSService` |
 | VAD | `SileroVADAnalyzer` |
 | Context | `LLMContext` in `pipecat.processors.aggregators.llm_context`; universal aggregators in `pipecat.processors.aggregators.llm_response_universal` |

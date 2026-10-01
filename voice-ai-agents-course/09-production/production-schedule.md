@@ -2,7 +2,7 @@
 
 > Assumes a single instructor-producer, part-time help for editing optional, and the curriculum done (it is). Scripts, code, labs and assessments may already be partly drafted in `02-lecture-scripts/` to `06-assessments/`. If they are, compress Weeks 1-3. Target Udemy launch in **Q1 2027** (the market research roadmap). Work backwards from the chosen launch date, and let the marketing plan (`08-marketing/launch-plan.md`) start at W-4, which overlaps Weeks 9-12 here.
 
-**Scope (curriculum v1.1):** 89 video lectures (~687 min by table minutes; the curriculum states ≈11.3 h) + 7 lab walkthroughs (~31 min) + 1 challenge video (5.9) + 12 quizzes + practice test + 5 coding exercises + 5 assignments + capstone. Six long lectures (5.3, 7.5, 8.2, 9.3, 13.2, 13.5) are uploaded as Part A / Part B.
+**Scope (curriculum v1.1):** 89 video lectures (683 min by curriculum minutes, ≈11.4 h) + 7 lab walkthroughs (~31 min) + 1 challenge video (5.9) + 12 quizzes + practice test + 5 coding exercises + 5 assignments + capstone. Six long lectures (5.3, 7.5, 8.2, 9.3, 13.2, 13.5) are uploaded as Part A / Part B.
 
 ---
 
@@ -25,8 +25,8 @@
 | Week | Focus | Tasks | Output |
 |---|---|---|---|
 | 1 | **Code and environment** | Run the full repo on clean macOS, Windows and Linux; fix setup friction; pin versions; record the exact versions in the README; set up the recording accounts (`recording-guide.md` §6) | Clean-machine install log; pinned `pyproject.toml` |
-| 2 | **Scripts S1-S8 final** | Script review against the PRODUCTION-GUIDE 7-beat structure and word budget; check every code line against curriculum §6; build diagrams D1-D7 | Final scripts S1-S8; diagrams D1-D7 |
-| 3 | **Scripts S9-S15 final + code freeze (M1)** | Same for S9-S15; diagrams D8-D16; phone number + SIP trunk live on the recording accounts; capstone runs end to end | Final scripts; all diagrams; **M1** |
+| 2 | **Scripts S1-S8 final** | Script review against the PRODUCTION-GUIDE 7-beat structure and word budget; check every code line against curriculum §6; draw diagrams D1-D7 as SVG in `10-graphics/diagrams/` (specs in `slide-deck-outline.md`); generate the S1-S8 decks with `tools/slide_builder.py` | Final scripts S1-S8; diagrams D1-D7; decks S1-S8 |
+| 3 | **Scripts S9-S15 final + code freeze (M1)** | Same for S9-S15; diagrams D8-D16 and decks S9-S15; phone number + SIP trunk live on the recording accounts; capstone runs end to end | Final scripts; all diagrams; **M1** |
 | 4 | **Pilot (M2)** | Produce 1.2, 3.3, 8.2, 9.4 end to end; measure hours per finished minute; adjust the plan; get feedback from 2-3 reviewers | 4 finished lectures; revised estimates; **M2** |
 | 5 | **Record S1-S3** | HeyGen batch render S1-S3; OBS sessions S2-S3 (incl. 2.6 quick win, 2.7 mock mode); live demos 1.1 (placeholder until 13.5 is recorded), 3.4, 3.7, **3.9 break-it A/B audio** | Raw S1-S3 |
 | 6 | **Record S4-S5 (M3)** | Renders + OBS for S4-S5; assemble S1-S3 in parallel | Raw S4-S5; S1-S3 assembled; **M3** |
@@ -46,7 +46,7 @@
 | DM (live demo, phone) | 2.0-3.0 h (non-deterministic retakes, masking) |
 | TH (avatar) | 0.5-1.0 h |
 
-At ~690 video minutes, total effort lands in the **hundreds of hours**. The Week 4 pilot exists to replace these guesses with real numbers. If the pilot shows more than a 20% overrun, either extend to 14 weeks or move the S14 Pipecat build to a post-launch update (keep 14.3 build-vs-buy at launch).
+At ~690 video minutes (683 plus the 5.9 challenge), total effort lands in the **hundreds of hours**. The Week 4 pilot exists to replace these guesses with real numbers. If the pilot shows more than a 20% overrun, either extend to 14 weeks or move the S14 Pipecat build to a post-launch update (keep 14.3 build-vs-buy at launch).
 
 ## Risks and mitigations
 

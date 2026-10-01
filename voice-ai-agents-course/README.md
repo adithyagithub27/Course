@@ -15,7 +15,7 @@ Course 3 in the Build → Test → Operate series. Complete production package f
 
 | Field | Value |
 |---|---|
-| Runtime | ≈10.5 h video, 15 sections, 78 lectures |
+| Runtime | ≈11.4 h video (683 min), 15 sections, 97 lectures (see `01-curriculum/curriculum.md` §4) |
 | Level | Intermediate Python (beginner-safe first three sections) |
 | Stack | Python 3.11+, livekit-agents 1.8, pipecat-ai 1.12, OpenAI, Deepgram, Cartesia, Twilio SIP, DeepEval, jiwer, OpenTelemetry, Langfuse, Docker, GitHub Actions |
 | Student cost | ≈$10-20 in API usage using free tiers |

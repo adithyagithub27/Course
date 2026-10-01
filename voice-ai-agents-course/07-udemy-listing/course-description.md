@@ -62,7 +62,7 @@ All model names come from environment variables, so when a provider renames a mo
 - **Make it reliable (Sections 9-11):** testing and evaluation (including audio-in tests and scenario-based simulated calls), observability and cost, security and guardrails
 - **Ship it (Sections 12-15):** Docker and LiveKit Cloud deployment, the production capstone, an optional Pipecat section with a build-vs-buy comparison, and a careers lecture on voice AI roles, interview questions and scoping and pricing a client project
 
-**What you get:** about 11.3 hours of video in 97 lectures, a complete GitHub code repository, 7 guided labs, 4 build-it-yourself challenges, 3 projects plus a capstone and a domain-swap project, 12 section quizzes, a 40-question practice test, 5 in-browser coding exercises, and downloadable cheat sheets, templates and checklists: latency budget, provider costs, architecture decision matrix, telephony compliance, voice failure taxonomy, production readiness scorecard, troubleshooting guide, business re-skin template and interview questions.
+**What you get:** about 11.4 hours of video in 97 lectures, a complete GitHub code repository, 7 guided labs, 4 build-it-yourself challenges, 3 projects plus a capstone and a domain-swap project, 12 section quizzes, a 40-question practice test, 5 in-browser coding exercises, and downloadable cheat sheets, templates and checklists: latency budget, provider costs, architecture decision matrix, telephony compliance, voice failure taxonomy, production readiness scorecard, troubleshooting guide, business re-skin template and interview questions.
 
 **Part of a series.** This is Course 3 in a Build → Test → Operate series with *Generative AI & AI Agents: Zero to Production* and *AI Agent Testing & Evaluation*. It stands on its own, and you don't need the other courses.
 
@@ -80,7 +80,7 @@ If you can build a chatbot, this course teaches you to build a voice agent that 
 - Primary keywords appear in the first two paragraphs: *voice agent*, *AI*, *production*, *Python*, *phone*. Tool keywords appear early in the body: *LiveKit*, *OpenAI Realtime*, *Pipecat*, *Twilio SIP*.
 - The description has no external links, no coupon codes and no off-platform contact details. Udemy's promotional rules don't allow them in the landing page (verify current policy).
 - The description makes no market or salary claims. The careers lecture (15.4) also has no salary figures.
-- Counts match curriculum v1.1: ~11.3 h video, 97 lectures, 12 section quizzes, 7 labs, 4 challenges, 3 projects + capstone + domain swap, 5 coding exercises.
+- Counts match curriculum v1.1: ~11.4 h video (683 min), 97 lectures, 12 section quizzes, 7 labs, 4 challenges, 3 projects + capstone + domain swap, 5 coding exercises.
 
 ---
 

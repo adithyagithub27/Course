@@ -21,18 +21,19 @@
 
 ## Step 1: Read the Dockerfile before you build it
 
-Open `deploy/Dockerfile` and find the four production choices from lecture 12.2:
+Open `deploy/Dockerfile` and find the five production choices from lecture 12.2:
 
 | Choice | What to look for | Why |
 |---|---|---|
 | Multi-stage build | A builder stage that installs dependencies, and a slim final stage that copies the virtual environment | Smaller image, faster scaling |
+| Locked dependencies | `COPY pyproject.toml README.md uv.lock ./` and `uv sync --locked` | The image gets exactly the versions in the committed `uv.lock`; the build fails if the lock file is stale |
 | Models at build time | A `RUN ... download-files` line | New containers start without downloading VAD and turn-detector weights |
 | Non-root user | A `USER` line with a non-root account | Limits damage if the process is compromised |
 | Production command | The final `CMD` ends with `start` (not `dev` or `console`) | Production mode: no hot reload, production logging |
 
 Note which agent file the image starts: `ARG AGENT_FILE=agents/s13_capstone_receptionist.py` feeds both the `download-files` step and the final `CMD ["sh", "-c", "exec python \"$AGENT_FILE\" start"]`. To deploy your own Project 2 or capstone agent, pass `--build-arg AGENT_FILE=agents/capstone_riley.py` instead of editing the file.
 
-> **Checkpoint 1:** you can point to each of the four choices in the file.
+> **Checkpoint 1:** you can point to each of the five choices in the file.
 
 ---
 

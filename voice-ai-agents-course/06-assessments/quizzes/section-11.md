@@ -30,7 +30,7 @@
 
 *Related lecture: 11.1 Threat model for voice agents*
 
-- **A.** Apply the same verification as anyone else. Riley cannot confirm identity from a claim, so she does not reveal another patient's details and offers to transfer the caller to the front desk.
+- **A.** Apply the same verification as anyone else. Riley cannot confirm identity from a claim, so it does not reveal another patient's details and offers to transfer the caller to the front desk.
   - *Explanation:* Correct. Social engineering relies on claimed authority. Riley's rule is that callers who claim to be staff, a dentist or the police get the same treatment as everyone else. Staff have internal systems; a phone agent is not one of them.
 - **B.** Ask a security question only a dentist would know, such as a dental term.
   - *Explanation:* Incorrect. Dental terms are public knowledge. This is not verification.

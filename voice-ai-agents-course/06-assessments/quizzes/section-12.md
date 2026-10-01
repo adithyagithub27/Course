@@ -77,16 +77,16 @@
 
 ---
 
-### Q5. In the chaos demo, the TTS provider's key is revoked mid-call. With the course's production settings, what should the caller experience?
+### Q5. In the chaos demo, the kill switch makes the primary LLM fail every request mid-call. With the course's production settings, what should the caller experience?
 
 *Related lecture: 12.8 Chaos demo: kill a provider mid-call*
 
-- **A.** Riley keeps "speaking", but the caller hears silence until they hang up.
-  - *Explanation:* Incorrect. That is the failure mode without fallbacks, and the reason this demo exists.
+- **A.** Riley goes quiet, and the caller hears silence until they hang up.
+  - *Explanation:* Incorrect. That is the failure mode without fallbacks (`CHAOS_NO_FALLBACK=1`), and the reason this demo exists.
 - **B.** The call drops immediately with no explanation.
   - *Explanation:* Incorrect. Abrupt drops are what fallback providers and spoken error recovery are designed to prevent.
-- **C.** The fallback TTS provider takes over (for example the configured `FALLBACK_TTS_MODEL`), possibly with a different voice, and if everything fails Riley recovers with error speech and a transfer or callback offer.
-  - *Explanation:* Correct. Provider fallback lists and error speech (`prompts.ERROR_SPEECH`) turn an outage into a small voice change or a graceful hand-off instead of a dead line.
+- **C.** The fallback LLM (`FALLBACK_LLM_MODEL`) answers instead, and the caller barely notices. If every provider fails, Riley speaks the error line and then transfers a phone caller to the front desk, or says goodbye and ends the call cleanly.
+  - *Explanation:* Correct. The capstone's `llm.FallbackAdapter` switches to the next LLM when the primary fails, and an unrecoverable error triggers `prompts.ERROR_SPEECH` followed by `recover_after_error` (transfer when a SIP caller and `TRANSFER_PHONE_NUMBER` exist, otherwise `ERROR_GOODBYE` and a hang-up). An outage becomes a short pause or a graceful hand-off instead of a dead line.
 - **D.** Riley switches to reading the text in the caller's app.
   - *Explanation:* Incorrect. Phone callers have no text channel, and nothing in the course implements this.
 

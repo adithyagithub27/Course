@@ -25,7 +25,8 @@
 - [ ] Agent audio audible and level-matched with narration; caller vs agent vs avatar clearly distinguishable
 - [ ] **No agent echo / self-interruption** artefacts (headset used)
 - [ ] Avatar: lip sync, pronunciation dictionary applied (LiveKit, Pipecat, Deepgram, Cartesia, Silero, SIP, WER, Riley, Maple Street)
-- [ ] Visual change at least every 30 s; avatar ≤ 60 s continuous; hook in first 15 s; 3-bullet recap; bridge
+- [ ] Visual change at least every 30 s; avatar ≤ 60 s continuous (no narration run over 140 words without a cue change); hook in first 15 s; K6 recap card shows the three bullets of the script's `[SLIDE n: Recap]` cue; bridge
+- [ ] Riley is referred to as "it" in narration and on screen (decision V1)
 - [ ] Code font legible at 720p playback (JetBrains Mono 20-22 px); ≤ 15 lines visible
 
 ### Security scrub
@@ -89,7 +90,7 @@
 | 5.6 | Reschedule, cancel and tool errors | SC | `ToolError` messages are spoken, retry works | [ ] | |
 | 5.7 | Session state with userdata | SC | userdata dataclass carried across tools | [ ] | |
 | 5.8 | Project 1: Booking agent | AS | Brief complete; rubric + example solution run | [ ] | |
-| 5.9 | Challenge: add a waitlist tool (pause, then solution) | CE | Spec on screen matches `scheduler.add_to_waitlist` signature; solution in `agents/s05_booking_agent.py` passes tests; pause card shown | [ ] | |
+| 5.9 | Challenge: add a waitlist tool (pause, then solution) | CE | Spec on screen is `join_waitlist(patient_name, phone, preferred_day)`, the signature in `agents/s05_booking_agent.py` (no `part_of_day`); solution shown matches that file; pause card shown | [ ] | |
 | 5.10 | Quiz: Tools | QZ | Every question has correct answer + explanation; answers match current APIs | [ ] | |
 | 6.1 | How realtime speech models work | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
 | 6.2 | Code-along: Riley on `gpt-realtime` | SC | `openai.realtime.RealtimeModel(model="gpt-realtime", voice="marin")` runs; same tools reused | [ ] | |
@@ -128,7 +129,7 @@
 | 9.13 | Audio-in tests: real caller audio through the pipeline | SC | `tests/evals/audio_in_eval.py` runs on `tests/data/audio/`; WER thresholds as shown; `input_modality="audio"` used only where supported in installed version | [ ] | |
 | 9.14 | LiveKit Simulations: scenario-based caller testing at scale | DM | LiveKit Simulation availability and pricing verified on the recording plan **before** recording; `on_simulation_end` hook in capstone works; record as demo-only if unavailable | [ ] | |
 | 10.1 | What to measure on every call | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
-| 10.2 | Collecting metrics and usage | SC | `metrics_collected`, `metrics.log_metrics`, `UsageCollector` forms match §6 | [ ] | |
+| 10.2 | Collecting metrics and usage | SC | `metrics_collected`, `metrics.log_metrics`, `session.usage` forms match §6; `UsageCollector` must not appear in code on screen (one spoken mention as deprecated is fine) | [ ] | |
 | 10.3 | Tracing with OpenTelemetry and Langfuse | SC | Traces appear in Langfuse; no PII in spans | [ ] | |
 | 10.4 | Cost per minute: the number your boss will ask for | SC | `src/maple/costs.py` unit tests pass; price table labelled "check current pricing" | [ ] | |
 | 10.5 | Dashboards and alerts that matter | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
@@ -147,18 +148,18 @@
 | 12.5 | A web front end for Riley | SC | Front-end starter connects to deployed agent per `frontend/README.md` | [ ] | |
 | 12.6 | Production readiness checklist | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
 | 12.7 | Lab 7: Deploy and call your agent | LAB | Complete the lab as a student on a clean machine; expected outputs match | [ ] | |
-| 12.8 | Chaos demo: kill a provider mid-call | DM | Revoking TTS key / blocking STT mid-call triggers fallback + spoken recovery; revoked key replaced after recording | [ ] | |
+| 12.8 | Chaos demo: kill a provider mid-call | DM | `agents/s12_chaos_demo.py dev`: `touch /tmp/riley-kill-llm` mid-call makes the fallback LLM answer; with `CHAOS_NO_FALLBACK=1` the caller hears the error line, then a transfer or goodbye (`recover_after_error`); `rm /tmp/riley-kill-llm` restores the primary | [ ] | |
 | 12.9 | Quiz: Deployment | QZ | Every question has correct answer + explanation; answers match current APIs | [ ] | |
 | 13.1 | Capstone brief and architecture | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
 | 13.1a | Build it yourself first: the capstone gate | TH | Gate card clearly says pause and build; brief in `05-projects/capstone-riley.md` is sufficient to build without the walkthrough | [ ] | |
 | 13.2 | Reference solution: assembling the production agent | SC | `agents/s13_capstone_receptionist.py` runs in console and on phone | [ ] | |
-| 13.3 | Hardening: fallbacks, timeouts, error speech | SC | Fallback triggers when primary provider key is revoked (demo) | [ ] | |
+| 13.3 | Hardening: fallbacks, timeouts, error speech | SC | Fallback triggers when the primary provider fails (kill switch or the `not-a-real-model` run shown); unrecoverable error speaks `ERROR_SPEECH` then transfers (SIP caller + `TRANSFER_PHONE_NUMBER`) or says `ERROR_GOODBYE` and hangs up | [ ] | |
 | 13.4 | Full test run: unit → behavior → evals → simulated calls | SC | Full suite runs; the "failing case" fixed live is real | [ ] | |
 | 13.5 | Deploy, call, observe | DM | Deployed; real calls; traces and cost/min visible; numbers masked | [ ] | |
 | 13.6 | Capstone submission and portfolio write-up | TH | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
 | 13.7 | Domain swap: ship Riley for a restaurant, salon or law office | AS | Brief complete; rubric + example solution run | [ ] | |
 | 14.1 | Pipecat's frame pipeline model | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
-| 14.2 | Code-along: Riley booking flow in Pipecat | SC | `pipecat/s14_pipecat_bot.py` runs on pipecat-ai 1.12.x; imports match §6 (no `openai_llm_context`) | [ ] | |
+| 14.2 | Code-along: Riley booking flow in Pipecat | SC | `pipecat/s14_pipecat_bot.py` runs on pipecat-ai 1.12.x; imports match §6 (`PipelineWorker`, `WorkerRunner`; no `openai_llm_context`, no deprecated `PipelineTask`/`PipelineRunner` in code on screen) | [ ] | |
 | 14.3 | LiveKit Agents vs Pipecat vs managed platforms | SL | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |
 | 14.4 | Quiz: Choosing a stack | QZ | Every question has correct answer + explanation; answers match current APIs | [ ] | |
 | 15.1 | What you built and where to go next | TH | n/a (conceptual). Check facts and diagrams against curriculum | [ ] | |

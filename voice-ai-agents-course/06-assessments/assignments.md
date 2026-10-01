@@ -108,7 +108,7 @@ Record a 3 to 5 minute demo showing a booking, a correction, a closed-day reques
 
 **Instructions:**
 
-Put Riley behind a phone line. She answers with an AI disclosure, books appointments, answers FAQ questions from `faq.md`, confirms the caller-ID number instead of asking for it, transfers to a human when asked (destination from `TRANSFER_PHONE_NUMBER`, never chosen by the model), and hangs up cleanly after a goodbye.
+Put Riley behind a phone line. It answers with an AI disclosure, books appointments, answers FAQ questions from `faq.md`, confirms the caller-ID number instead of asking for it, transfers to a human when asked (destination from `TRANSFER_PHONE_NUMBER`, never chosen by the model), and hangs up cleanly after a goodbye.
 
 Choose one path; both can earn full marks:
 
@@ -198,7 +198,7 @@ Run the 24 acceptance tests in the brief (at least 15 must pass), record a 3 to 
 **Instructor example answers:**
 
 1. Repository: the course repo's `agents/s13_capstone_receptionist.py` plus tests; demo: lecture 13.5 recording; acceptance: 23 of 24 pass. AT-20 misses its $0.05 per minute target at $0.058 on phone calls because telephony minutes add about $0.013 per minute; web calls come in at $0.045. (For the reference solution the gate does not apply; in the example student write-up the answer is "yes: six days of build, then the reference".)
-2. A TTS provider outage. I ran the chaos test from lecture 12.8 on a staging line: with a call in progress, I revoked the primary TTS key. The fallback TTS (`FALLBACK_TTS_MODEL=deepgram/aura-2`) took over on the next sentence; the caller heard a different voice but no silence, and the call completed its booking. With fallbacks disabled, the same test left the caller in silence until they hung up. Evidence: the demo video at 3:40, and the agent log lines showing the TTS error followed by the fallback provider handling the next utterance.
+2. A primary LLM outage. I ran the chaos test from lecture 12.8 on a staging line: with a phone call in progress, I flipped the kill switch (`touch /tmp/riley-kill-llm` with `agents/s12_chaos_demo.py`). The fallback LLM (`FALLBACK_LLM_MODEL`) answered the next turn; the caller heard a slightly longer pause but no silence, and the call completed its booking. With `CHAOS_NO_FALLBACK=1`, Riley spoke the error line and then, because this was a SIP caller and `TRANSFER_PHONE_NUMBER` was set, transferred the call to the front desk (`recover_after_error`); on a web call it said the goodbye line with the clinic number and hung up. Evidence: the demo video at 3:40, and the agent log lines showing the primary LLM error followed by the fallback model handling the next turn.
 3. *Decisions:* "Cascaded over realtime: in Lab 4, cascaded was about 350 ms slower in perceived latency but roughly a quarter of the cost per minute, and it made 5 of 5 correct bookings versus 4 of 5. Verification in code, not prompt: `require_verification = True` makes reschedule and cancel refuse without `verify_caller`, so a jailbroken model still cannot change appointments. Local FAQ index over a vector DB: 16 sections, millisecond retrieval, no extra network hop." *DIFF_NOTES item:* "I used `with_filler(..., delay=0.5)`; the reference uses 0.8. After listening to ten calls, 0.5 triggered the filler on almost every lookup and made Riley sound slow, so I adopted 0.8."
 
 **Solution resource:** Lectures 13.2 to 13.5 (reference solution) and `03-code/agents/s13_capstone_receptionist.py`.

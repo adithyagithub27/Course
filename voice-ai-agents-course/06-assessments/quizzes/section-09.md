@@ -43,7 +43,7 @@
 
 ---
 
-### Q3. You want to test that Riley's greeting is friendly, mentions Maple Street Dental and asks how she can help. The exact wording changes every run. Which assertion fits best?
+### Q3. You want to test that Riley's greeting is friendly, mentions Maple Street Dental and asks how it can help. The exact wording changes every run. Which assertion fits best?
 
 *Related lecture: 9.3 Behavior tests with LiveKit's test framework*
 
@@ -60,7 +60,7 @@
 
 ---
 
-### Q4. Sometimes Riley says "Let me check that for you" before calling `find_available_slots`, and sometimes she calls the tool straight away. Your test asserts the next event is the function call and fails intermittently. What is the correct fix?
+### Q4. Sometimes Riley says "Let me check that for you" before calling `find_available_slots`, and sometimes it calls the tool straight away. Your test asserts the next event is the function call and fails intermittently. What is the correct fix?
 
 *Related lecture: 9.4 Asserting tool calls and arguments*
 

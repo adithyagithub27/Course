@@ -10,7 +10,7 @@
 Script (02-lecture-scripts/) ──► Scene plan (per lecture)
         │
         ├─► Avatar scenes ──► HeyGen batch render (per section)
-        ├─► Slides/diagrams ──► Figma/Canva (K1-K7 scene kits)
+        ├─► Slides/diagrams ──► tools/slide_builder.py decks + 10-graphics/diagrams/*.svg (K1-K7 scene kits; see video-generation-plan.md §4.4)
         ├─► Screencasts ──► OBS (one session per section, same layout)
         └─► Live demos (console, playground, phone) ──► OBS + audio loopback
                      │
@@ -18,23 +18,24 @@ Script (02-lecture-scripts/) ──► Scene plan (per lecture)
         Assemble (DaVinci Resolve / CapCut) ──► Loudness normalize ──► Captions ──► QA ──► Upload
 ```
 
-Lecture types from the curriculum map to recording methods:
+Lecture types from the curriculum map to recording methods. **Counts and lecture IDs per type live in one place only: `video-generation-plan.md` §2**, counted from the curriculum table (v1.1: TH 7, SL 26, SC 47, DM 9, CE 1, LAB 7, AS 5, QZ 13; 115 items).
 
-| Type | Count | Recording method |
-|---|---|---|
-| SL (slides) | 26 | HeyGen avatar (picture-in-picture or cut-ins) + slide/diagram scenes |
-| SC (screencast/code-along) | 47 | OBS screen + avatar intro/outro (beats 1-3, 6-7) |
-| DM (live demo) | 9 | OBS screen + **live agent audio** (phone audio for 1.1 and 13.5; A/B audio for 3.9; the chaos demo 12.8; Simulations 9.14) |
-| TH (talking head) | 7 | HeyGen avatar, or real camera for 1.1 intro / 13.1a gate / 15.3 bonus / 15.4 careers if possible |
-| LAB walkthrough | 7 | Short OBS walkthrough of the lab doc and expected result |
-| CE challenge (5.9) | 1 | Spec card → **pause card** ("Pause now and build it") → OBS solution walkthrough |
+| Type | Recording method |
+|---|---|
+| SL (slides) | HeyGen avatar (picture-in-picture or cut-ins) + slide/diagram scenes from the generated section deck |
+| SC (screencast/code-along) | OBS screen + avatar intro/outro (beats 1-3, 6-7) |
+| DM (live demo) | OBS screen + **live agent audio** (phone audio for 1.1 and 13.5; A/B audio for 3.7 and 3.9; the chaos demo 12.8; Simulations 9.14) |
+| TH (talking head) | HeyGen avatar, or real camera for the 13.1a gate / 15.3 bonus / 15.4 careers if possible |
+| CE challenge (5.9) | Spec card → **pause card** ("Pause now and build it") → OBS solution walkthrough |
+| LAB, AS and QZ intros | Short avatar intro + 1-3 slides (generic intro template in `slide-deck-outline.md`); the lab, project or quiz itself is text in Udemy |
 
-Counts are for curriculum v1.1. **Split 5.3, 7.5, 8.2, 9.3, 13.2 and 13.5 into Part A / Part B** at record time (same script, two uploads, each under ten minutes). Give Part B a 10-second recap hook instead of a cold hook.
+**Split 5.3, 7.5, 8.2, 9.3, 13.2 and 13.5 into Part A / Part B** at record time (same script, two uploads, each under ten minutes). Give Part B a 10-second recap hook instead of a cold hook.
 
 ## 2. HeyGen avatar
 
 - Use the **same avatar and voice** as Courses 1 and 2 (see `09-heygen/avatar-config/` and `voice-config/`) for series consistency.
 - **Pronunciation dictionary.** Add these before rendering anything: LiveKit ("LIVE-kit"), Pipecat ("PIPE-cat"), Deepgram, Cartesia ("car-TEE-zha" or check the vendor's own pronunciation), Silero ("sih-LEH-ro"), SIP ("sip"), PSTN (spell out), VAD (spell out, "V-A-D"), STT/TTS/LLM (spell out), WER ("W-E-R" or "word error rate"), TTFT/TTFB (say "time to first token/byte"), `gpt-realtime` ("G-P-T realtime"), uv ("U-V"), Maple Street, Riley.
+- **Riley is "it".** Riley is an AI assistant and every script, slide, lab and quiz refers to Riley as "it" (decision V1). If a script line says "she" or "her" for Riley, fix the script before generating the avatar scene; don't ad-lib a pronoun on screencast voice-over either.
 - **Avatar vs agent voice.** The avatar's voice must sound clearly different from Riley's TTS voice so students always know who is speaking. Pick a Riley voice with a different gender, pitch or accent from the avatar, and label agent audio on screen (`Riley (agent)` waveform badge).
 - Keep avatar segments ≤ 60 s without a visual change (PRODUCTION-GUIDE rule 1).
 - **Disclosure:** see `07-udemy-listing/publish-checklist.md` §9 (verify Udemy's AI content policy).
@@ -147,7 +148,7 @@ Dynamic or small-diaphragm condenser mic
 | 7.8 | Spanish and Hindi callers | Use native speakers (with consent) or clearly labelled synthetic caller audio; have native speakers check the captions |
 | 9.13 | Audio-in tests | Use only recordings you have the rights to (your own voice, consenting speakers or licensed datasets); no real patient calls |
 | 9.14 | LiveKit Simulations | **Verify availability and pricing before recording.** If it isn't available on your plan, record it as a demo-only walkthrough and say so on screen |
-| 12.8 | Chaos: kill a provider mid-call | Use a throwaway key and revoke it live; mask the key ID; create a new key afterwards |
+| 12.8 | Chaos: kill a provider mid-call | Use the kill switch, not a revoked key: run `uv run python agents/s12_chaos_demo.py dev`, then `touch /tmp/riley-kill-llm` in a second terminal (primary LLM fails, the fallback LLM answers) and `rm /tmp/riley-kill-llm` to recover. Record a second take with `CHAOS_NO_FALLBACK=1`. Three panes on screen: Playground, agent log, kill-switch terminal |
 | 13.1a | Capstone gate | Full-screen pause card: "Stop here. Build it from the brief. Time box: one week." |
 | 15.4 | Careers | No salary figures on screen or in narration |
 
@@ -155,7 +156,7 @@ Dynamic or small-diaphragm condenser mic
 
 Build these into production. They aren't lecture content, but they affect ratings and completion.
 
-1. **Section-end "You can now..." card.** A 10-second K6-style slide at the end of the **last lecture of every section**, listing three concrete abilities (e.g., Section 8: "You can now: answer a real phone number · transfer to a human · place a reminder call"). Design it to be screenshot-friendly: large text, the course name in small type, no URLs.
+1. **Section-end "You can now..." card.** A 10-second K6-style slide at the end of the **last video lecture of every section**, before the bridge, listing the three abilities written in that lecture's `[SLIDE n: You can now]` cue (decision A2; e.g., Section 8: "You can now: answer a real phone number · transfer to a human · place a reminder call"). Design it to be screenshot-friendly: large text, the course name in small type, no URLs. Every lecture's K6 recap card likewise uses the three bullets of its `[SLIDE n: Recap]` cue (A1).
 2. **Build log.** In 1.5 and 2.6, ask students to keep a `BUILD_LOG.md` in their repo and post one line per section in Q&A. Repeat the prompt verbally on each section-end card ("Add today's line to your build log"). This is an educational prompt, not a review request.
 3. **Hear-it moments.** Every time a setting changes turn-taking or the voice (3.6, 3.7, 3.9, 4.3, 6.3, 6.4, 7.8, 8.3), play **before and after** audio with the same caller line, level-matched, and show an on-screen `BEFORE` (red) / `AFTER` (teal) label (design system 4.6).
 4. **Failure-first demos.** Start each build section (3, 4, 5, 7, 8, 11, 12) with about 30 seconds of the broken version (talking over the caller, a wrong booking, a dead-air tool call, a leaked appointment, a provider outage) before building the fix. Use Alert Red overlays only on the failure.

@@ -35,7 +35,7 @@
 - **B.** Both belong on the `AgentSession`.
   - *Explanation:* Incorrect. Instructions and tools are defined on the `Agent`, so that each agent in a handoff (Section 7) can have its own.
 - **C.** Tool and prompt on the `Agent`; STT on the `AgentSession`.
-  - *Explanation:* Correct. `Agent` = who Riley is and what she can do (instructions, `@function_tool` methods). `AgentSession` = the runtime for the call (`stt`, `llm`, `tts`, `vad`, `turn_handling`, `userdata`).
+  - *Explanation:* Correct. `Agent` = who Riley is and what it can do (instructions, `@function_tool` methods). `AgentSession` = the runtime for the call (`stt`, `llm`, `tts`, `vad`, `turn_handling`, `userdata`).
 - **D.** Tool and prompt in `.env`; STT on the `Agent`.
   - *Explanation:* Incorrect. `.env` holds configuration such as model names, not tools or prompts, and STT is a session-level setting.
 

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Convert agent conversation events (JSONL) into an SRT caption file.
 
-The observed agent (``agents/s10_observed_agent.py``) and the capstone write one
-JSON object per line with at least: ``t`` (seconds since call start, float),
+The input is a transcript you export yourself (for example from the
+``conversation_item_added`` events of an ``AgentSession``): one JSON object per
+line with at least: ``t`` (seconds since call start, float),
 ``role`` ("user" or "assistant") and ``text``. Optional ``end`` gives the end time;
 otherwise the caption lasts until the next line or a reading-speed estimate.
+Note: the course agents do not write this file; ``agents/s10_observed_agent.py``
+writes per-turn *metrics* JSONL, which is a different format.
 
 Usage:
     python transcript_to_srt.py call.jsonl --out call.srt --agent-name Riley --user-name Caller

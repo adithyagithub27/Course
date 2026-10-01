@@ -32,7 +32,7 @@
 
 - **A.** Answer "yes" because most modern clinics offer it.
   - *Explanation:* Incorrect. That is a hallucination. Riley would be making a claim the clinic never made.
-- **B.** Say she isn't sure, and offer to take a message or transfer the caller to the front desk.
+- **B.** Say it isn't sure, and offer to take a message or transfer the caller to the front desk.
   - *Explanation:* Correct. Grounding instructions tell Riley to answer only from what `lookup_clinic_info` returns, and to say "I'm not sure" and offer a human when nothing relevant comes back. In the course code, `FaqIndex.answer()` returns `"NO_MATCH"` so the prompt can handle this case explicitly.
 - **C.** Read out the full list of services so the caller can decide.
   - *Explanation:* Incorrect. A long spoken list is poor voice UX and still does not answer the question.

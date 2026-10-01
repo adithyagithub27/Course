@@ -170,7 +170,7 @@
 | 12.5 | A web front end for Riley | SC | `frontend/README.md` | none | Repo link to file/folder (or ZIP) |
 | 12.6 | Production readiness checklist | SL | `10-resources/production-checklist.md` | `10-resources/voice-agent-readiness-scorecard.md` | PDF download |
 | 12.7 | Lab 7: Deploy and call your agent | LAB | `04-labs/lab-07-deploy.md` | none | Lab doc (download) + walkthrough video |
-| 12.8 | Chaos demo: kill a provider mid-call | DM | `agents/s13_capstone_receptionist.py` | `10-resources/production-checklist.md`, `10-resources/voice-agent-readiness-scorecard.md` | Repo link to file/folder (or ZIP) + PDF download |
+| 12.8 | Chaos demo: kill a provider mid-call | DM | `agents/s12_chaos_demo.py`, `agents/s13_capstone_receptionist.py` | `10-resources/production-checklist.md`, `10-resources/voice-agent-readiness-scorecard.md` | Repo link to file/folder (or ZIP) + PDF download |
 | 12.9 | Quiz: Deployment | QZ | `06-assessments/quizzes/section-12.md` | none | Udemy quiz |
 
 ### Section 13

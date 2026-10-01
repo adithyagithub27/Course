@@ -26,17 +26,17 @@
 
 ---
 
-### Q2. What are the roles of `Pipeline`, `PipelineTask` and `PipelineRunner` in Pipecat?
+### Q2. What are the roles of `Pipeline`, `PipelineWorker` and `WorkerRunner` in Pipecat 1.12?
 
 *Related lecture: 14.1 Pipecat's frame pipeline model*
 
 - **A.** They are three names for the same class, kept for backwards compatibility.
   - *Explanation:* Incorrect. They are distinct objects with different responsibilities.
-- **B.** `Pipeline` is for audio, `PipelineTask` for text, and `PipelineRunner` for tools.
+- **B.** `Pipeline` is for audio, `PipelineWorker` for text, and `WorkerRunner` for tools.
   - *Explanation:* Incorrect. The split is not by modality. All frame types flow through the same pipeline.
-- **C.** `Pipeline` is the ordered list of processors, `PipelineTask` wraps it with run-time parameters (`PipelineParams`) and lets you queue frames, and `PipelineRunner` runs the task and handles lifecycle such as signals and cleanup.
-  - *Explanation:* Correct. You build the processor chain, wrap it in a task with parameters, and hand the task to a runner.
-- **D.** `PipelineRunner` defines processors, and `Pipeline` executes them.
+- **C.** `Pipeline` is the ordered list of processors, `PipelineWorker` runs one conversation through it with run-time parameters (`PipelineParams`) and lets you queue frames, and `WorkerRunner` manages the worker's lifecycle such as signals and cleanup.
+  - *Explanation:* Correct. You build the processor chain, wrap it in a worker with parameters, and hand the worker to a runner (`await runner.add_workers(worker)` in `pipecat/s14_pipecat_bot.py`). Older tutorials call the last two `PipelineTask` and `PipelineRunner`; those names are deprecated aliases since Pipecat 1.3 and print warnings in 1.12.
+- **D.** `WorkerRunner` defines processors, and `Pipeline` executes them.
   - *Explanation:* Incorrect. The roles are the other way round.
 
 **Correct answer: C**

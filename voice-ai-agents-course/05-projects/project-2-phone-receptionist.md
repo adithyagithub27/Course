@@ -15,7 +15,7 @@
 
 The booking pilot went well. Dana, the practice manager, now wants Riley to answer the clinic's overflow line: calls that ring more than four times at the front desk, and all calls after hours.
 
-> "When someone calls, Riley answers, says she's the clinic's AI assistant, and handles bookings and simple questions. If the caller asks for a person, or Riley can't help, she transfers them to the front desk during opening hours. After hours she takes a message. And please, no one should have to spell out their phone number if we already have it from caller ID."
+> "When someone calls, Riley answers, says it's the clinic's AI assistant, and handles bookings and simple questions. If the caller asks for a person, or Riley can't help, it transfers them to the front desk during opening hours. After hours it takes a message. And please, no one should have to spell out their phone number if we already have it from caller ID."
 
 Some students cannot buy a phone number where they live, or cannot pass carrier verification in time. That is fine: Path B proves the same skills without a number.
 
@@ -60,7 +60,7 @@ Create `agents/p2_phone_agent.py`, starting from your Project 1 agent. You may n
 
 | # | Criterion | Path A evidence | Path B evidence |
 |---|---|---|---|
-| 1 | Riley answers within 2 seconds of pickup and discloses she is an AI | Phone call recording | Softphone recording |
+| 1 | Riley answers within 2 seconds of pickup and discloses it is an AI | Phone call recording | Softphone recording |
 | 2 | Only one agent joins each call, and only the named agent | `lk room list` / LiveKit dashboard screenshot | Same |
 | 3 | Caller ID is offered back for confirmation | Recording | Softphone recording (softphone's user part appears as the number) |
 | 4 | A full booking completes on the call | Recording | Web client recording **and** softphone recording |
@@ -77,7 +77,9 @@ Create `agents/p2_phone_agent.py`, starting from your Project 1 agent. You may n
 
 ### LiveKit SIP configuration (both paths)
 
-`sip/inbound-trunk.json` (Path A: use your Twilio number; Path B: add auth and a made-up number):
+These JSON files are **not shipped** in `03-code/`. You create them yourself in a `telephony/` folder at the repo root while following lecture 8.2 (`inbound-trunk.json`, `dispatch-rule.json`); lecture 8.5 adds `outbound-trunk.json`. If you skipped those lectures, create them from the examples below.
+
+`telephony/inbound-trunk.json` (Path A: use your Twilio number; Path B: add auth and a made-up number):
 
 ```json
 {
@@ -102,21 +104,22 @@ Path B variant:
 }
 ```
 
-`sip/dispatch-rule.json`:
+`telephony/dispatch-rule.json` (the trunk ID comes from the `lk sip inbound create` output and starts with `ST_`):
 
 ```json
 {
   "dispatch_rule": {
+    "name": "Riley inbound",
+    "trunk_ids": ["ST_REPLACE_WITH_YOUR_TRUNK_ID"],
     "rule": { "dispatchRuleIndividual": { "roomPrefix": "call-" } },
-    "name": "riley-inbound",
     "roomConfig": { "agents": [ { "agentName": "riley-receptionist" } ] }
   }
 }
 ```
 
 ```bash
-lk sip inbound create sip/inbound-trunk.json
-lk sip dispatch create sip/dispatch-rule.json
+lk sip inbound create telephony/inbound-trunk.json
+lk sip dispatch create telephony/dispatch-rule.json
 lk sip inbound list
 lk sip dispatch list
 uv run agents/p2_phone_agent.py dev
@@ -153,7 +156,7 @@ Then join that room from the Agents Playground or LiveKit Meet using your projec
 | # | Deliverable |
 |---|---|
 | D1 | `agents/p2_phone_agent.py` |
-| D2 | `sip/inbound-trunk.json` and `sip/dispatch-rule.json` with secrets replaced by placeholders |
+| D2 | `telephony/inbound-trunk.json` and `telephony/dispatch-rule.json` (from lecture 8.2) with secrets replaced by placeholders |
 | D3 | Demo recording (4 to 6 minutes) covering acceptance criteria 1 and 3 to 8. Path B: include both the web client and the softphone call |
 | D4 | `projects/p2/NOTES.md`: your path (A or B), the call flow diagram in one line (for example `Caller → Twilio → LiveKit SIP → room call-XXXX → riley-receptionist`), and the tuning values you chose with a sentence of justification |
 

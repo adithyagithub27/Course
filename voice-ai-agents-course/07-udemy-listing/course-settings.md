@@ -52,7 +52,7 @@ Use the same terms in section titles and lecture titles so Udemy's search index 
 Reasoning:
 
 - **Udemy's sitewide sales set most actual purchase prices.** When you opt in to Udemy's promotions (verify current program terms), the list price mostly acts as an anchor for the "% off" badge. A very low list price shrinks that badge and gains little.
-- **The course is specialised and production-level.** It has ~11.3 h of video in 97 lectures, a full repo, labs, challenges, projects, a capstone, 12 quizzes, a practice test and coding exercises. It aims at working engineers, not casual learners, and pricing it like a beginner course undersells it.
+- **The course is specialised and production-level.** It has ~11.4 h of video in 97 lectures, a full repo, labs, challenges, projects, a capstone, 12 quizzes, a practice test and coding exercises. It aims at working engineers, not casual learners, and pricing it like a beginner course undersells it.
 - **The series should have consistent prices.** Price Course 3 in the same tier as Course 2 (*AI Agent Testing & Evaluation*), so cross-sell coupons and "bundle-like" offers stay simple (see `08-marketing/cross-sell-plan.md`).
 - **There's room to test.** The research lists only three code-first voice courses and none is a bestseller. Record their current list and sale prices in `08-marketing/competitor-watch.md` before launch. Don't price off numbers we haven't checked.
 - **What not to do:** don't make the course free. Udemy limits free courses (historically to under 2 hours of video, with no Q&A or messaging for students; verify), so a free course can't host this content.

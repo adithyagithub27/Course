@@ -334,7 +334,7 @@ Open the LiveKit Agents Playground (https://agents-playground.livekit.io), choos
 | `lk: command not found` | CLI not on `PATH` | Re-run the installer; on Linux check `~/.local/bin` or `/usr/local/bin` |
 | `lk room list` returns 401 / invalid token | Wrong or stale `LIVEKIT_API_KEY`/`SECRET`, or `.env` has quotes/spaces | Re-run `lk app env -w -d .env`; values must not have spaces around `=` |
 | Console starts but Riley never speaks | No output device selected, or TTS auth failure | Check the log for `401`/`403` from TTS; confirm your LiveKit project has Inference enabled; check OS sound output |
-| Riley keeps interrupting herself | Speaker audio leaking into the microphone | Use headphones (echo cancellation in console mode is limited) |
+| Riley keeps interrupting itself | Speaker audio leaking into the microphone | Use headphones (echo cancellation in console mode is limited) |
 | macOS: no transcript appears | Terminal has no microphone permission | System Settings → Privacy & Security → Microphone → enable your terminal app, then restart it |
 | `download-files` hangs or fails | Corporate proxy / firewall blocks model hosts | Try another network; set `HTTPS_PROXY` if your company requires one |
 | `make: command not found` on Windows | `make` is not installed | Use the raw commands (`uv sync`, `uv run pytest tests/unit`) or install make via `winget install GnuWin32.Make` |

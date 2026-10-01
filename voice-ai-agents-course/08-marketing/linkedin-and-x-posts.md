@@ -234,7 +234,7 @@ You'll build Riley, an AI receptionist that:
 ✓ reports cost per minute and traces every turn
 ✓ runs in Docker on LiveKit Cloud
 
-~11.3 hours of video. A full repo. 7 labs, 4 build-it-yourself challenges, 3 projects + a capstone, 12 quizzes.
+~11.4 hours of video. A full repo. 7 labs, 4 build-it-yourself challenges, 3 projects + a capstone, 12 quizzes.
 
 Who it's for: Python developers who've built a chatbot and now need it to talk, listen and answer the phone.
 
@@ -248,7 +248,7 @@ It's live: Production Voice AI Agents with Python.
 
 Build an AI receptionist that answers a real phone number. Then test it (tool-call assertions, LLM judges, WER, latency budgets, simulated callers), monitor cost/min and deploy it.
 
-~11.3 h, full repo, labs + capstone. Link below.
+~11.4 h, full repo, labs + capstone. Link below.
 ```
 
 ## Post 9: Why I made it (D0-D1)

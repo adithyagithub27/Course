@@ -52,14 +52,16 @@ Pick a real business you know well: a salon, restaurant, clinic, gym, garage, la
 ### Spec (shown on screen; pause the video here)
 
 > When a caller wants a day that has no suitable openings, Riley offers the waitlist. Add a tool
-> `join_waitlist(name, phone, preferred_day)` backed by `scheduler.add_to_waitlist`.
+> `join_waitlist(patient_name, phone, preferred_day)` backed by `scheduler.add_to_waitlist`
+> and `scheduler.waitlist_position`.
 > - Only offer it after `find_available_slots` found nothing suitable.
 > - Read back name, phone and day, and get a clear yes, before adding.
 > - Invalid input (bad phone, closed day, past date) must produce a speakable message.
+> - The result tells Riley the day (in words) and the caller's position on the waitlist.
 > - Store the outcome in `CallState` (`call_outcome = "waitlisted"`).
 > - Add tests.
 
-`ClinicScheduler.add_to_waitlist(patient_name, phone, preferred_day, part_of_day="any")` already exists in `src/maple/scheduler.py`. It validates the name, normalises the phone number, parses the day, rejects closed, past and out-of-window days with speakable `SchedulerError` subclasses, and returns the existing entry instead of duplicating a request for the same phone and day. `scheduler.waitlist(day=None)` lists entries.
+`ClinicScheduler.add_to_waitlist(patient_name, phone, preferred_day)` already exists in `src/maple/scheduler.py`. It validates the name, normalises the phone number, parses the day, rejects closed, past and out-of-window days with speakable `SchedulerError` subclasses, and returns the existing entry instead of duplicating a request for the same phone and day. `scheduler.waitlist_position(entry.id)` returns the caller's 1-based position for that day, and `scheduler.waitlist(day=None)` lists entries. (The scheduler method also accepts an optional `part_of_day`; the tool in the spec and in the reference solution does not use it.)
 
 ### Hints
 
@@ -71,11 +73,9 @@ Pick a real business you know well: a salon, restaurant, clinic, gym, garage, la
 
 ### Solution outline
 
-Add a mixin next to the booking tools (or directly on your agent class):
+Add a mixin next to the booking tools (or directly on your agent class, which is what the reference solution does):
 
 ```python
-from typing import Literal
-
 from livekit.agents import RunContext, ToolError, function_tool
 
 from common import CallState  # agents/common.py
@@ -95,36 +95,30 @@ class WaitlistToolsMixin:
         patient_name: str,
         phone: str,
         preferred_day: str,
-        part_of_day: Literal["morning", "afternoon", "any"] = "any",
     ) -> str:
-        """Put the caller on the waitlist for a day that has no suitable openings.
-
-        Use this ONLY after find_available_slots found nothing that works for the caller and the
-        caller said they want to be called if a slot opens. Before calling, read back the name,
-        phone number and day, and wait for a clear yes. Do not use this to book appointments.
+        """Put the caller on the waitlist for a day with no suitable openings. Only call this
+        after reading back the name, phone number and day and the caller said yes.
 
         Args:
             patient_name: The patient's full name.
             phone: A ten digit callback phone number.
-            preferred_day: The day they want: an ISO date such as 2026-10-08, or words such as "Thursday".
-            part_of_day: "morning", "afternoon" or "any".
+            preferred_day: The day they want, as an ISO date such as 2026-10-06 or a weekday name.
         """
         try:
-            entry = self.scheduler.add_to_waitlist(patient_name, phone, preferred_day, part_of_day)
+            entry = self.scheduler.add_to_waitlist(patient_name, phone, preferred_day)
+            position = self.scheduler.waitlist_position(entry.id)
         except SchedulerError as exc:
             raise ToolError(str(exc)) from exc
-
-        state = context.userdata
-        state.caller_name = entry.patient_name
-        state.caller_phone = entry.phone
-        state.call_outcome = "waitlisted"
+        context.userdata.caller_name = entry.patient_name
+        context.userdata.caller_phone = entry.phone
+        context.userdata.call_outcome = "waitlisted"
         return (
-            f"Added to the waitlist for {prompts.speak_date(entry.preferred_day)}. Tell the caller the "
-            "front desk will call if a time opens up. Never read out the waitlist ID."
+            f"Added to the waitlist for {prompts.speak_date(entry.preferred_day)}, "
+            f"position {position}. Tell the caller we will text them if a slot opens."
         )
 ```
 
-The spec's `name` argument is called `patient_name` here to match `book_appointment`; consistent argument names across tools help the model reuse details it already collected. The optional `part_of_day` lets "Thursday morning" go straight through. The reference solution in `agents/s05_booking_agent.py` (`RileyBookingAgent.join_waitlist`) is the same tool defined directly on the agent class, and also reads back the caller's waitlist position via `scheduler.waitlist_position()`.
+The tool body is the reference solution in `agents/s05_booking_agent.py` (`RileyBookingAgent.join_waitlist`), which defines it directly on the agent class and adds a `WAITLIST_RULES` prompt block. The spec's argument is called `patient_name` to match `book_appointment`; consistent argument names across tools help the model reuse details it already collected.
 
 Then:
 
@@ -212,7 +206,7 @@ Use `10-resources/business-template.md` to collect the facts before writing code
 
 **Business rules to implement in pure Python:** tables for 2, 4 and 6; parties over 8 go to the events team; last seating 21:30; 15-minute grace period policy.
 
-**Domain risk:** allergies. Riley must never promise a dish is safe for an allergy; she notes it on the booking and offers the host.
+**Domain risk:** allergies. Riley must never promise a dish is safe for an allergy; it notes it on the booking and offers the host.
 
 **Acceptance criteria:**
 - [ ] A party of 4 books Friday at 19:30 with a read-back of name, date, time and party size.

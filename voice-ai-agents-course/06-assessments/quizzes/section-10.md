@@ -30,8 +30,8 @@
 
 *Related lecture: 10.2 Collecting metrics and usage*
 
-- **A.** Aggregate usage from `metrics_collected` events during the call, and write the summary in a shutdown callback registered with `ctx.add_shutdown_callback(...)`.
-  - *Explanation:* Correct. Metrics events arrive throughout the call. A shutdown callback runs when the job ends for any reason, including a hang-up, which makes it the reliable place to write the final summary.
+- **A.** Register a shutdown callback with `ctx.add_shutdown_callback(...)` that reads `session.usage` (usage per model and provider) and writes the summary.
+  - *Explanation:* Correct. `session.usage` accumulates usage throughout the call, and a shutdown callback runs when the job ends for any reason, including a hang-up, which makes it the reliable place to write the final summary. This is what `attach_observers` in `agents/s10_observed_agent.py` does. (Older tutorials total usage with `metrics.UsageCollector`, which is deprecated in livekit-agents 1.8.)
 - **B.** Write usage in the `end_call` tool.
   - *Explanation:* Incorrect. `end_call` only runs when Riley ends the call. Caller hang-ups and errors would produce no record.
 - **C.** Poll the provider dashboards once a day and divide by the number of calls.

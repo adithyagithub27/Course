@@ -752,7 +752,7 @@ The percentile function reproduces numpy's default linear method so results matc
 
 ### Instructions
 
-At the end of each call, `metrics.UsageCollector().get_summary()` tells you how many tokens, audio seconds and characters were used. Implement `call_cost(usage, prices, call_seconds)` in `costs.py`.
+At the end of each call, `session.usage` tells you how many tokens, audio seconds and characters each model used (the course's `usage_from_model_usage()` in `src/maple/costs.py` flattens it into the keys below). Implement `call_cost(usage, prices, call_seconds)` in `costs.py`.
 
 `usage` keys (missing keys count as 0): `llm_prompt_tokens`, `llm_cached_tokens`, `llm_completion_tokens`, `stt_audio_seconds`, `tts_characters`.
 

@@ -55,7 +55,7 @@ Open `agents/s10_observed_agent.py` and find `attach_observers()`. For every cal
 2. Logs per-turn end-to-end latency from `ChatMessage.metrics` (the newer per-turn API).
 3. At shutdown, reads `session.usage.model_usage`, converts it with `maple.costs.usage_from_model_usage()` and `cost_breakdown()`, and appends one `call_summary` line with `call_seconds`, `cost_components`, `cost_total`, `cost_per_minute` and the call `outcome` from `CallState`.
 
-Version note: in livekit-agents 1.8, `metrics_collected` and `metrics.UsageCollector` still work but log deprecation warnings; `session.usage` and per-message metrics are the replacements. The file shows both, so older tutorials still make sense.
+Version note: in livekit-agents 1.8, `metrics_collected` still works but logs a deprecation warning; the file uses it only for the per-stage JSONL export. Totals and cost come from `session.usage`, and per-turn latency from `ChatMessage.metrics`. You will see `metrics.UsageCollector` in older tutorials; it is deprecated and the course does not use it.
 
 ---
 
@@ -78,7 +78,7 @@ Run each call below as its own session (`Ctrl+C` ends the call and triggers the 
 | 5 | Ask for a Sunday appointment, accept the offered alternative | `booked` |
 | 6 | Long, rambling request with pauses: "So I, um, I think I need... a filling? Maybe?" | `booked` or `completed` |
 | 7 | "How much is a crown?" (listen for a grounded range) | `completed` |
-| 8 | Interrupt Riley twice while she is offering times | any |
+| 8 | Interrupt Riley twice while it is offering times | any |
 | 9 | Ask something off-topic ("Can you help with my homework?") then hang up | `completed` |
 | 10 | Book with `MAPLE_SIMULATED_LATENCY=1.5` set, so tools are slow and filler speech plays | `booked` |
 
@@ -299,7 +299,7 @@ Compare cascaded and realtime cost per minute on the same calls. Run calls 1 and
 | `ModuleNotFoundError: opentelemetry` | Observability extra not installed | `uv sync --extra observability` |
 | No traces in Langfuse | Keys missing or wrong host (EU vs US region) | Check `LANGFUSE_HOST` matches the region shown in your project; restart the agent after editing `.env` |
 | `voice_to_voice` row missing | Stages could not be joined on `speech_id` (for example, realtime calls have no TTS stage) | Expected for realtime; for cascaded runs check that EOU, LLM and TTS records share `speech_id` |
-| Deprecation warnings about `metrics_collected` / `UsageCollector` | Expected in livekit-agents 1.8 | Safe to ignore in this lab; `session.usage` is already used for costs |
+| Deprecation warnings about `metrics_collected` | Expected in livekit-agents 1.8 | Safe to ignore in this lab; `session.usage` is already used for costs |
 | Cost per minute looks very low or very high | Placeholder `PriceTable` | Update `src/maple/costs.py` prices from provider pages or invoices |
 | Report says `No .jsonl files` | Different `METRICS_DIR` | Pass the directory explicitly: `uv run python labs/lab06_report.py path/to/metrics` |
 

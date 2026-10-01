@@ -13,7 +13,7 @@
 | 1.2 | What a voice agent actually is | SL | 7 | Learn what separates a voice agent from an IVR and a chatbot, and meet every component in the pipeline: transport, VAD, STT, turn detection, LLM, tools and TTS. For each one, you'll see where it tends to fail. |
 | 1.3 | Cascaded vs speech-to-speech architectures | SL | 8 | Compare the cascaded STT→LLM→TTS pipeline with speech-to-speech models like OpenAI Realtime, and the half-cascade hybrid. You'll weigh control, cost, latency, voice quality and tool reliability. |
 | 1.4 | The latency budget: why 800 ms is the magic number | SL | 8 | Break voice-to-voice latency into endpointing, STT, LLM time-to-first-token, TTS time-to-first-byte and network, and see why you should aim for under a second. Download the latency budget worksheet you'll fill in later in the course. |
-| 1.5 | Course roadmap, repo tour and how to get help | SC | 7 | Tour the 15 sections, the voice-agents-course repo and its Makefile. You'll also learn how the labs work and how to ask questions in Q&A so you get fast, useful answers. |
+| 1.5 | Course roadmap, repo tour and how to get help | SC | 6 | Tour the 15 sections, the voice-agents-course repo and its Makefile. You'll also learn how the labs work and how to ask questions in Q&A so you get fast, useful answers. |
 | 1.6 | Quiz: Voice agent fundamentals | QZ | 4 | Eight questions that check you understand voice pipeline components, architectures and the latency budget. |
 
 ## Section 2: Setup: Accounts, Keys and Your Dev Environment
@@ -36,8 +36,8 @@
 | 3.2 | AgentSession and Agent: the two core classes | SL | 7 | Understand the two core classes: Agent, which holds instructions, tools and per-agent model overrides, and AgentSession, the runtime that wires STT, LLM, TTS, VAD, turn handling and userdata together. |
 | 3.3 | Code-along: hello Riley in 30 lines | SC | 10 | Code along to build hello Riley in about 30 lines: AgentServer, an rtc_session entrypoint, AgentSession with Deepgram, GPT-4.1 mini, Cartesia and Silero, and a spoken greeting. You'll run it in console mode. |
 | 3.4 | Dev mode and the Agents Playground | DM | 6 | Run the agent in dev mode with hot reload, connect from the LiveKit Agents Playground and watch live transcripts as you talk to Riley. |
-| 3.5 | Choosing STT, LLM and TTS providers | SL | 9 | Compare STT, LLM and TTS providers on accuracy, latency, price, voices and languages. You'll switch models through environment variables in src/maple/config.py, so a provider rename only means changing one line. |
-| 3.6 | VAD, turn detection and interruptions | SL | 9 | Learn how Silero VAD, endpointing delays, the semantic turn detector, interruption settings and preemptive generation decide when Riley speaks and when it stops. |
+| 3.5 | Choosing STT, LLM and TTS providers | SL | 8 | Compare STT, LLM and TTS providers on accuracy, latency, price, voices and languages. You'll switch models through environment variables in src/maple/config.py, so a provider rename only means changing one line. |
+| 3.6 | VAD, turn detection and interruptions | SL | 8 | Learn how Silero VAD, endpointing delays, the semantic turn detector, interruption settings and preemptive generation decide when Riley speaks and when it stops. |
 | 3.7 | Tuning turn-taking live | DM | 5 | Change endpointing and interruption settings live and hear how Riley behaves differently. The lecture also covers the tuning mistakes that make agents interrupt or lag. |
 | 3.8 | Lab 2: Customise your first agent | LAB | 4 | Swap Riley's voice, model and turn-taking settings, then write down how each change affects latency and how natural the conversation feels. |
 | 3.9 | Break it: five ways your first agent fails, and what each sounds like | DM | 7 | Hear five common failures before and after the fix: endpointing too short or too long, interruptions turned off, TTS reading markdown aloud, and the wrong STT model for accents or phone audio. Each one comes with the single setting that fixes it. |
@@ -120,7 +120,7 @@
 | 9.6 | LLM-as-judge with DeepEval on transcripts | SC | 9 | Score golden conversations with DeepEval conversational G-Eval for politeness, voice brevity, confirmation read-backs and correct escalation. |
 | 9.7 | Measuring STT accuracy with WER | SC | 7 | Measure speech-to-text accuracy with word error rate, checking the course's pure-Python WER against jiwer and focusing on domain terms like drug names and surnames. |
 | 9.8 | Latency testing against a budget | SC | 7 | Export metrics to JSONL, compute p50 and p95 for end-of-utterance delay, LLM TTFT and TTS TTFB, and fail the build when a stage goes over budget. |
-| 9.9 | Simulated callers: agents testing agents | SC | 6 | Unleash LLM-driven caller personas (a confused senior, an impatient caller, an injection attacker) against Riley and let a judge grade how each call turned out. |
+| 9.9 | Simulated callers: agents testing agents | SC | 6 | Unleash LLM-driven caller personas (a confused senior, an impatient caller, an injection attacker, and an opt-out caller you add live) against Riley and let a judge grade how each call turned out. |
 | 9.10 | Voice agent tests in CI | SC | 3 | Run unit tests on every push, and agent tests and evals when secrets are available, in GitHub Actions with report artifacts. |
 | 9.11 | Project 3: Test suite for Riley | AS | 0 (text) | Write 15+ tests across the pyramid for Riley and submit the test report. |
 | 9.12 | Quiz: Testing voice agents | QZ | 0 | Ten questions on voice failure modes, test types and the testing tools used in this section. |
@@ -132,7 +132,7 @@
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
 | 10.1 | What to measure on every call | SL | 7 | Decide what to measure on every call: end-of-utterance delay, STT, LLM TTFT and tokens, TTS TTFB and characters, interruptions, tool latency and call outcome. |
-| 10.2 | Collecting metrics and usage | SC | 9 | Collect metrics_collected events, log them, add up usage with UsageCollector and write a per-call summary to JSONL when the session shuts down. |
+| 10.2 | Collecting metrics and usage | SC | 9 | Collect metrics_collected events, log them, read usage per model from session.usage and write a per-call usage and cost summary to JSONL when the session shuts down. |
 | 10.3 | Tracing with OpenTelemetry and Langfuse | SC | 10 | Send OpenTelemetry traces to Langfuse, with a span per turn and per tool, linked to transcripts. |
 | 10.4 | Cost per minute: the number your boss will ask for | SC | 8 | Turn usage summaries into cost per minute with src/maple/costs.py, and compare where the money goes in the cascaded and realtime builds. |
 | 10.5 | Dashboards and alerts that matter | SL | 6 | Choose the dashboard panels and alert thresholds that matter: p95 latency, cost per minute, transfer rate, containment rate and failed tool calls. |
@@ -160,8 +160,8 @@
 | 12.4 | Self-hosting option | SL | 6 | See what self-hosting needs on any container host (Render, Fly.io, ECS or Kubernetes): outbound WebSocket, a health port and load-based autoscaling. |
 | 12.5 | A web front end for Riley | SC | 8 | Connect the LiveKit React agent starter and a token server to your deployed Riley, so people can talk to it in a browser. |
 | 12.6 | Production readiness checklist | SL | 6 | Go through production readiness: fallback models, timeouts, spoken error messages, graceful degradation and an on-call runbook. |
-| 12.7 | Lab 7: Deploy and call your agent | LAB | 4 | Deploy your agent and confirm you can reach it from the web and by phone. |
-| 12.8 | Chaos demo: kill a provider mid-call | DM | 5 | Revoke a provider key during a live call and watch the fallback provider take over with spoken error recovery. Then see what happens to the same call without fallbacks. |
+| 12.7 | Lab 7: Deploy and call your agent | LAB | 3 | Deploy your agent and confirm you can reach it from the web and by phone. |
+| 12.8 | Chaos demo: kill a provider mid-call | DM | 5 | Flip a kill switch that takes the primary LLM down during a live call and watch the fallback model take over, with spoken error recovery as the last resort. Then see what happens to the same call without fallbacks. |
 | 12.9 | Quiz: Deployment | QZ | 2 | Five questions on agent server scaling, Docker, LiveKit Cloud deploys and production readiness. |
 
 ## Section 13: Capstone: Riley, Production Receptionist
@@ -181,7 +181,7 @@
 
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
-| 14.1 | Pipecat's frame pipeline model | SL | 7 | Learn Pipecat's model of frames, processors, transports, Pipeline, PipelineTask, PipelineRunner and LLMContext. |
+| 14.1 | Pipecat's frame pipeline model | SL | 7 | Learn Pipecat's model of frames, processors, transports, Pipeline, PipelineWorker, WorkerRunner and LLMContext, and how the 1.12 names map to the PipelineTask and PipelineRunner of older tutorials. |
 | 14.2 | Code-along: Riley booking flow in Pipecat | SC | 12 | Code along to rebuild Riley's booking flow in Pipecat with Deepgram, OpenAI, Cartesia, Silero VAD and FunctionSchema tools. |
 | 14.3 | LiveKit Agents vs Pipecat vs managed platforms | SL | 8 | Compare LiveKit Agents, Pipecat and managed platforms (Vapi, Retell, ElevenLabs Agents, Bland) on control, cost, compliance and lock-in. |
 | 14.4 | Quiz: Choosing a stack | QZ | 5 | Six questions on frameworks, managed platforms and choosing a stack. |
@@ -192,7 +192,7 @@
 |---|---|---|---|---|
 | 15.1 | What you built and where to go next | TH | 5 | Recap what you built, then look at next steps: multilingual agents, avatars, outbound campaigns and the Build → Test → Operate course path. |
 | 15.2 | Final practice test | QZ | 0 | A 40-question practice test across the whole course, with an explanation and a lecture reference for every answer. |
-| 15.3 | Bonus lecture | TH | 5 | Bonus: where to go next, including the instructor's other courses and community, in line with Udemy's bonus lecture rules. |
+| 15.3 | Bonus lecture | TH | 4 | Bonus: where to go next, including the instructor's other courses and community, in line with Udemy's bonus lecture rules. |
 | 15.4 | Careers: voice AI roles, interview questions, pricing a client project | TH | 8 | Look at the roles that hire for voice agent skills, work through 12 interview questions with model answers, and learn how freelancers scope and price a voice agent project. No salary figures. |
 
 ---

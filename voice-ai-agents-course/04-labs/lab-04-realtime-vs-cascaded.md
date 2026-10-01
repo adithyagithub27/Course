@@ -51,7 +51,7 @@ cp agents/s05_booking_agent.py agents/lab04_cascaded.py
 cp agents/s06_realtime_agent.py agents/lab04_realtime.py
 ```
 
-In **each** copy, inside the entrypoint, right after the `session = AgentSession(...)` block and before `await session.start(...)`, add the exporter below. Set `LABEL = "cascaded"` in `lab04_cascaded.py` and `LABEL = "realtime"` in `lab04_realtime.py`.
+In **each** copy, inside the entrypoint, right after the session is created (`session = create_session(...)` in the cascaded file, `session = AgentSession(...)` in the realtime file) and before `await session.start(...)`, add the exporter below. Set `LABEL = "cascaded"` in `lab04_cascaded.py` and `LABEL = "realtime"` in `lab04_realtime.py`.
 
 ```python
 import json
@@ -85,8 +85,6 @@ ctx.add_shutdown_callback(_export_usage)
 ```
 
 Each metrics record keeps LiveKit's own `type` field (`eou_metrics`, `llm_metrics`, `tts_metrics`, `realtime_model_metrics`, ...), which is the format `maple.latency.samples_from_metrics()` expects. The usage records match what `maple.costs.usage_from_model_usage()` expects. This is the same export `agents/s10_observed_agent.py` does in Section 10.
-
-If your installed release exposes usage through `metrics.UsageCollector` instead of `session.usage`, see the troubleshooting table.
 
 Smoke-test the cascaded copy:
 
@@ -264,7 +262,7 @@ Now fill in `notes/lab-04.md`:
 
 ## Step 6: Try the hybrid (half-cascade)
 
-Lecture 6.3 showed a middle path: the realtime model listens and reasons, returns **text**, and your own TTS speaks it so Riley keeps her brand voice. `s06_realtime_agent.py` (and therefore your copy) switches to this mode with an environment variable; `build_realtime_model(settings, hybrid=True)` sets `modalities=["text"]` and the session adds `tts=build_tts(settings)`:
+Lecture 6.3 showed a middle path: the realtime model listens and reasons, returns **text**, and your own TTS speaks it so Riley keeps its brand voice. `s06_realtime_agent.py` (and therefore your copy) switches to this mode with an environment variable; `build_realtime_model(settings, hybrid=True)` sets `modalities=["text"]` and the session adds `tts=build_tts(settings)`:
 
 ```bash
 REALTIME_HYBRID=1 uv run agents/lab04_realtime.py console
@@ -284,7 +282,7 @@ Put both architectures under **phone-like conditions**. Play a recording of caf√
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `AttributeError: 'AgentSession' object has no attribute 'usage'` | Older release without `session.usage` | Use `usage = metrics.UsageCollector()`, call `usage.collect(ev.metrics)` in the metrics handler, and write `usage.get_summary()` fields in `_export_usage`; then map them to `UsageNumbers` by hand |
+| `AttributeError: 'AgentSession' object has no attribute 'usage'` | An older livekit-agents than the course pins | Run `uv sync` (or `make install`) so you get the pinned 1.8.x release; `uv pip list \| grep livekit-agents` should print 1.8. Do not fall back to the deprecated `metrics.UsageCollector` |
 | Realtime agent: `401` / `invalid_api_key` | `OPENAI_API_KEY` missing; realtime does not go through LiveKit Inference | Add the key to `.env`, restart |
 | Realtime agent speaks but tools never run | Tool docstrings unclear, or instructions not passed to the realtime model | Confirm the same `Agent` subclass (with tools) is used; check the log for `function_call` events |
 | Realtime latency report only shows `llm_ttft` | Expected: EOU and TTS happen inside the realtime model | Use the perceived-latency measurement from Step 4 |

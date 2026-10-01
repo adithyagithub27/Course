@@ -2,7 +2,7 @@
 
 > **Stack:** HeyGen (avatar + narration voice), OpenAI API (runs Riley in demos, polishes scripts for TTS, optional voiceover TTS and caption transcripts), OBS Studio (screencasts), CapCut or DaVinci Resolve (assembly), Udemy (publish).
 > **Inherits:** the 7-beat lecture structure, tone rules, scene types and QA bar from `../../09-heygen/PRODUCTION-GUIDE.md`. This document covers only what is different or additional for a course whose subject is itself audio.
-> **Curriculum:** v1.1, 97 lectures, ≈11.3 h video (`../01-curriculum/curriculum.md`).
+> **Curriculum:** v1.1, 97 lectures, ≈11.4 h video (683 min in the 89 video lectures) (`../01-curriculum/curriculum.md`).
 
 ---
 
@@ -24,19 +24,21 @@ Track C is new. Section 5 below is dedicated to it.
 
 ## 2. Lecture inventory by production type
 
-Derived from curriculum v1.1. Quizzes have no video. Labs, assignments and challenges get a 1-3 minute intro video.
+Counted from the lecture table in `../01-curriculum/curriculum.md` (v1.1, 115 items). This is the single place the production docs count lecture types; `recording-guide.md` and `qa-checklist.md` point here. Every item has a script in `02-lecture-scripts/`, including a short video intro for each lab, assignment and quiz.
 
-| Type | Count | Video needed | Tracks |
-|---|---|---|---|
-| TH talking head | 10 | Full avatar | A |
-| SL slides | 26 | Avatar for hook/recap/bridge, slides + voice for teach | A |
-| SC screencast / code-along | 33 | Avatar hook and recap, OBS body | A + B (+ C when the code is run) |
-| DM live demo | 13 | Avatar hook, call capture body | A + C |
-| LAB / AS / CE intros | 15 | Short avatar or voice + slide | A |
-| QZ quizzes | 13 | None (Udemy quiz) | none |
-| **Total videos to produce** | **84** (of 97 lectures) | | |
+| Type | Count | Lecture IDs | Video needed | Tracks |
+|---|---|---|---|---|
+| TH talking head | 7 | 4.5, 8.6, 13.1a, 13.6, 15.1, 15.3, 15.4 | Full avatar | A |
+| SL slides | 26 | 1.2, 1.3, 1.4, 3.1, 3.2, 3.5, 3.6, 4.1, 4.2, 5.1, 6.1, 7.1, 7.3, 7.4, 8.1, 9.1, 9.2, 10.1, 10.5, 11.1, 12.1, 12.4, 12.6, 13.1, 14.1, 14.3 | Avatar for hook/recap/bridge, slides + voice for teach | A |
+| SC screencast / code-along | 47 | 1.5, 2.1-2.4, 2.6, 2.7, 3.3, 4.3, 4.4, 5.2-5.7, 6.2, 6.3, 7.2, 7.5, 7.8, 8.2-8.5, 9.3-9.10, 9.13, 10.2-10.4, 11.2-11.4, 12.2, 12.3, 12.5, 13.2-13.4, 14.2 | Avatar hook and recap, OBS body | A + B (+ C when the code is run) |
+| DM live demo | 9 | 1.1, 3.4, 3.7, 3.9, 6.4, 9.14, 11.5, 12.8, 13.5 | Avatar hook, call capture body | A + C |
+| CE challenge | 1 | 5.9 | Spec slide, pause card, OBS solution walkthrough (full 6-minute lecture) | A + B |
+| LAB intros | 7 | 2.5, 3.8, 4.6, 6.5, 7.6, 10.6, 12.7 | 1:30-2:00 avatar + slides (generic intro template in `slide-deck-outline.md`) | A |
+| AS intros | 5 | 4.7, 5.8, 8.7, 9.11, 13.7 | 1:30-4:00 avatar + slides; the project itself is a Udemy assignment | A |
+| QZ intros | 13 | 1.6, 3.10, 4.8, 5.10, 6.6, 7.7, 8.8, 9.12, 10.7, 11.6, 12.9, 14.4, 15.2 | 0:45-1:30 avatar + one topic slide; the questions are a Udemy quiz | A |
+| **Total** | **115** | | **97 lectures** (TH + SL + SC + DM + CE + LAB) **+ 5 assignment intros + 13 quiz intros** | |
 
-Six lectures record as Part A/B (5.3, 7.5, 8.2, 9.3, 13.2, 13.5), so the upload count is **90 videos**.
+Udemy quiz and assignment items cannot hold a video, so upload each quiz or assignment intro as a short video lecture placed directly before its quiz or assignment (verify the current Udemy curriculum editor; if it allows a video inside the item, use that instead). Six lectures record as Part A/B (5.3, 7.5, 8.2, 9.3, 13.2, 13.5), which adds 6 uploads: **121 video files** in total.
 
 ---
 
@@ -104,6 +106,29 @@ Rules:
 
 HeyGen sells credits by generated minute and API access by plan tier. Look up your tier's price per minute and multiply by 265. Budget a 20% buffer. Prices change; do not carry a number from this document into a budget without checking the pricing page.
 
+### 4.4 Visual assets: diagrams and slide decks
+
+Slides and diagrams are built from files in the repo, not drawn per lecture in Figma (decision A7 in `../../14-quality-review/2026-10-01-fix-plan.md`).
+
+| Asset | Where it lives | How it is made |
+|---|---|---|
+| Master diagrams D1-D16 | `voice-ai-agents-course/10-graphics/diagrams/D{n}-{slug}.svg` (for example `D1-voice-pipeline.svg`, `D6-sip-call-flow.svg`) | Drawn once as SVG from the specs in `slide-deck-outline.md` (master diagram list), with the palette and type in the root `10-graphics/design-system.md`. Build steps are `<g id="build-N">` groups in the same file. Reused in every lecture that cues them |
+| Section slide decks | `voice-ai-agents-course/10-graphics/slides/section-XX.pptx` (one per section, `XX` = `01` to `15`) | Generated from the `[SLIDE n: title]` cues in `02-lecture-scripts/section-XX-*.md`: one slide per cue, with the cue's title and its bullets or table as the slide text |
+| Recap and "You can now" cards | Inside the section decks | Come from each lecture's `[SLIDE n: Recap]` cue (three bullets) and each section's `[SLIDE n: You can now]` cue (decisions A1/A2) |
+| K1/K2/K7 cards, lower thirds, version banner | Editor templates | Built once in the editor from the design system |
+
+Generate the decks with:
+
+```bash
+python voice-ai-agents-course/09-production/tools/slide_builder.py --course voice-ai-agents-course
+```
+
+Rules:
+- Edit slide text in the script, then regenerate. Never hand-edit a generated `.pptx`; the next run overwrites it.
+- Regenerate a section's deck whenever its script changes, before exporting slide images for the edit.
+- Where a cue names a master diagram (D1-D16), place the SVG from `10-graphics/diagrams/` on that slide (export to PNG at 1920×1080 if the editor needs raster).
+- Commit the SVGs and generated decks with the scripts so the slides and the narration never drift apart.
+
 ---
 
 ## 5. Track C: capturing Riley's voice (the part most instructors get wrong)
@@ -124,7 +149,7 @@ In console mode Riley speaks through your speakers and listens on your mic. If y
 
 Viewers cannot rewind audio easily. For every call demo, overlay a live transcript: speaker label, text, and a timestamp. Two ways:
 
-- **From the agent:** `s10_observed_agent.py` and the capstone export `conversation_item_added` events to JSONL. `tools/transcript_to_srt.py` (in the same tools folder as the HeyGen scripts) converts them to SRT for the editor.
+- **From the agent:** no course agent writes a transcript file (by design: `s10_observed_agent.py` exports metrics and a `call_summary`, and `s11_guarded_agent.py` only logs redacted lines). For recording sessions, add a temporary `@session.on("conversation_item_added")` handler to the demo copy that appends one JSON line per item with `t` (seconds since call start), `role` and `text`; `tools/transcript_to_srt.py` (in the same tools folder as the HeyGen scripts) converts that file to SRT for the editor. Don't commit the handler to the student files.
 - **From the recording:** run the mixed audio through OpenAI's transcription API with speaker prompts if you did not capture events.
 
 For latency demos (1.4, 3.7, 6.4, 9.8) also overlay the measured numbers from `metrics_collected` so students see "EOU 480 ms, LLM TTFT 610 ms, TTS TTFB 190 ms" as they hear the gap.
@@ -134,7 +159,7 @@ For latency demos (1.4, 3.7, 6.4, 9.8) also overlay the measured numbers from `m
 Lectures 1.1, 3.9, 6.4, 11.5 and 12.8 show Riley failing. Failures must be reproducible on camera:
 
 - Use the `BROKEN=<case>` toggles in `agents/s03_hello_agent.py` for 3.9, and `MOCK_MODE=1` when you need an exact, repeatable wrong answer.
-- For 12.8, revoke a key in a throwaway `.env.chaos` rather than your real one.
+- For 12.8, use the kill switch in `agents/s12_chaos_demo.py`, exactly as the script does: run `uv run python agents/s12_chaos_demo.py dev`, then `touch /tmp/riley-kill-llm` in a second terminal to make the primary LLM fail every request, and `rm /tmp/riley-kill-llm` to recover; repeat with `CHAOS_NO_FALLBACK=1` for the no-fallback take. No key is revoked, so nothing needs rotating afterwards.
 - Record each failure and its fix back to back in the same session so voice, room tone and settings match.
 
 ### 5.5 Privacy and safety on camera
@@ -244,7 +269,7 @@ Hardware and software (Option B):
 
 - Dynamic or condenser USB microphone with pop filter, closed-back headphones (mandatory for Track C), quiet room.
 - Virtual audio device installed and tested (BlackHole, VB-Cable, or PipeWire loopback).
-- OBS Studio with two audio tracks configured; CapCut or DaVinci Resolve; Figma or Canva for slides.
+- OBS Studio with two audio tracks configured; CapCut or DaVinci Resolve; `tools/slide_builder.py` for the decks (§4.4); Figma, Canva or Inkscape only for the course image and diagram touch-ups.
 - Docker Desktop for Section 12.
 
 ---
@@ -257,6 +282,7 @@ Hardware and software (Option B):
 | `tools/heygen_batch.py` | Generates one HeyGen video per scene from a manifest, polls status, downloads MP4s, resumes safely |
 | `tools/transcript_to_srt.py` | Converts agent conversation events (JSONL) to SRT captions for call demos |
 | `tools/pronunciation.json` | Term → spoken form glossary applied during polish |
+| `tools/slide_builder.py` | Builds one `.pptx` deck per section from the `[SLIDE]` cues in the scripts (see §4.4) |
 | `tools/requirements.txt` | Python dependencies for the tools |
 
 All tools read secrets from environment variables (`HEYGEN_API_KEY`, `OPENAI_API_KEY`). HeyGen endpoint paths and limits are the ones documented at the time of writing; the scripts print the URL they call so a mismatch is obvious. Verify against the HeyGen API reference before the first batch.

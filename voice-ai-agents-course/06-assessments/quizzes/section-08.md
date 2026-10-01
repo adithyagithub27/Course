@@ -26,7 +26,7 @@
 
 ---
 
-### Q2. Riley works well in the browser, but on the phone she cuts off callers who pause while reading a long insurance ID, and she keeps asking callers for their phone number. Which pair of changes from lecture 8.3 addresses both issues?
+### Q2. Riley works well in the browser, but on the phone it cuts off callers who pause while reading a long insurance ID, and it keeps asking callers for their phone number. Which pair of changes from lecture 8.3 addresses both issues?
 
 *Related lecture: 8.3 Phone-specific tuning*
 

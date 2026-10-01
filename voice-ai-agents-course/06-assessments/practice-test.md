@@ -64,7 +64,7 @@ Testing carries the largest weight because it is the course's signature skill (S
 
 **Correct answer: C**
 
-### Q2. Riley's LLM takes 2 seconds to generate a full three-sentence reply, yet callers hear her start speaking after about 700 ms. Why?
+### Q2. Riley's LLM takes 2 seconds to generate a full three-sentence reply, yet callers hear it start speaking after about 700 ms. Why?
 
 *Domain: D1 · Related lecture: 1.4 The latency budget*
 
@@ -99,7 +99,7 @@ Testing carries the largest weight because it is the course's signature skill (S
 *Domain: D1 · Related lecture: 6.2 Code-along: Riley on gpt-realtime*
 
 - **A.** Switch the voice from "marin" to another voice.
-  - *Explanation:* Incorrect. The voice affects how Riley sounds, not when she decides the caller has finished.
+  - *Explanation:* Incorrect. The voice affects how Riley sounds, not when it decides the caller has finished.
 - **B.** Add "Wait longer before answering" to the instructions.
   - *Explanation:* Incorrect. Turn detection runs in the audio layer; the model's instructions do not control the end-of-turn decision.
 - **C.** Disable turn detection so the model never responds automatically.
@@ -471,7 +471,7 @@ Testing carries the largest weight because it is the course's signature skill (S
   - *Explanation:* Incorrect. The judge already passes everything; the problem is that it does not discriminate.
 - **B.** Remove the judge and rely on exact string matches.
   - *Explanation:* Incorrect. Exact matching does not work for conversational behaviour.
-- **C.** Ask Riley to grade herself at the end of each call.
+- **C.** Ask Riley to grade itself at the end of each call.
   - *Explanation:* Incorrect. Self-grading has the same bias, in a worse place.
 - **D.** Calibrate the judge: write sharper, observable criteria, compare its scores with human labels on a sample of good and bad transcripts, and consider a different or stronger judge model to reduce self-preference.
   - *Explanation:* Correct. An LLM judge is a measuring instrument; calibrate it against people before trusting its thresholds.
@@ -563,7 +563,7 @@ Testing carries the largest weight because it is the course's signature skill (S
 
 - **A.** Nothing; higher containment is always better.
   - *Explanation:* Incorrect. Containment is only good when callers' problems are actually solved.
-- **B.** Whether Riley is now failing to escalate when she should: transcripts where callers asked for a person, `transfer_to_human` call counts and failures, and call outcomes alongside containment.
+- **B.** Whether Riley is now failing to escalate when it should: transcripts where callers asked for a person, `transfer_to_human` call counts and failures, and call outcomes alongside containment.
   - *Explanation:* Correct. A sudden containment jump plus complaints often means missed escalations or a broken transfer tool. Pair containment with transfer rate, failed tool calls and outcome quality.
 - **C.** TTS cost per minute.
   - *Explanation:* Incorrect. Cost does not explain complaints about service.
