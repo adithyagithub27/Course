@@ -115,7 +115,7 @@ Durations are summed from each module's lecture table. "Scripts" counts files in
 
 ### C5. Word count vs duration (140 wpm)
 
-Script: `/tmp/claude-0/-home-user-Course/11147710-9998-5f5b-bb50-f9cc9a93ef04/scratchpad/wordcount.py` (counts text after `SCRIPT:` / `SCRIPT (voice-over):` until the next cue, skipping code fences and "no voice" scenes).
+Script: a session-local `wordcount.py` measurement script (not committed) (counts text after `SCRIPT:` / `SCRIPT (voice-over):` until the next cue, skipping code fences and "no voice" scenes).
 
 | Script | Target s | Header claim | Spoken words | Est. s | Deviation |
 |---|---|---|---|---|---|

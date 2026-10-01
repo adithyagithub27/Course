@@ -67,7 +67,7 @@ Demo = lectures (quizzes excluded) with at least one `[SCREEN]/[CODE]/[DEMO]/[EV
 
 ### 2. Demos (per lecture)
 
-Full table of demo cue counts is in `scratchpad/wordcount.json`. Lectures with **no** demo cue that a learner would expect to see working: **7.5** (rate limits/semaphores; the lecture itself says the code lives in `server.py` — it does not), **9.1** (SLO maths; `slo.py` is only shown as a code slide, never run), **11.1** (0 cues, 883 words), **12.1**, **14.1**. Lectures whose demos reference code/output not in `03-code`:
+Full table of demo cue counts is in a session-local `wordcount.json` (not committed). Lectures with **no** demo cue that a learner would expect to see working: **7.5** (rate limits/semaphores; the lecture itself says the code lives in `server.py` — it does not), **9.1** (SLO maths; `slo.py` is only shown as a code slide, never run), **11.1** (0 cues, 883 words), **12.1**, **14.1**. Lectures whose demos reference code/output not in `03-code`:
 
 | Lecture | Demo claim | Backing |
 |---|---|---|
@@ -116,9 +116,9 @@ Full table of demo cue counts is in `scratchpad/wordcount.json`. Lectures with *
 - **Banned phrases:** "Welcome back" ×2 — S4:L810 (after the 4.7 pause) and S14:L213 (after the one-week gate). No occurrences of "basically", "let's dive in", "in this video we will", "without further ado", "as I mentioned earlier", "so yeah", "before we get started", "hi guys".
 - 14.1a and the three incident pauses are well designed; the 8-minute pause is explicit (S11:L237).
 
-### 5. Word count vs duration (`scratchpad/wordcount.py`, spoken words only, excludes cues, slide bullets, tables, code, speaker notes; includes recap/transition)
+### 5. Word count vs duration (a session-local `wordcount.py` (not committed), spoken words only, excludes cues, slide bullets, tables, code, speaker notes; includes recap/transition)
 
-Full per-lecture table in `scratchpad/wordcount.json`. At 140 wpm against curriculum minutes:
+Full per-lecture table in a session-local `wordcount.json` (not committed). At 140 wpm against curriculum minutes:
 
 - **Over 100 %:** 11.1 (883 words / 6 min = 105 %), 15.2 (1,167 / 8 = 104 %), 11.2 (1,685 / 12 = 100 %, acceptable because the pause is off-video). 11.1 has no demo cues to absorb the overrun.
 - **Under 60 % among non-lab, non-quiz lectures** (by design "paced below 140 wpm" for code-alongs, but these leave more than 40 % of the slot for unscripted typing/dwell): 2.1–2.4 (55–58 %), 3.2 (47 %), **3.4 (37 %)**, 3.5 (49 %), **4.2 (39 %)**, 4.3 (58 %), 4.4 (47 %), 4.5 (48 %), 4.7 (53 %), 5.2 (43 %), 5.3 (47 %), 5.4 (51 %), 6.4 (59 %), 6.6 (57 %), 7.4 (59 %), 8.4–8.6 (57–59 %), 9.2 (58 %), 12.3 (56 %), 13.1 (52 %), 13.3 (53 %), 14.2 (55 %), **14.3 (46 %)**, 14.4 (56 %). For 3.4, 4.2 and 14.3 that is 5–6 minutes of screen time with no scripted narration.

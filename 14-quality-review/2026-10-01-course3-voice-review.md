@@ -2,7 +2,7 @@
 
 Reviewed 2026-10-01 against `CLAUDE.md`, `09-heygen/PRODUCTION-GUIDE.md`, `01-curriculum/curriculum.md` (v1.1), all 15 script files in `02-lecture-scripts/`, `09-production/{video-generation-plan,slide-deck-outline,recording-guide,qa-checklist}.md`, `04-labs/`, `05-projects/`, `06-assessments/`, and `03-code/` (installed with `uv sync --extra dev`, livekit-agents 1.8.3; `make test` run).
 
-All paths below are relative to `/home/user/Course/voice-ai-agents-course/` unless absolute. Word counts come from `scratchpad/analyze_scripts.py` (spoken narration plus scripted demo dialogue, excluding cues, slide bullets, tables and code), at 140 wpm.
+All paths below are relative to `/home/user/Course/voice-ai-agents-course/` unless absolute. Word counts come from a session-local `analyze_scripts.py` (not committed) (spoken narration plus scripted demo dialogue, excluding cues, slide bullets, tables and code), at 140 wpm.
 
 ---
 
@@ -183,7 +183,7 @@ Tests: `make test` → 211 passed in 1.21 s (matches 13.4's "211 passed"). `pyte
 
 ### 5. WORD COUNT VS DURATION (140 wpm)
 
-Method: `scratchpad/analyze_scripts.py` (output in `scratchpad/analysis.json`). Target = the video minutes in each lecture's header (video intro length for labs/quizzes), which equals the curriculum minutes for all teaching lectures.
+Method: a session-local `analyze_scripts.py` (not committed) . Target = the video minutes in each lecture's header (video intro length for labs/quizzes), which equals the curriculum minutes for all teaching lectures.
 
 - **No lecture is more than 20% over.** The highest ratios are 8.8 (1.17, quiz intro), 4.6 (1.10), 4.7 (1.07), 5.8 (1.07), 3.8 (1.05), 6.6 (1.05).
 - **Lectures more than 20% under target (ratio < 0.80):** 69 of 97. Of these, the ones with no demo audio to fill the gap are the real problem: **3.1 (0.72), 3.5 (0.68), 3.6 (0.71), 1.5 (0.73), 15.3 (0.76), 12.7 (0.64)**, plus the quiz intros 1.6 (0.66), 4.8 (0.75), 5.10 (0.76), 11.6 (0.68), 14.4 (0.76).
