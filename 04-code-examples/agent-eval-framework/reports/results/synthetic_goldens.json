@@ -1,0 +1,142 @@
+[
+  {
+    "input": "I'm confused about the plans and pricing. Can you help? My manager needs the answer today. thanks!",
+    "expected_output": "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing).",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."
+    ]
+  },
+  {
+    "input": "quick one: where can I read the plans and pricing? We have 40 users on our account.",
+    "expected_output": "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing).",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."
+    ]
+  },
+  {
+    "input": "quick one: can you tell me about the plans and pricing? We have 40 users on our account.",
+    "expected_output": "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing).",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."
+    ]
+  },
+  {
+    "input": "Can you explain the plans and pricing for my team? We have 40 users on our account.",
+    "expected_output": "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing).",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."
+    ]
+  },
+  {
+    "input": "Can you explain the refund policy for my team? My manager needs the answer today. thanks!",
+    "expected_output": "TechCorp offers a 30-day money-back guarantee on all plans.",
+    "context": [
+      "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."
+    ]
+  },
+  {
+    "input": "quick one: i'm confused about the refund policy. Can you help? My manager needs the answer today.",
+    "expected_output": "TechCorp offers a 30-day money-back guarantee on all plans.",
+    "context": [
+      "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."
+    ]
+  },
+  {
+    "input": "Where can I read the refund policy? I signed up last week.",
+    "expected_output": "TechCorp offers a 30-day money-back guarantee on all plans.",
+    "context": [
+      "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."
+    ]
+  },
+  {
+    "input": "quick one: can you tell me about the refund policy? I'm on the Pro plan, if that matters.",
+    "expected_output": "TechCorp offers a 30-day money-back guarantee on all plans.",
+    "context": [
+      "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."
+    ]
+  },
+  {
+    "input": "quick one: i'm confused about the password reset. Can you help? I signed up last week.",
+    "expected_output": "To reset your password: Go to Settings > Security > Reset Password.",
+    "context": [
+      "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."
+    ]
+  },
+  {
+    "input": "Where can I read the password reset? I'm on the Pro plan, if that matters.",
+    "expected_output": "To reset your password: Go to Settings > Security > Reset Password.",
+    "context": [
+      "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."
+    ]
+  },
+  {
+    "input": "hi, can you tell me about the password reset? I'm on the Pro plan, if that matters.",
+    "expected_output": "To reset your password: Go to Settings > Security > Reset Password.",
+    "context": [
+      "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."
+    ]
+  },
+  {
+    "input": "hi, can you explain the password reset for my team? I signed up last week.",
+    "expected_output": "To reset your password: Go to Settings > Security > Reset Password.",
+    "context": [
+      "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."
+    ]
+  },
+  {
+    "input": "I'm confused about the api keys and rate limits. Can you help? My manager needs the answer today. thanks!",
+    "expected_output": "TechCorp API documentation is available at docs.techcorp.com.",
+    "context": [
+      "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."
+    ]
+  },
+  {
+    "input": "quick one: where can I read the api keys and rate limits? We have 40 users on our account.",
+    "expected_output": "TechCorp API documentation is available at docs.techcorp.com.",
+    "context": [
+      "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."
+    ]
+  },
+  {
+    "input": "Can you tell me about the api keys and rate limits? We have 40 users on our account. thanks!",
+    "expected_output": "TechCorp API documentation is available at docs.techcorp.com.",
+    "context": [
+      "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."
+    ]
+  },
+  {
+    "input": "hi, can you explain the api keys and rate limits for my team? I'm on the Pro plan, if that matters.",
+    "expected_output": "TechCorp API documentation is available at docs.techcorp.com.",
+    "context": [
+      "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."
+    ]
+  },
+  {
+    "input": "quick one: can you tell me about the cancelling a subscription? We have 40 users on our account.",
+    "expected_output": "To cancel, go to Settings > Billing > Cancel Subscription.",
+    "context": [
+      "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation takes effect at the end of the current billing period. Your data is kept for 30 days after cancellation."
+    ]
+  },
+  {
+    "input": "Can you explain the cancelling a subscription for my team? We have 40 users on our account.",
+    "expected_output": "To cancel, go to Settings > Billing > Cancel Subscription.",
+    "context": [
+      "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation takes effect at the end of the current billing period. Your data is kept for 30 days after cancellation."
+    ]
+  },
+  {
+    "input": "quick one: i'm confused about the cancelling a subscription. Can you help? My manager needs the answer today.",
+    "expected_output": "To cancel, go to Settings > Billing > Cancel Subscription.",
+    "context": [
+      "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation takes effect at the end of the current billing period. Your data is kept for 30 days after cancellation."
+    ]
+  },
+  {
+    "input": "quick one: where can I read the cancelling a subscription? My manager needs the answer today.",
+    "expected_output": "To cancel, go to Settings > Billing > Cancel Subscription.",
+    "context": [
+      "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation takes effect at the end of the current billing period. Your data is kept for 30 days after cancellation."
+    ]
+  }
+]

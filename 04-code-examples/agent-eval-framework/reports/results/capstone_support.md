@@ -18,3 +18,6 @@
 
 ## Performance (offline latencies are simulated)
 p50 1.74s, p95 3.38s, avg 1.95 LLM calls, $0.000798/task ($0.8/1k tasks, verify current pricing)
+
+## Regression vs baseline
+Regression: no

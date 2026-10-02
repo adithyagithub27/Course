@@ -142,13 +142,23 @@ def key_fact_recall(output: str, expected: str) -> float:
     return score
 
 
+NEGATION = re.compile(r"\b(not|isn't|aren't|no|outside|unfortunately|cannot|can't|impossible|never)\b", re.I)
+
+
 def correctness(output: str, expected: str) -> float:
-    """0-1 correctness against an expected answer, forgiving of paraphrase."""
+    """0-1 correctness against an expected answer, forgiving of paraphrase.
+
+    Opposite polarity (expected says yes, output says no) is a wrong answer
+    even when it uses the same words.
+    """
     if is_refusal(expected) != is_refusal(output):
         return 0.1
     if is_refusal(expected) and is_refusal(output):
         return 0.9
-    return min(1.0, key_fact_recall(output, expected) * 1.6)
+    score = min(1.0, key_fact_recall(output, expected) * 1.6)
+    if bool(NEGATION.search(expected)) != bool(NEGATION.search(output)):
+        score *= 0.3
+    return score
 
 
 def faithfulness(output: str, context: str) -> float:
@@ -211,7 +221,12 @@ def judge_json(prompt: str) -> dict:
     question = _section(prompt, "Question")
     answer = _section(prompt, "Answer")
     context = _section(prompt, "Context")
-    s, reason = geval_score("accuracy", {"input": question, "actual_output": answer, "context": context})
+    if is_refusal(answer) and overlap(question, context) > 0:
+        return {"score": 1, "reasoning": "Refuses a question the context answers."}
+    grounded = faithfulness(answer, context) if context and context != "(none)" else 0.5
+    coverage = min(1.0, len(words(answer) & words(context)) / 6)
+    s = grounded * (0.5 + 0.5 * coverage)
+    reason = f"{grounded:.0%} of statements supported by the context; covers {coverage:.0%} of the key facts."
     return {"score": max(1, min(5, round(1 + s * 4))), "reasoning": reason}
 
 

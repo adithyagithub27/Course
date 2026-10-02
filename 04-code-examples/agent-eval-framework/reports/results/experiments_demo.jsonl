@@ -1,0 +1,2 @@
+{"version": "v1.2", "ts": "2026-10-02T00:42:53+00:00", "notes": "shorter prompt", "pass_rate": 0.7, "averages": {"Answer Correctness": 0.74, "Answer Relevancy": 1.0, "Faithfulness": 0.25}, "total": 10, "categories": {"faq": 0.0, "account": 1.0, "escalation": 1.0, "security": 1.0}}
+{"version": "v1.3", "ts": "2026-10-02T00:42:54+00:00", "notes": "grounding rule restored", "pass_rate": 1.0, "averages": {"Answer Correctness": 0.98, "Answer Relevancy": 1.0, "Faithfulness": 1.0}, "total": 10, "categories": {"faq": 1.0, "account": 1.0, "escalation": 1.0, "security": 1.0}}

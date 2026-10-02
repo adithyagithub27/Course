@@ -551,7 +551,7 @@ def ops_brain(ctx: Ctx) -> Step:
         r = json.loads(done[-1][2])
         return final(f"Ticket {r['ticket_id']} is now {r['new_status']}.")
 
-    if "ticket" in low and any(w in low for w in ("create", "open", "file", "log a", "new")):
+    if "ticket" in low and any(w in low for w in ("create", "open a", "file a", "log a", "new ticket", "raise a")):
         if "create_ticket" not in names:
             priority = next((p for p in ("critical", "high", "medium", "low") if p in low), "medium")
             category = next((c for c in ("bug", "feature", "incident", "task") if c in low), "task")
@@ -754,11 +754,18 @@ def generic_brain(ctx: Ctx) -> Step:
     if "test data generator" in text.lower():
         return final(json.dumps({"test_cases": heuristics.synthetic_cases(text)}))
     want_json = (ctx.response_format or {}).get("type") == "json_object"
-    answer = ctx.say(
-        "Refunds are processed within 5-7 business days.",
-        "A refund usually takes 5-7 business days to process.",
-        "You should see the refund within 5-7 business days.",
-    ) if "refund" in text.lower() else "OK."
+    low = text.lower()
+    if any(w in low for w in ("charged", "my account", "ticket", "my email", "@")):
+        answer = ("I'm sorry about the trouble. I don't have access to your account or TechCorp's billing system, "
+                  "so I can't check the charges or open a ticket. Please contact TechCorp support with your account email.")
+    elif "refund" in low:
+        answer = ctx.say(
+            "Refunds are processed within 5-7 business days.",
+            "A refund usually takes 5-7 business days to process.",
+            "You should see the refund within 5-7 business days.",
+        )
+    else:
+        answer = "I can only answer from general knowledge; I don't have access to TechCorp's systems."
     return final(json.dumps({"answer": answer}) if want_json else answer)
 
 

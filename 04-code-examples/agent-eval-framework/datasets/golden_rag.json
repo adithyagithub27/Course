@@ -57,7 +57,7 @@
     "id": "RAG-IT-02",
     "domain": "it_security",
     "question": "Can I use SMS codes for multi-factor authentication?",
-    "reference": "No. Approved MFA methods are the Okta Verify app or a hardware security key; SMS codes are not allowed.",
+    "reference": "Approved MFA methods are the Okta Verify app or a hardware security key; SMS codes are not allowed.",
     "reference_context_ids": [
       "itsec-001"
     ]
@@ -84,7 +84,7 @@
     "id": "RAG-IT-05",
     "domain": "it_security",
     "question": "Can I paste customer personal data into an external AI tool?",
-    "reference": "No. Customer personal data is Restricted, and Restricted data may not be pasted into external AI tools.",
+    "reference": "Customer personal data is Restricted, and Restricted data may not be pasted into external AI tools.",
     "reference_context_ids": [
       "itsec-004"
     ]
@@ -102,7 +102,7 @@
     "id": "RAG-TE-02",
     "domain": "travel_expense",
     "question": "Do I need a receipt for a $20 expense?",
-    "reference": "No. Original receipts are required only for expenses exceeding $25.",
+    "reference": "Original receipts are required for all expenses exceeding $25, so a receipt is only needed above that amount.",
     "reference_context_ids": [
       "expense-001"
     ]

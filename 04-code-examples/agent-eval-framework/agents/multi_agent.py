@@ -95,7 +95,7 @@ class FailureInjection:
 class RunResult:
     request: str
     final_reply: str
-    status: str  # "ok" | "degraded"
+    status: str  # "ok" | "recovered" (failure detected, retry worked) | "degraded" (fallback reply)
     steps: int
     messages: list[Message] = field(default_factory=list)
     failures: list[dict] = field(default_factory=list)
@@ -221,7 +221,9 @@ class Supervisor:
                     run.failures.append({"type": "corrupted_message", "agent": "research", "details": f"checksum mismatch on message {msg.msg_id}"})
                     if not retried_corruption:
                         retried_corruption = True
+                        run.failures[-1]["recovered"] = True  # provisional: the retry must succeed
                         continue
+                    run.failures[-1]["recovered"] = False
                     break
                 if out.startswith("NEED_CLARIFICATION"):
                     findings = None  # nothing usable: the supervisor will ask again
@@ -240,10 +242,12 @@ class Supervisor:
                     break
                 draft = out
 
-        if run.failures or not draft:
+        unrecovered = [f for f in run.failures if not f.get("recovered")]
+        if unrecovered or not draft:
             run.status = "degraded"
             run.final_reply = FALLBACK_REPLY
         else:
+            run.status = "recovered" if run.failures else "ok"
             run.final_reply = draft
         return run
 

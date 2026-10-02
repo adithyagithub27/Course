@@ -1,32 +1,31 @@
 """
-Shared pytest configuration and fixtures for the agent evaluation suite.
+Shared pytest setup.
+
+* OFFLINE defaults to 1 for the test run, so `make test` never needs a key.
+* Tests marked `live` run only with OFFLINE=0 and OPENAI_API_KEY set (`make eval`).
+* Folders follow the five-layer agent eval pyramid (decision T4):
+  unit -> component -> trajectory -> e2e -> production.
 """
 
 import os
-import sys
-import pytest
-from pathlib import Path
-from dotenv import load_dotenv
 
-# Add the framework root to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+os.environ.setdefault("OFFLINE", "1")
+os.environ.setdefault("DEEPEVAL_TELEMETRY_OPT_OUT", "YES")
 
-load_dotenv()
+import pytest  # noqa: E402
+
+from config.settings import is_offline  # noqa: E402
 
 
-def pytest_configure(config):
-    """Register custom markers."""
-    config.addinivalue_line("markers", "functional: Functional quality tests")
-    config.addinivalue_line("markers", "evaluation: LLM output quality tests")
-    config.addinivalue_line("markers", "rag: RAG pipeline tests")
-    config.addinivalue_line("markers", "security: Security and red team tests")
-    config.addinivalue_line("markers", "tool_calling: Tool calling tests")
-    config.addinivalue_line("markers", "regression: Regression tests")
-    config.addinivalue_line("markers", "slow: Tests that take >30 seconds")
+def pytest_collection_modifyitems(config, items):
+    if not is_offline() and os.getenv("OPENAI_API_KEY"):
+        return
+    skip = pytest.mark.skip(reason="live test: set OFFLINE=0 and OPENAI_API_KEY (make eval)")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip)
 
 
-@pytest.fixture(autouse=True)
-def check_api_key():
-    """Skip tests if OpenAI API key is not set."""
-    if not os.getenv("OPENAI_API_KEY"):
-        pytest.skip("OPENAI_API_KEY not set — skipping live tests")
+@pytest.fixture
+def tmp_results(tmp_path):
+    return tmp_path
