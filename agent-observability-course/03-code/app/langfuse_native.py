@@ -38,7 +38,8 @@ batches the SDK would POST to ``/api/public/ingestion`` are answered by an
     python -m app.langfuse_native "Where is my ticket TCK-100231?" --scenario loop
 
 With ``LANGFUSE_PUBLIC_KEY``/``LANGFUSE_SECRET_KEY`` set (and no ``--offline``) the same
-code sends the trace to your Langfuse project; the LLM is still the mock while ``OFFLINE=1``.
+code sends the trace to your Langfuse project. The LLM is always the course mock in this
+module (``MockLLM``), whatever ``OFFLINE`` says, so traces are free and deterministic.
 """
 
 from __future__ import annotations

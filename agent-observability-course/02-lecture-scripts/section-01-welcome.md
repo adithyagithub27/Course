@@ -23,11 +23,11 @@ Pacing: narration is written at about 140 spoken words per minute. Word counts i
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 1.1 | The $4,000 weekend: watch an agent burn money in real time | DM | 5:00 | ~600 |
-| 1.2 | What LLMOps means for agents (and why MLOps tools miss it) | SL | 8:00 | ~830 |
-| 1.3 | The observability stack you will build | SL | 7:00 | ~810 |
-| 1.4 | Meet Atlas and the swarm | SC | 7:00 | ~740 |
-| 1.5 | Course roadmap and how to get the most out of it | SC | 6:00 | ~590 |
+| 1.1 | The $4,000 weekend: watch an agent burn money in real time | DM | 5:00 | ~570 |
+| 1.2 | What LLMOps means for agents (and why MLOps tools miss it) | SL | 8:00 | ~840 |
+| 1.3 | The observability stack you will build | SL | 7:00 | ~825 |
+| 1.4 | Meet Atlas and the swarm | SC | 7:00 | ~725 |
+| 1.5 | Course roadmap and how to get the most out of it | SC | 6:00 | ~555 |
 | 1.6 | Quiz: Foundations | QZ | 3:00 (1:00 video) | ~130 |
 
 ---
@@ -38,12 +38,12 @@ Pacing: narration is written at about 140 spoken words per minute. Word counts i
 |---|---|
 | ID | 1.1 |
 | Type | DM (live demo, two runs, before/after) |
-| Target duration | 5:00 (~600 spoken words, about 4:17 of talking at 140 wpm, plus dwell on the meter) |
+| Target duration | 5:00 (~570 spoken words, about 4:04 of talking at 140 wpm, plus dwell on the meter) |
 | Learning objectives | 1. Watch an agent enter a retry loop and see cost climb step by step. 2. Name the guard that stopped it in the second run (a step limit) and the two you will add later (a budget guard and an alert). 3. State what this course promises: you will be able to see, explain and stop this. |
 | Prerequisites | None |
 | Files used | `03-code/simulator/loop_demo.py` (`make loop-demo`), `03-code/simulator/scenarios.py` (`loop`), `03-code/console/pages/1_Live_cost.py`, `03-code/app/agent.py` (`ATLAS_MAX_STEPS`), `03-code/src/northwind/budget.py` |
 
-**Recording note:** two terminals and one browser tab, all from `03-code/`. Terminal 1: `make console STORE=.atlas/live.sqlite` (Streamlit; needs the `dashboards` extra, see 2.4). In the browser open `http://localhost:8501/Live_cost` directly; the home page replays a whole day into an empty store, which you do not want here. Terminal 2 runs the two commands below against the same `STORE`. `PACE=0.1` sleeps a tenth of the mock's simulated latency, so the guards-off run takes about 50 seconds of wall time for 600.8 simulated seconds; record it for real, do not speed it up. The page refreshes every two seconds. Tint the first run red, the second green. Both runs were checked on 2026-10-02 and match `numbers-card.md` §6 exactly.
+**Recording note:** two terminals and one browser tab, all from `03-code/`. Terminal 1: `STREAMLIT_SERVER_HEADLESS=true make console STORE=.atlas/live.sqlite` (Streamlit; needs the `dashboards` extra, see 2.2). Headless stops Streamlit opening the home page, which would replay a whole day into the empty store; open `http://localhost:8501/Live_cost` directly instead. Terminal 2 runs the two commands below against the same `STORE`. `PACE=0.1` sleeps a tenth of the mock's simulated latency, so the guards-off run takes about 50 seconds of wall time for 600.8 simulated seconds; record it for real, do not speed it up. The page refreshes every two seconds. Tint the first run red, the second green. Both runs were checked on 2026-10-02 and match `numbers-card.md` §6 exactly.
 
 ### Script
 
@@ -140,7 +140,7 @@ One more thing. Everything you just saw ran offline. No API key, no money spent.
 |---|---|
 | ID | 1.2 |
 | Type | SL (slides, with one short terminal beat) |
-| Target duration | 8:00 (~830 spoken words, about 5:56 of talking at 140 wpm) |
+| Target duration | 8:00 (~840 spoken words, about 6:00 of talking at 140 wpm) |
 | Learning objectives | 1. Name the four properties that make agents different to monitor: non-deterministic, multi-step, tool-using, token-metered. 2. Describe the three pillars of agent observability: traces, quality in production, cost. 3. Explain where classic APM and classic MLOps stop and why. |
 | Prerequisites | 1.1 |
 | Files used | Diagram: three pillars (slides 5 to 8); `03-code/app/langfuse_native.py` (one command, output only) |
@@ -238,13 +238,13 @@ If someone asks what LLMOps means, here's a definition that fits in one breath. 
 
 Same weekend, two Monday mornings. With APM alone, "all systems operational." With the three pillars, a sentence with a tenant, a count, a tool name, a root cause and a timestamp. You'll write sentences exactly like that in Section eleven.
 
+[AVATAR]
+Keep the four properties in mind: non-deterministic, multi-step, tool-using, token-metered. Every technique in this course exists because of one of them. And keep the three pillars: traces, quality, cost. Every lecture belongs to one.
+
 [SLIDE 11: Recap]
 - Four properties: non-deterministic, multi-step, tools, tokens
 - Three pillars: traces, quality, cost
 - One foundation: an instrumented agent
-
-[AVATAR]
-Keep the four properties in mind: non-deterministic, multi-step, tool-using, token-metered. Every technique in this course exists because of one of them. And keep the three pillars: traces, quality, cost. Every lecture belongs to one.
 
 **Recap:** Agents are non-deterministic, multi-step, tool-using and token-metered, which is why APM and MLOps tools show green while an agent burns money; you need traces, quality in production and cost, all built on one instrumented agent.
 
@@ -266,7 +266,7 @@ Keep the four properties in mind: non-deterministic, multi-step, tool-using, tok
 |---|---|
 | ID | 1.3 |
 | Type | SL (slides, with two short screen beats) |
-| Target duration | 7:00 (~810 spoken words, about 5:47 of talking at 140 wpm) |
+| Target duration | 7:00 (~825 spoken words, about 5:54 of talking at 140 wpm) |
 | Learning objectives | 1. Name the role of each component: OpenTelemetry as the wire format, Langfuse as the LLM-native backend, Prometheus and Grafana for metrics, LiteLLM for prices and routing. 2. Explain the portability argument: emit OTel once, point it at any backend. 3. Know which parts are open source and what the student spend is. |
 | Prerequisites | 1.2 |
 | Files used | Diagram: architecture (slides 2 and 8); `03-code/telemetry/`, `03-code/deploy/` (folder listings and one `grep`) |
@@ -364,13 +364,13 @@ Diagram from slide 2, each box labelled with the sections that build it: OTel (3
 
 Here's the same diagram with section numbers. Section three builds the OpenTelemetry layer. Four, five and eight build out Langfuse. Six and seven are LiteLLM for cost and reliability. Nine is metrics and dashboards. Thirteen deploys it all. Fourteen assembles it into the capstone.
 
+[AVATAR]
+Four tools, one standard in the middle. If you remember one thing from this lecture: emit OpenTelemetry once, with the GenAI conventions, and every backend decision becomes reversible.
+
 [SLIDE 9: Recap]
 - OpenTelemetry in the middle, as the standard
 - Langfuse, Prometheus, Grafana, LiteLLM: one job each
 - Vendor calls in one module, so choices reverse
-
-[AVATAR]
-Four tools, one standard in the middle. If you remember one thing from this lecture: emit OpenTelemetry once, with the GenAI conventions, and every backend decision becomes reversible.
 
 **Recap:** OpenTelemetry is the wire format, Langfuse is the LLM-native backend for traces, prompts and scores, Prometheus and Grafana handle metrics and alerts, LiteLLM handles prices and routing, and because the middle is a standard, every vendor choice is reversible.
 
@@ -391,7 +391,7 @@ Four tools, one standard in the middle. If you remember one thing from this lect
 |---|---|
 | ID | 1.4 |
 | Type | SC (screencast tour, no typing) |
-| Target duration | 7:00 (~740 spoken words, about 5:17 of talking at 140 wpm, plus scrolling and dwell) |
+| Target duration | 7:00 (~725 spoken words, about 5:11 of talking at 140 wpm, plus scrolling and dwell) |
 | Learning objectives | 1. Describe what Atlas does: knowledge base answers, ticket lookup and creation, verified password resets, shipment checks, for four department tenants. 2. Locate the agent loop, tools, server and simulator in the repo. 3. Explain what the swarm and offline mode are for and why every lab has an offline path. |
 | Prerequisites | 1.3 |
 | Files used | `03-code/app/agent.py`, `03-code/app/tools.py`, `03-code/app/server.py`, `03-code/app/mock_llm.py`, `03-code/simulator/personas.py`, `03-code/simulator/scenarios.py`, `03-code/simulator/swarm.py`, `03-code/simulator/replay.py`, `03-code/src/northwind/data/kb/` |
@@ -462,13 +462,13 @@ And the piece that makes all of this free: mock LLM dot py. When `OFFLINE=1` is 
 
 Every lab in this course works offline. Same code, same spans, same dashboards, zero dollars. Use offline to explore and break things freely. Switch to live mode when you want a real model's trace in Langfuse Cloud. That's how you keep the whole course under fifteen dollars.
 
+[AVATAR]
+Atlas, four tenants, five tools, a swarm with injectable incidents, and a mock that makes it all free. Everything you observe from here on comes from this system.
+
 [SLIDE 4: Recap]
 - Atlas: FastAPI agent, five tools, four tenants
 - The swarm: a seeded day plus injectable incidents
 - `OFFLINE=1`: deterministic mock, zero spend
-
-[AVATAR]
-Atlas, four tenants, five tools, a swarm with injectable incidents, and a mock that makes it all free. Everything you observe from here on comes from this system.
 
 **Recap:** Atlas is a FastAPI-served tool-calling agent for Northwind's four departments, the swarm and the replay generate a realistic day with injectable incidents, and `OFFLINE=1` swaps in a deterministic mock so every lab runs for free.
 
@@ -489,7 +489,7 @@ Atlas, four tenants, five tools, a swarm with injectable incidents, and a mock t
 |---|---|
 | ID | 1.5 |
 | Type | SC (screencast, README and slides) |
-| Target duration | 6:00 (~590 spoken words, about 4:13 of talking at 140 wpm, plus README scrolling) |
+| Target duration | 6:00 (~555 spoken words, about 3:58 of talking at 140 wpm, plus README scrolling) |
 | Learning objectives | 1. Map the fifteen sections onto the three pillars and the operate loop. 2. Adopt the build-log habit and know how to use Q&A. 3. Check the version banner against the installed packages before reporting a problem. |
 | Prerequisites | 1.4 |
 | Files used | `03-code/README.md` |
@@ -599,7 +599,7 @@ You'll see one question on why the loop's cost accelerated rather than climbing 
 
 Tip: when a question asks "which tool," ask yourself which of the four questions it answers. What did it do, what did it cost, is it healthy, is it good.
 
-Every answer has an explanation and points to a lecture. Miss one, rewatch that lecture. Section two assumes all of it.
+Every answer has an explanation and points to a lecture. Miss one, rewatch it.
 
 **Recap:** The quiz checks the loop's cost mechanics, the pillars, the stack roles and offline mode.
 

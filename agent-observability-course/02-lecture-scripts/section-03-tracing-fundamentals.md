@@ -2,22 +2,22 @@
 
 > **Course:** AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse
 > **Section runtime:** ≈52 min (8 lectures)
-> **Source of truth:** `01-curriculum/curriculum.md`
-> **On-screen footer for every code or API slide:** "APIs verified on langfuse 4.15 / opentelemetry-sdk 1.45 / semconv 0.66b0 (GenAI attributes are incubating, names may change) / openinference-instrumentation-openai 0.1.61; check the repo README for updates."
+> **Source of truth:** `01-curriculum/curriculum.md`; every figure comes from `01-curriculum/numbers-card.md` or from the captured command output quoted in the cue
+> **On-screen footer for every code or API slide:** "APIs verified on langfuse 4.15+ (uv.lock 4.16.0) / opentelemetry-sdk 1.45 / semconv 0.66b0 (GenAI attributes are incubating, names may change) / openinference-instrumentation-openai 0.1.61+ (uv.lock 0.1.63); check the repo README for updates."
 > **Cue legend:** see `section-01-welcome.md`. Word counts are spoken words only. Code-along lectures are paced below 140 words per minute.
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 3.1 | Traces, spans and context in five minutes | SL | 6:00 | ~650 |
-| 3.2 | Code-along: manual OpenTelemetry instrumentation of Atlas | SC | 10:00 | ~625 |
-| 3.3 | GenAI semantic conventions: naming things so tools understand them | SL | 8:00 | ~750 |
-| 3.4 | Code-along: tag every LLM, tool and agent span correctly | SC | 9:00 | ~450 |
-| 3.5 | Auto-instrumentation with OpenInference | SC | 6:00 | ~400 |
-| 3.6 | Break it: orphan spans, missing context and double counting | DM | 6:00 | ~575 |
-| 3.7 | Lab 2: Instrument a new tool end to end | LAB | 4:00 (1:30 video) | ~225 |
-| 3.8 | Quiz: Tracing and semantic conventions | QZ | 3:00 (1:00 video) | ~100 |
+| 3.1 | Traces, spans and context in five minutes | SL | 6:00 | ~760 |
+| 3.2 | Code-along: manual OpenTelemetry instrumentation of Atlas | SC | 10:00 | ~740 |
+| 3.3 | GenAI semantic conventions: naming things so tools understand them | SL | 8:00 | ~790 |
+| 3.4 | Code-along: tag every LLM, tool and agent span correctly | SC | 9:00 | ~640 |
+| 3.5 | Auto-instrumentation with OpenInference | SC | 6:00 | ~465 |
+| 3.6 | Break it: orphan spans, missing context and double counting | DM | 6:00 | ~570 |
+| 3.7 | Lab 2: Instrument a new tool end to end | LAB | 4:00 (1:30 video) | ~180 |
+| 3.8 | Quiz: Tracing and semantic conventions | QZ | 3:00 (1:00 video) | ~105 |
 
-**API guardrails for this section (do not deviate on screen):** attribute constants come from `opentelemetry.semconv._incubating.attributes.gen_ai_attributes` (imported as `g`), never typed as raw strings in application code. Span names follow the conventions: `invoke_agent atlas`, `chat gpt-4.1-mini`, `execute_tool lookup_ticket`. Auto-instrumentation is `OpenAIInstrumentor` from `openinference.instrumentation.openai`; never show `opentelemetry-instrumentation-openai-v2` installed, imported or running (it failed to import at verification time). The single "not used" line on slide 1 of 3.5 is the only permitted mention. Say "incubating, names may change" once per lecture that shows a `gen_ai.*` name.
+**API guardrails for this section (do not deviate on screen):** attribute constants come from `opentelemetry.semconv._incubating.attributes.gen_ai_attributes` (imported as `g`), never typed as raw strings in application code. Span names follow the conventions: `invoke_agent atlas`, `chat gpt-4.1-mini`, `execute_tool lookup_ticket`. Atlas's real instrumentation is `telemetry/otel_setup.py` (`configure_tracing`, alias `setup_tracing`) and the setters in `telemetry/genai_attrs.py` (`set_agent`, `set_llm_request`, `set_llm_usage`, `set_cost`, `set_tool`, `set_retrieval`), called from `app/agent.py`. This is the vendor-neutral path Atlas keeps for the rest of the course; Section 12 relies on it. Auto-instrumentation is `OpenAIInstrumentor` from `openinference.instrumentation.openai`, wrapped by `telemetry/openinference_setup.instrument_openai`; never show `opentelemetry-instrumentation-openai-v2` installed, imported or running (it failed to import at verification time). The single "not used" line on slide 1 of 3.5 is the only permitted mention. Say "incubating, names may change" once per lecture that shows a `gen_ai.*` name.
 
 ---
 
@@ -26,16 +26,16 @@
 | Field | Value |
 |---|---|
 | ID | 3.1 |
-| Type | SL (slides) |
-| Target duration | 6:00 (~650 spoken words, about 4:39 of talking at 140 wpm) |
+| Type | SL (slides, with one console beat) |
+| Target duration | 6:00 (~760 spoken words, about 5:26 of talking at 140 wpm) |
 | Learning objectives | 1. Define trace, span, parent/child, attributes, events and status. 2. Explain context propagation and why a span "knows" its parent. 3. Describe head and tail sampling and when each applies. |
 | Prerequisites | Section 2 |
-| Files used | Diagram: one Atlas request as a trace (slides 2, 4, 6) |
+| Files used | Diagram: one Atlas request as a trace (slides 2 and 4); `03-code/console/pages/11_Traces.py` (the Traces page) |
 
 ### Script
 
 [AVATAR]
-In Lecture 2.3 you looked at a trace and it made sense. Root, children, timings. Now here's the uncomfortable question: how did the tool span know it belonged to that agent span? Nobody passed it an ID. [PAUSE] Six words explain the whole thing, and one mechanism makes it work. Let's do the six words first.
+In Lecture 2.3 you looked at a trace and it made sense. Root, children, timings. Now here's the uncomfortable question: how did the model call know it belonged to that agent span? Nobody passed it an ID. [PAUSE] Six words explain the whole thing, and one mechanism makes it work. Six words first.
 
 [SLIDE 1: Six words]
 - Trace: everything that happened for one request
@@ -45,29 +45,32 @@ In Lecture 2.3 you looked at a trace and it made sense. Root, children, timings.
 - Events: timestamped moments inside a span
 - Status: OK, ERROR or unset
 
-A trace is everything that happened for one request, identified by one trace ID. A span is one unit of work with a start time and an end time. Spans nest: a parent causes children. Attributes are facts about a span, as key-value pairs. Events are timestamped moments inside a span, like "step limit reached at 14:02:07." And status says whether the work succeeded.
+A trace is everything that happened for one request, identified by one trace ID. A span is one unit of work with a start time and an end time. Spans nest: a parent causes children. Attributes are facts about a span, as key-value pairs. Events are timestamped moments inside a span, like "step limit reached." And status says whether the work succeeded.
 
 [SLIDE 2: One Atlas request as a trace]
-Diagram, waterfall. Top bar `invoke_agent atlas` 2.8 s. Under it, `search_knowledge_base` 40 ms, then `chat gpt-4.1-mini` 2.6 s, then `execute_tool lookup_ticket` 120 ms, then a second `chat gpt-4.1-mini` 0.9 s. Trace ID shown at the top right.
+Diagram, waterfall of the 2.3 VPN request (simulated timings from the mock). Top bar `invoke_agent atlas` 3.4 s. Under it: `guardrail injection_check` (a sliver), then `step 1` containing `chat gpt-4.1-mini` 0.7 s and `execute_tool search_knowledge_base` (a few ms), then `step 2` containing `chat gpt-4.1-mini` 2.7 s. Trace ID shown at the top right.
 
-Here's the VPN request from 2.3 drawn as a waterfall. One trace. The agent span at the top, two point eight seconds. Under it, the retriever, a model call, a tool call, another model call. Time runs left to right. Nesting runs top to bottom. You can see instantly that the first model call is where the time went.
+Here's the VPN request from 2.3 drawn as a waterfall. One trace. The agent span at the top, three point four seconds. Under it, the guardrail, then two steps, each with a model call, and a search in the first. Time runs left to right. Nesting runs top to bottom. Where did the time go? You can see it instantly: the second model call, the one that wrote the answer.
 
 [SLIDE 3: A span, up close]
 ```text
 name:        chat gpt-4.1-mini
-trace_id:    0xc8e0b7a1c432fda1dd0b3d28692756c3
-span_id:     0x21c0b128c8a0a5b9
-parent_id:   0xa25f5e46855e69ba
-start/end:   14:02:04.619 → 14:02:07.220
-attributes:  gen_ai.request.model=gpt-4.1-mini, gen_ai.usage.input_tokens=3012, ...
+trace_id:    0x1c64ccfc12b2b962a1609e2fefae04ef
+span_id:     0x6b18382bc75135bb
+parent_id:   0x220b219d682bf398        (the "step 1" span)
+attributes:  atlas.step=1, atlas.tenant=ops, atlas.cost_usd=0.0013752, ...
 events:      (none)
 status:      UNSET
 ```
 
-Zoom in on one span. It has a name. It has the trace ID shared by every span in this request. It has its own span ID and, crucially, a parent ID. That parent ID is the entire tree. There's no separate tree structure stored anywhere; the backend rebuilds the waterfall from parent IDs. Then attributes, events and status.
+Zoom in on one span, exactly as Atlas's console exporter printed it. It has a name. It has the trace ID shared by every span in this request. It has its own span ID and, crucially, a parent ID, here the step-one span. That parent ID is the entire tree. There's no separate tree structure stored anywhere; the backend rebuilds the waterfall from parent IDs. Then attributes, events and status.
+
+[SCREEN: Ops Console (`make console`, on the day replayed in 2.4) → Traces page. In "Or one of the ten most expensive conversations" pick `s07-00666`. The waterfall and the table below it appear: `invoke_agent atlas` (3,264.7 ms), `guardrail injection_check`, `step 1`, `chat gpt-4.1-mini` (765.0 ms), `execute_tool search_knowledge_base` (28.1 ms), `step 2`, `chat gpt-4.1-mini` (2,470.8 ms), each with its kind, status, start and duration.]
+
+You can see this on your own machine. Open the console's Traces page on the day you replayed and pick the most expensive conversation. Seven spans, one per row, indented by parent. Every row is one unit of work with a start and an end, and the same shape as the VPN request.
 
 [SLIDE 4: Context propagation]
-Diagram: a stack of boxes labelled "current context". Step 1: empty. Step 2: `invoke_agent atlas` is pushed; it's the current span. Step 3: `chat gpt-4.1-mini` starts, reads the current span, sets it as parent, and is pushed. Step 4: it ends and is popped; `invoke_agent atlas` is current again.
+Diagram: a stack of boxes labelled "current context". Step 1: empty. Step 2: `invoke_agent atlas` is pushed; it's the current span. Step 3: `step 1` starts, reads the current span, sets it as parent, and is pushed. Step 4: `chat gpt-4.1-mini` does the same under `step 1`. Step 5: it ends and is popped; `step 1` is current again.
 
 Now the mechanism. When a span starts, it asks, "what is the current span right now?" Whatever it finds becomes its parent. Then it makes itself current. When it ends, it steps aside and the previous span is current again. That "current span" lives in a context that follows your code from function to function, through await, without you passing anything. In Python it's built on `contextvars`.
 
@@ -88,29 +91,35 @@ Across a network call, the context is written into a header called traceparent, 
 
 Last idea: sampling. A busy agent produces more spans than you want to store. Head sampling decides at the root, before anything happens: keep one in ten. Cheap, but blind; it drops the one error you wanted. Tail sampling decides when the trace finishes: keep every error and every slow trace, drop most of the boring successes. That's what the collector does in Section thirteen.
 
-One rule, though. Never sample the cost signal. If you keep one trace in ten, you've lost ninety percent of your dollars. Cost is counted from every request, as a metric, regardless of what traces you keep. Section nine builds that.
+One rule, though. Never sample the cost signal. Keep one trace in ten, and you've lost ninety percent of your dollars. Cost is counted from every request, as a metric, regardless of which traces you keep. Section nine builds that.
 
 [SLIDE 7: What a trace answers that logs can't]
 - Which spans belong to this request? (trace ID)
 - What caused what? (parent ID)
 - Where did time go? (start and end, nested)
 - What were the facts? (attributes)
-- What happened at 14:02:07? (events)
+- What happened, and when? (events)
 
 Put together: a trace tells you which work belonged to a request, what caused what, where time went, what the facts were and what happened when. Logs give you lines. Traces give you structure. Lecture 5.5 comes back to when you want each.
 
 [AVATAR]
-Six words and one mechanism. Trace, span, parent, attributes, events, status, held together by a current-span context that follows your code. Now let's write it.
+Six words and one mechanism. Trace, span, parent, attributes, events, status, held together by a current-span context that follows your code. Now let's write some.
+
+[SLIDE 8: Recap]
+- Spans linked by parent IDs form a trace
+- The current-span context sets parents for you
+- Sample traces, never the cost signal
 
 **Recap:** A trace is a tree of spans linked by parent IDs, each carrying attributes, events and status; the tree is built automatically by a context that tracks the current span, and sampling decides which traces to keep, never which costs to count.
 
-**Transition:** Next, you strip Atlas back to plain Python and add OpenTelemetry by hand, span by span.
+**Transition:** Next, you add OpenTelemetry by hand around one model call, then read how Atlas's real setup does the same thing.
 
 ### Speaker notes: common student mistakes / Q&A
 
 - "Is a trace the same as a Langfuse trace?" Yes, with extras. Langfuse adds observation types, sessions and users on top of the same OTel spans. Section 4.1.
 - "Do spans have to nest?" A trace can be a flat list of root spans, but then you've lost causality. Orphans are the most common instrumentation bug; 3.6 shows them.
 - Students confuse events with logs. An event is attached to a span and inherits its trace and span IDs; a log line has to be correlated by hand (5.5).
+- The slide 3 values come from one run of the console exporter on 2026-10-02; IDs differ on every run. Slide 2's timings are the mock's simulated latencies (`atlas.latency_ms`); wall-clock durations on the Traces page differ unless Atlas ran with `ATLAS_MOCK_LATENCY_SCALE=1`.
 - Keep this lecture free of `gen_ai.*` names. 3.3 introduces them.
 
 ---
@@ -121,27 +130,29 @@ Six words and one mechanism. Trace, span, parent, attributes, events, status, he
 |---|---|
 | ID | 3.2 |
 | Type | SC (code-along) |
-| Target duration | 10:00 (~625 spoken words, about 4:28 of talking at 140 wpm, plus typing and console output) |
-| Learning objectives | 1. Build `setup_tracing()` with a `TracerProvider`, resource attributes and a `ConsoleSpanExporter`. 2. Wrap the agent run and the model call in `tracer.start_as_current_span` and read the nested spans in the console. 3. Switch to an OTLP exporter pointed at Langfuse with a `BatchSpanProcessor`. |
+| Target duration | 10:00 (~740 spoken words, about 5:17 of talking at 140 wpm, plus typing and console output) |
+| Learning objectives | 1. Build a `setup_tracing()` with a `TracerProvider`, resource attributes and a `ConsoleSpanExporter`. 2. Wrap an agent run and a model call in `tracer.start_as_current_span` and read the nested spans in the console. 3. Find the same pieces, plus a `BatchSpanProcessor` and an OTLP exporter, in Atlas's real `telemetry/otel_setup.py`. |
 | Prerequisites | 3.1, Section 2 |
-| Files used | You type: `03-code/telemetry/otel_setup.py`, edits to `03-code/app/agent.py`. Reference: the same files in the repo (reset with `git checkout` if you want to type from scratch). |
+| Files used | You type: `03-code/scratch/trace_by_hand.py` (a practice file, not part of the repo). Read: `03-code/telemetry/otel_setup.py` (`build_resource`, `_make_exporter`, `configure_tracing`). |
 
-**Recording note:** start from a copy of `otel_setup.py` reduced to imports, so every line on screen is typed. The repo version has extra branches for `file` and `langfuse` exporters; mention, don't type.
+**Recording note:** the practice file is typed from empty, exactly as printed below; it was run on 2026-10-02 and produced the console output quoted in the DEMO cue. Run it from `03-code/` with the venv active: `PYTHONPATH=.:src python scratch/trace_by_hand.py`. The OTLP branch is the Langfuse OpenTelemetry endpoint (verify the path against the current Langfuse OpenTelemetry docs before recording) and needs the three Langfuse variables from 2.1 in the environment.
 
 ### Script
 
 [AVATAR]
-You've seen the trace. Now you're going to make one from nothing. Three parts: a provider that owns the pipeline, an exporter that decides where spans go, and two `with` statements in the agent. About forty lines, and you'll read the raw spans in your terminal before any UI is involved.
+You've seen a trace. Now you're going to make one from nothing. Three parts: a provider that owns the pipeline, an exporter that decides where spans go, and two `with` statements around real work. About fifty lines, and you'll read the raw spans in your terminal before any UI is involved. Then we'll open Atlas's real setup and find every piece you typed.
 
-[SCREEN: VS Code, `telemetry/otel_setup.py`, reduced to imports.]
+[SCREEN: VS Code, new file `03-code/scratch/trace_by_hand.py`.]
 
-[CODE: step 1, imports]
+[CODE: step 1, imports (practice file `scratch/trace_by_hand.py`)]
 ```python
-"""OpenTelemetry setup for Atlas (Lecture 3.2)."""
+"""Lecture 3.2: OpenTelemetry by hand, around one call to Atlas's offline model."""
 
+import base64
 import os
 
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
@@ -149,101 +160,25 @@ from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
     SimpleSpanProcessor,
 )
+
+from app.mock_llm import MockLLM
+from app.prompts import ATLAS_V1
 ```
 
-Imports first. `trace` is the API: how application code gets a tracer. Everything under `sdk` is the implementation: the provider, the resource, the processors and exporters. Keep that split in your head. Application code imports the API; only setup code imports the SDK.
+Imports first. `trace` is the API: how application code gets a tracer. Everything under `sdk` is the implementation: the provider, the resource, the processors and exporters. Keep that split in your head. Application code imports the API; only setup code imports the SDK. The last two imports are Atlas's offline model and its system prompt, so we have real work to trace.
 
-[CODE: step 2, the resource]
+[CODE: step 2, the provider, the resource and two exporters]
 ```python
-def _resource() -> Resource:
-    return Resource.create(
-        {
-            "service.name": "atlas",
-            "service.version": os.getenv("ATLAS_VERSION", "dev"),
-            "deployment.environment": os.getenv("DEPLOYMENT_ENV", "dev"),
-        }
+def setup_tracing(exporter: str) -> TracerProvider:
+    resource = Resource.create(
+        {"service.name": "atlas", "service.version": "dev", "deployment.environment": "dev"}
     )
-```
-
-The resource describes who is emitting spans. Service name, version and environment. These attach to every span automatically, so you can filter a backend to "atlas in production" without setting anything per span. In Section thirteen, `service.version` becomes the release tag you annotate dashboards with.
-
-[CODE: step 3, the provider and the console exporter]
-```python
-def setup_tracing(exporter: str | None = None) -> TracerProvider:
-    exporter = exporter or os.getenv("OTEL_EXPORTER", "console")
-    provider = TracerProvider(resource=_resource())
-
+    provider = TracerProvider(resource=resource)
     if exporter == "console":
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
-
-    trace.set_tracer_provider(provider)
-    return provider
-```
-
-Now `setup_tracing`. Create a `TracerProvider` with our resource. Add a span processor. A processor decides when to hand spans to an exporter; the exporter decides where they go. For the console we use `SimpleSpanProcessor`, which exports each span the moment it ends. Then set it as the global provider, so `trace.get_tracer` anywhere in the app finds it.
-
-[SCREEN: VS Code, `app/agent.py`. Top of file and the `run` method of `AtlasAgent`.]
-
-[CODE: step 4, get a tracer and wrap the run]
-```python
-from opentelemetry import trace
-
-tracer = trace.get_tracer("northwind.atlas")
-
-
-class AtlasAgent:
-    ...
-
-    def run(self, message: str, *, tenant: str, user_id: str, session_id: str) -> AgentResult:
-        with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
-            agent_span.set_attribute("atlas.tenant", tenant)
-            result = self._loop(message)
-            agent_span.set_attribute("atlas.steps", result.steps)
-            return result
-```
-
-Over in the agent. Get a tracer once at module level, named after the code that owns it. Then, in `run`, one `with` statement around the whole loop. The span is named `invoke_agent atlas`; that name follows a convention you'll meet next lecture. Inside, set an attribute for the tenant, run the loop, and record how many steps it took. When the `with` block exits, the span ends, and if the loop raised, the span records the exception and sets error status for you.
-
-[CODE: step 5, wrap the model call]
-```python
-    def _call_model(self, messages: list[dict]) -> ModelResponse:
-        with tracer.start_as_current_span(f"chat {self.model}") as span:
-            response = self.client.chat.completions.create(model=self.model, messages=messages, tools=self.tool_specs)
-            span.set_attribute("atlas.input_tokens", response.usage.prompt_tokens)
-            span.set_attribute("atlas.output_tokens", response.usage.completion_tokens)
-            return response
-```
-
-And one more around the model call. Named `chat` plus the model. Because this runs inside `run`, the current span is the agent span, so this becomes its child. No IDs passed. For now the token attributes have our own names; next lecture they get standard ones.
-
-[SCREEN: `app/server.py`, startup. Add `setup_tracing()` at import time or in the lifespan.]
-
-[CODE: step 6, call it at startup]
-```python
-from telemetry.otel_setup import setup_tracing
-
-setup_tracing()  # before the agent is created
-```
-
-Call `setup_tracing` once, at startup, before any tracer is used. Order matters: a tracer fetched before the provider is set is a no-op tracer forever.
-
-[SCREEN: Terminal 1: `OTEL_EXPORTER=console OFFLINE=1 make run`. Terminal 2: the curl from Lecture 2.3.]
-
-[DEMO: Two JSON blocks print in Terminal 1. First `chat gpt-4.1-mini` with a `parent_id`, then `invoke_agent atlas` with `"parent_id": null`. Both share the same `trace_id`. The resource block shows `service.name: atlas`.]
-
-Run with the console exporter and send the VPN question. Two spans print as JSON. Read them. The model call prints first, because it ended first. It has a parent ID. The agent span prints second, with parent ID null; it's the root. Same trace ID on both. And at the bottom of each, the resource: service name atlas. That's a trace, in your terminal, with no backend.
-
-[PAUSE]
-
-[CODE: step 7, OTLP to Langfuse]
-```python
-import base64
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-
     if exporter == "otlp":
-        auth = base64.b64encode(
-            f"{os.environ['LANGFUSE_PUBLIC_KEY']}:{os.environ['LANGFUSE_SECRET_KEY']}".encode()
-        ).decode()
+        keys = f"{os.environ['LANGFUSE_PUBLIC_KEY']}:{os.environ['LANGFUSE_SECRET_KEY']}"
+        auth = base64.b64encode(keys.encode()).decode()
         provider.add_span_processor(
             BatchSpanProcessor(
                 OTLPSpanExporter(
@@ -252,37 +187,116 @@ from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExport
                 )
             )
         )
+    trace.set_tracer_provider(provider)
+    return provider
 ```
 
-Now the real destination. Add an `otlp` branch. OTLP is OpenTelemetry's wire protocol, and Langfuse accepts it at slash api slash public slash otel. Authenticate with basic auth built from your two keys. And this time use `BatchSpanProcessor`, which queues spans and sends them in batches on a background thread. Never use the simple processor with a network exporter; it would block your request on every span.
+Now `setup_tracing`. The resource describes who is emitting spans: service name, version and environment. These attach to every span automatically, so you can filter a backend to "atlas in production" without setting anything per span.
 
-[SCREEN: Terminal 1: `OTEL_EXPORTER=otlp OFFLINE=1 make run`. Send the curl. Browser: Langfuse traces list shows a new trace `invoke_agent atlas` with one child.]
+Then a `TracerProvider` with that resource, and a span processor. A processor decides when to hand spans to an exporter; the exporter decides where they go. For the console we use `SimpleSpanProcessor`, which exports each span the moment it ends.
 
-[DEMO: The trace appears in Langfuse after a few seconds, with two plain spans, no types, no usage yet.]
+[SCREEN: Highlight the `otlp` branch.]
 
-Switch the exporter to OTLP and send the question again. A few seconds later, there it is in Langfuse. Two spans, nested correctly. Notice what's missing compared to Lecture 2.3: no observation types, no usage, no cost. Those come from attributes, which is the next two lectures.
+The second branch is the real destination. OTLP is OpenTelemetry's wire protocol, and Langfuse accepts it at slash api slash public slash otel. Authenticate with basic auth built from your two keys. And this time use `BatchSpanProcessor`. Why? It queues spans and sends them in batches on a background thread. Never use the simple processor with a network exporter; it would block your request on every span. Finally, set the provider as the global one, so `trace.get_tracer` anywhere finds it.
+
+[CODE: step 3, a tracer and two nested spans]
+```python
+provider = setup_tracing(os.getenv("OTEL_EXPORTER", "console"))
+tracer = trace.get_tracer("atlas.by_hand")
+llm = MockLLM(seed=7)
+
+
+def answer(question: str, tenant: str) -> str:
+    with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
+        agent_span.set_attribute("atlas.tenant", tenant)
+        messages = [
+            {"role": "system", "content": ATLAS_V1},
+            {"role": "user", "content": question},
+        ]
+        with tracer.start_as_current_span("chat gpt-4.1-mini") as span:
+            response = llm.chat(model="gpt-4.1-mini", messages=messages)
+            span.set_attribute("atlas.input_tokens", response.usage.prompt_tokens)
+            span.set_attribute("atlas.output_tokens", response.usage.completion_tokens)
+        return response.choices[0].message.content or "(the model asked for a tool)"
+
+
+if __name__ == "__main__":
+    print(answer("How do I connect to the VPN from home?", tenant="ops"))
+    provider.shutdown()
+```
+
+Now the work. Set up tracing once, before any tracer is used. Get a tracer, named after the code that owns it. Then two `with` statements. The outer one, `invoke_agent atlas`, wraps the whole answer and records the tenant. The inner one, `chat gpt-4.1-mini`, wraps the model call and records the token counts, with our own attribute names for now. Because the inner span starts while the outer one is current, it becomes its child. No IDs passed. And `provider.shutdown()` at the end flushes anything still queued.
+
+[SCREEN: Terminal: `PYTHONPATH=.:src python scratch/trace_by_hand.py`.]
+
+[DEMO: Two JSON blocks print. First `"name": "chat gpt-4.1-mini"` with `"parent_id": "0xaa37367431e9dca6"` and `"attributes": {"atlas.input_tokens": 2521, "atlas.output_tokens": 44}`; then `"name": "invoke_agent atlas"` with `"parent_id": null` and `"attributes": {"atlas.tenant": "ops"}`. Both share `"trace_id": "0xe6c9f591eeb375e3b03ba180bb735043"`. Each ends with a `resource` block containing `"service.name": "atlas"`. The last line is `(the model asked for a tool)`.]
+
+Run it and read the output. The model call prints first, because it ended first. It has a parent ID. The agent span prints second, with parent ID null: it's the root. Same trace ID on both. And at the bottom of each, the resource: service name atlas. That's a trace, in your terminal, with no backend. The last line? The mock wanted to search the knowledge base before answering. We gave this toy no tools, so we stop there.
+
+[PAUSE]
+
+[SCREEN: Terminal, with the Langfuse variables loaded: `OTEL_EXPORTER=otlp PYTHONPATH=.:src python scratch/trace_by_hand.py`. Browser: Langfuse traces list shows a new trace `invoke_agent atlas` with one child, no types, no usage. Capture live; verify the endpoint path first.]
+
+Switch the exporter to OTLP and run it again. A few seconds later, there it is in Langfuse. Two spans, nested correctly. Notice what's missing compared to Lecture 2.3: no observation types, no usage, no cost. Those come from attributes, which is the next two lectures.
+
+[SCREEN: VS Code, `telemetry/otel_setup.py`. Show `build_resource` and `_make_exporter`, then scroll to `configure_tracing`.]
+
+[CODE: excerpt of `telemetry/otel_setup.py`, `configure_tracing` (lines in between elided as `...`)]
+```python
+        sampler = ParentBased(TraceIdRatioBased(settings.trace_sample_rate))
+        provider = TracerProvider(resource=build_resource(settings), sampler=sampler)
+        ...
+        def add(exp: SpanExporter, name: str, *, simple: bool = False) -> None:
+            safe = SafeSpanExporter(exp, name=name)
+            _STATE.exporters.append(safe)
+            if use_batch and not simple:
+                provider.add_span_processor(
+                    BatchSpanProcessor(
+                        safe,
+                        max_queue_size=2048,
+                        max_export_batch_size=256,
+                        schedule_delay_millis=1000,
+                        export_timeout_millis=5000,
+                    )
+                )
+            else:
+                provider.add_span_processor(SimpleSpanProcessor(safe))
+```
+
+Now the real thing. Atlas's version is called `configure_tracing`, with `setup_tracing` as an alias. Same shape as yours. A resource, built from settings. A provider, plus a sampler you'll meet in Section thirteen. And an `add` helper that wraps every exporter in a safety wrapper, so a broken backend can never crash a request, and puts it behind a batch processor with explicit queue and timeout limits. Above it, `_make_exporter` picks console, OTLP to a collector, a file, or memory for tests, from the `OTEL_EXPORTER` variable. And two more destinations: the local store the console reads, and Langfuse, when your keys are set.
+
+[SCREEN: Terminal 1: `OTEL_EXPORTER=console make run` (with `.env` sourced). Terminal 2: the VPN `curl` from 2.3.]
+
+[DEMO: Seven JSON blocks print in Terminal 1, in this order: `guardrail injection_check`, `chat gpt-4.1-mini`, `execute_tool search_knowledge_base`, `step 1`, `chat gpt-4.1-mini`, `step 2`, `invoke_agent atlas`. All share one `trace_id`; only `invoke_agent atlas` has `"parent_id": null`.]
+
+Run Atlas with the console exporter and send the VPN question. Seven spans instead of two, but read them the same way. Children print before parents. One trace ID. Exactly one root, `invoke_agent atlas`. Everything you typed in the practice file, Atlas does on every request.
 
 [SLIDE 1: The pipeline you just built]
 - `Resource` → who is emitting (service.name, version, environment)
 - `TracerProvider` → owns the pipeline; set once, globally
 - `SpanProcessor` → when to export: Simple (now) vs Batch (queued)
-- `SpanExporter` → where to: Console, OTLP, later file and Langfuse SDK
+- `SpanExporter` → where to: console, OTLP, file, memory, plus the local store and Langfuse
 - `tracer.start_as_current_span(name)` → the only line application code needs
 
 [AVATAR]
-Here's the whole pipeline on one slide. Resource, provider, processor, exporter, and one `with` statement in the application. Every other tracing tool you'll ever meet is a variation of these five boxes.
+Here's the whole pipeline: resource, provider, processor, exporter, and one `with` statement per unit of work. Every tracing tool you'll ever meet is a variation of these five boxes.
 
-**Recap:** `setup_tracing()` builds a `TracerProvider` with resource attributes and either a console or a batched OTLP exporter, and two `start_as_current_span` blocks in `AtlasAgent` give you a nested trace with no IDs passed by hand.
+[SLIDE 2: Recap]
+- Resource, provider, processor, exporter
+- One `with` per unit of work
+- Batch processor for every network exporter
 
-**Transition:** The spans exist, but Langfuse shows them as plain boxes. Next, the standard attribute names that turn a box into a model call with tokens and cost.
+**Recap:** `setup_tracing()` builds a `TracerProvider` with resource attributes and a console or batched OTLP exporter, two `start_as_current_span` blocks give a nested trace with no IDs passed by hand, and Atlas's `configure_tracing` is the same pipeline with safety wrappers and more destinations.
+
+**Transition:** The spans exist, but Langfuse showed your practice spans as plain boxes. Next, the standard attribute names that turn a box into a model call with tokens and cost.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Mistake: calling `setup_tracing()` after `tracer = trace.get_tracer(...)` ran at import time in another module. Symptom: no spans at all. Fix: call setup first, or fetch the tracer lazily.
+- Mistake: calling `setup_tracing()` after a tracer was fetched at import time in another module. The global provider can only be set once; fetch tracers after setup, or lazily (Atlas's `get_tracer()` does this).
 - Mistake: `SimpleSpanProcessor` with `OTLPSpanExporter`. It works, but every request blocks on a network round trip per span.
-- Mistake: forgetting `provider.shutdown()` or `force_flush()` in short scripts. Batched spans are lost when the process exits before the flush. The FastAPI lifespan in `server.py` calls shutdown; `simulator/replay.py` calls `force_flush()` at the end.
-- "Why the `_incubating` warning in some imports later?" The GenAI conventions are not stable yet. It's expected; 3.3 explains.
-- The OTLP endpoint path for Langfuse is documented in the Langfuse OpenTelemetry docs; if it has changed at recording time, update the on-screen line and the repo together.
+- Mistake: forgetting `provider.shutdown()` or `force_flush()` in short scripts. Batched spans are lost when the process exits before the flush. The FastAPI lifespan in `server.py` calls `force_flush()` and `shutdown_tracing()`; `simulator/loop_demo.py` calls `force_flush()`.
+- The OTLP path: when you pass `endpoint=` to `OTLPSpanExporter` you give the full URL including `/v1/traces`; the collector config in Section 13 gives the base `/api/public/otel` and the exporter appends the rest.
+- `scratch/` is your own folder; it isn't in the repo and isn't committed. Delete it after the lecture if you like.
 
 ---
 
@@ -291,16 +305,16 @@ Here's the whole pipeline on one slide. Resource, provider, processor, exporter,
 | Field | Value |
 |---|---|
 | ID | 3.3 |
-| Type | SL (slides) |
-| Target duration | 8:00 (~750 spoken words, about 5:21 of talking at 140 wpm) |
+| Type | SL (slides, with one terminal beat) |
+| Target duration | 8:00 (~790 spoken words, about 5:39 of talking at 140 wpm) |
 | Learning objectives | 1. Explain what semantic conventions are and why standard names buy portability. 2. Name the core `gen_ai.*` attributes for model calls, tools and agents, and the span naming rule. 3. State what "incubating" means for your code. |
 | Prerequisites | 3.2 |
-| Files used | `03-code/telemetry/genai_attrs.py` (shown on one slide, typed in 3.4) |
+| Files used | `03-code/telemetry/genai_attrs.py` (applied in 3.4); one `python -c` command |
 
 ### Script
 
 [AVATAR]
-Your span from the last lecture had an attribute called `atlas.input_tokens`. Mine had `llm.tokens.prompt`. The team next door has `tokens_in`. Now build a cost dashboard that works for all three. [PAUSE] You can't. That's the problem semantic conventions solve, and it's why a vendor can show you cost without you telling it your schema.
+Your span from the last lecture had an attribute called `atlas.input_tokens`. Mine could have said `llm.tokens.prompt`. The team next door has `tokens_in`. Now build a cost dashboard that works for all three. [PAUSE] You can't. That's the problem semantic conventions solve, and it's why a backend can show you cost without you telling it your schema.
 
 [SLIDE 1: What a semantic convention is]
 - An agreed name and meaning for an attribute
@@ -319,55 +333,67 @@ A semantic convention is an agreed name with an agreed meaning. You already rely
 
 Start with span names, because you've already used them. A model call is the operation followed by the model: `chat gpt-4.1-mini`. A tool call is `execute_tool` and the tool's name. An agent run is `invoke_agent` and the agent's name. That's why 3.2's names looked the way they did.
 
-[SLIDE 3: Model call attributes]
+[SLIDE 3: Model call attributes (Atlas's step 1 call, from the console exporter)]
 ```text
 gen_ai.operation.name          "chat"
 gen_ai.provider.name           "openai"
 gen_ai.request.model           "gpt-4.1-mini"
 gen_ai.response.model          "gpt-4.1-mini-2025-04-14"
-gen_ai.usage.input_tokens      3012
-gen_ai.usage.output_tokens     142
-gen_ai.usage.cache_read.input_tokens     0
-gen_ai.usage.reasoning.output_tokens     0
+gen_ai.usage.input_tokens      3262
+gen_ai.usage.output_tokens     44
+gen_ai.usage.cache_read.input_tokens      (set only when > 0)
+gen_ai.usage.reasoning.output_tokens      (set only when > 0)
 gen_ai.response.finish_reasons ["tool_calls"]
 ```
 Footer: incubating, names may change.
 
-Now the attributes on a model call. Operation name, `chat`. Provider name, `openai`. The model you asked for, and the model that actually answered; they differ when the provider resolves an alias to a dated snapshot, and that matters when a snapshot changes behaviour. Then usage. Input tokens, output tokens, and two that most people forget: cached input tokens and reasoning output tokens. Both are priced differently, and both are invisible if you only record the two big numbers. Section six leans hard on those two.
+Now the attributes on a model call, from Atlas's first call in the VPN request. Operation name, `chat`. Provider name, `openai`. The model you asked for, and the model that actually answered; they differ when the provider resolves an alias to a dated snapshot, and that matters when a snapshot changes behaviour. Then usage. Input tokens, output tokens, and two that most people forget: cached input tokens and reasoning output tokens. Both are priced differently, and both are invisible if you only record the two big numbers. Section six leans hard on them.
 
-[SLIDE 4: Tool call attributes]
+[SLIDE 4: Tool call attributes (the ticket question)]
 ```text
 gen_ai.operation.name       "execute_tool"
 gen_ai.tool.name            "lookup_ticket"
-gen_ai.tool.call.id         "call_8f2..."
+gen_ai.tool.call.id         "call_763770efa5"
 gen_ai.tool.call.arguments  {"ticket_id": "TCK-100231"}
-gen_ai.tool.call.result     {"status": "open", ...}   (redacted, truncated)
+gen_ai.tool.call.result     {"error": "not_found", "ticket_id": "TCK-100231"}   (masked, clipped)
 ```
 
-For a tool call: operation `execute_tool`, the tool's name, the call ID the model assigned, the arguments the model chose, and the result. Two cautions on the last two. Arguments and results are content, so they can hold personal data; you'll mask them in Section ten. And results can be huge; truncate before you attach, or your telemetry costs more than your model calls.
+For a tool call: operation `execute_tool`, the tool's name, the call ID the model assigned, the arguments the model chose, and the result. Two cautions on the last two. Arguments and results are content, so they can hold personal data; Atlas masks them, and Section ten goes deeper. And results can be huge; clip before you attach, or your telemetry costs more than your model calls.
 
 [SLIDE 5: Agent and conversation attributes]
 ```text
 gen_ai.operation.name    "invoke_agent"
 gen_ai.agent.name        "atlas"
-gen_ai.agent.version     "v1"     (your prompt or code version)
+gen_ai.provider.name     "openai"
 gen_ai.conversation.id   "sess-demo-1"
 ```
+- The conventions also define `gen_ai.agent.version`; Atlas records its prompt version as `atlas.prompt_version`
 
-For the agent span: operation `invoke_agent`, agent name, and an agent version, which is a useful place to put your prompt version. And `gen_ai.conversation.id`, which is where a session ID goes in the standard. Langfuse has its own session concept on top; you'll set both in Section four.
+For the agent span: operation `invoke_agent`, agent name, provider. And `gen_ai.conversation.id`, which is where a session ID goes in the standard. Langfuse has its own session concept on top; Atlas sets both. There's also an agent version attribute; Atlas keeps its prompt version in its own namespace instead.
 
 [SLIDE 6: Constants, not strings]
 ```python
 from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as g
 
 span.set_attribute(g.GEN_AI_REQUEST_MODEL, "gpt-4.1-mini")
-span.set_attribute(g.GEN_AI_USAGE_INPUT_TOKENS, 3012)
+span.set_attribute(g.GEN_AI_USAGE_INPUT_TOKENS, 3262)
 span.set_attribute(g.GEN_AI_OPERATION_NAME, g.GenAiOperationNameValues.CHAT.value)
 ```
 - `_incubating` in the path is deliberate: these names are not stable yet
 - A constant renames with the package; a string typo is a silent hole in your dashboard
 
-In code, never type these as strings. Import the constants. The module path has `_incubating` in it, on purpose. It's a signal that these names are not frozen. Two reasons to use the constants anyway. If a name changes in a future release, your code changes with the package, in one place. And a typo in a string is a silent hole in a dashboard; a typo in a constant is an error at import time.
+In code, never type these as strings. Import the constants. The module path has `_incubating` in it, on purpose. It's a signal that these names are not frozen. Two reasons to use the constants anyway. If a name changes in a future release, your code changes with the package, in one place. And a typo in a string is a silent hole in a dashboard; a typo in a constant is an error the moment the line runs.
+
+[SCREEN: Terminal in `03-code/`, venv active.]
+
+[CODE: ask the package what the names are]
+```bash
+python -c "from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as g; print(g.GEN_AI_REQUEST_MODEL, g.GEN_AI_USAGE_INPUT_TOKENS, g.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, g.GEN_AI_PROVIDER_NAME, g.GEN_AI_SYSTEM)"
+```
+
+[DEMO: One line: `gen_ai.request.model gen_ai.usage.input_tokens gen_ai.usage.cache_read.input_tokens gen_ai.provider.name gen_ai.system`]
+
+Don't memorise these; ask the package. One line of Python prints the strings behind the constants. Look at the last two: provider name, and the older system name. Hold that thought.
 
 [SLIDE 7: What "incubating" means for you]
 - Stable conventions (HTTP, DB) have compatibility guarantees. GenAI does not yet.
@@ -375,12 +401,12 @@ In code, never type these as strings. Import the constants. The module path has 
 - Backends may support a range of old and new names; Langfuse maps `gen_ai.*` today
 - Say it on every dashboard: "GenAI semconv 0.66; names may change"
 
-What does incubating mean in practice? Stable conventions come with compatibility promises. GenAI doesn't yet. Names have already been renamed once; `gen_ai.system` became `gen_ai.provider.name`, for instance, and both constants exist right now. So pin the package version, read the changelog when you bump it, and keep the footer you see on this slide on your own dashboards. It's honest, and it saves an argument later.
+What does incubating mean in practice? Stable conventions come with compatibility promises. GenAI doesn't yet. Names have already been renamed once: `gen_ai.system` became `gen_ai.provider.name`, and as you just saw, both constants exist right now. So pin the package version, read the changelog when you bump it, and keep the footer you see on this slide on your own dashboards. It's honest, and it saves an argument later.
 
 [SLIDE 8: Why this buys portability]
-Diagram: Atlas emits one span with `gen_ai.usage.input_tokens=3012`. Arrows to Langfuse ("shows usage, computes cost"), Phoenix ("shows tokens"), Grafana via collector ("gen_ai.client.token.usage metric"), Datadog ("LLM Observability"). Caption: same span, four backends, zero code changes.
+Diagram: Atlas emits one span with `gen_ai.usage.input_tokens=3262`. Arrows to Langfuse ("shows usage"), Phoenix ("shows tokens"), Grafana via collector ("metrics from spans"), Datadog ("LLM Observability"). Caption: same span, four backends, zero code changes.
 
-Here's the payoff. Emit one span with standard names, and Langfuse shows usage and computes cost from it. Phoenix shows the tokens. A collector can turn them into the standard metric `gen_ai.client.token.usage` for Grafana. Datadog reads them too. Same span, four backends, no code changes. Section twelve is that diagram, live.
+So what does all this buy you? Emit one span with standard names, and Langfuse shows its usage. Phoenix shows the tokens. A collector can turn spans into metrics for Grafana. Datadog reads them too. Same span, four backends, no code changes. Section twelve is that diagram, live.
 
 [SLIDE 9: The conventions name metrics too]
 ```python
@@ -392,27 +418,33 @@ gm.GEN_AI_CLIENT_OPERATION_TIME_TO_FIRST_CHUNK  # "gen_ai.client.operation.time_
 ```
 Footer: incubating, names may change.
 
-The conventions don't stop at spans. There are standard metric names too, in a sibling module. Token usage as a histogram, split by token type. Operation duration. Time to first chunk. You won't emit these by hand; the collector in Section thirteen derives them from your spans, and Section nine's Grafana dashboard reads them. But when you see `gen_ai.client.token.usage` on a dashboard you didn't build, you'll know it came from the same spans you're tagging now.
+The conventions don't stop at spans. There are standard metric names too, in a sibling module. Token usage as a histogram, split by token type. Operation duration. Time to first chunk. Atlas exposes its own Prometheus metrics in Section nine, but when you see `gen_ai.client.token.usage` on a dashboard you didn't build, you'll know it was derived from spans like the ones you're tagging now.
 
 [SLIDE 10: What the conventions don't cover]
-- Cost in dollars: not a standard attribute; Langfuse computes it or you set `cost_details` (4.2)
-- Your business dimensions: tenant, feature, ticket type → your own namespace, e.g. `atlas.tenant`
-- Quality scores: backend feature, not a span attribute (4.5)
+- Cost in dollars: not a standard attribute; Atlas sets `atlas.cost_usd` and Langfuse's `cost_details` (6.2)
+- Your business dimensions: tenant, feature, ticket type → your own namespace, `atlas.*`
+- Quality scores: a backend feature, not a span attribute (4.5)
 
-And what they don't cover. Dollars. There's no standard cost attribute; the backend computes it from tokens and a price table, or you set it explicitly, which you'll do in 4.2. Your business dimensions, like tenant and feature. Those go in your own namespace; ours is `northwind.`. And quality scores, which are a backend feature.
+And what they don't cover. Dollars. There's no standard cost attribute; a backend computes it from tokens and a price table, or you set it explicitly, which Atlas does. Your business dimensions, like tenant and feature, go in your own namespace; ours is `atlas.`. And quality scores, which are a backend feature.
 
 [AVATAR]
-So: standard names for models, tokens, tools and agents. Constants, never strings. And the word incubating on every screen that shows them. Now let's put them on Atlas's spans.
+Standard names for models, tokens, tools and agents. Constants, never strings. And the word incubating on every screen that shows them. Now let's see where Atlas puts them.
+
+[SLIDE 11: Recap]
+- Standard names for models, tokens, tools, agents
+- Constants from the incubating package, never strings
+- Your own dimensions in your own namespace
 
 **Recap:** The GenAI semantic conventions give models, token usage, tool calls and agents standard attribute names and span names, imported as constants from the incubating semconv package, so any backend can compute cost and draw the trace without knowing your schema.
 
-**Transition:** Next, a code-along: helpers in `genai_attrs.py` that tag every model, tool and agent span in one line each.
+**Transition:** Next, a code-along through `genai_attrs.py`: the setters that tag every model, tool and agent span, and the test that proves it.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- "Why does the import path say `_incubating`?" Because the conventions are not stable. It's the officially documented import path for these names at this version. Don't try to avoid it.
-- "Should I record `gen_ai.input.messages`?" The conventions define it and `gen_ai.output.messages`, but full message content is opt-in in most instrumentors for privacy and size reasons. We record content via Langfuse input/output with masking (4.6, 10.2), not as raw span attributes.
-- Students ask about OpenInference's `llm.token_count.prompt` names. Different convention, same idea; OpenInference is what auto-instrumentation emits (3.5) and Langfuse understands both.
+- "Why does the import path say `_incubating`?" Because the conventions are not stable. It's the documented import path for these names at this version. Don't try to avoid it.
+- "Should I record `gen_ai.input.messages`?" The conventions define it and `gen_ai.output.messages`; content capture is opt-in in most instrumentors for privacy and size. Atlas records the newest message, masked and clipped (`ga.set_llm_messages`), and Section 10.2 covers the switches.
+- Students ask about OpenInference's `llm.token_count.prompt` names. Different convention, same idea; OpenInference is what auto-instrumentation emits (3.5).
+- Slide 3 and 4 values were captured from Atlas's console exporter on 2026-10-02; the call ID is generated by the mock and is the same on every offline run.
 - Keep the footer visible whenever a `gen_ai.*` name is on screen.
 
 ---
@@ -422,147 +454,218 @@ So: standard names for models, tokens, tools and agents. Constants, never string
 | Field | Value |
 |---|---|
 | ID | 3.4 |
-| Type | SC (code-along) |
-| Target duration | 9:00 (~450 spoken words, about 3:13 of talking at 140 wpm, plus typing and console output) |
-| Learning objectives | 1. Write three helpers in `telemetry/genai_attrs.py`: `set_agent_attrs`, `set_llm_attrs`, `set_tool_attrs`. 2. Apply them in `AtlasAgent` for the agent span, each model call and each tool call. 3. Verify the attributes in console exporter output and in a test. |
+| Type | SC (code-along: read, break, fix) |
+| Target duration | 9:00 (~640 spoken words, about 4:34 of talking at 140 wpm, plus console output and the test run) |
+| Learning objectives | 1. Read the span-name helpers and the setters in `telemetry/genai_attrs.py`: `set_llm_request`, `set_llm_usage`, `set_cost`, `set_tool`. 2. Find where `AtlasAgent` calls them for each model call and each tool call. 3. Verify the attributes in console exporter output, then break one call and watch `test_ticket_question_emits_tagged_tool_span` catch it. |
 | Prerequisites | 3.2, 3.3 |
-| Files used | You type: `03-code/telemetry/genai_attrs.py`, edits to `03-code/app/agent.py`. Reference: repo versions. Test: `03-code/tests/integration/test_spans.py`. |
+| Files used | `03-code/telemetry/genai_attrs.py`, `03-code/app/agent.py` (`_call_model`, `_run_tool`), `03-code/tests/integration/test_spans.py` (`test_ticket_question_emits_tagged_tool_span`) |
+
+**Recording note:** the break in step 5 is a temporary edit: comment out the `ga.set_tool(...)` call in `_run_tool`, run the test (it fails with `KeyError: 'gen_ai.tool.name'`, verified 2026-10-02), then restore with `git checkout app/agent.py` on camera. Code blocks marked "excerpt" are exact lines from the repo with elided lines shown as `...`.
 
 ### Script
 
 [AVATAR]
-Three helpers, three call sites, and Atlas's spans go from "boxes with timings" to "model calls with usage, tool calls with arguments, an agent with a conversation ID." Let's type them.
+In 3.2 your span said `atlas.input_tokens`. Atlas's spans say `gen_ai.usage.input_tokens`, and a dozen other standard names. Where do they come from? One small module of setters, called at three places in the agent. Let's read them, prove them with the console, then break one on purpose and watch a test catch it.
 
-[SCREEN: VS Code, new file `telemetry/genai_attrs.py`.]
+[SCREEN: VS Code, `telemetry/genai_attrs.py`, top of file.]
 
-[CODE: step 1, imports and the agent helper]
+[CODE: excerpt of `telemetry/genai_attrs.py`, span names]
 ```python
-"""Set gen_ai.* attributes per semconv 0.66 (incubating; names may change)."""
-
-import json
-from typing import Any
-
-from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as g
-from opentelemetry.trace import Span
-
-MAX_CONTENT_CHARS = 2000
+def llm_span_name(model: str, operation: str = OP_CHAT) -> str:
+    return f"{operation} {model}"
 
 
-def set_agent_attrs(span: Span, *, name: str, conversation_id: str, version: str = "v1") -> None:
-    span.set_attribute(g.GEN_AI_OPERATION_NAME, g.GenAiOperationNameValues.INVOKE_AGENT.value)
-    span.set_attribute(g.GEN_AI_AGENT_NAME, name)
-    span.set_attribute(g.GEN_AI_AGENT_VERSION, version)
-    span.set_attribute(g.GEN_AI_CONVERSATION_ID, conversation_id)
+def tool_span_name(tool: str) -> str:
+    return f"{OP_EXECUTE_TOOL} {tool}"
+
+
+def agent_span_name(agent: str = "atlas") -> str:
+    return f"{OP_INVOKE_AGENT} {agent}"
 ```
 
-Import the constants module as `g`; you'll type `g.` a lot. One constant for truncation. Then the agent helper. Operation name from the enum, so even the value `invoke_agent` isn't a string you typed. Agent name, agent version, conversation ID.
+Start with names. Three tiny functions build the span names from 3.3's rule. Notice `OP_CHAT` and friends: they're the convention's own enum values, so even the word `chat` isn't something we typed.
 
-[CODE: step 2, the model call helper]
+[CODE: `set_llm_request` from `telemetry/genai_attrs.py`]
 ```python
-def set_llm_attrs(span: Span, *, request_model: str, response: Any, provider: str = "openai") -> None:
-    usage = response.usage
-    span.set_attribute(g.GEN_AI_OPERATION_NAME, g.GenAiOperationNameValues.CHAT.value)
+def set_llm_request(
+    span: Span,
+    *,
+    model: str,
+    provider: str = PROVIDER_OPENAI,
+    operation: str = OP_CHAT,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    conversation_id: str | None = None,
+    prompt_version: str | None = None,
+    prompt_cache_key: str | None = None,
+) -> None:
+    span.set_attribute(g.GEN_AI_OPERATION_NAME, operation)
     span.set_attribute(g.GEN_AI_PROVIDER_NAME, provider)
-    span.set_attribute(g.GEN_AI_REQUEST_MODEL, request_model)
-    span.set_attribute(g.GEN_AI_RESPONSE_MODEL, response.model)
-    span.set_attribute(g.GEN_AI_USAGE_INPUT_TOKENS, usage.prompt_tokens)
-    span.set_attribute(g.GEN_AI_USAGE_OUTPUT_TOKENS, usage.completion_tokens)
-
-    details = getattr(usage, "prompt_tokens_details", None)
-    if details and details.cached_tokens:
-        span.set_attribute(g.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, details.cached_tokens)
-    out_details = getattr(usage, "completion_tokens_details", None)
-    if out_details and out_details.reasoning_tokens:
-        span.set_attribute(g.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS, out_details.reasoning_tokens)
-
-    span.set_attribute(g.GEN_AI_RESPONSE_FINISH_REASONS, [c.finish_reason for c in response.choices])
+    span.set_attribute(g.GEN_AI_REQUEST_MODEL, model)
+    span.set_attribute(LF_OBS_TYPE, "generation")
+    span.set_attribute(LF_OBS_MODEL, model)
+    if temperature is not None:
+        span.set_attribute(g.GEN_AI_REQUEST_TEMPERATURE, temperature)
+    if max_tokens is not None:
+        span.set_attribute(g.GEN_AI_REQUEST_MAX_TOKENS, max_tokens)
+    if conversation_id:
+        span.set_attribute(g.GEN_AI_CONVERSATION_ID, conversation_id)
+    if prompt_version:
+        span.set_attribute(ATLAS_PROMPT_VERSION, prompt_version)
+    if prompt_cache_key:
+        span.set_attribute("openai.request.prompt_cache_key", prompt_cache_key)
 ```
 
-The model call helper takes the request model and the raw response. Operation `chat`, provider, request model, and the response model from the API, which is the dated snapshot. Then the two headline usage numbers.
+The request setter runs before the call. Operation, provider, requested model: the standard names, through the `g.` constants. Then two lines that aren't standard: `LF_OBS_TYPE` and `LF_OBS_MODEL`. They're Langfuse's attribute names, `langfuse.observation.type` and the model name, and they're why this span shows up in Langfuse as a generation instead of a grey box. Standard names for portability, Langfuse names for the UI. Section four explains the second set.
 
-Then the two people forget. On the Chat Completions API, cached tokens live at `usage.prompt_tokens_details.cached_tokens`, and reasoning tokens at `usage.completion_tokens_details.reasoning_tokens`. Both are optional, so guard them. The mock returns them too, so offline traces have the same shape.
-
-Finish reasons last. `tool_calls` versus `stop` tells you, across a day, how often the model chose to act rather than answer.
-
-[CODE: step 3, the tool helper]
+[CODE: excerpt of `set_llm_usage` from `telemetry/genai_attrs.py`]
 ```python
-def _clip(value: Any) -> str:
-    text = value if isinstance(value, str) else json.dumps(value, default=str)
-    return text if len(text) <= MAX_CONTENT_CHARS else text[:MAX_CONTENT_CHARS] + "...[truncated]"
+    span.set_attribute(g.GEN_AI_USAGE_INPUT_TOKENS, int(input_tokens))
+    span.set_attribute(g.GEN_AI_USAGE_OUTPUT_TOKENS, int(output_tokens))
+    if cached_tokens:
+        span.set_attribute(g.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, int(cached_tokens))
+    if reasoning_tokens:
+        span.set_attribute(g.GEN_AI_USAGE_REASONING_OUTPUT_TOKENS, int(reasoning_tokens))
+    if response_model:
+        span.set_attribute(g.GEN_AI_RESPONSE_MODEL, response_model)
+    ...
+    if finish_reasons:
+        span.set_attribute(g.GEN_AI_RESPONSE_FINISH_REASONS, list(finish_reasons))
+    ...
+    usage: dict[str, int] = {"input": int(input_tokens), "output": int(output_tokens)}
+    if cached_tokens:
+        usage["cache_read_input_tokens"] = int(cached_tokens)
+    if reasoning_tokens:
+        usage["reasoning_tokens"] = int(reasoning_tokens)
+    span.set_attribute(LF_OBS_USAGE, json.dumps(usage))
+```
 
+The usage setter runs after the call. Input and output tokens. Then the two people forget: cached input and reasoning output, each written only when there are some. The response model, which is the dated snapshot. Finish reasons: `tool_calls` versus `stop` tells you, across a day, how often the model chose to act rather than answer. And at the bottom, the same numbers again as Langfuse's `usage_details` JSON. The elided lines handle time to first token, which is Lecture 5.4.
 
-def set_tool_attrs(span: Span, *, name: str, call_id: str, arguments: Any, result: Any = None) -> None:
-    span.set_attribute(g.GEN_AI_OPERATION_NAME, g.GenAiOperationNameValues.EXECUTE_TOOL.value)
+[SCREEN: Scroll to `set_cost` and `set_tool`.]
+
+[CODE: `set_tool` from `telemetry/genai_attrs.py`]
+```python
+def set_tool(
+    span: Span,
+    *,
+    name: str,
+    call_id: str | None = None,
+    arguments: Any = None,
+    result: Any = None,
+    tool_type: str = "function",
+    redact: bool = True,
+) -> None:
+    span.set_attribute(g.GEN_AI_OPERATION_NAME, OP_EXECUTE_TOOL)
     span.set_attribute(g.GEN_AI_TOOL_NAME, name)
-    span.set_attribute(g.GEN_AI_TOOL_CALL_ID, call_id)
-    span.set_attribute(g.GEN_AI_TOOL_CALL_ARGUMENTS, _clip(arguments))
+    span.set_attribute(g.GEN_AI_TOOL_TYPE, tool_type)
+    span.set_attribute(LF_OBS_TYPE, "tool")
+    if call_id:
+        span.set_attribute(g.GEN_AI_TOOL_CALL_ID, call_id)
+    if arguments is not None:
+        s = _safe(arguments, redact)
+        span.set_attribute(g.GEN_AI_TOOL_CALL_ARGUMENTS, s)
+        span.set_attribute(LF_OBS_INPUT, s)
     if result is not None:
-        span.set_attribute(g.GEN_AI_TOOL_CALL_RESULT, _clip(result))
+        s = _safe(result, redact)
+        span.set_attribute(g.GEN_AI_TOOL_CALL_RESULT, s)
+        span.set_attribute(LF_OBS_OUTPUT, s)
 ```
 
-The tool helper. Operation `execute_tool`, tool name, call ID, then arguments and result, both passed through `_clip`. Attributes must be strings, numbers, booleans or lists of those, so dictionaries are JSON-encoded, and anything over two thousand characters is cut. The tool result for a shipment lookup can be a page of JSON; you want to know it happened, not store it twice.
+Just above it, `set_cost` writes the price of the call as `atlas.cost_usd` and as Langfuse's `cost_details`; Section six builds the price table behind it. And the tool setter. Operation `execute_tool`, tool name, type, call ID, then arguments and result. Both go through `_safe`, which masks personal data and clips anything over four thousand characters. Attributes must be strings, numbers, booleans or lists of those, so dictionaries become JSON. A shipment lookup can return a page of JSON; you want to know it happened, not store it twice.
 
-[SCREEN: VS Code, `app/agent.py`. The three call sites.]
+[SCREEN: VS Code, `app/agent.py`, `_call_model`.]
 
-[CODE: step 4, apply in the agent]
+[CODE: excerpt of `app/agent.py`, `_call_model` (elided lines shown as `...`)]
 ```python
-from telemetry.genai_attrs import set_agent_attrs, set_llm_attrs, set_tool_attrs
-
-    def run(self, message, *, tenant, user_id, session_id):
-        with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
-            set_agent_attrs(agent_span, name="atlas", conversation_id=session_id)
-            agent_span.set_attribute("atlas.tenant", tenant)
-            ...
-
-    def _call_model(self, messages):
-        with tracer.start_as_current_span(f"chat {self.model}") as span:
-            response = self.client.chat.completions.create(model=self.model, messages=messages, tools=self.tool_specs)
-            set_llm_attrs(span, request_model=self.model, response=response)
-            return response
-
-    def _run_tool(self, call):
-        with tracer.start_as_current_span(f"execute_tool {call.function.name}") as span:
-            args = json.loads(call.function.arguments)
-            result = self.tools[call.function.name](**args)
-            set_tool_attrs(span, name=call.function.name, call_id=call.id, arguments=args, result=result)
-            return result
+            with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
+                ga.set_llm_request(
+                    span,
+                    model=current,
+                    conversation_id=session_id,
+                    prompt_version=prompt_version,
+                    prompt_cache_key=cache_key,
+                )
+                ...
+                    inp, out, cached, reasoning = usage_numbers(usage)
+                    cost = self._price(current, inp, out, cached, reasoning)
+                    ga.set_llm_usage(
+                        span,
+                        input_tokens=inp,
+                        output_tokens=out,
+                        cached_tokens=cached,
+                        reasoning_tokens=reasoning,
+                        ...
+                    )
+                    ga.set_cost(span, cost)
 ```
 
-Now the three call sites. In `run`, the agent helper, keeping our own `atlas.tenant` alongside it. In `_call_model`, the LLM helper replaces the two `atlas.` attributes from 3.2. And a new span in `_run_tool`, named `execute_tool` plus the tool name, with the tool helper after the tool returns. Because `_run_tool` is called from inside the agent's `with` block, it nests correctly.
+Now the call sites. In `_call_model`: open a span named by the helper, set the request attributes, call the model, then set usage and cost. In `_run_tool`, the same pattern: a span named `execute_tool` plus the tool, and `ga.set_tool` after the tool returns. And in `run`, `ga.set_agent` on the root. Three setters, three places. Because the tool runs inside the step span, which runs inside the agent span, everything nests.
 
-[SCREEN: Terminal 1: `OTEL_EXPORTER=console OFFLINE=1 make run`. Terminal 2: curl "Where is my ticket TCK-100231?" with the three headers.]
+[SCREEN: Terminal 1: `OTEL_EXPORTER=console make run` (with `.env` sourced). Terminal 2: the ticket question.]
 
-[DEMO: Console prints four spans: `chat gpt-4.1-mini` (finish_reasons tool_calls), `execute_tool lookup_ticket` with `gen_ai.tool.call.arguments: {"ticket_id": "TCK-100231"}`, a second `chat gpt-4.1-mini`, and `invoke_agent atlas` with `gen_ai.conversation.id: sess-demo-1`.]
+[CODE: ask about a ticket]
+```bash
+curl -s localhost:8000/chat -H 'Content-Type: application/json' \
+  -H 'X-Tenant: ops' -H 'X-User: NW-40213' -H 'X-Session: sess-demo-2' \
+  -d '{"message": "Where is my ticket TCK-100231?"}'
+```
 
-Ask about a ticket this time, and read the console. Four spans. The first model call finishes with `tool_calls`. Then `execute_tool lookup_ticket`, with the arguments the model chose. A second model call, finishing with `stop`. And the agent span with the conversation ID. Every attribute has a `gen_ai.` name.
+[DEMO: Terminal 1 prints seven spans. Highlight three: `chat gpt-4.1-mini` with `"gen_ai.usage.input_tokens": 3261`, `"gen_ai.response.finish_reasons": ["tool_calls"]`; `execute_tool lookup_ticket` with `"gen_ai.tool.name": "lookup_ticket"`, `"gen_ai.tool.call.arguments": "{\"ticket_id\": \"TCK-100231\"}"`, `"gen_ai.tool.call.result": "{\"error\": \"not_found\", \"ticket_id\": \"TCK-100231\"}"` and `"status_code": "ERROR"`; and the second `chat gpt-4.1-mini` with `["stop"]`.]
 
-[SCREEN: `tests/integration/test_spans.py`. Show the test that asserts `GEN_AI_TOOL_NAME == "lookup_ticket"` on the tool span and that its parent is the agent span, using `InMemorySpanExporter`.]
+Ask about a ticket, and read the console. The first model call finishes with `tool_calls`. Then `execute_tool lookup_ticket`, with the arguments the model chose. The ticket doesn't exist, so the result says not found and the span's status is ERROR: a failed tool is visible without a single log line. Then the second model call, finishing with `stop`.
 
-[CODE: the assertion in `tests/integration/test_spans.py`]
+[SCREEN: VS Code, `tests/integration/test_spans.py`, `test_ticket_question_emits_tagged_tool_span`.]
+
+[CODE: `test_ticket_question_emits_tagged_tool_span` from `tests/integration/test_spans.py`]
 ```python
-def test_ticket_question_emits_tagged_tool_span(atlas_offline, spans):
-    atlas_offline.run("Where is my ticket TCK-100231?", tenant="ops", user_id="emp-1042", session_id="s1")
-    tool = next(s for s in spans.get_finished_spans() if s.name == "execute_tool lookup_ticket")
-    agent = next(s for s in spans.get_finished_spans() if s.name == "invoke_agent atlas")
+def test_ticket_question_emits_tagged_tool_span(client):
+    """3.4: the tool span carries gen_ai.tool.name and is a child of the agent's step span."""
+    _chat(client, "Where is my ticket TCK-100231?", session_id="s1")
+    spans = _spans(client)
+    tool = _by_name(spans, "execute_tool lookup_ticket")[0]
+    agent = _by_name(spans, "invoke_agent atlas")[0]
     assert tool.attributes[g.GEN_AI_TOOL_NAME] == "lookup_ticket"
-    assert tool.parent.span_id == agent.context.span_id
+    assert '"ticket_id": "TCK-100231"' in tool.attributes[g.GEN_AI_TOOL_CALL_ARGUMENTS]
+    ids = {s.get_span_context().span_id: s for s in spans}
+    step = ids[tool.parent.span_id]
+    assert step.name.startswith("step ") and step.parent.span_id == agent.context.span_id
 ```
 
-And a test, so this can't rot. The fixture installs an in-memory exporter. The test runs the agent offline, finds the tool span, and asserts its name attribute and its parent. Lab 2 has you write the same test for `check_shipment`.
+And a test, so this can't rot. The `client` fixture starts the FastAPI app offline with an in-memory exporter. The test asks the same question, finds the tool span, checks its name attribute and arguments, and checks that its parent is a step, whose parent is the agent.
+
+[SCREEN: In `app/agent.py`, comment out the seven-line `ga.set_tool(...)` call in `_run_tool`. Terminal: run the test.]
+
+[CODE: break it, run the test, restore]
+```bash
+python -m pytest -q tests/integration/test_spans.py::test_ticket_question_emits_tagged_tool_span
+git checkout app/agent.py
+python -m pytest -q tests/integration/test_spans.py::test_ticket_question_emits_tagged_tool_span
+```
+
+[DEMO: First run: `KeyError: 'gen_ai.tool.name'` and `1 failed`. After `git checkout`: `1 passed`.]
+
+What happens if someone deletes that one call during a refactor? Comment out the `set_tool` call and run the test. Red: `KeyError`, no `gen_ai.tool.name`. The tool still ran, the answer was still right, and the trace silently lost its most useful attribute. Restore the file and rerun. Green.
 
 [AVATAR]
-Three helpers, three call sites, one test. Atlas now speaks the standard. Next lecture, you'll see how much of this an auto-instrumentor does for you, and why you still keep the helpers.
+A handful of setters, three call sites, one test. Atlas speaks the standard, and the test makes sure it keeps speaking it. Next lecture, you'll see how much of this an auto-instrumentor does for you, and why you keep the setters anyway.
 
-**Recap:** `set_agent_attrs`, `set_llm_attrs` and `set_tool_attrs` put the `gen_ai.*` constants on the agent, model and tool spans, including cached and reasoning tokens and clipped tool arguments, and an integration test with an in-memory exporter pins the result.
+[SLIDE 1: Recap]
+- Setters own every `gen_ai.*` and `langfuse.*` name
+- Three call sites: agent, model call, tool
+- A test fails when a setter goes missing
 
-**Transition:** Next, one line of auto-instrumentation that captures every OpenAI call, and the three things it can't know.
+**Recap:** `genai_attrs.py` builds the span names and sets the `gen_ai.*` constants plus Langfuse's type, usage and cost attributes, `AtlasAgent` calls those setters on the agent, every model call and every tool call, and `test_ticket_question_emits_tagged_tool_span` fails the moment one goes missing.
+
+**Transition:** Next, one line of auto-instrumentation that captures every OpenAI call, and the things it can't know.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Mistake: passing a dict directly to `set_attribute`. OTel drops it with a warning. Always JSON-encode via `_clip`.
-- Mistake: setting usage attributes before the response exists (e.g. in a streaming path). Set them when usage is known; 5.4 handles streaming.
+- Mistake: passing a dict directly to `set_attribute`. OpenTelemetry drops it with a warning. Encode it to JSON first, as `_safe`/`_clip` do.
+- Mistake: setting usage attributes before the response exists. Set them when usage is known; 5.4 handles streaming.
 - "Why keep `atlas.tenant` when there's `gen_ai.conversation.id`?" Tenant is a business dimension the conventions don't define. Own namespace, always.
-- If the repo's helper names differ at recording time, match the file and mention the change in the README; the narration depends only on there being one helper per span kind.
+- The module also exports `set_agent_attrs`, `set_llm_attrs` and `set_tool_attrs` as convenience aliases; the agent uses the names shown on screen.
+- Always restore `app/agent.py` after the break; students copy what they last saw.
 
 ---
 
@@ -571,16 +674,18 @@ Three helpers, three call sites, one test. Atlas now speaks the standard. Next l
 | Field | Value |
 |---|---|
 | ID | 3.5 |
-| Type | SC (code-along) |
-| Target duration | 6:00 (~400 spoken words, about 2:51 of talking at 140 wpm, plus output) |
-| Learning objectives | 1. Instrument the OpenAI client with `OpenAIInstrumentor().instrument(tracer_provider=...)`. 2. Read what the auto-generated span contains and how it nests under your manual spans. 3. Decide what to keep manual: agent span, tool spans, business attributes. |
+| Type | SC (code-along, one live call) |
+| Target duration | 6:00 (~465 spoken words, about 3:19 of talking at 140 wpm, plus output) |
+| Learning objectives | 1. Instrument the OpenAI client with `OpenAIInstrumentor().instrument(tracer_provider=...)` through `instrument_openai`. 2. Read what the auto-generated span contains and where it nests. 3. Decide what to keep manual: agent span, steps, tool spans, business attributes. |
 | Prerequisites | 3.4 |
-| Files used | You type: `03-code/telemetry/openinference_setup.py`. Reference: repo version. |
+| Files used | `03-code/telemetry/openinference_setup.py` (`instrument_openai`, `is_instrumented`, `uninstrument_openai`) |
+
+**Recording note:** the demo is one live request (about half a cent; verify current pricing) with `OFFLINE=0` and a real `OPENAI_API_KEY`, because OpenInference patches the OpenAI SDK and never sees the offline mock. Record the real console output; the span name and attribute list in the DEMO cue are what OpenInference documents for chat completions (verify at recording). Atlas does not call `instrument_openai` at startup.
 
 ### Script
 
 [AVATAR]
-Everything you typed in `_call_model` last lecture, an auto-instrumentor can do in one line, for every OpenAI call in your process, including the ones in libraries you didn't write. So why did I make you type it? Because you need to know what it does, to know what it can't. Let's add it and compare.
+Everything `_call_model` does with those setters, an auto-instrumentor can do in one line, for every OpenAI call in your process, including the ones inside libraries you didn't write. So why did we read the setters first? Because you need to know what it does, to know what it can't. Let's turn it on and compare.
 
 [SLIDE 1: Which instrumentor]
 - We use `openinference-instrumentation-openai` (Arize's OpenInference project)
@@ -590,35 +695,42 @@ Everything you typed in `_call_model` last lecture, an auto-instrumentor can do 
 
 We use OpenInference's OpenAI instrumentor. It patches the client and emits a span per call, with model, token counts and messages, using OpenInference's attribute names. Langfuse and Phoenix both understand those. There's also an OpenTelemetry-contrib instrumentor for OpenAI; at verification time it failed to import, so it isn't in this course.
 
-[SCREEN: VS Code, new file `telemetry/openinference_setup.py`.]
+[SCREEN: VS Code, `telemetry/openinference_setup.py`.]
 
-[CODE: the setup]
+[CODE: excerpt of `telemetry/openinference_setup.py`]
 ```python
-"""Auto-instrument the OpenAI client with OpenInference (Lecture 3.5)."""
-
-from openinference.instrumentation.openai import OpenAIInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-
-
-def setup_openinference(provider: TracerProvider) -> None:
-    OpenAIInstrumentor().instrument(tracer_provider=provider)
+def instrument_openai(tracer_provider: Any) -> bool:
+    """Instrument once; returns True if active. Instrumenting twice double-counts spans."""
+    global _INSTRUMENTED
+    if not OPENINFERENCE_AVAILABLE:
+        log.info("openinference not installed; skipping auto-instrumentation")
+        return False
+    if _INSTRUMENTED:
+        return True
+    OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+    _INSTRUMENTED = True
+    return True
 ```
 
-One function. Pass the provider you built in `setup_tracing`, so the auto spans go through the same pipeline as yours. Without that argument it uses the global provider, which is the same thing here, but be explicit; in tests you'll pass a different one.
+The repo wraps it in one function. The heart is one line: `OpenAIInstrumentor().instrument`, with the tracer provider passed explicitly, so the auto spans go through the same pipeline as Atlas's own. Around it, two guards. If the package isn't installed, skip quietly. And if it's already on, don't do it again; the docstring says why, and the next lecture shows it.
 
-[CODE: call it after tracing is set up]
-```python
-provider = setup_tracing()
-setup_openinference(provider)
+[CODE: a one-off live run with the instrumentor on]
+```bash
+OFFLINE=0 OTEL_EXPORTER=console ATLAS_LOCAL_STORE= python -c "
+from telemetry.otel_setup import configure_tracing, force_flush
+from telemetry.openinference_setup import instrument_openai
+from app.agent import AtlasAgent
+provider = configure_tracing()
+instrument_openai(provider)
+AtlasAgent().run('Where is my ticket TCK-100231?', tenant='ops', user_id='NW-40213')
+force_flush()"
 ```
 
-Call it right after `setup_tracing`, and before the OpenAI client is created. It patches the class, so a client made earlier may not be covered.
+Atlas doesn't switch it on by default, so here's a one-off script. Configure tracing, instrument the client with that provider before the agent creates its OpenAI client, run one question live, flush. Instrument first: it patches the class, so a client created earlier may not be covered.
 
-[SCREEN: Temporarily comment out the `with tracer.start_as_current_span(f"chat ...")` block in `_call_model` so only the raw API call remains. Terminal: console exporter, `OFFLINE=0` for this one request. Send the ticket question.]
+[DEMO: Console output (live). Besides Atlas's own spans, one extra span per model call, named `ChatCompletion`, with `openinference.span.kind: LLM`, `llm.model_name`, `llm.token_count.prompt`, `llm.token_count.completion`, `llm.input_messages...`, `llm.output_messages...`. Its `parent_id` is the `chat gpt-4.1-mini` span of the same step.]
 
-[DEMO: Console prints a span named `ChatCompletion` with `openinference.span.kind: LLM`, `llm.model_name`, `llm.token_count.prompt`, `llm.token_count.completion`, `llm.input_messages...`, `llm.output_messages...`, nested under `invoke_agent atlas`.]
-
-To see it clearly, I've commented out our manual model span for a moment, and gone live for one request. Look: a span named `ChatCompletion`, kind `LLM`, with the model name, both token counts, and the full input and output messages, nested under our agent span. We wrote none of that.
+Read the console. Besides Atlas's spans, there's a span named `ChatCompletion`, kind `LLM`, with the model name, both token counts, and the full input and output messages, nested inside our own model-call span. We wrote none of that. [PAUSE] But look closely: our span already had those token counts too. Same call, recorded twice. Do you see where that leads? Remember it.
 
 [SLIDE 2: What you get for free, and what you don't]
 | Free from the instrumentor | Still yours |
@@ -626,32 +738,36 @@ To see it clearly, I've commented out our manual model span for a moment, and go
 | One span per OpenAI call | The agent span and the step structure |
 | Model, tokens, messages, invocation parameters | Tool spans with arguments and results |
 | Works inside libraries you didn't write | Business attributes: tenant, feature, prompt version |
-| Streaming and async handled | Events like "step limit reached", error surfacing |
+| Streaming and async handled | Events like "step limit reached", cost in dollars |
 
-Here's the split. Free: a span per call, with model, tokens, messages and parameters, streaming and async included, even inside libraries you don't control. Not free: everything that isn't an API call. The agent span. The tool spans. Tenant and feature. The step-limit event. The instrumentor sees HTTP calls; it doesn't know your agent exists.
+Here's the split. Free: a span per call, with model, tokens, messages and parameters, streaming and async included, even inside libraries you don't control. Not free: everything that isn't an API call. The agent span. The steps. The tool spans. Tenant and feature. The step-limit event. The price. The instrumentor sees API calls; it doesn't know your agent exists.
 
 [SLIDE 3: Our rule]
-- Auto-instrument the model client: never miss a call
+- Auto-instrument the client when you need coverage you don't control
 - Manual spans for agent, steps, tools and business attributes
-- Do not also wrap the same call manually as a generation: one call, one span (3.6)
-- In Section 4, Langfuse's `@observe(as_type="generation")` replaces the manual model span where we need `usage_details` and `cost_details`
+- One model call, one span carrying usage (3.6)
+- Atlas's default: its own generation spans; OpenInference off; `instrument_openai` ready for Section 12
 
-So our rule. Auto-instrument the client, so you never miss a call, including retries inside the SDK. Keep manual spans for the agent, steps, tools and business attributes. And never wrap the same call twice; one model call, one span. Next lecture shows what happens when you break that rule.
-
-[SCREEN: Restore the manual span block in `_call_model` but keep it in mind for 3.6.]
+So our rule. Auto-instrumentation is great coverage for calls you don't control. Manual spans for the agent, steps, tools and business attributes. And one model call, one span carrying usage. Atlas's default is its own generation spans with OpenInference off, and the switch ready for Section twelve.
 
 [AVATAR]
-One line, every call captured. Keep the helpers for everything the instrumentor can't see. And keep a note of that "one call, one span" rule; it's the third break in the next lecture.
+One line, every call captured. Keep the setters for everything the instrumentor can't see. And keep that "one call, one span" rule in mind; it's the third break in the next lecture.
 
-**Recap:** `OpenAIInstrumentor().instrument(tracer_provider=provider)` emits a span per OpenAI call with model, tokens and messages under your agent span; the agent, tools and business attributes stay manual, and each model call should be recorded once.
+[SLIDE 4: Recap]
+- One line instruments every OpenAI call
+- It can't see agents, steps, tools, tenants
+- Never record one call's usage twice
 
-**Transition:** Next, three ways this pipeline breaks silently, and the fix for each.
+**Recap:** `instrument_openai(provider)` wraps `OpenAIInstrumentor().instrument(tracer_provider=...)` and emits a span per OpenAI call with model, tokens and messages inside your own spans; the agent, steps, tools and business attributes stay manual, and each model call should carry usage once.
+
+**Transition:** Next, three ways this pipeline breaks silently, and the test that catches each one.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Mistake: instrumenting after the OpenAI client is constructed. Depending on version, the patch may not apply to existing instances. Instrument at startup, before `AtlasAgent` is built.
-- "Does it capture the mock?" No. The mock isn't the OpenAI client. Offline, our manual generation span (from Section 4) carries the usage; the tests cover both paths.
-- "Can I stop it recording message content?" Yes, via the OpenInference `TraceConfig` (hide inputs/outputs). Section 10.2 covers the privacy switches; keep it out of this lecture.
+- Mistake: instrumenting after the OpenAI client is constructed. Depending on version, the patch may not apply to existing instances. Instrument before `AtlasAgent()` builds its client.
+- "Does it capture the mock?" No. The mock isn't the OpenAI client, which is why this demo is live. Offline, Atlas's own generation spans carry the usage.
+- "Will Langfuse show the `ChatCompletion` span too?" Not from Atlas: `telemetry/langfuse_setup.py` passes `should_export_span`, which forwards only spans from the `atlas` tracer, Langfuse's own, or spans carrying `gen_ai.*` or `langfuse.*` attributes. OpenInference spans carry `llm.*` names, so they stay in the console and other exporters. Section 4.1 explains the filter.
+- "Can I stop it recording message content?" Yes, via the OpenInference `TraceConfig`. Section 10.2 covers the privacy switches.
 - Never show `opentelemetry-instrumentation-openai-v2` on screen.
 
 ---
@@ -661,143 +777,124 @@ One line, every call captured. Keep the helpers for everything the instrumentor 
 | Field | Value |
 |---|---|
 | ID | 3.6 |
-| Type | DM (live demo, three before/after pairs) |
-| Target duration | 6:00 (~575 spoken words, about 4:06 of talking at 140 wpm, plus console output) |
-| Learning objectives | 1. Recognise an orphan span caused by work on a thread without the trace context, and fix it by passing the context. 2. Recognise a tool span that isn't under the agent span, and fix the call structure. 3. Recognise double counting from two instrumentations of one call, and fix it by recording each call once. |
+| Type | DM (demo: three breaks, three tests) |
+| Target duration | 6:00 (~570 spoken words, about 4:04 of talking at 140 wpm, plus test output) |
+| Learning objectives | 1. Recognise an orphan span caused by work that runs without the trace context, and fix it by carrying the context. 2. Recognise a tool span that isn't under the agent, and fix the call structure. 3. Recognise double counting from two instrumentations of one call, and keep one span with usage per call. |
 | Prerequisites | 3.2 to 3.5 |
-| Files used | `03-code/tests/integration/test_spans.py` (the three regression tests), `03-code/app/agent.py`, `03-code/app/tools.py` |
+| Files used | `03-code/tests/integration/test_spans.py` (`test_broken_orphan_span_is_detectable`, `test_no_orphan_spans`, `test_tool_spans_are_children_of_agent`, `test_one_generation_per_model_call`, `test_double_instrumentation_is_idempotent`), `03-code/app/server.py` (`asyncio.to_thread`), `03-code/telemetry/openinference_setup.py` |
 
-**Recording note:** each break is a small, labelled edit made live, run with the console exporter, then reverted. Tint the broken console output red and the fixed output green. Keep the three regression tests visible at the end so students see how each break is caught.
+**Recording note:** each break is shown as code on a slide and as a real test. The orphan is demonstrated by `test_broken_orphan_span_is_detectable`, which builds one on purpose; the other two breaks are refactors someone might make, shown on slides, and caught by the named tests. The test run in the DEMO cue was captured on 2026-10-02. Tint broken slides red and passing tests green.
 
 ### Script
 
 [AVATAR]
-Instrumentation doesn't crash when it's wrong. It produces traces that look fine and lie. Here are the three lies I see most, each in about ninety seconds: a span with no parent, a tool that looks like it ran on its own, and a bill that's exactly double.
+Instrumentation doesn't crash when it's wrong. It produces traces that look fine and lie. Which of these have you already shipped? Here are the three lies I see most: a span with no parent, a tool that looks like it ran on its own, and a bill that's exactly double. And for each one, the test in Atlas's repo that catches it.
 
-[SLIDE 1: Break 1: background work without context]
+[SLIDE 1: Break 1: work without the trace context]
 ```python
-# app/tools.py: lookup_ticket is blocking I/O, so someone moved it to a thread pool
+# someone moves lookup_ticket to a worker thread, and the tool starts its own span there
 result = await loop.run_in_executor(pool, _lookup_ticket_blocking, ticket_id)
 ```
-
-Break one. Someone noticed `lookup_ticket` blocks on I/O and moved it to a thread pool. Reasonable. The tool creates its own span inside that function.
-
-[SCREEN: Terminal: console exporter, send the ticket question.]
-
-[DEMO: Console shows `execute_tool lookup_ticket` with `"parent_id": null` and a different `trace_id` from `invoke_agent atlas`.]
-
-Read the tool span. Parent ID null. And look at the trace ID: different from the agent's. This span is a root of its own trace. In Langfuse it shows up as a separate one-span trace named `execute_tool lookup_ticket`, with no tenant, no user, no cost context. An orphan.
-
-[SLIDE 2: Why: context doesn't cross threads]
 - The current span lives in `contextvars`
-- `await` and `asyncio.create_task` copy it; a `ThreadPoolExecutor` does not
-- The worker thread starts with an empty context, so the new span has no parent
+- `await` and `asyncio.create_task` carry it; a plain thread pool does not
+- The worker starts with an empty context, so its span has no parent
 
-Why? The current span lives in a context variable. `await` carries it, `create_task` copies it, but a plain thread pool starts each job with an empty context. The tool span looks for a current span, finds none, and becomes a root.
+Break one. Someone notices `lookup_ticket` blocks on I/O and moves it to a thread pool. Reasonable. So why does the trace break? Because the current span lives in a context variable. `await` carries it, `create_task` copies it, and a plain thread pool starts each job with an empty context. The tool's span looks for a current span, finds none, and becomes a root of its own trace: no tenant, no user, no cost context. An orphan.
 
-[CODE: fix 1, carry the context]
+[SCREEN: VS Code, `tests/integration/test_spans.py`, `test_broken_orphan_span_is_detectable`. Highlight `otel_context.attach(otel_context.Context())` and the two asserts.]
+
+[CODE: excerpt of `test_broken_orphan_span_is_detectable`]
 ```python
-from opentelemetry import context as otel_context
-
-ctx = otel_context.get_current()
-result = await loop.run_in_executor(pool, _lookup_ticket_blocking, ticket_id, ctx)
-
-def _lookup_ticket_blocking(ticket_id: str, ctx) -> dict:
-    with tracer.start_as_current_span("execute_tool lookup_ticket", context=ctx) as span:
-        ...
+    with tr.start_as_current_span("invoke_agent atlas"):
+        token = otel_context.attach(
+            otel_context.Context()
+        )  # simulate a task without propagated context
+        try:
+            with tr.start_as_current_span("execute_tool lookup_ticket"):
+                pass
+        finally:
+            otel_context.detach(token)
+    spans = exp.get_finished_spans()
+    tool = next(s for s in spans if s.name.startswith("execute_tool"))
+    assert tool.parent is None  # orphan: the trace waterfall would show two traces
+    assert len({s.get_span_context().trace_id for s in spans}) == 2
 ```
 
-The fix: capture the context before you hand off, and pass it in. `start_as_current_span` accepts a `context` argument, and the span parents itself there. `asyncio.to_thread` also copies the context for you, which is the neater fix when you can use it.
+This test builds an orphan on purpose. Inside the agent span, it swaps in an empty context, exactly what a worker thread sees, and starts the tool span. Parent: none. Two trace IDs for one request. In Langfuse, that's a separate one-span trace named `execute_tool lookup_ticket`.
 
-[DEMO: Rerun. Tool span now has the agent's `parent_id` and the same `trace_id`.]
+The fix: carry the context across. `asyncio.to_thread` copies it for you, and it's what Atlas's server uses to run the agent off the event loop. With a raw executor, capture `context.get_current()` first and pass it to `start_as_current_span` as the `context` argument.
 
-Same trace ID, parent set. Adopted.
-
-[SLIDE 3: Break 2: tool span outside the agent span]
+[SLIDE 2: Break 2: tool span outside the agent span]
 ```python
 def run(self, message, **ids):
-    with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
-        plan = self._loop(message)          # model calls happen here...
+    with tracer.start_as_current_span("invoke_agent atlas"):
+        plan = self._plan(message)          # model calls happen here...
     for call in plan.pending_tool_calls:    # ...but tools run after the block closed
         self._run_tool(call)
 ```
+- Fix: nest the code the way the causality nests
 
-Break two. A refactor moved tool execution after the agent's `with` block. The code still works. The trace doesn't.
+Break two. A refactor moves tool execution after the agent's `with` block. The code still works. The trace doesn't. The agent span ends, then the tool span starts with no current span, so it's a root again. Anyone reading the agent's trace sees a model call that asked for a tool, and no tool. They conclude it never ran. It did; it's just filed under a different trace. The fix is structural: if the tool ran because of the agent, it runs inside the agent's block.
 
-[DEMO: Console shows `invoke_agent atlas` ending before `execute_tool lookup_ticket` starts; the tool span's `parent_id` is null. In Langfuse: the agent trace has no tool child, and a separate tool trace appears.]
+[SLIDE 3: Break 3: one call, two spans with usage]
+- An auto-instrumentor records the model call (3.5)
+- The manual generation span records the same call, with usage
+- Any backend that sums usage over spans now reports twice the tokens and dollars
+- Your $56.28 day would read as twice that
 
-The agent span ends. Then the tool span starts, with no current span, so it's a root again. In Langfuse, the agent trace shows a model call that asked for a tool, and no tool. Anyone reading that trace concludes the tool never ran. It did; it's just filed under a different trace.
+Break three, and this one costs money on paper. OpenInference is on, and our own generation span is on, and both carry usage. Every model call now produces two spans claiming the same tokens. Any dashboard that sums usage across spans, and they all do, shows twice your real spend. Your fifty-six-dollar day reads as twice that. What would you do with a bill that doubled overnight? Probably cut features, to fix a bill that doesn't exist. The fix is a decision: one model call, one span carrying usage. Atlas guards this three ways. It never turns OpenInference on by default. `instrument_openai` refuses to instrument twice. And its Langfuse export filter only forwards Atlas's own spans.
 
-[CODE: fix 2, structure follows causality]
-```python
-    with tracer.start_as_current_span("invoke_agent atlas") as agent_span:
-        plan = self._loop(message)
-        for call in plan.pending_tool_calls:
-            self._run_tool(call)
+[SCREEN: Terminal in `03-code/`.]
+
+[CODE: run the five tests that pin these breaks]
+```bash
+python -m pytest -q tests/integration/test_spans.py -k "orphan or children_of_agent or one_generation or double_instrumentation"
 ```
 
-The fix is structural. If the tool ran because of the agent, it runs inside the agent's block. Make the code nest the way the causality nests.
+[DEMO: Output ends with `5 passed, 14 deselected, 1 warning in 0.15s`.]
 
-[DEMO: Rerun. Tool span nested under the agent span again.]
+[SCREEN: VS Code, the three regression tests side by side: `test_no_orphan_spans`, `test_tool_spans_are_children_of_agent`, `test_one_generation_per_model_call`.]
 
-[SLIDE 4: Break 3: instrumenting the same call twice]
-- OpenInference instruments the client (3.5)
-- `_call_model` still wraps the call in a manual span with usage attributes (3.4)
-- Result: two spans per model call, each with 3,012 input tokens
-
-Break three, and this one costs money on paper. OpenInference is on. Our manual model span from 3.4 is also on, and it also records usage. So every model call produces two spans, each claiming three thousand input tokens.
-
-[SCREEN: Ops Console cost page after a small swarm run with both on. Day's cost reads $12.84 instead of $6.42.]
-
-[DEMO: Console cost tile shows exactly double.]
-
-Run a short swarm and look at the console. Twelve dollars eighty-four. Exactly double six forty-two. Any cost dashboard that sums usage across spans, and they all do, now shows twice your real spend. You'd cut features to fix a bill that doesn't exist.
-
-[CODE: fix 3, one call, one span]
+[CODE: excerpt of `test_one_generation_per_model_call`]
 ```python
-# choose one:
-# (a) keep OpenInference; drop usage attributes from the manual span, or drop the manual span
-# (b) keep the manual generation span (Section 4 needs it for cost_details); do not instrument the client
+    body = _chat(client, "Where is my ticket TCK-100231?")
+    spans = _spans(client)
+    gens = [s for s in spans if s.attributes.get(ga.LF_OBS_TYPE) == "generation"]
+    agent = _by_name(spans, "invoke_agent atlas")[0]
+    assert len(gens) == body["steps"] == 2
+    assert (
+        sum(s.attributes[g.GEN_AI_USAGE_INPUT_TOKENS] for s in gens)
+        == agent.attributes[g.GEN_AI_USAGE_INPUT_TOKENS]
+    )
 ```
 
-The fix is a decision, not code: one model call, one span carrying usage. Either keep the auto-instrumentor and stop recording usage manually, or keep the manual generation span, which Section four needs for explicit cost, and don't instrument the client. Atlas takes the second path by default, with OpenInference available behind a flag for Section twelve.
+All five green. And here's how each lie is caught. `test_no_orphan_spans`: exactly one root per request, named `invoke_agent atlas`. `test_tool_spans_are_children_of_agent`: every tool span sits under a step of the agent, in the same trace. And `test_one_generation_per_model_call`: one generation span per model call, and their input tokens add up to exactly the agent's total. Make test runs them on every change.
 
-[SCREEN: `tests/integration/test_spans.py`. Show the three tests: `test_no_orphan_spans`, `test_tool_spans_are_children_of_agent`, `test_one_generation_per_model_call`.]
-
-[CODE: the regression tests]
-```python
-def test_no_orphan_spans(spans):
-    roots = [s for s in spans.get_finished_spans() if s.parent is None]
-    assert [s.name for s in roots] == ["invoke_agent atlas"]
-
-def test_one_generation_per_model_call(atlas_offline, spans):
-    result = atlas_offline.run("Where is my ticket TCK-100231?", tenant="ops", user_id="u", session_id="s")
-    gens = [s for s in spans.get_finished_spans() if s.name.startswith("chat ")]
-    assert len(gens) == result.model_calls
-```
-
-And all three lies are caught by tests. Exactly one root span, named `invoke_agent atlas`. Every tool span's parent is the agent. And the number of generation spans equals the number of model calls the agent reports. Make test runs these on every change.
-
-[SLIDE 5: Symptom → cause → fix]
+[SLIDE 4: Symptom → cause → fix]
 | Symptom | Cause | Fix |
 |---|---|---|
-| One-span trace named `execute_tool ...` | Work on a thread without context | Pass `context=`, or `asyncio.to_thread` |
+| One-span trace named `execute_tool ...` | Work on a thread without context | `asyncio.to_thread`, or pass `context=` |
 | Agent trace shows a tool request but no tool | Tool ran after the agent block closed | Nest the code like the causality |
-| Cost exactly 2× expected | Same call instrumented twice | One call, one span with usage |
+| Tokens and cost exactly 2× expected | Same call instrumented twice | One call, one span with usage |
 
 [AVATAR]
 Screenshot this table. All three lies look like healthy traces until you count roots, check parents and compare the bill. Now you have tests that do the counting for you.
 
-**Recap:** Thread hand-offs without context create orphan root spans, tools run outside the agent block lose their parent, and instrumenting one call twice doubles every token, and three integration tests catch all of them.
+[SLIDE 5: Recap]
+- Lost context makes orphan root spans
+- Code outside the block loses its parent
+- Two instrumentations double every token
 
-**Transition:** Lab 2: instrument `check_shipment` end to end, and write the test that proves its span is correct.
+**Recap:** Work that runs without the trace context creates orphan root spans, tools run outside the agent block lose their parent, and instrumenting one call twice doubles every token, and the integration tests in `test_spans.py` catch all three.
+
+**Transition:** Lab 2: take `check_shipment`'s span apart and write the test that proves it's correct.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- "Why does `asyncio.create_task` work but the thread pool doesn't?" Tasks copy the current `contextvars` context on creation; threads don't. `asyncio.to_thread` copies it explicitly, which is why it also works.
-- Mistake: "fixing" break 1 by starting the span in the caller and passing the span object into the thread. It works, but the span then spans the queueing time too. Pass the context, start the span where the work happens.
+- "Why does `asyncio.create_task` work but the thread pool doesn't?" Tasks copy the current `contextvars` context on creation; threads don't. `asyncio.to_thread` copies it explicitly, which is why `app/server.py` uses it.
+- Mistake: "fixing" break 1 by starting the span in the caller and passing the span object into the thread. It works, but the span then includes the queueing time. Pass the context, start the span where the work happens.
 - Break 3 also appears with Langfuse's `langfuse.openai` drop-in client plus OpenInference. Same rule: one instrumentation per call.
-- Revert every break on camera. Students copy what they last saw.
+- FastAPI 0.142 ships its own OpenTelemetry server spans; `app/server.py` turns them off so `invoke_agent atlas` stays the only root, which is what `test_no_orphan_spans` asserts.
 
 ---
 
@@ -807,42 +904,44 @@ Screenshot this table. All three lies look like healthy traces until you count r
 |---|---|
 | ID | 3.7 |
 | Type | LAB (guided lab with short video intro) |
-| Target duration | 4:00 total (1:30 video, ~225 spoken words, about 1:36 of talking at 140 wpm) |
-| Learning objectives | 1. Add a correctly named and tagged span to `check_shipment`, including clipped arguments and result. 2. Write an integration test asserting its attributes and parent. 3. See the span in the console exporter and in Langfuse. |
+| Target duration | 4:00 total (1:30 video, ~180 spoken words, about 1:17 of talking at 140 wpm) |
+| Learning objectives | 1. Read `check_shipment`'s `execute_tool` span: name, attributes, arguments, result and parent. 2. Write an integration test asserting its attributes and parent. 3. See the span in the console exporter and in Langfuse. |
 | Prerequisites | 3.1 to 3.6 |
-| Files used | `04-labs/lab-02-instrument-tool.md`, `03-code/app/tools.py`, `03-code/tests/integration/test_spans.py` |
+| Files used | `04-labs/lab-02-instrument-tool.md`, `03-code/app/tools.py` (`check_shipment(tracking_id)`), `03-code/app/agent.py` (`_run_tool`), `03-code/tests/integration/test_spans.py` |
 
 ### Script
 
 [AVATAR]
-Lab two. `check_shipment` is the one tool that isn't instrumented yet. You're going to fix that, prove it with a test, and see it in Langfuse. Thirty to forty-five minutes.
+Lab two. `check_shipment` is Atlas's newest tool, and so far nothing proves its span is right. If it silently lost its arguments tomorrow, who would notice? You will, because you're going to write the test. Forty-five minutes to an hour.
 
 [SCREEN: VS Code, `04-labs/lab-02-instrument-tool.md`. Scroll the steps.]
 
-Step one: the span. Name it `execute_tool check_shipment`, use `set_tool_attrs` with the tracking number as arguments and the clipped result. Make sure it's created where the tool runs, inside the agent's block.
+Step one: ask "Where is shipment SHP-4471120?" with the console exporter on, and check the `execute_tool check_shipment` span against Lecture 3.3, including the `tracking_id` argument.
 
-Step two: the test. Copy the pattern from `test_ticket_question_emits_tagged_tool_span`. Ask Atlas "Where is shipment NW-88213?" offline, find the span, assert the tool name attribute, assert the parent is the agent span, and assert the result attribute is under two thousand characters.
+Step two: the test. Copy the pattern from `test_ticket_question_emits_tagged_tool_span`: tool name, arguments, and a parent step under the agent.
 
-[SCREEN: Scroll to the stretch goal.]
+[SCREEN: Scroll to the stretch goal and deliverables.]
 
-Stretch goal: the shipment API sometimes returns a not-found error. Make the span's status ERROR with the message when it does, and add a second test for it.
+The stretch goal pins the failure path with a second test. Deliverables: the test output and a Langfuse screenshot of the span.
 
-[SCREEN: Scroll to the deliverables.]
-
-Deliverables: the test output, and a screenshot of the trace in Langfuse with the `check_shipment` span selected and its arguments visible.
+[SLIDE 1: You can now]
+- Build a trace by hand and read raw spans
+- Tag spans with the GenAI conventions
+- Catch orphans and double counting with tests
 
 [AVATAR]
-Run make test before and after. Before, your new test fails. After, everything's green, including the three anti-lie tests from the last lecture. That's the loop for every span you'll ever add.
+You can now build a trace by hand, tag spans with the standard names, and catch the three instrumentation lies with tests. Run make test before and after: that's the loop for every span you'll ever add.
 
-**Recap:** Lab 2 adds a tagged `execute_tool check_shipment` span, a test that pins its attributes and parent, and a trace screenshot.
+**Recap:** Lab 2 reads `check_shipment`'s span, pins its name, arguments and parent with an integration test, and captures it in Langfuse.
 
 **Transition:** A six-question quiz on tracing and the conventions, then Section 4: what Langfuse adds on top of these spans.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Students put the span inside `tools.py` but call the tool from outside the agent's `with` block. The orphan test catches it; point them to Break 2.
-- `set_status(Status(StatusCode.ERROR, msg))` needs `from opentelemetry.trace import Status, StatusCode`. Raising inside the `with` block also sets error status automatically.
-- If the mock never chooses `check_shipment` for their question, use the exact question from the lab; the mock keys on the word "shipment" and an `NW-` tracking number.
+- Shipment IDs look like `SHP-` plus six to eight digits; the mock calls `check_shipment` for a question that contains the word "shipment" and a valid `SHP-` ID. Without an ID it asks for one instead.
+- Students put the assertion on the agent as parent; the tool's parent is the `step n` span, whose parent is the agent (same as the 3.4 test).
+- `set_status(Status(StatusCode.ERROR, msg))` needs `from opentelemetry.trace import Status, StatusCode`. Atlas already marks failed tools with ERROR status and a WARNING Langfuse level in `_run_tool`.
+- The lab file is the source of truth for the exact steps and the stretch goal; this intro only names the shape.
 
 ---
 
@@ -852,7 +951,7 @@ Run make test before and after. Before, your new test fails. After, everything's
 |---|---|
 | ID | 3.8 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 3:00 total (1:00 video, ~100 spoken words, about 0:43 of talking at 140 wpm) |
+| Target duration | 3:00 total (1:00 video, ~105 spoken words, about 0:45 of talking at 140 wpm) |
 | Learning objectives | 1. Check understanding of spans, context and sampling. 2. Check recall of the GenAI naming rules and the three instrumentation lies. |
 | Prerequisites | 3.1 to 3.7 |
 | Files used | `06-assessments/quizzes/section-03.md` |

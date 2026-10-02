@@ -59,7 +59,7 @@ LATENCY = Histogram(
 )
 TTFT = Histogram(
     "atlas_ttft_seconds",
-    "Time to first token of the final answer",
+    "Time to first token of each generation (one observation per model call)",
     ["model"],
     buckets=TTFT_BUCKETS,
     registry=REGISTRY,

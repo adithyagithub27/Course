@@ -19,7 +19,7 @@ import time
 import uuid
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
 from opentelemetry import trace as otel_trace
@@ -560,7 +560,7 @@ class AtlasAgent:
                         else getattr(last, "model", None),
                         finish_reasons=[finish] if finish else None,
                         ttft_s=ttft_s,
-                        completion_start_time=t0 if ttft_s is None else None,
+                        completion_start_time=(t0 + timedelta(seconds=ttft_s)) if ttft_s is not None else None,
                     )
                     ga.set_cost(span, cost)
                     if self.capture_content:

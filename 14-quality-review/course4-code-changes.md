@@ -156,3 +156,13 @@ Processors exactly: `memory_limiter`, `attributes/redact`, `tail_sampling`, `bat
 - Loop demo: guards off 549 steps, $4.90, 12.17M input tokens, 600.8 s, outcome timeout; default 6 steps, $0.0086; `ATLAS_MAX_TOOL_RETRIES=2` 3 steps, $0.0042.
 - Incident 1 fix: `make replay SCENARIO=retry_storm` $58.00 vs cost_spike $64.99.
 - Incident session ids use seeds 11/22/33/44 (`s11-…`), not `s07-`.
+
+## 15. Known code issues found during the script pass (2026-10-02)
+
+Fixed: Atlas set `langfuse.observation.completion_start_time` to the call start when there was no TTFT (Langfuse showed TTFT 0); it now sets start + TTFT, or nothing. `atlas_ttft_seconds` help text now says "each generation". The `langfuse_native` docstring now says the LLM is always the mock.
+
+Open, with the workaround the scripts use:
+- `.env` is not loaded automatically (python-dotenv is installed but unused). Scripts use `set -a; source .env; set +a`.
+- `/metrics` answers with a 307 redirect to `/metrics/`. Scripts use `curl -sL`.
+- `make console` replays a full day into an empty store. Live demos on a fresh store set `STREAMLIT_SERVER_HEADLESS=true` and start the console after the store has data.
+- Offline server-path spans have millisecond durations unless `ATLAS_MOCK_LATENCY_SCALE` is set; recordings that show the trace waterfall set it to 1.
