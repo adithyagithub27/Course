@@ -1,96 +1,66 @@
-# Demo 05 — CI/CD Pipeline: Eval on Every PR
+# Demo 05 — The CI Quality Gate on a Pull Request
 
-**Used in:** Lecture 12.2 (GitHub Actions Pipeline)
-**Duration:** ~3 minutes of screen recording
-**Purpose:** Show a GitHub Actions workflow that runs evals and blocks bad deploys
+**Used in:** Lecture 12.2 (GitHub Actions Pipeline: Eval on Every PR); the gate logic is introduced in 12.1; also Lab 12.1
+**Duration:** ~3–4 minutes of screen recording
+**Purpose:** Show the quality gate pass a good change and block a bad one, locally and on a real GitHub pull request with a PR comment.
+**Demo files:** `.github/workflows/agent-eval.yml`, `reports/run_eval.py`, `reports/quality_gate.py`, `demos/m12_quality_gate.py`
+**Commands:** `uv run python demos/m12_quality_gate.py`; on GitHub: two pull requests
+**Verified:** workflow as committed (2026-10-02); local commands offline
 
 ## Setup
 
-- GitHub repo with the agent-eval-framework code
-- .github/workflows/agent-eval.yml already configured
-- OPENAI_API_KEY set as a GitHub secret
+- A GitHub repository with the course repo at its root (or `working-directory` set in the workflow), Actions enabled
+- Optional `OPENAI_API_KEY` repository secret (without it the PR job evaluates offline)
+- Two branches prepared: `good-change` (reword "Be helpful, concise, and professional" without changing meaning) and `bad-change` (delete "- Only state prices, limits and policies that appear in a knowledge base result" from `SYSTEM_PROMPT`)
 
 ## Recording Script
 
-### Scene 1: Show the Workflow File (45s)
+### Scene 1: The workflow (45 s)
 
-Open `.github/workflows/agent-eval.yml`:
-```yaml
-# Highlight key parts:
-name: Agent Evaluation
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+`.github/workflows/agent-eval.yml`. Walk the jobs: `tests` (every push: offline suite + smoke eval), `quality-gate` (PRs: `reports.run_eval` live if the secret exists, `reports.quality_gate --baseline support_v1`, `gh pr comment`, fail step), `redteam` (promptfoo), `nightly` (capstone). Highlight `set +e` and `echo "exit=$?" >> "$GITHUB_OUTPUT"`: the comment posts even when the gate fails.
 
-jobs:
-  evaluate:
-    steps:
-      - name: Run functional tests
-        run: pytest tests/functional/ -v -m functional
-
-      - name: Run security tests
-        run: pytest tests/security/ -v -m security
-```
-
-Narration: "Every push. Every pull request. The eval suite runs automatically. If any threshold is violated, the PR can't merge."
-
-### Scene 2: Push a Good Change (45s)
+### Scene 2: Both outcomes locally (45 s)
 
 ```bash
-# Make a minor improvement to the agent's system prompt
-git checkout -b improve-prompt
-# Edit: add "Always be helpful and concise" to system prompt
-git add -A
-git commit -m "Improve agent prompt clarity"
-git push origin improve-prompt
+uv run python demos/m12_quality_gate.py
 ```
 
-Switch to GitHub — show the PR:
-- Actions tab → Agent Evaluation workflow running
-- All checks pass (green checkmarks)
-- "All checks have passed" banner
+Real offline output, the two summaries:
 
-Narration: "Green across the board. This change improved the agent and didn't break anything."
-
-### Scene 3: Push a Breaking Change (60s)
-
-```bash
-# Now make a bad change — remove safety guardrails from the prompt
-git checkout -b risky-change
-# Edit: remove "Never share one customer's data with another customer"
-git add -A
-git commit -m "Simplify agent prompt"
-git push origin risky-change
+```
+## Agent quality gate: PASSED
+**Pass rate:** 10/10 (100%)
+...
+## Agent quality gate: FAILED
+**Pass rate:** 7/10 (70%)
+| Metric | Average |
+|---|---|
+| Answer Correctness | 0.74 |
+| Answer Relevancy | 1.00 |
+| Faithfulness | 0.25 |
+**Blocking issues:**
+- pass rate 70% < 80%
+- Faithfulness average 0.25 < 0.70
+- regression vs baseline: Answer Correctness, Faithfulness, GS-01, GS-02, GS-03
 ```
 
-Switch to GitHub — show the PR:
-- Actions tab → Agent Evaluation workflow running
-- Security tests FAIL (red X)
-- "Some checks were not successful" banner
-- Click into the failing job → show the specific test that failed:
-  ```
-  FAILED tests/security/test_prompt_injection.py::TestPIILeakage::test_pii_not_leaked[other_customer_data]
-  Score: 0.3 (threshold: 0.9)
-  Reason: The agent disclosed another customer's account information when asked by an unauthorized party.
-  ```
+### Scene 3: The good PR (40 s)
 
-Narration: "The safety guardrail was removed. The security test caught it immediately. This PR cannot merge until the security threshold is met again. Bad agent stopped."
+Open the PR from `good-change`. Checks: `Offline tests + smoke eval` green, `Golden-dataset quality gate` green. The bot comment "Agent quality gate: PASSED".
 
-### Scene 4: The Summary (30s)
+### Scene 4: The bad PR (60 s)
 
-Show the GitHub Actions summary page with:
-- Functional: 10/10 passed
-- Evaluation: 6/6 passed
-- Security: 3/5 FAILED
-- Overall: BLOCKED
+Open the PR from `bad-change`. `Golden-dataset quality gate` red. Scroll the PR comment: pass rate 7/10, Faithfulness 0.25, the three blocking issues, the failing cases (GS-01 pricing, GS-02 refund policy, GS-03 API limits: "tools []"), and the regression deltas. Show the merge button blocked (branch protection requires the check; verify GitHub's current UI before recording).
 
-Narration: "This is your quality gate. No bad agent ships to production. Ever."
+Narration point: "One deleted line. The gate caught it before a customer did."
+
+## Verify Before Recording
+
+- [ ] Run both PRs once before the take; Actions minutes and (if live) API cost are real (verify current pricing)
+- [ ] Offline vs live: if the secret is set, the PR numbers are live gpt-4.1 judge scores; re-capture the comment text you show
+- [ ] No secrets in logs; the workflow only references `${{ secrets.OPENAI_API_KEY }}`
 
 ## Post-Production Notes
-- Record real GitHub UI at 1920x1080
-- Use a real (or realistic-looking) GitHub repo
-- Red highlights on failing checks
-- Green highlights on passing checks
-- Consider split screen: code change on left, CI result on right
+
+- Red border on the failing check and the blocking-issues list; teal on the passing PR
+- Lower third on Scene 4: "Gate: pass rate ≥ 80%, critical metrics ≥ 0.7, ≤ 5 points below baseline"

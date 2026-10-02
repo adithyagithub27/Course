@@ -1,90 +1,83 @@
-# Demo 04 — Langfuse Agent Trace
+# Demo 04 — Langfuse v4 Agent Trace
 
-**Used in:** Lecture 9.2 (Tracing with Langfuse)
+**Used in:** Lecture 9.2 (Tracing with Langfuse: Spans, Costs & Latency); also Lab 9.1
 **Duration:** ~3 minutes of screen recording
-**Purpose:** Show agent observability — trace a multi-step agent execution and identify the root cause of a failure
+**Purpose:** Trace the TechCorp agent with the Langfuse v4 SDK, read a trace (agent → generation → tool), compare users and costs, and attach scores.
+**Demo files:** `observability/langfuse_tracing.py`, `demos/m09_langfuse_tracing.py`
+**Commands:** `uv run python demos/m09_langfuse_tracing.py`; `make trace`
+**Verified:** langfuse 4.16.0 | opentelemetry-sdk 1.45.0, offline mode (2026-10-02)
 
 ## Setup
 
 ```bash
-# Student should have Langfuse account (free cloud tier)
-# .env should have LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY set
-cd agent-eval-framework
+cd 04-code-examples/agent-eval-framework
+# Optional, for the UI: a Langfuse Cloud (or self-hosted) project
+# .env: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_BASE_URL=https://cloud.langfuse.com
 ```
+
+Without keys the demo captures the same spans in memory and prints the tree. For the UI shots, record with keys set and a throwaway project; blur keys in post. Langfuse's UI changes: verify the screens before recording.
 
 ## Recording Script
 
-### Scene 1: Instrument the Agent (45s)
+### Scene 1: The v4 API (45 s)
 
-Show the code with Langfuse decorator:
+`observability/langfuse_tracing.py`, exact code:
+
 ```python
-from langfuse.decorators import observe
-
-@observe(name="support-agent")
-def traced_agent_call(user_message: str):
-    result = run_support_agent(user_message)
+@observe(name="support-agent", as_type="agent")
+def _traced_run(question: str, *, user_id: str, session_id: str | None, version: str, tool_executor: Any) -> dict:
+    with propagate_attributes(user_id=user_id, session_id=session_id, tags=["techcorp", "support"],
+                              version=version, metadata={"agent": "support"}):
+        result = run_support_agent(question, client=TracedOpenAI(get_llm_client()),
+                                   tool_executor=tool_executor or traced_tool)
+        result["trace_id"] = get_client().get_current_trace_id()
     return result
 ```
 
-Narration: "One decorator. That's all it takes. Every LLM call, every tool execution, every decision point — captured automatically."
+Highlight `@observe(..., as_type="agent")`, `propagate_attributes(user_id=..., session_id=...)`, `get_client()`. Corner note: "Langfuse v4. No `langfuse.decorators`, no `langfuse_context`."
 
-### Scene 2: Run Traced Queries (30s)
+### Scene 2: Four traced conversations (45 s)
 
 ```bash
-python -c "
-from observability.langfuse_setup import traced_agent_call
-
-# Run several queries
-queries = [
-    'What are your pricing plans?',
-    'Look up alice@example.com',
-    'I want to cancel and get a refund. I signed up yesterday.',
-]
-
-for q in queries:
-    print(f'Query: {q}')
-    result = traced_agent_call(q)
-    print(f'Response: {result[\"response\"][:80]}...')
-    print(f'Tools: {[tc[\"tool\"] for tc in result[\"tool_calls\"]]}')
-    print()
-"
+uv run python demos/m09_langfuse_tracing.py
 ```
 
-### Scene 3: Navigate Langfuse Dashboard (90s)
+Real offline output:
 
-Switch to browser — Langfuse Cloud dashboard:
-
-1. **Traces list** — Show 3 traces from the queries just run
-2. **Click into the refund trace** — Show the span waterfall:
-   - Root span: support-agent (total: 4.2s)
-     - LLM call 1: initial reasoning (1.1s, 340 tokens)
-     - Tool call: search_knowledge_base("refund") (0.02s)
-     - LLM call 2: generate response (1.8s, 520 tokens)
-
-3. **Highlight key data points:**
-   - Total latency per span
-   - Token count and cost per LLM call
-   - Tool call inputs and outputs
-   - The complete reasoning chain
-
-4. **Find the most expensive query** — Sort by tokens/cost
-
-Narration: "This is what production monitoring looks like. Every step the agent took, every token it consumed, every tool it called — all visible in one waterfall. When something goes wrong in production, this is how you find out why."
-
-### Scene 4: Cost Analysis (15s)
-
-Show Langfuse's cost breakdown:
 ```
-Query 1 (pricing):   $0.0004  (simple KB lookup)
-Query 2 (account):   $0.0008  (KB lookup + customer lookup)
-Query 3 (refund):    $0.0012  (KB lookup + reasoning + response)
+user      question                                  spans  llm_calls  tokens  cost_usd  latency_s  relevancy
+--------  ----------------------------------------  -----  ---------  ------  --------  ---------  ---------
+CUST-001  What are your pricing plans?              4      2          1731    0.000791  1.872      1.00     
+CUST-001  I've been charged twice this month for m  6      3          2994    0.001397  3.283      1.00     
+CUST-002  How do I reset my password?               4      2          1719    0.000778  1.783      1.00     
+CUST-003  I want to file a legal complaint and I'm  4      2          1722    0.000781  1.734      1.00     
+Trace tree for the ticket request (CUST-001):
+agent      support-agent                   
+  generation chat gpt-4.1-mini                usage={"input": 787, "output": 36}
+  tool       tool lookup_customer            
+             output: Customer found: {"id": "CUST-001", "name": "Alice Johnson", "email": "alice@exam
+  generation chat gpt-4.1-mini                usage={"input": 949, "output": 98}
+  tool       tool create_ticket              
+             output: Ticket TKT-5001 created: Duplicate charge on Pro plan (Priority: high)
+  generation chat gpt-4.1-mini                usage={"input": 1092, "output": 32}
+Scores attached (create_score): 4 (recorded locally offline)
 ```
 
-Narration: "Each trace has a dollar cost. Multiply by your daily volume and you know your exact agent cost."
+Callouts: the ticket request costs about twice the FAQ (3 LLM calls, 6 spans); costs on gpt-4.1-mini (verify current pricing); latency is simulated offline.
+
+### Scene 3: The same trace in the UI (60 s, live keys)
+
+Langfuse UI → Traces → filter `user_id = CUST-001` → open the ticket trace. Expand top-down: agent → generation (model, tokens, cost) → tool `lookup_customer` (input/output) → generation → tool `create_ticket` → generation. Show the Scores tab with `relevancy`. Then Sessions view.
+
+Trace IDs and timestamps change on every run: never read one aloud.
+
+## Verify Before Recording
+
+- [ ] No v2 code on screen (`langfuse.decorators`, `langfuse_context`, `langfuse.trace()`, `langfuse.score()`)
+- [ ] Keys blurred; throwaway Langfuse project
+- [ ] UI steps re-checked against the current Langfuse release
 
 ## Post-Production Notes
-- Record Langfuse dashboard at 1920x1080
-- Zoom into span details when showing waterfall
-- Use callout arrows to highlight important metrics
-- Show the real Langfuse UI — don't mock it
-- If Langfuse UI changes, this demo may need re-recording
+
+- Use the printed tree as the animated build for the D13 trace-anatomy diagram
+- Amber callout on latency ("simulated" offline), teal on the agent span

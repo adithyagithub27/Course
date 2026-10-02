@@ -1,52 +1,74 @@
-# Demo 06 — Quality Dashboard
+# Demo 06 — Experiment Comparison and the Quality Dashboard
 
 **Used in:** Lecture 12.3 (Experiment Tracking & Quality Dashboards)
 **Duration:** ~2 minutes of screen recording
-**Purpose:** Show the Streamlit quality dashboard with real evaluation results
+**Purpose:** Compare two agent versions run by run, then show the Streamlit dashboard leadership and the team will actually look at.
+**Demo files:** `reports/experiments.py`, `reports/quality_dashboard.py`, `demos/m12_experiment_comparison.py`, `demos/m12_quality_dashboard.py`
+**Commands:** `uv run python demos/m12_experiment_comparison.py`; `uv run python demos/m12_quality_dashboard.py`; `make dashboard`
+**Verified:** streamlit 1.64.0, deepeval 4.2.7, offline mode (2026-10-02)
 
 ## Setup
 
 ```bash
-# Run the evaluation suite first to generate results
-cd agent-eval-framework
-pytest tests/ -v --junitxml=reports/results/all.xml
-# Then launch the dashboard
-streamlit run reports/quality_dashboard.py
+cd 04-code-examples/agent-eval-framework
+export OFFLINE=1
+uv run python demos/m12_quality_dashboard.py      # writes fresh reports/results/eval.json
 ```
+
+Browser at 1920×1080, Streamlit dark theme matched to the design system.
 
 ## Recording Script
 
-### Scene 1: Launch Dashboard (15s)
+### Scene 1: Two versions side by side (40 s)
+
 ```bash
-streamlit run reports/quality_dashboard.py
+uv run python demos/m12_experiment_comparison.py
 ```
-Browser opens → show the dashboard loading.
 
-### Scene 2: Overview Metrics (30s)
-Show three top-level metrics:
-- Overall Quality Score: 84.2%
-- Categories Evaluated: 5
-- Gate Status: PASS
+Real offline output:
 
-Narration: "One number tells the VP of Engineering whether this agent is ready for production. 84.2% across all categories. The gate is PASS."
+```
+Pass rate: v1.2 70% -> v1.3 100% (+30%)
+  Answer Correctness   +0.240
+  Answer Relevancy     +0.000
+  Faithfulness         +0.750
+Improved: ['Answer Correctness', 'Faithfulness']  Regressed: []
+```
 
-### Scene 3: Category Breakdown (45s)
-Expand each category:
-- Functional: 9/10 passed (90%)
-- LLM Quality: 5/6 passed (83%)
-- RAG Quality: 4/4 passed (100%)
-- Security: 7/8 passed (87.5%)
-- Performance: latency P95 = 3.2s, cost avg = $0.003/task
+Callout: v1.2 is the regressed prompt, v1.3 restores the grounding rule. `reports/experiments.py` appends each run to `reports/results/experiments.jsonl`.
 
-Click into a failing test case → show the input, actual output, score, and reason.
+### Scene 2: The text dashboard (20 s)
 
-### Scene 4: Decision Point (30s)
-Narration: "The security category shows one failure — a delimiter injection attack succeeded. Score: 0.4 against a 0.9 threshold. The agent needs a guardrail fix before production."
+```bash
+uv run python demos/m12_quality_dashboard.py
+```
 
-Show: highlight the failing row in the table.
+```
+Quality gate: PASS   pass rate 100% (10/10)
+  Answer Correctness   0.98
+  Answer Relevancy     1.00
+  Faithfulness         1.00
+  faq          3/3
+  account      3/3
+  escalation   2/2
+  security     2/2
+```
+
+### Scene 3: Streamlit (60 s)
+
+```bash
+make dashboard        # uv run streamlit run reports/quality_dashboard.py
+```
+
+Walk the page top-down ("TechCorp Agent Quality Dashboard"): four tiles (Quality gate, Pass rate, Faithfulness, Answer relevancy) → "By category" table → "Trend across versions" line chart (from `experiments.jsonl`) → "Security (red team)" line (when `redteam.json` exists, after `make capstone`) → "Case details" table with per-case metric scores and tools. One callout per panel.
+
+## Verify Before Recording
+
+- [ ] `reports/results/` has fresh `eval.json` and at least two runs in `experiments.jsonl` (run the comparison demo first)
+- [ ] Offline numbers labelled "offline" on screen; re-run live if you present them as model scores
+- [ ] The dashboard is the course's own Streamlit app; Confident AI is not used
 
 ## Post-Production Notes
-- Record at 1920x1080
-- Use the course color scheme in Streamlit (dark theme if possible)
-- Zoom into the failing test case for detail
-- This demo shows the capstone-quality output students will build
+
+- Gate PASS in teal; any metric under threshold in red, threshold lines in amber
+- Keep the browser zoom so every number is readable at 1080p

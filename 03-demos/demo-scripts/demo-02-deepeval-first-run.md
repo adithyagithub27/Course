@@ -1,100 +1,91 @@
 # Demo 02 — First DeepEval Run
 
-**Used in:** Lecture 3.1 (Meet DeepEval)
+**Used in:** Lecture 3.1 (Meet DeepEval: pytest for AI); also Lab 3.1
 **Duration:** ~3 minutes of screen recording
-**Purpose:** Show how easy it is to write and run a DeepEval test
+**Purpose:** Show how little code a real DeepEval test of the real agent needs, watch it pass, make it fail, and read the reason.
+**Demo file:** `demos/m03_first_eval.py`
+**Commands:** `uv run python demos/m03_first_eval.py` and `uv run deepeval test run demos/m03_first_eval.py`
+**Verified:** openai 2.54.0 | deepeval 4.2.7, offline mode (2026-10-02)
 
 ## Setup
 
 ```bash
-cd agent-eval-framework
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+cd 04-code-examples/agent-eval-framework
+export OFFLINE=1
 ```
+
+Split screen: VS Code left (`demos/m03_first_eval.py`), terminal right.
 
 ## Recording Script
 
-### Scene 1: Write the Test (60s)
+### Scene 1: The test (60 s)
 
-Open VS Code / terminal editor. Type out (or show pre-written):
+Show the test function (exact code from the file):
 
 ```python
-# my_first_eval.py
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import AnswerRelevancyMetric
-
-from agents.support_agent import run_support_agent
-
-
-def test_pricing_question():
-    """Agent should give a relevant answer about pricing."""
-    result = run_support_agent("What are your pricing plans?")
-
-    test_case = LLMTestCase(
-        input="What are your pricing plans?",
-        actual_output=result["response"],
-    )
-
-    metric = AnswerRelevancyMetric(
-        threshold=0.7,
-        model="gpt-4o-mini",
-    )
-
+def test_pricing_answer_is_relevant():
+    question = "What are your pricing plans?"
+    result = run_support_agent(question)
+    test_case = LLMTestCase(input=question, actual_output=result["response"])
+    metric = AnswerRelevancyMetric(threshold=0.7, model=get_judge())
     assert_test(test_case, [metric])
 ```
 
-Narration point: "Six imports. One function. One metric. That's it."
+Highlight in order: `run_support_agent` (the real TechCorp agent), `LLMTestCase`, `AnswerRelevancyMetric(threshold=0.7, ...)`, `model=get_judge()` (gpt-4.1 live, the deterministic mock judge offline), `assert_test`.
 
-### Scene 2: Run It (30s)
+Narration point: "One agent call, one test case, one metric, one assert."
+
+### Scene 2: Run it (30 s)
 
 ```bash
-pytest my_first_eval.py -v
+uv run python demos/m03_first_eval.py
 ```
 
-Show the output:
-- DeepEval banner
-- Test discovery
-- Running... (progress indicator)
-- Score: 0.92 (above 0.7 threshold)
-- PASSED in green
+Real offline output:
 
-### Scene 3: Make It Fail (60s)
-
-Modify the test to use a stricter threshold:
-
-```python
-metric = AnswerRelevancyMetric(
-    threshold=0.99,  # Unrealistically high
-    model="gpt-4o-mini",
-)
+```
+Input : What are your pricing plans?
+Output: There are three TechCorp plans: Basic ($9.99/mo), Pro ($29.99/mo) and Enterprise (custom pricing). Core features come with all of them, and Pro adds priority support plus advanced analytics.
+AnswerRelevancy = 1.00 (threshold 0.7) -> PASS
+Reason: Scored offline by the deterministic mock judge (word overlap and number matching).
 ```
 
-Run again:
+Then the pytest-style runner:
+
 ```bash
-pytest my_first_eval.py -v
+uv run deepeval test run demos/m03_first_eval.py
 ```
 
-Show:
-- Score: 0.92 (below 0.99 threshold)
-- FAILED in red
-- DeepEval's reason output explaining WHY it scored 0.92
+Show DeepEval's local results table and the summary line "Pass Rate: 100.0% | Passed: 1 | Failed: 0".
 
-Narration: "The metric didn't just say 'fail.' It told you WHY. That's the power of LLM-as-judge evaluation."
+### Scene 3: Make it fail (60 s)
 
-### Scene 4: Add Multiple Metrics (30s)
+In a scratch copy (`my_work/test_first_fail.py`), keep the metric and replace the agent's answer with an off-topic one:
 
 ```python
-from deepeval.metrics import FaithfulnessMetric
-
-# Add faithfulness check
-faithfulness = FaithfulnessMetric(threshold=0.8, model="gpt-4o-mini")
-assert_test(test_case, [relevancy, faithfulness])
+test_case = LLMTestCase(input=question, actual_output="Our office is closed on public holidays.")
 ```
 
-Run and show both metrics evaluated in one test.
+Run `uv run deepeval test run my_work/test_first_fail.py`. Show FAILED in red and the metric's reason in the results table.
+
+Narration point: "It didn't just say fail. It told you why. Live, gpt-4.1 writes that reason."
+
+### Scene 4: Two metrics (30 s)
+
+Show the Lab 3.1 version with Faithfulness against the knowledge-base result:
+
+```python
+assert_test(test_case, [FaithfulnessMetric(threshold=0.8, model=get_judge()), correctness()])
+```
+
+## Verify Before Recording
+
+- [ ] Re-run Scene 3 and capture the exact reason text you show (offline it is the mock judge's reason; live it is gpt-4.1's)
+- [ ] `deepeval test run` works from the repo root (`pyproject.toml` sets `pythonpath = [".", "demos"]`)
+- [ ] Don't show "50+ metrics" or other counts without checking DeepEval's current docs (verify)
 
 ## Post-Production Notes
-- Use dark IDE theme with syntax highlighting
-- Terminal output should use the course color scheme where possible
-- Slow down typing for key moments (metric creation, assert_test call)
-- Split screen: code on left, terminal on right during the run
+
+- Slow the typing on `metric = ...` and `assert_test`
+- PASS in teal, FAILED in red; zoom on the reason column
+- Lower third on Scene 2: "Offline mode: deterministic mock judge. Add an API key for live gpt-4.1 scores."
