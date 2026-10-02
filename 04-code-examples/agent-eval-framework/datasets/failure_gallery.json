@@ -1,0 +1,116 @@
+[
+  {
+    "mode": "hallucination",
+    "input": "What are your pricing plans?",
+    "tool_calls": [],
+    "response": "TechCorp has three plans: Basic at $7.99/month, Pro at $24.99/month and Enterprise at $99/month.",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing)."
+    ],
+    "note": "Answered from memory without searching the knowledge base; every price is wrong."
+  },
+  {
+    "mode": "wrong_tool_selection",
+    "input": "How do I reset my password?",
+    "tool_calls": [
+      {
+        "tool": "create_ticket",
+        "arguments": {
+          "customer_id": "UNKNOWN",
+          "subject": "Password reset",
+          "description": "Customer wants to reset password",
+          "priority": "low"
+        }
+      }
+    ],
+    "response": "I've opened a ticket for your password reset.",
+    "expected_tools": [
+      "search_knowledge_base"
+    ],
+    "note": "A self-service FAQ became a ticket: the KB article answers it."
+  },
+  {
+    "mode": "incorrect_tool_arguments",
+    "input": "Can you look up my account? My email is alice@example.com",
+    "tool_calls": [
+      {
+        "tool": "lookup_customer",
+        "arguments": {
+          "identifier": "Alice"
+        }
+      }
+    ],
+    "response": "I couldn't find an account for Alice.",
+    "expected_args": {
+      "identifier": "alice@example.com"
+    },
+    "note": "Right tool, wrong argument: passed a first name instead of the email."
+  },
+  {
+    "mode": "reasoning_error",
+    "input": "I signed up 3 weeks ago. Can I still get a full refund?",
+    "tool_calls": [
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "refund policy"
+        }
+      }
+    ],
+    "response": "Unfortunately 3 weeks is outside our 30-day money-back guarantee, so a full refund isn't possible.",
+    "expected_output": "Yes. 3 weeks is within the 30-day money-back guarantee, so you can get a full refund within 5-7 business days.",
+    "note": "Retrieved the right policy, then drew the wrong conclusion (21 days < 30 days)."
+  },
+  {
+    "mode": "goal_drift",
+    "input": "I was charged twice this month. Can you fix it?",
+    "tool_calls": [
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "API rate limits"
+        }
+      }
+    ],
+    "response": "Great question! The Pro plan includes 1,000 API requests per hour, and you can create API keys under Settings > Developer.",
+    "note": "Started on billing, ended up explaining API limits; the double charge is never addressed."
+  },
+  {
+    "mode": "infinite_loop",
+    "input": "What is the refund policy for annual enterprise contracts signed through a reseller?",
+    "tool_calls": [
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "reseller refund"
+        }
+      },
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "reseller refund"
+        }
+      },
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "reseller refund"
+        }
+      },
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "reseller refund"
+        }
+      },
+      {
+        "tool": "search_knowledge_base",
+        "arguments": {
+          "query": "reseller refund"
+        }
+      }
+    ],
+    "response": "I apologize, but I'm having trouble processing your request. Let me escalate this to a human agent.",
+    "note": "The same search 5 times in a row until the 5-iteration cap stopped it."
+  }
+]

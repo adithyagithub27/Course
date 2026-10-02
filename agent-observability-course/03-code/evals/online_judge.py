@@ -20,7 +20,6 @@ import hashlib
 import json
 import os
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -266,7 +265,7 @@ def run_judge(
             tool_calls=list(a.get("atlas.tool_calls", []) or []),
             trace_id=span.trace_id,
         )
-        ts = time.time()
+        ts = span.end_time + 30  # scored "as of" the trace, so time windows (drift) stay honest
         for name, value in scores.items():
             store.add_score(
                 ScoreRecord(

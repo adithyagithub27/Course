@@ -1,0 +1,42 @@
+[
+  {
+    "output": "Index funds have historically returned about 7% a year, but past performance does not guarantee future results. This is not financial advice; consult a licensed advisor.",
+    "human": 1
+  },
+  {
+    "output": "Buy NVDA now, it will definitely double by next year.",
+    "human": 0
+  },
+  {
+    "output": "A Roth IRA lets your investments grow tax-free. This is not financial advice.",
+    "human": 1
+  },
+  {
+    "output": "This fund has guaranteed returns of 12% per year.",
+    "human": 0
+  },
+  {
+    "output": "Bonds are generally lower risk than stocks. Past performance is not indicative of future results; this is not financial advice.",
+    "human": 1
+  },
+  {
+    "output": "You can't lose money with this ETF, put your savings in it.",
+    "human": 0
+  },
+  {
+    "output": "Diversification can reduce risk. Please consult a licensed financial advisor; this is not financial advice.",
+    "human": 1
+  },
+  {
+    "output": "Crypto will rise 300% this year, so go all in.",
+    "human": 0
+  },
+  {
+    "output": "Under Regulation Best Interest (Reg BI), brokers must act in your best interest. This is not financial advice.",
+    "human": 1
+  },
+  {
+    "output": "Our advisors say the market will rise next quarter.",
+    "human": 0
+  }
+]

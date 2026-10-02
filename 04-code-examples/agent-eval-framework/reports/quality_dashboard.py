@@ -1,136 +1,100 @@
 """
-Quality Dashboard — Streamlit-based evaluation results viewer.
+Agent quality dashboard (Module 12.3, capstone "dashboard reveal").
 
-Run: streamlit run reports/quality_dashboard.py
+    make dashboard        # streamlit run reports/quality_dashboard.py
+    python reports/quality_dashboard.py --text    # same numbers in the terminal
 
-Displays:
-- Overall quality score
-- Per-category metric scores
-- Pass/fail status per test case
-- Trend charts (when historical data is available)
-- Security scan results
-
-Used in Module 12 and Module 14 (Capstone).
+Reads what the pipeline writes to reports/results/:
+    eval.json            latest golden-dataset report (python -m reports.run_eval)
+    experiments.jsonl    run history (reports/experiments.py)
+    redteam.json         latest red-team report (capstone)
+If nothing is there yet it runs the offline evaluation once to create eval.json.
 """
 
+from __future__ import annotations
+
 import json
+import sys
 from pathlib import Path
 
-try:
-    import streamlit as st
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from reports.experiments import RESULTS, runs  # noqa: E402
+
+
+def load_latest() -> dict:
+    p = RESULTS / "eval.json"
+    if not p.exists():
+        from reports.run_eval import main as run_eval
+
+        run_eval(["--out", str(p)])
+    return json.loads(p.read_text())
+
+
+def category_table(report: dict) -> list[dict]:
+    cats: dict[str, list[dict]] = {}
+    for d in report["details"]:
+        cats.setdefault(d.get("category") or "uncategorized", []).append(d)
+    return [{"category": c, "cases": len(v), "passed": sum(x["passed"] for x in v),
+             "pass_rate": round(sum(x["passed"] for x in v) / len(v), 2)} for c, v in cats.items()]
+
+
+def gate_status(report: dict) -> str:
+    from reports.quality_gate import evaluate_gate
+
+    ok, _ = evaluate_gate(report)
+    return "PASS" if ok else "BLOCKED"
+
+
+def render_text() -> None:
+    r = load_latest()
+    print(f"Quality gate: {gate_status(r)}   pass rate {r['pass_rate']:.0%} ({r['passed']}/{r['total']})")
+    for m, v in r["averages"].items():
+        print(f"  {m:<20} {v:.2f}")
+    for row in category_table(r):
+        print(f"  {row['category']:<12} {row['passed']}/{row['cases']}")
+    hist = runs()
+    if hist:
+        print("History:", ", ".join(f"{h['version']}={h['pass_rate']:.0%}" for h in hist))
+
+
+def render_streamlit() -> None:
     import pandas as pd
-except ImportError:
-    raise ImportError(
-        "Dashboard requires streamlit and pandas. "
-        "Install with: pip install streamlit pandas"
-    )
+    import streamlit as st
 
+    st.set_page_config(page_title="Agent Quality Dashboard", layout="wide")
+    st.title("TechCorp Agent Quality Dashboard")
+    r = load_latest()
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Quality gate", gate_status(r))
+    c2.metric("Pass rate", f"{r['pass_rate']:.0%}", help=f"{r['passed']}/{r['total']} golden cases")
+    c3.metric("Faithfulness", f"{r['averages'].get('Faithfulness', 0):.2f}")
+    c4.metric("Answer relevancy", f"{r['averages'].get('Answer Relevancy', 0):.2f}")
 
-def load_results(results_dir: str = "reports/results") -> dict:
-    """Load evaluation results from JSON files."""
-    results = {}
-    results_path = Path(results_dir)
+    st.subheader("By category")
+    st.dataframe(pd.DataFrame(category_table(r)), use_container_width=True)
 
-    if not results_path.exists():
-        return results
+    hist = runs()
+    if hist:
+        st.subheader("Trend across versions")
+        df = pd.DataFrame([{"version": h["version"], "pass_rate": h["pass_rate"], **h["averages"]} for h in hist]).set_index("version")
+        st.line_chart(df)
 
-    for f in results_path.glob("*.json"):
-        with open(f) as fh:
-            results[f.stem] = json.load(fh)
+    rt = RESULTS / "redteam.json"
+    if rt.exists():
+        st.subheader("Security (red team)")
+        red = json.loads(rt.read_text())
+        st.write(f"{red['passed']}/{red['total']} attacks blocked; open findings by severity: {red['by_severity']}")
 
-    return results
-
-
-def compute_quality_score(results: dict) -> float:
-    """Compute an overall quality score (0-100) from all evaluation results."""
-    if not results:
-        return 0.0
-
-    scores = []
-    for category, data in results.items():
-        if isinstance(data, dict) and "pass_rate" in data:
-            scores.append(data["pass_rate"] * 100)
-        elif isinstance(data, list):
-            passed = sum(1 for item in data if item.get("passed", False))
-            total = len(data)
-            if total > 0:
-                scores.append((passed / total) * 100)
-
-    return sum(scores) / len(scores) if scores else 0.0
-
-
-def main():
-    st.set_page_config(
-        page_title="Agent Quality Dashboard",
-        page_icon="🔬",  # noqa: RUF001
-        layout="wide",
-    )
-
-    st.title("AI Agent Quality Dashboard")
-    st.markdown("Real-time evaluation results for the agent under test.")
-
-    # Load results
-    results = load_results()
-
-    if not results:
-        st.warning(
-            "No evaluation results found. Run the evaluation suite first:\n\n"
-            "```bash\npytest tests/ -v\n```"
-        )
-        return
-
-    # Overall quality score
-    quality_score = compute_quality_score(results)
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("Overall Quality Score", f"{quality_score:.1f}%")
-    with col2:
-        st.metric("Categories Evaluated", len(results))
-    with col3:
-        status = "PASS" if quality_score >= 70 else "FAIL"
-        st.metric("Gate Status", status)
-
-    st.divider()
-
-    # Per-category breakdown
-    st.subheader("Category Breakdown")
-    for category, data in results.items():
-        with st.expander(f"{category.replace('_', ' ').title()}", expanded=True):
-            if isinstance(data, dict):
-                if "pass_rate" in data:
-                    st.progress(data["pass_rate"])
-                    st.write(
-                        f"Passed: {data.get('passed', 'N/A')} / "
-                        f"{data.get('total', 'N/A')} "
-                        f"({data['pass_rate']:.1%})"
-                    )
-
-                if "details" in data and isinstance(data["details"], list):
-                    rows = []
-                    for detail in data["details"]:
-                        row = {"Input": detail.get("input", "")[:60]}
-                        row["Passed"] = "Pass" if detail.get("passed") else "Fail"
-                        if "metrics" in detail:
-                            for m_name, m_data in detail["metrics"].items():
-                                row[m_name] = (
-                                    f"{m_data.get('score', 'N/A'):.2f}"
-                                    if isinstance(m_data.get("score"), (int, float))
-                                    else "N/A"
-                                )
-                        rows.append(row)
-
-                    if rows:
-                        df = pd.DataFrame(rows)
-                        st.dataframe(df, use_container_width=True)
-
-    # Footer
-    st.divider()
-    st.caption(
-        "Generated by Agent Evaluation Framework | "
-        "AI Agent Testing & Evaluation Course"
-    )
+    st.subheader("Case details")
+    st.dataframe(pd.DataFrame([{"id": d["id"], "category": d["category"], "passed": d["passed"], "tools": ", ".join(d["tools"]),
+                                **{k: v["score"] for k, v in d["metrics"].items()}} for d in r["details"]]), use_container_width=True)
+    st.caption("Offline runs use the mock LLM and mock judge; live runs use gpt-4.1-mini (agent) and gpt-4.1 (judge).")
 
 
 if __name__ == "__main__":
-    main()
+    if "--text" in sys.argv:
+        render_text()
+    else:
+        render_streamlit()

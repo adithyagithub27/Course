@@ -340,7 +340,7 @@ class ReplayEngine:
             "atlas.latency_ms": round(total_ms, 1),
             "atlas.tool_calls": list(result.tool_calls),
             ga.LF_OBS_INPUT: req.message[:300],
-            ga.LF_OBS_OUTPUT: result.answer[:300],
+            ga.LF_OBS_OUTPUT: result.answer[:4000],  # the batch judge (make judge) reads it
         }
         if result.cached_tokens:
             root_attrs["gen_ai.usage.cache_read.input_tokens"] = result.cached_tokens

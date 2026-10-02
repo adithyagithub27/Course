@@ -54,8 +54,9 @@ def task_completion(threshold: float | None = None) -> TaskCompletionMetric:
 
 
 def tool_correctness(threshold: float | None = None) -> ToolCorrectnessMetric:
-    """Compares tools_called with expected_tools by name (deterministic; no judge call)."""
-    return ToolCorrectnessMetric(threshold=threshold or T["tool_correctness"], async_mode=False)
+    """Compares tools_called with expected_tools by name. DeepEval 4 still needs a judge
+    model object (used only when you pass available_tools for an LLM tool-selection score)."""
+    return ToolCorrectnessMetric(threshold=threshold or T["tool_correctness"], model=get_judge(), async_mode=False)
 
 
 def correctness(threshold: float | None = None) -> GEval:

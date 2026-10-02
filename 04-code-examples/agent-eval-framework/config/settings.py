@@ -18,6 +18,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# No usage telemetry from evaluation libraries (offline runs must not phone home).
+os.environ.setdefault("DEEPEVAL_TELEMETRY_OPT_OUT", "YES")
+os.environ.setdefault("DEEPEVAL_UPDATE_WARNING_OPT_IN", "NO")
+os.environ.setdefault("RAGAS_DO_NOT_TRACK", "true")
+os.environ.setdefault("LANGFUSE_TRACING_ENABLED", "true")
+
 # --- Models (A8) --------------------------------------------------------------
 DEFAULT_MODEL = "gpt-4.1-mini"
 DEFAULT_JUDGE_MODEL = "gpt-4.1"

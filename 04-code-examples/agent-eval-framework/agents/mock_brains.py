@@ -141,8 +141,8 @@ def _kb_answer(ctx: Ctx, topic: str, question: str) -> str:
     if topic == "refund":
         if re.search(r"\b(4[0-9]|[5-9][0-9]) days\b", q) or "two months" in q:
             return ctx.say(
-                "Our money-back guarantee covers the first 30 days, so a refund after 45 days is outside the standard policy. Annual subscriptions are prorated, and I can open a ticket if you'd like the billing team to review your case.",
-                "Refunds are guaranteed only within 30 days of purchase, so 45 days is outside that window. If you're on an annual plan it is prorated; I can create a ticket for a billing review if you want.",
+                "Our money-back guarantee only covers the first 30 days, so a refund at this point is outside the standard policy. Annual subscriptions get a prorated refund, and I can open a ticket if you'd like the billing team to review your case.",
+                "Refunds are guaranteed only within 30 days of purchase, so your request is outside that window. Annual plans get a prorated refund; I can create a ticket for a billing review if you want.",
             )
         if "refund" in q and ("how long" in q or "take" in q):
             return ctx.say(
@@ -282,10 +282,22 @@ def support_brain(ctx: Ctx) -> Step:
                 reason=reason,
                 urgency="urgent" if urgent_reason else "normal",
             )
+        what = {
+            "Customer mentions legal action": "your complaint",
+            "Customer reports a possible data breach": "this possible data breach to our security team",
+            "Customer reports lost or deleted data": "your lost data",
+        }.get(reason)
+        if what is None:
+            return final(
+                ctx.say(
+                    "Of course. I've passed your request to a member of our support team, and they will contact you shortly.",
+                    "No problem. A member of our support team will take over and contact you shortly.",
+                )
+            )
         return final(
             ctx.say(
-                "I understand how frustrating this is, and I'm sorry. I've escalated your case to a senior support specialist who will contact you shortly.",
-                "I'm really sorry about this. I've passed your case to a senior member of our team as a priority, and they'll be in touch soon.",
+                f"I understand how frustrating this is, and I'm sorry. I've escalated {what} as an urgent case, and a senior specialist will contact you shortly.",
+                f"I'm really sorry about this. I've escalated {what} as a priority, and a senior member of our team will be in touch soon.",
             )
         )
 

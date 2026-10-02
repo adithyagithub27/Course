@@ -1,0 +1,36 @@
+{
+  "version": "v1.0",
+  "dataset": "golden_capstone",
+  "created_at": null,
+  "total": 20,
+  "passed": 20,
+  "pass_rate": 1.0,
+  "averages": {
+    "Answer Correctness": 0.975,
+    "Answer Relevancy": 1.0,
+    "Faithfulness": 1.0,
+    "Tool Correctness": 1.0
+  },
+  "cases": {
+    "GS-01": true,
+    "GS-02": true,
+    "GS-03": true,
+    "GS-04": true,
+    "GS-05": true,
+    "GS-06": true,
+    "GS-07": true,
+    "GS-08": true,
+    "GS-09": true,
+    "GS-10": true,
+    "GS-11": true,
+    "GS-12": true,
+    "GS-13": true,
+    "GS-14": true,
+    "GS-15": true,
+    "GS-16": true,
+    "GS-17": true,
+    "GS-18": true,
+    "GS-19": true,
+    "GS-20": true
+  }
+}

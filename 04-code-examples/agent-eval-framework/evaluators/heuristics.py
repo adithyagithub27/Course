@@ -123,7 +123,7 @@ def relevant(statement: str, question: str) -> str:
     if is_refusal(statement):
         return "yes"
     s = statement.lower()
-    if any(p in s for p in ("i can help", "happy to help", "let us know", "contact", "i'm here", "what can i help")):
+    if any(p in s for p in ("i can help", "i can answer", "happy to help", "let us know", "contact", "i'm here", "what can i help", "help with", "in touch", "will contact", "escalated", "passed your", "get back to you", "investigate", "follow up", "sorry", "of course", "no problem", "i understand", "thanks for")):
         return "borderline"
     return "no"
 

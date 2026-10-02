@@ -56,8 +56,19 @@ def build_summary(store: LocalSpanStore, settings: Settings | None = None) -> di
     day0 = start - (start % 86_400) if start else 0.0
 
     # cost -----------------------------------------------------------------------------
-    by_tenant = {k: v.as_dict() for k, v in sorted(rollup(gens, "tenant").items())}
+    # requests/sessions per tenant count chat requests (agent spans), not model calls
+    by_tenant = {k: v.as_dict() for k, v in sorted(rollup(reqs, "tenant").items())}
+    gen_by_tenant = rollup(gens, "tenant")
+    for k, v in by_tenant.items():  # token and cache figures come from the generations
+        g = gen_by_tenant.get(k)
+        if g is not None:
+            v["model_calls"] = g.requests
+            v["cache_hit_ratio"] = round(g.cache_hit_ratio, 4)
     by_feature = {
+        k: v.as_dict()
+        for k, v in sorted(rollup(reqs, "feature").items(), key=lambda kv: -float(kv[1].cost_usd))
+    }
+    by_intent = {
         k: v.as_dict()
         for k, v in sorted(rollup(reqs, "intent").items(), key=lambda kv: -float(kv[1].cost_usd))
     }
@@ -237,6 +248,7 @@ def build_summary(store: LocalSpanStore, settings: Settings | None = None) -> di
         ),
         "cost_by_tenant": by_tenant,
         "cost_by_feature": by_feature,
+        "cost_by_intent": by_intent,
         "cost_by_model": by_model,
         "cost_by_tenant_feature": tenant_feature,
         "hourly_cost": {h: hourly_cost.get(h, {}) for h in range(24)},
@@ -278,8 +290,13 @@ def render_text(summary: dict[str, Any]) -> str:
         out.append(
             f"{k:10} {v['requests']:>8} {v['sessions']:>8} {v['input_tokens']:>10,} {v['cache_hit_ratio']:>8.0%} {v['cost_usd']:>10.4f} {v['cost_per_session']:>10.5f}"
         )
-    out.append("\n-- Cost by feature (intent) ---------------------------------------------------")
-    for k, v in list(s["cost_by_feature"].items())[:10]:
+    out.append("\n-- Cost by feature ------------------------------------------------------------")
+    for k, v in s["cost_by_feature"].items():
+        out.append(
+            f"{k:16} requests={v['requests']:>5}  cost=${v['cost_usd']:.4f}  $/request={v['cost_per_request']:.5f}"
+        )
+    out.append("\n-- Cost by intent (top 10) ----------------------------------------------------")
+    for k, v in list(s["cost_by_intent"].items())[:10]:
         out.append(
             f"{k:16} requests={v['requests']:>5}  cost=${v['cost_usd']:.4f}  $/request={v['cost_per_request']:.5f}"
         )

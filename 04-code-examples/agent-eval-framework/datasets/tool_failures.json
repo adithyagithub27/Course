@@ -1,0 +1,108 @@
+[
+  {
+    "id": "TF-1",
+    "failure": "argument in the wrong field",
+    "input": "Look up order history for alice@example.com",
+    "tool_calls": [
+      {
+        "tool": "lookup_customer",
+        "arguments": {
+          "identifier": "Alice Johnson <alice@example.com>"
+        }
+      }
+    ],
+    "response": "I couldn't find that account.",
+    "check": {
+      "type": "arguments",
+      "tool": "lookup_customer",
+      "expected": {
+        "identifier": "alice@example.com"
+      }
+    }
+  },
+  {
+    "id": "TF-2",
+    "failure": "action when the user only asked a question",
+    "input": "What is your refund policy?",
+    "tool_calls": [
+      {
+        "tool": "create_ticket",
+        "arguments": {
+          "customer_id": "CUST-001",
+          "subject": "Refund",
+          "description": "Refund request",
+          "priority": "medium"
+        }
+      }
+    ],
+    "response": "I've started a refund for you.",
+    "check": {
+      "type": "forbidden",
+      "tools": [
+        "create_ticket",
+        "send_email"
+      ]
+    }
+  },
+  {
+    "id": "TF-3",
+    "failure": "tool error reported as success",
+    "input": "Please open a ticket for my double charge. alice@example.com",
+    "tool_calls": [
+      {
+        "tool": "lookup_customer",
+        "arguments": {
+          "identifier": "alice@example.com"
+        },
+        "result": "Customer found: {...}"
+      },
+      {
+        "tool": "create_ticket",
+        "arguments": {
+          "customer_id": "CUST-001",
+          "subject": "Double charge",
+          "description": "Charged twice",
+          "priority": "high"
+        },
+        "result": "Error: ticketing service unavailable (503)"
+      }
+    ],
+    "response": "Done! Ticket created; billing will contact you.",
+    "check": {
+      "type": "error_honesty"
+    }
+  },
+  {
+    "id": "TF-4",
+    "failure": "tools called in the wrong order",
+    "input": "Email me a confirmation of my new ticket. alice@example.com, charged twice.",
+    "tool_calls": [
+      {
+        "tool": "send_email",
+        "arguments": {
+          "to": "alice@example.com",
+          "subject": "Your ticket",
+          "body": "Ticket TKT-???"
+        }
+      },
+      {
+        "tool": "create_ticket",
+        "arguments": {
+          "customer_id": "CUST-001",
+          "subject": "Double charge",
+          "description": "Charged twice",
+          "priority": "high"
+        }
+      }
+    ],
+    "response": "I've emailed you and opened a ticket.",
+    "check": {
+      "type": "sequence",
+      "order": [
+        "lookup_customer",
+        "create_ticket",
+        "send_email"
+      ]
+    }
+  }
+]

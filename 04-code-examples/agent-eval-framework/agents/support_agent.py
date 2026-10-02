@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
+from typing import Any
 
 from agents.llm import clock, get_client
 from config.settings import agent_model
@@ -310,6 +312,9 @@ def run_support_agent(
     tools: list | None = None,
     temperature: float | None = None,
     max_iterations: int = 5,
+    client: Any = None,
+    model: str | None = None,
+    tool_executor: Callable[[str, dict], str] | None = None,
 ) -> dict:
     """
     Run the support agent on one user message.
@@ -321,13 +326,17 @@ def run_support_agent(
         llm_calls     number of LLM calls
         latency_s     end-to-end latency (virtual clock offline)
         model         model name used
+
+    ``client`` and ``tool_executor`` default to the real ones; tracing (Module 9)
+    and failure-injection tests pass wrapped versions.
     """
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_history or [])
     messages.append({"role": "user", "content": user_message})
 
-    client = get_client()
-    model = agent_model()
+    client = client or get_client()
+    run_tool = tool_executor or execute_tool
+    model = model or agent_model()
     tools = TOOLS if tools is None else tools
     extra = {} if temperature is None else {"temperature": temperature}
 
@@ -352,7 +361,7 @@ def run_support_agent(
             messages.append(choice.message)
             for tool_call in choice.message.tool_calls:
                 args = json.loads(tool_call.function.arguments)
-                result = execute_tool(tool_call.function.name, args)
+                result = run_tool(tool_call.function.name, args)
                 tool_calls_log.append(
                     {"tool": tool_call.function.name, "arguments": args, "result": result}
                 )

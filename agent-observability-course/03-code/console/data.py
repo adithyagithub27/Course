@@ -528,10 +528,16 @@ def top_feedback_comments(
 
 # ---------------------------------------------------------------------------------------- budgets
 def budget_timeline(
-    d: StoreData, settings: Settings | None = None, *, bin_s: int = 300
+    d: StoreData,
+    settings: Settings | None = None,
+    *,
+    bin_s: int = 300,
+    min_spend_usd: float = 0.10,
 ) -> list[dict[str, Any]]:
     """Cumulative spend per tenant per ``bin_s`` with soft/hard caps and EWMA anomaly flags on
-    the per-bin spend (the detector ``BudgetGuard.record`` runs; 6.7)."""
+    the per-bin spend (the detector ``BudgetGuard.record`` runs; 6.7). A bin is flagged when the
+    detector fires *and* it spent at least ``min_spend_usd`` and twice the running mean, so the
+    quiet night hours (near-zero variance) do not page anyone."""
     settings = settings or Settings.from_env({})
     per: dict[str, dict[float, float]] = defaultdict(lambda: defaultdict(float))
     for r in d.generations:
@@ -544,7 +550,12 @@ def budget_timeline(
         b = first
         while b <= last:
             spend = bins.get(b, 0.0)
-            anomaly = det.is_anomaly(spend)
+            anomaly = (
+                det.is_anomaly(spend)
+                and spend >= min_spend_usd
+                and det.mean is not None
+                and spend >= 2 * det.mean
+            )
             det.update(spend)
             cum += spend
             rows.append(

@@ -17,6 +17,7 @@ class therefore runs its real code path offline, with a stand-in brain.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from typing import Any
@@ -37,12 +38,15 @@ def _between(prompt: str, start: str, ends: tuple[str, ...] = ("\n\nJSON", "\nJS
 
 
 def _json_list(text: str) -> list[str]:
-    try:
-        val = json.loads(text)
-        if isinstance(val, list):
-            return [str(v) for v in val]
-    except (json.JSONDecodeError, TypeError):
-        pass
+    import ast
+
+    for parse in (json.loads, ast.literal_eval):
+        try:
+            val = parse(text)
+            if isinstance(val, list):
+                return [str(v) for v in val]
+        except (ValueError, SyntaxError, TypeError):
+            pass
     return [line.strip("-• ").strip() for line in text.splitlines() if line.strip()]
 
 
@@ -99,7 +103,11 @@ class MockJudge(DeepEvalBaseLLM):
             if name == "Verdicts":
                 question = _between(prompt, "Input:", ("\n\nStatements:",))
                 stmts = _json_list(_between(prompt, "Statements:"))
-                return {"verdicts": [self._v(h.relevant(s, question), "off-topic") for s in stmts]}
+                verdicts = [h.relevant(s, question) for s in stmts]
+                anchors = " ".join(s for s, v in zip(stmts, verdicts, strict=True) if v == "yes")
+                # Supporting detail that continues an on-topic statement counts as borderline (passes).
+                verdicts = [("borderline" if v == "no" and h.overlap(s, anchors) >= 0.1 else v) for s, v in zip(stmts, verdicts, strict=True)]
+                return {"verdicts": [self._v(v, "off-topic") for v in verdicts]}
 
         if "faithfulness" in module:
             if name == "Truths":
@@ -176,10 +184,64 @@ class MockJudge(DeepEvalBaseLLM):
             n = max(1, calls.count('"name"') or calls.count("name="))
             return {"verdicts": [{"verdict": "yes"} for _ in range(n)]}
 
+        if "synthesizer" in module:
+            return self._synth(name, prompt)
+
         if name == "ToolSelectionScore":
             return {"score": 1.0, "reason": "Tool selection judged offline: names compared deterministically."}
 
         return self._generic(schema)
+
+    def _synth(self, name: str, prompt: str) -> dict:
+        """Deterministic answers for DeepEval's Synthesizer prompts (Module 11.3)."""
+
+        if name == "PromptStyling":
+            return {"scenario": "Customers of TechCorp, a SaaS company, contacting support",
+                    "task": "Answer customer questions about plans, billing, refunds and accounts",
+                    "input_format": "Short, informal customer messages in English"}
+        if name == "SyntheticDataList":
+            m = re.search(r"generate (\d+) data points", prompt)
+            n = int(m.group(1)) if m else 2
+            ctx = _between(prompt, "Context:", ("\n\n        JSON", "\nJSON"))
+            topic = self._topic(" ".join(_json_list(ctx)) or ctx)
+            templates = ["Can you tell me about the {t}?", "Can you explain the {t} for my team?",
+                         "I'm confused about the {t}. Can you help?", "Where can I read the {t}?"]
+            k = int(hashlib.md5(ctx.encode()).hexdigest(), 16)
+            return {"data": [{"input": templates[(k + i) % len(templates)].format(t=topic)} for i in range(n)]}
+        if name == "Response" and "Rewritten Input:" in prompt[-200:]:
+            found = re.findall(r"\n\s*Input:\s*\n(.*?)\n\s*Rewritten Input:", prompt, flags=re.S)
+            original = found[-1].strip() if found else "my question"
+            original = re.split(r"\n\s*Context:", original)[0].strip()
+            twists = [" I'm on the Pro plan, if that matters.", " I signed up last week.",
+                      " My manager needs the answer today.", " We have 40 users on our account."]
+            k = int(hashlib.md5(original.encode()).hexdigest(), 16) % len(twists)
+            return {"response": original.rstrip() + twists[k]}
+        if name == "SyntheticData":
+            evolved = _between(prompt, "Evolved Input:", ("\n\n", "\n        Scenario"))
+            text = evolved.split("Input:", 1)[-1].strip() if "Input:" in evolved else evolved
+            styles = ["hi, {}", "{} thanks!", "quick one: {}", "{}"]
+            k = int(hashlib.md5(text.encode()).hexdigest(), 16) % len(styles)
+            return {"input": styles[k].format(text[0].lower() + text[1:] if k in (0, 2) and text else text)}
+        if name in ("InputFeedback", "ScenarioFeedback"):
+            return {"score": 1.0, "feedback": "Clear and answerable from the context."}
+        if name == "Response":
+            ctx = _between(prompt, "Context:", ("\n\n", "\nJSON")) or prompt
+            facts = h.sentences(" ".join(_json_list(ctx))) or [ctx]
+            return {"response": facts[0]}
+        return self._generic_dict(name)
+
+    def _generic_dict(self, name: str) -> dict:
+        return {}
+
+    @staticmethod
+    def _topic(text: str) -> str:
+        """Name the knowledge-base article a context comes from (e.g. 'refund policy')."""
+        from agents.support_agent import KNOWLEDGE_BASE
+
+        best = max(KNOWLEDGE_BASE, key=lambda a: h.overlap(text, a["text"]))
+        if h.overlap(text, best["text"]) >= 0.3:
+            return best["title"].lower()
+        return " ".join(sorted(h.words(text), key=len, reverse=True)[:2])
 
     @staticmethod
     def _v(verdict: str, why: str) -> dict:
