@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D4">
+<title id="t-D4">D4: One turn, on a timeline</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">One turn, on a timeline</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D4 · build 3/5: Riley answers</text></g>
+<g id="build-1">
+<text x="96" y="312" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Caller</text>
+<text x="96" y="384" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start">VAD</text>
+<text x="96" y="742" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#00D4AA" text-anchor="start">Riley</text>
+<path d="M300 336 H1830" stroke="#64748B" stroke-width="1" opacity="0.5"/>
+<path d="M300 766 H1830" stroke="#64748B" stroke-width="1" opacity="0.5"/>
+<rect x="300" y="270" width="420" height="64" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="510.0" y="309.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">“I&#x27;d like to book for…”</text>
+<rect x="880" y="270" width="360" height="64" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1060.0" y="309.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">“…Thursday morning.”</text>
+<path d="M724 266 V254 H876 V266" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="800.0" y="244" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="middle">400 ms pause</text>
+<rect x="300" y="362" width="416" height="30" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="#64748B" stroke-width="1"/>
+<text x="510.0" y="383" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#0A1628" text-anchor="middle">speech</text>
+<rect x="720" y="362" width="156" height="30" rx="4" fill="#1A2742" fill-opacity="1" stroke="#64748B" stroke-width="1"/>
+<text x="800.0" y="383" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="middle">silence</text>
+<rect x="880" y="362" width="356" height="30" rx="4" fill="#FFFFFF" fill-opacity="0.85" stroke="#64748B" stroke-width="1"/>
+<text x="1060.0" y="383" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#0A1628" text-anchor="middle">speech</text>
+<rect x="1240" y="362" width="586" height="30" rx="4" fill="#1A2742" fill-opacity="1" stroke="#64748B" stroke-width="1"/>
+<text x="1535.0" y="383" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="middle">silence</text>
+<path d="M300 930 L1840 930" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="1840" y="965" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">time</text>
+</g>
+<g id="build-2">
+<rect x="610" y="420" width="380" height="84" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="800.0" y="454.3" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">Turn detector: unlikely finished</text>
+<text x="800.0" y="482.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">→ keep waiting</text>
+<path d="M800 416 L800 398" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="1250" y="420" width="380" height="84" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="1440.0" y="454.3" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">Turn detector: likely finished</text>
+<text x="1440.0" y="482.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">→ wait min_delay</text>
+<path d="M1262 416 L1250 398" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
+<path d="M1240 572 V560 H1640 V572" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1440.0" y="550" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#64748B" text-anchor="middle"></text>
+<path d="M1240 572 V560 H1330 V572" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1285.0" y="550" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#94A3B8" text-anchor="middle"></text>
+<text x="1250" y="550" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">min_delay</text>
+<text x="1640" y="550" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="end">max_delay</text>
+<path d="M1240 640 V628 H1420 V640" fill="none" stroke="#FFB020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1330.0" y="618" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FFB020" text-anchor="middle">end-of-utterance delay</text>
+<path d="M1420 646 L1420 694" fill="none" stroke="#FFB020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5"/>
+<text x="1428" y="684" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#FFB020" text-anchor="start">end of turn</text>
+</g>
+<g id="build-3">
+<rect x="1424" y="700" width="400" height="64" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="1446" y="739.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="start">Riley speaks</text>
+</g>
+</svg>

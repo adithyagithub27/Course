@@ -1,1 +1,1 @@
-"""Sample AI agents used as test targets throughout the course."""
+"""Agents under test. The TechCorp support agent (support_agent.py) is the course's running example."""

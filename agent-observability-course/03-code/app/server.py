@@ -11,6 +11,8 @@ Run: ``uvicorn app.server:app --reload`` (or ``make run``).
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 import time
 from collections import OrderedDict
@@ -107,6 +109,46 @@ class SessionMemory:
         return len(self._d)
 
 
+class TenantLimiter:
+    """One semaphore per tenant (Lecture 7.5). A request waits up to ``timeout_s`` for a slot in
+    its own tenant's queue; then it is shed with 429 so one noisy tenant cannot take every
+    provider slot. ``atlas_inflight{tenant}`` and ``atlas_queue_wait_seconds{tenant}`` show it."""
+
+    def __init__(self, limits: dict[str, int], *, timeout_s: float = 3.0) -> None:
+        self.limits = dict(limits)
+        self.timeout_s = timeout_s
+        self._sems: dict[str, asyncio.Semaphore] = {}
+
+    def _sem(self, tenant: str) -> asyncio.Semaphore:
+        if tenant not in self._sems:
+            self._sems[tenant] = asyncio.Semaphore(
+                self.limits.get(tenant, self.limits.get("other", 2))
+            )
+        return self._sems[tenant]
+
+    @asynccontextmanager
+    async def slot(self, tenant: str):  # type: ignore[no-untyped-def]
+        sem = self._sem(tenant)
+        t0 = time.perf_counter()
+        try:
+            await asyncio.wait_for(sem.acquire(), timeout=self.timeout_s)
+        except TimeoutError:
+            metrics.QUEUE_WAIT.labels(tenant).observe(time.perf_counter() - t0)
+            metrics.SHED.labels(tenant).inc()
+            raise HTTPException(
+                status_code=429,
+                detail=f"tenant {tenant} is at its concurrency limit; retry shortly",
+                headers={"Retry-After": "1"},
+            ) from None
+        metrics.QUEUE_WAIT.labels(tenant).observe(time.perf_counter() - t0)
+        metrics.INFLIGHT.labels(tenant).inc()
+        try:
+            yield
+        finally:
+            metrics.INFLIGHT.labels(tenant).dec()
+            sem.release()
+
+
 def normalise_tenant(tenant: str | None) -> str:
     """Aliases (``logistics-ops`` -> ``ops``) are mapped; unknown tenants collapse to
     ``other`` so Prometheus labels stay bounded."""
@@ -136,6 +178,28 @@ def to_response(r: AgentResult) -> ChatResponse:
     )
 
 
+#: FastAPI >= 0.142 ships native OpenTelemetry: with a global TracerProvider installed it opens a
+#: ``POST /chat`` server span plus ``fastapi.dependencies`` / ``fastapi.endpoint`` /
+#: ``fastapi.serialization`` operation spans, and ``invoke_agent atlas`` becomes their grandchild.
+#: Atlas's trace contract (Lectures 3.2 and 3.6) is "exactly one root span, named
+#: ``invoke_agent atlas``", so the framework's own telemetry is switched off. It would also
+#: auto-configure OTLP exporters from ``OTEL_*`` env vars behind our back (``auto_configure``).
+FASTAPI_TELEMETRY_OFF: dict[str, Any] = {
+    "tracing": False,
+    "operation_spans": False,
+    "metrics": False,
+    "logs": False,
+    "auto_configure": False,
+}
+
+
+def _fastapi_telemetry_off() -> dict[str, Any]:
+    """``{"telemetry": {...}}`` on FastAPI versions that have native telemetry, else ``{}``."""
+    if "telemetry" in inspect.signature(FastAPI.__init__).parameters:
+        return {"telemetry": dict(FASTAPI_TELEMETRY_OFF)}
+    return {}
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -158,7 +222,15 @@ def create_app(
             window_s=settings.budget_window_s,
         )
         app.state.agent = AtlasAgent(settings, llm=llm, budget_guard=app.state.budget)
+        metrics.set_build_info(
+            version=settings.langfuse_release,
+            model=settings.model,
+            prompt_version=settings.prompt_version,
+        )
         app.state.sessions = SessionMemory()
+        app.state.limiter = TenantLimiter(
+            settings.inflight_limits(), timeout_s=settings.queue_timeout_s
+        )
         app.state.started = time.time()
         log.info(
             "atlas started", extra={"offline": settings.offline, "exporter": settings.otel_exporter}
@@ -169,7 +241,9 @@ def create_app(
             force_flush()
             shutdown_tracing()
 
-    app = FastAPI(title="Atlas helpdesk agent", version="1.0.0", lifespan=lifespan)
+    app = FastAPI(
+        title="Atlas helpdesk agent", version="1.0.0", lifespan=lifespan, **_fastapi_telemetry_off()
+    )
     app.mount("/metrics", metrics.metrics_app())
 
     @app.get("/healthz")
@@ -204,15 +278,20 @@ def create_app(
         sessions: SessionMemory = app.state.sessions
         session_id = req.session_id or x_session
         history = sessions.get(session_id) if session_id else []
-        result = agent.run(
-            req.message,
-            tenant=tenant,
-            user_id=x_user or "anonymous",
-            session_id=session_id,
-            history=history,
-            scenario=req.scenario,
-            stream=req.stream,
-        )
+        limiter: TenantLimiter = app.state.limiter
+        async with limiter.slot(tenant):
+            # The agent is synchronous (blocking provider calls): run it on a worker thread so
+            # the event loop keeps serving. asyncio.to_thread copies the OTel context (3.6).
+            result = await asyncio.to_thread(
+                agent.run,
+                req.message,
+                tenant=tenant,
+                user_id=x_user or "anonymous",
+                session_id=session_id,
+                history=history,
+                scenario=req.scenario,
+                stream=req.stream,
+            )
         sessions.extend(
             result.session_id,
             result.messages[len(history) + 1 :]

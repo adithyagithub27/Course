@@ -36,7 +36,10 @@ LATENCY_BUCKETS = (0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0
 TTFT_BUCKETS = (0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0)
 
 REQUESTS = Counter(
-    "atlas_requests_total", "Chat requests", ["tenant", "model", "outcome"], registry=REGISTRY
+    "atlas_requests_total",
+    "Chat requests",
+    ["tenant", "model", "outcome", "feature"],
+    registry=REGISTRY,
 )
 TOKENS = Counter(
     "atlas_tokens_total",
@@ -50,7 +53,7 @@ COST = Counter(
 LATENCY = Histogram(
     "atlas_request_latency_seconds",
     "End-to-end request latency",
-    ["tenant"],
+    ["tenant", "feature"],
     buckets=LATENCY_BUCKETS,
     registry=REGISTRY,
 )
@@ -112,6 +115,22 @@ JUDGE_SCORE = Histogram(
 FEEDBACK = Counter(
     "atlas_feedback_total", "User feedback", ["tenant", "outcome"], registry=REGISTRY
 )
+INFLIGHT = Gauge(
+    "atlas_inflight", "Requests holding a tenant concurrency slot", ["tenant"], registry=REGISTRY
+)
+QUEUE_WAIT = Histogram(
+    "atlas_queue_wait_seconds",
+    "Time a request waited for its tenant's concurrency slot",
+    ["tenant"],
+    buckets=(0.001, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0),
+    registry=REGISTRY,
+)
+SHED = Counter(
+    "atlas_requests_shed_total",
+    "Requests refused with 429 because the tenant's queue wait ran out",
+    ["tenant"],
+    registry=REGISTRY,
+)
 EXPORTER_FAILURES = Counter(
     "atlas_telemetry_export_failures_total", "Span export failures", ["name"], registry=REGISTRY
 )
@@ -141,6 +160,9 @@ ALL_METRICS = [
     FEEDBACK,
     EXPORTER_FAILURES,
     BUILD_INFO,
+    INFLIGHT,
+    QUEUE_WAIT,
+    SHED,
 ]
 
 # Names used in the lecture scripts (same objects).
@@ -190,9 +212,18 @@ def record_generation(
         TTFT.labels(model).observe(ttft_s)
 
 
-def record_request(*, tenant: str, model: str, outcome: str, latency_s: float, steps: int) -> None:
-    REQUESTS.labels(tenant, model, outcome).inc()
-    LATENCY.labels(tenant).observe(latency_s)
+def record_request(
+    *,
+    tenant: str,
+    model: str,
+    outcome: str,
+    latency_s: float,
+    steps: int,
+    feature: str = "chat",
+) -> None:
+    """``feature`` is one of the seven ``app.mock_llm.FEATURES`` values (bounded cardinality)."""
+    REQUESTS.labels(tenant, model, outcome, feature).inc()
+    LATENCY.labels(tenant, feature).observe(latency_s)
     STEPS.labels(tenant).observe(steps)
 
 

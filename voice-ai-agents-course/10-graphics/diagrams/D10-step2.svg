@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D10">
+<title id="t-D10">D10: The five numbers</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The five numbers</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D10 · build 2/6: cost/min</text></g>
+<g id="diagram-footnote"><text x="96" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8">Illustrative values</text></g>
+<g id="build-1">
+<rect x="96" y="390" width="320" height="400" rx="8" fill="#1A2742" stroke="#64748B" stroke-width="2"/>
+<text x="124" y="442" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#CBD5E1" text-anchor="start">p95 latency</text>
+<text x="124" y="472" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">per hour</text>
+<text x="124" y="566" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="700" fill="#FFFFFF" text-anchor="start">1.47 s</text>
+<polyline points="124.0,698.0 153.3,688.2 182.7,701.2 212.0,676.9 241.3,691.5 270.7,683.4 300.0,668.8 329.3,686.6 358.7,678.5 388.0,673.6" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linejoin="round"/>
+<path d="M124 652.5 H388" stroke="#FFB020" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="388" y="642.5" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#FFB020" text-anchor="end">1.6 s</text>
+</g>
+<g id="build-2">
+<rect x="448" y="390" width="320" height="400" rx="8" fill="#1A2742" stroke="#64748B" stroke-width="2"/>
+<text x="476" y="442" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#CBD5E1" text-anchor="start">Cost/min</text>
+<text x="476" y="472" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">per day</text>
+<text x="476" y="566" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="64" font-weight="700" fill="#FFFFFF" text-anchor="start">7.7¢</text>
+<polyline points="476.0,677.2 505.3,666.8 534.7,682.4 564.0,692.8 593.3,677.2 622.7,687.6 652.0,698.0 681.3,682.4 710.7,692.8 740.0,687.6" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linejoin="round"/>
+</g>
+</svg>

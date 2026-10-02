@@ -59,6 +59,8 @@ Three levels. Timing tells you how the call felt. Usage tells you what it cost. 
 
 Here's one turn, timed. The caller stops speaking. The end-of-utterance delay is how long Riley waits before deciding the caller is done. That's VAD, endpointing and the turn detector together. On a phone line it's often the biggest single piece. The transcription delay is when the final transcript arrives. Then the LLM's time to first token, and the TTS's time to first byte. Add those up and you get voice-to-voice latency, the silence the caller actually hears.
 
+[SCREEN: terminal in `03-code`: `sed -n '2,3p' tests/data/sample_metrics.jsonl`. An `eou_metrics` line with `"end_of_utterance_delay": 0.52` and `"transcription_delay": 0.21`, then an `llm_metrics` line with `"ttft": 0.41` and the token counts.]
+
 LiveKit reports all of these for you. In Section 9 we turned them into a budget. In this section we'll collect them on every call, not just in tests.
 
 [SLIDE 3: Usage: the cost drivers]
@@ -106,7 +108,10 @@ Here's what "measure every call" becomes in practice: one record per call. A sum
 
 And a few session events are worth counting too. LiveKit emits `agent_false_interruption` when Riley paused for what turned out not to be a real interruption, like a cough. A spike means your interruption settings are too sensitive for phone lines. `user_state_changed` tells you when a caller went quiet for a long time, which often means confusion. And `function_tools_executed` tells you which tools ran on each turn.
 
-[PAUSE]
+[SLIDE 7: If you only had one minute a day]
+- p95 voice-to-voice latency
+- Cost per minute
+- Share of calls handled without a human
 
 Last thought for this lecture. Decide now which three numbers you'd look at if you only had one minute a day. For Maple Street Dental, mine are p95 voice-to-voice latency, cost per minute, and the share of calls that ended booked or answered without a human. Everything else is there for when one of those three looks wrong.
 
@@ -115,6 +120,11 @@ Last thought for this lecture. Decide now which three numbers you'd look at if y
 A question I often get: "Isn't all this measurement expensive?" Not really. The metrics are already computed by LiveKit. Writing a few lines of JSON per turn costs almost nothing, and the traces are sent in the background. The expensive part is not having the data on the day a patient complains, and having to guess. [PAUSE] Collect everything numeric by default. Be careful with content, like transcripts, which we'll handle in Section 11.
 
 Here's what "everything numeric" means for Riley. Per turn: four timings and two token counts. Per call: usage per model, cost, duration and outcome. Per day: those rolled up into the five dashboard numbers you'll meet in lecture 10.5. That's it. It fits on one slide, and it answers almost every question anyone will ask you about Riley in production.
+
+[SLIDE 8: Recap]
+- Timing: per-stage delays on every turn
+- Usage: seconds, tokens and characters drive cost
+- Outcome: what actually happened on the call
 
 ### Recap
 
@@ -267,7 +277,7 @@ Run a call.
 [SCREEN: terminal]
 
 ```bash
-uv run agents/s10_observed_agent.py console
+uv run python agents/s10_observed_agent.py console
 ```
 
 [DEMO: book a cleaning in console mode, ask about parking, say goodbye. The terminal shows `metrics_collected` log lines (EOU, LLM, TTS) and `turn latency e2e=... ms` lines. Press Ctrl+C to end; the "call cost report" prints with stt/llm/tts/platform lines and "per minute". Then `ls metrics/` and `tail -n 3 metrics/<room>.jsonl`, ending with the `call_summary` record including `"outcome": "booked"`.]
@@ -287,6 +297,11 @@ In production, one more habit. Don't let the observability code break the call. 
 [AVATAR]
 
 Let's connect this back to Section 9. The files this agent writes are exactly what `tests/evals/latency_report.py` reads. So the loop is closed: record real calls with `ObservedRiley`, drop a representative file into `tests/data`, and CI checks every future change against real-world timing. [PAUSE] Production data becomes test data, which is the healthiest relationship those two can have.
+
+[SLIDE 1: Recap]
+- Observers wrap the session, not the agent
+- One JSONL file per call, ending in `call_summary`
+- `session.usage` replaces the deprecated `UsageCollector`
 
 ### Recap
 
@@ -364,7 +379,11 @@ uv sync --extra observability
 
 ```python
 def setup_observability(service_name: str = "riley") -> str | None:
-    """Configure an OpenTelemetry tracer provider if Langfuse or OTLP env vars are set."""
+    """Configure an OpenTelemetry tracer provider if Langfuse or OTLP env vars are set.
+
+    Returns the backend name ("langfuse" or "otlp"), or None when tracing is off.
+    OpenTelemetry packages are imported lazily so the agent runs without them.
+    """
     public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
     secret_key = os.getenv("LANGFUSE_SECRET_KEY")
     backend: str | None = None
@@ -391,7 +410,9 @@ Langfuse accepts OpenTelemetry traces at `/api/public/otel` on your Langfuse hos
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
     except ImportError:
-        logger.warning("tracing env vars set but OpenTelemetry is not installed: uv sync --extra observability")
+        logger.warning(
+            "tracing env vars set but OpenTelemetry is not installed: uv sync --extra observability"
+        )
         return None
 
     from livekit.agents.telemetry import set_tracer_provider
@@ -406,12 +427,14 @@ Langfuse accepts OpenTelemetry traces at `/api/public/otel` on your Langfuse hos
 
 Standard OpenTelemetry setup. A `TracerProvider` named after our service. A `BatchSpanProcessor`, which sends spans in the background in batches, so tracing never slows down a turn. An `OTLPSpanExporter` over HTTP, which reads the environment variables we just set.
 
+[CODE: same block, highlight `set_tracer_provider(provider, metadata={...}, allow_pii=False)`.]
+
 Then the LiveKit-specific line: `set_tracer_provider` from `livekit.agents.telemetry`. It tells LiveKit Agents to send its spans through our provider. Two arguments matter. `metadata` adds attributes to every span, here the clinic name. And `allow_pii`. [PAUSE] With `allow_pii=False`, LiveKit strips conversational content, tool payloads and other user data from spans before they reach Langfuse, and keeps the timings, models and token counts. For a dental clinic, that's the right default. Patients say their names, birthdays and symptoms out loud. If your data-retention policy and your vendor agreement with Langfuse allow transcripts in traces, you can flip it to `True` and see full conversations. That's a policy decision, not a coding one, and we'll come back to it in Section 11.
 
 We call `setup_observability()` at the top of the entrypoint, as you saw last lecture. Run a call.
 
 ```bash
-uv run agents/s10_observed_agent.py console
+uv run python agents/s10_observed_agent.py console
 ```
 
 [DEMO: a call: ask about parking, then book a cleaning. End the call. Switch to Langfuse → Traces. Open the newest trace: a tree with `agent_session` at the top; nested `user_turn`, `agent_turn`, `llm_node` / `llm_request` with model `gpt-4.1-mini` and token counts; a `function_tool` span for `lookup_clinic_info`, then for `find_available_slots` and `book_appointment`; `tts_node` spans. Click the slowest `agent_turn` and show its timing bar.]
@@ -440,6 +463,11 @@ A quick tour of how I actually use traces day to day. I don't browse them. I sea
 [AVATAR]
 
 And if you don't want Langfuse, you don't need to change any code. Point `OTEL_EXPORTER_OTLP_ENDPOINT` at any OpenTelemetry-compatible backend, like Grafana Tempo, Honeycomb or Datadog, and `setup_observability` sends spans there instead. [PAUSE] That's the value of an open standard: the tracing code you write today outlives whichever vendor you pick.
+
+[SLIDE 3: Recap]
+- LiveKit already emits OpenTelemetry spans per turn
+- Point OTLP at Langfuse with basic auth
+- `allow_pii=False` keeps transcripts out of traces
 
 ### Recap
 
@@ -497,7 +525,7 @@ The formula is simple. For each component, usage times its unit price. Add them 
 
 Every price in `DEFAULT_PRICES` is a placeholder. It says so in capital letters at the top of `src/maple/costs.py`, and in `PRICES_LAST_CHECKED`. Providers change prices constantly, and LiveKit Inference, direct provider plugins and enterprise contracts all differ. Copy the table, fill it in from your own invoices, and pass it in.
 
-[CODE: `src/maple/costs.py`, `PriceTable` (highlight)]
+[CODE: `src/maple/costs.py`, `PriceTable` (highlight; the docstring's attribute list is trimmed)]
 
 ```python
 @dataclass(frozen=True)
@@ -598,6 +626,8 @@ per minute     $0.0646  (3.00 min)
 
 Read the numbers. With these placeholder prices, a three-minute cascaded call costs about six and a half cents a minute. [PAUSE] And the biggest line isn't the LLM. It's text-to-speech: thirteen and a half cents of the nineteen-cent call. That surprises almost everyone. The LLM, `gpt-4.1-mini` with prompt caching, is under two cents for the whole call. So if the clinic wants Riley cheaper, the first conversation is with the TTS provider, or about shorter replies, not about the LLM.
 
+[SCREEN: zoom on the three per-minute lines: cascaded 6.35, 6.46, 6.84; realtime 12.97, 16.23, 27.67.]
+
 Now realtime. About thirteen cents a minute for a one-minute call, sixteen for three minutes, and nearly twenty-eight for ten minutes. It grows, because every turn re-sends the conversation history as audio tokens. Cascaded barely moves, from six point three five to six point eight four. That's the shape I promised in lecture 6.4, now as numbers you can put in a spreadsheet.
 
 [SLIDE 2: What moves the number]
@@ -624,6 +654,11 @@ Finally, how to present this to the person who asked. Give them one number: cost
 [AVATAR]
 
 One more sanity check before you share numbers: reconcile with your invoices. At the end of the month, add up the `cost_total` of every `call_summary` line and compare it with what your providers actually billed. If they're within ten or fifteen percent, your price table is right. If not, something's missing: a platform fee, a minimum charge, or a model you forgot to price. [PAUSE] Do it once a month, and your cost-per-minute number becomes one people trust.
+
+[SLIDE 4: Recap]
+- Cost per minute: usage times price over minutes
+- Cascaded Riley: text-to-speech is the biggest line
+- Realtime cost per minute grows with call length
 
 ### Recap
 
@@ -665,7 +700,7 @@ Now let's turn these numbers into dashboards and alerts that tell you when somet
 
 [AVATAR]
 
-I've seen voice-agent dashboards with forty charts. Nobody looks at them. [PAUSE] Here's the dashboard I'd give Maple Street Dental. Five numbers. Each one has a threshold, an alert, and a first thing to check when it fires.
+I've seen voice-agent dashboards with forty charts. Nobody looks at them. [PAUSE] Here's the dashboard I'd give Maple Street Dental. Five numbers. Each one has a threshold, an alert, and a first thing to check when it fires. By the end of this lecture, you'll be able to set all five for your own agent.
 
 [SLIDE 1: The five numbers]
 1. p95 voice-to-voice latency (per hour)
@@ -680,6 +715,8 @@ I've seen voice-agent dashboards with forty charts. Nobody looks at them. [PAUSE
 
 Number one, p95 voice-to-voice latency, per hour. Not the average. The ninety-fifth percentile, the same number our Section 9 budget checks. For Riley on the phone: alert if it's over one point six seconds for thirty minutes. First check: open the slowest traces and see which stage grew. Usually it's the LLM provider having a bad hour, or a prompt that got bigger.
 
+[SCREEN: terminal in `03-code`: `uv run python tests/evals/latency_report.py`, the `voice_to_voice` row highlighted: p95 `1474` against `1600`. The same number a dashboard tile shows, computed from the same JSONL files.]
+
 Number two, cost per minute, per day, from the `call_summary` records. Alert if it's twenty percent above your baseline for a day. First check: the largest component. A prompt change that doubled the reply length shows up here before it shows up on the invoice.
 
 [SLIDE 2: Outcome rates]
@@ -692,7 +729,9 @@ Number two, cost per minute, per day, from the `call_summary` records. Alert if 
 
 Numbers three and four come from `call_outcome`. Transfer rate is the share of calls handed to a human. Containment rate is the share resolved without one: booked, rescheduled, cancelled, or question answered.
 
-Here's the subtle part. [PAUSE] Both directions are bad. If transfers jump from fifteen to forty percent, Riley is failing at something. Open the transcripts of transferred calls. If transfers drop to near zero, that's also suspicious. Maybe Riley stopped offering humans when she should, which is the "missed escalation" failure from lecture 9.1. The illustrative healthy range for a receptionist is something like sixty to eighty percent containment, and ten to twenty-five percent transfers. Your clinic will set its own.
+Here's the subtle part. [PAUSE] Both directions are bad. If transfers jump from fifteen to forty percent, Riley is failing at something. Open the transcripts of transferred calls. If transfers drop to near zero, that's also suspicious. Maybe Riley stopped offering humans when it should, which is the "missed escalation" failure from lecture 9.1. The illustrative healthy range for a receptionist is something like sixty to eighty percent containment, and ten to twenty-five percent transfers. Your clinic will set its own.
+
+[B-ROLL: the mock dashboard's "Tool failures" tile jumps from 0.4% to 6% with a red alert badge; the other four tiles stay green.]
 
 Number five, failed tool calls per hour: any `ToolError` or exception in a tool. Alert at about two percent of tool calls. First check: the scheduler backend. If your practice-management system is down, this is the first number that moves, and it's how you learn before the patients tell you.
 
@@ -730,6 +769,11 @@ Dashboards only help if someone looks at them. So here's the ritual I recommend:
 
 Let me show you how the five numbers told a real story at a clinic like Maple Street Dental. One Monday, containment dropped from seventy-two to fifty-eight percent, and transfers doubled. Latency and cost were normal. The failed-tool-call tile was flat. [PAUSE] So nothing was broken, technically. Listening to three transferred calls explained it: the clinic had changed its insurance list over the weekend, the FAQ hadn't been updated, and callers asking about the new plan got "I'm not sure" and asked for a person. One FAQ edit, one new golden conversation, and containment was back the next day. No single chart would have told that story. The five together did.
 
+[SLIDE 6: Recap]
+- Five numbers, each with threshold, owner and first check
+- Transfers too high or too low: both signal trouble
+- Page only for caller pain; report the rest daily
+
 ### Recap
 
 Watch five numbers, p95 latency, cost per minute, transfer rate, containment rate and failed tool calls, each with a threshold, an owner and a first diagnostic step.
@@ -754,7 +798,7 @@ Time to build it yourself: Lab 6, a call-quality report from ten real calls.
 | ID | 10.6 |
 | Title | Lab 6: Build a call-quality report |
 | Type | LAB (guided lab; video intro/walkthrough) |
-| Target duration | Video 2:00 (about 220 spoken words at ~140 wpm, plus slide and pause time); lab work about 45 minutes off-video |
+| Target duration | Video 2:00 (about 240 spoken words at ~140 wpm, plus slide and pause time); lab work about 75 minutes off-video (matches `lab-06-observability.md`) |
 | One idea | Turn ten real calls into a one-page report with latency, cost and outcomes. |
 | Prerequisites | 10.1 to 10.5 |
 | Files used | `04-labs/lab-06-observability.md`, `agents/s10_observed_agent.py`, `labs/lab06_report.py` (created in the lab), `tests/evals/latency_report.py` |
@@ -769,7 +813,7 @@ Time to build it yourself: Lab 6, a call-quality report from ten real calls.
 
 [AVATAR]
 
-This lab turns everything in Section 10 into one page you could hand to a clinic manager.
+A clinic manager will never open your traces. But they will read one page that says how Riley did this week. This lab turns everything in Section 10 into that page, in about seventy-five minutes.
 
 [SCREEN: `04-labs/lab-06-observability.md`: steps 1 to 6.]
 
@@ -795,6 +839,11 @@ A word on the slow calls. When you open their traces in step five, don't stop at
 
 Lab 6 turns ten calls into a latency, cost and outcome report with findings you can defend.
 
+[SLIDE 2: You can now]
+- Export per-turn metrics and usage on every call
+- Trace calls in Langfuse with patient data kept out
+- Compute cost per minute and explain where it goes
+
 ### Transition
 
 Then take the short quiz to wrap up Section 10.
@@ -814,7 +863,7 @@ Then take the short quiz to wrap up Section 10.
 | ID | 10.7 |
 | Title | Quiz: Observability and cost |
 | Type | QZ (quiz; short video intro) |
-| Target duration | Video 1:00 (about 100 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | Video 1:00 (about 140 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Check you can choose metrics, read a trace, and compute and explain cost per minute. |
 | Prerequisites | 10.1 to 10.6 |
 | Files used | `06-assessments/quizzes/section-10.md` (5 questions) |
@@ -828,7 +877,7 @@ Then take the short quiz to wrap up Section 10.
 
 [AVATAR]
 
-Five questions. One asks which stage to investigate from a latency table. One asks what `allow_pii=False` keeps out of your traces. One gives you usage numbers and a price table and asks for the cost per minute. One asks why realtime cost per minute grows with call length. And one asks what a sudden drop in transfer rate might mean.
+Your transfer rate just dropped to one percent. Celebrate, or investigate? That's one of five questions. One asks which stage to investigate from a latency table. One asks what `allow_pii=False` keeps out of your traces. One gives you usage numbers and a price table and asks for the cost per minute. One asks why realtime cost per minute grows with call length. And one asks what a sudden drop in transfer rate might mean.
 
 [SLIDE 1: Quiz: 5 questions]
 - Metrics and traces
@@ -838,6 +887,10 @@ Five questions. One asks which stage to investigate from a latency table. One as
 [AVATAR]
 
 For the cost question, write the formula down first: usage times unit price, summed, divided by call minutes. Then plug in the numbers.
+
+[SCREEN: the 10.4 terminal output for a three-minute cascaded call: component lines, `total $0.1938`, `per minute $0.0646  (3.00 min)`.]
+
+Here's the formula worked once, from lecture 10.4. Nineteen cents over three minutes is about six and a half cents a minute.
 
 Each answer links back to its lecture. About five minutes, and a calculator helps for one question.
 

@@ -1,124 +1,121 @@
 """
-DeepEval Evaluation Suite — Primary evaluation pipeline.
+Glue between agent results and DeepEval.
 
-Demonstrates how to build a comprehensive eval suite using DeepEval
-with pytest integration. Used in Modules 03, 04, and 14.
+    result = run_support_agent(case["input"])
+    tc = to_test_case(result, case)               # LLMTestCase with tools_called, retrieval_context
+    report = run_suite(cases, run_support_agent, metrics_for)   # dict summary for reports and CI
+
+``retrieval_context`` is what the agent actually saw: the text its tools
+returned in this run (knowledge-base articles, account lookups). That is what
+faithfulness should be judged against.
 """
 
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import (
-    AnswerRelevancyMetric,
-    FaithfulnessMetric,
-    HallucinationMetric,
-    GEval,
-    TaskCompletionMetric,
-    ToolCorrectnessMetric,
-)
-from deepeval.dataset import EvaluationDataset
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from pathlib import Path
+
+from deepeval.dataset import EvaluationDataset, Golden
+from deepeval.test_case import LLMTestCase, ToolCall
+
+from evaluators.golden import load
 
 
-def create_quality_metrics(threshold: float = 0.7) -> list:
-    """Create the standard LLM quality metrics suite."""
+def tools_called(result: dict) -> list[ToolCall]:
     return [
-        AnswerRelevancyMetric(threshold=threshold, model="gpt-4o-mini"),
-        FaithfulnessMetric(threshold=0.8, model="gpt-4o-mini"),
-        HallucinationMetric(threshold=0.3, model="gpt-4o-mini"),
+        ToolCall(name=tc["tool"], input_parameters=tc.get("arguments", {}), output=tc.get("result"))
+        for tc in result.get("tool_calls", [])
     ]
 
 
-def create_agent_metrics(threshold: float = 0.8) -> list:
-    """Create agent-specific metrics."""
-    return [
-        TaskCompletionMetric(threshold=threshold, model="gpt-4o-mini"),
-        ToolCorrectnessMetric(threshold=0.85, model="gpt-4o-mini"),
-    ]
-
-
-def create_custom_metric(
-    name: str,
-    criteria: str,
-    threshold: float = 0.7,
-) -> GEval:
-    """
-    Create a custom G-Eval metric for business-specific evaluation.
-
-    Example:
-        metric = create_custom_metric(
-            name="Policy Compliance",
-            criteria="The response correctly applies company refund policy",
-        )
-    """
-    return GEval(
-        name=name,
-        criteria=criteria,
-        threshold=threshold,
-        model="gpt-4o-mini",
-    )
-
-
-def build_test_case(
-    input_text: str,
-    actual_output: str,
-    expected_output: str | None = None,
-    context: list[str] | None = None,
-    retrieval_context: list[str] | None = None,
-) -> LLMTestCase:
-    """Build a DeepEval test case from agent execution results."""
+def to_test_case(result: dict, case: dict) -> LLMTestCase:
+    """Build an LLMTestCase from one agent run and its golden case."""
+    observed = [tc["result"] for tc in result.get("tool_calls", []) if tc["tool"] in ("search_knowledge_base", "lookup_customer")]
     return LLMTestCase(
-        input=input_text,
-        actual_output=actual_output,
-        expected_output=expected_output,
-        context=context,
-        retrieval_context=retrieval_context,
+        input=case["input"],
+        actual_output=result.get("response") or result.get("answer", ""),
+        expected_output=case.get("expected_output"),
+        context=case.get("context") or None,
+        retrieval_context=observed or case.get("context") or None,
+        tools_called=tools_called(result),
+        expected_tools=[ToolCall(name=n) for n in case.get("expected_tools", [])],
+        name=case.get("id"),
+        tags=[case.get("category", "uncategorized")],
+        completion_time=result.get("latency_s"),
     )
 
 
-def load_golden_dataset(path: str) -> EvaluationDataset:
-    """Load a golden dataset from a JSON file for regression testing."""
-    dataset = EvaluationDataset()
-    dataset.add_test_cases_from_json_file(
-        file_path=path,
-        input_key_name="input",
-        actual_output_key_name="actual_output",
-        expected_output_key_name="expected_output",
-        context_key_name="context",
-    )
-    return dataset
+def golden_dataset(name: str = "golden_support") -> EvaluationDataset:
+    """A DeepEval EvaluationDataset of Goldens (inputs + expectations, no outputs yet)."""
+    goldens = [
+        Golden(
+            input=c["input"],
+            expected_output=c.get("expected_output"),
+            context=c.get("context") or None,
+            expected_tools=[ToolCall(name=n) for n in c.get("expected_tools", [])],
+            additional_metadata={"id": c["id"], "category": c.get("category")},
+        )
+        for c in load(name)
+    ]
+    return EvaluationDataset(goldens=goldens)
 
 
-def run_evaluation(test_cases: list[LLMTestCase], metrics: list) -> dict:
-    """
-    Run a complete evaluation and return summary results.
+def measure(tc: LLMTestCase, metrics: list) -> dict[str, dict]:
+    """Run metrics on one test case without DeepEval's console output."""
+    out = {}
+    for m in metrics:
+        name = getattr(m, "name", None) or m.__name__
+        try:
+            m.measure(tc)
+            out[name] = {"score": round(float(m.score), 3), "passed": bool(m.is_successful()), "reason": m.reason}
+        except Exception as exc:  # missing params etc. are reported, not raised
+            out[name] = {"score": None, "passed": False, "reason": f"error: {exc}"}
+    return out
 
-    Returns:
-        dict with keys: passed, failed, total, pass_rate, details
-    """
-    results = {"passed": 0, "failed": 0, "total": len(test_cases), "details": []}
 
-    for tc in test_cases:
-        case_result = {"input": tc.input, "metrics": {}}
-        all_passed = True
+def run_suite(
+    cases: list[dict],
+    agent_fn: Callable[[str], dict],
+    metrics_for: Callable[[dict], list],
+) -> dict:
+    """Run every case through the agent and its metrics. Returns a JSON-able report."""
+    details = []
+    for case in cases:
+        result = agent_fn(case["input"])
+        tc = to_test_case(result, case)
+        scores = measure(tc, metrics_for(case))
+        tools_ok = [t["tool"] for t in result["tool_calls"]] == case.get("expected_tools", []) if "expected_tools" in case else True
+        passed = all(s["passed"] for s in scores.values()) and tools_ok
+        details.append({
+            "id": case.get("id"), "category": case.get("category"), "input": case["input"],
+            "output": tc.actual_output, "tools": [t["tool"] for t in result["tool_calls"]],
+            "tools_ok": tools_ok, "metrics": scores, "passed": passed,
+            "tokens": result.get("total_tokens", 0), "latency_s": result.get("latency_s"),
+        })
+    passed = sum(d["passed"] for d in details)
+    metric_names = sorted({k for d in details for k in d["metrics"]})
+    averages = {}
+    for name in metric_names:
+        vals = [d["metrics"][name]["score"] for d in details if name in d["metrics"] and d["metrics"][name]["score"] is not None]
+        averages[name] = round(sum(vals) / len(vals), 3) if vals else None
+    return {"total": len(details), "passed": passed, "failed": len(details) - passed,
+            "pass_rate": round(passed / len(details), 3) if details else 0.0,
+            "averages": averages, "details": details}
 
-        for metric in metrics:
-            metric.measure(tc)
-            case_result["metrics"][metric.__class__.__name__] = {
-                "score": metric.score,
-                "passed": metric.is_successful(),
-                "reason": metric.reason if hasattr(metric, "reason") else None,
-            }
-            if not metric.is_successful():
-                all_passed = False
 
-        if all_passed:
-            results["passed"] += 1
-        else:
-            results["failed"] += 1
+def default_metrics_for(case: dict) -> list:
+    """Project 1 metric set; faithfulness only where the case has grounding context."""
+    from evaluators.metrics import answer_relevancy, correctness, faithfulness
 
-        case_result["passed"] = all_passed
-        results["details"].append(case_result)
+    ms = [answer_relevancy(), correctness()]
+    if case.get("context"):
+        ms.insert(1, faithfulness())
+    return ms
 
-    results["pass_rate"] = (
-        results["passed"] / results["total"] if results["total"] > 0 else 0
-    )
-    return results
+
+def save_report(report: dict, path: str | Path) -> Path:
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(report, indent=2, default=str))
+    return p

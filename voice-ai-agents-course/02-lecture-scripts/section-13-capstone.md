@@ -25,7 +25,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | 13.1 | Capstone brief and architecture | SL | 6:00 | ~720 |
 | 13.1a | Build it yourself first: the capstone gate | TH | 3:00 | ~360 |
 | 13.2 | Reference solution: assembling the production agent (Part A / Part B) | SC | 15:00 (7:30 + 7:30) | ~1,280 |
-| 13.3 | Hardening: fallbacks, timeouts, error speech | SC | 10:00 | ~850 |
+| 13.3 | Hardening: fallbacks, timeouts, error speech | SC | 10:00 | ~940 |
 | 13.4 | Full test run: unit → behavior → evals → simulated calls | SC | 12:00 | ~910 |
 | 13.5 | Deploy, call, observe (Part A / Part B) | DM | 12:00 (6:00 + 6:00) | ~920 |
 | 13.6 | Capstone submission and portfolio write-up | TH | 5:00 | ~600 |
@@ -44,7 +44,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | Target duration | 6:00 (~720 spoken words) |
 | Learning objectives | 1. Turn the client's go-live review into requirements by area. 2. Explain the 24 acceptance tests, their test layers and the pass bar. 3. Draw the production architecture from phone and web to agent, tools, telemetry and CI. |
 | Prerequisites | Sections 3 to 12 |
-| Files used | `05-projects/capstone-riley.md` |
+| Files used | `05-projects/capstone-riley.md`; `agents/` and `tests/evals/latency_report.py` (shown briefly) |
 
 ### Script
 
@@ -72,6 +72,8 @@ Read her words the way an engineer would. Every phrase hides a requirement. "Car
 
 The requirements table in `05-projects/capstone-riley.md` has eleven areas. Here they are, grouped. You've built every one of them already. Booking with read-backs in Section 5. Knowledge and handoffs in Section 7. The phone number in Section 8. Tests in Section 9. Telemetry in Section 10. Guardrails in Section 11. And deployment and fallbacks in Section 12.
 
+[SCREEN: VS Code explorer, `03-code/agents/`. Highlight each file as the narration names its section: `s05_booking_agent.py`, `s07_multi_agent.py`, `s08_telephony_agent.py`, `s10_observed_agent.py`, `s11_guarded_agent.py`, `s12_chaos_demo.py`. Every requirement already has a working file.]
+
 For the handoff, the reference sends insurance, payment and billing questions from Riley to a Billing specialist, and back again. The full Greeter, Booking and Billing graph from Section 7 is equally valid.
 
 [SLIDE 3: 24 acceptance tests]
@@ -88,6 +90,8 @@ Pass: 15 of 24. Excellent: 20 or more.
 Now the part most portfolio projects skip. Acceptance tests you can measure. The brief has twenty-four, written as "given, when, then", and each one names its test layer.
 
 Most are behavior tests. Booking with a read-back. The verification gate. The billing handoff. An impersonation attempt. A few are unit tests, like the verification lockout and PII redaction. Four are evals: speakability scored by a judge at point seven or better, p95 voice-to-voice at or under sixteen hundred milliseconds, which is the default budget in `latency.py`, cost per minute, and word error rate. One uses simulated callers. And two are manual, with recorded evidence: the chaos test from Lecture 12.8, and a deployed agent that answers the phone.
+
+[SCREEN: terminal in `03-code`: `uv run python tests/evals/latency_report.py`; highlight the `voice_to_voice` row and its `1600` budget, the AT-19 target, already in `src/maple/latency.py`.]
 
 Fifteen passing is a pass. Twenty or more is excellent. And one rule matters a lot. Write your latency and cost targets down *before* you measure. Moving targets after the fact is the first thing a reviewer notices.
 
@@ -118,10 +122,20 @@ Six deliverables. Your own agent file, called `capstone_riley.py`, so it never g
 
 The brief also has a suggested week plan, one focus per day. Day one, merge your Project 1 and 2 agents. Day two, knowledge and a handoff. Day three, guardrails. Day four, observability. Day five, hardening and acceptance tests. Day six, deploy. Day seven, the demo and the write-up.
 
+[SLIDE 6: The minimum viable capstone]
+- Booking with read-back, the FAQ, a transfer or its fallback
+- Verification, injection resistance, metrics, deployed
+- At least 15 acceptance tests passing
+
 And if the week runs out, there's a "minimum viable capstone": booking with read-back, the FAQ, a transfer or its fallback, verification, injection resistance, metrics, deployed, and at least fifteen acceptance tests passing. Handoffs, Langfuse and fallbacks can go under "next steps". Use it. A finished smaller scope beats an unfinished big one.
 
 [AVATAR]
 The full brief, with all twenty-four acceptance tests and the grading rubric, is in `05-projects/capstone-riley.md`. Read it now, before the next lecture. Because in the next lecture, I'm going to ask you to do something a little unusual.
+
+[SLIDE 7: Recap]
+- A client's go-live review becomes requirements
+- 24 acceptance tests, each with a test layer
+- Six deliverables; write targets before measuring
 
 **Recap:** The capstone turns a go-live review into requirements, twenty-four measurable acceptance tests and six deliverables, built on the architecture you've assembled across the course.
 
@@ -145,7 +159,7 @@ The full brief, with all twenty-four acceptance tests and the grading rubric, is
 | Target duration | 3:00 (~360 spoken words) |
 | Learning objectives | 1. Commit to a one-week, time-boxed attempt at the capstone from the brief alone. 2. Know what's allowed during the week, and how to use the reference solution afterwards (`DIFF_NOTES.md`). |
 | Prerequisites | 13.1 |
-| Files used | `05-projects/capstone-riley.md` |
+| Files used | `05-projects/capstone-riley.md`; the repo's `make test` (shown briefly) |
 
 ### Script
 
@@ -169,6 +183,8 @@ And there's a career reason too. A capstone you built from a brief is a portfoli
 
 So here's the deal. Put an end date in your calendar, one week from today. Build your own `capstone_riley.py` from the brief.
 
+[SCREEN: terminal in `03-code`: `make test` ends in `211 passed`; then `touch agents/capstone_riley.py` and the empty file opens in VS Code. A green baseline and a blank page.]
+
 You can use everything you've built so far. Your projects and labs. `src/maple` and `common.py`. The earlier section agents, up to Section 11. The docs. And the Q&A, for questions about concepts. What you can't open yet is my capstone file, or the next four lectures.
 
 If you're stuck on one thing for more than ninety minutes, don't burn a day on it. Write down what you tried, cut the scope using the "minimum viable capstone" list in the brief, and move on. `10-resources/troubleshooting.md` covers the common errors. Unfinished but honest beats finished but copied.
@@ -184,6 +200,11 @@ When the week is up, whatever state you're in, come back and watch the reference
 I know it's tempting to click "next." Close this video, open the brief, and start with day one of the week plan.
 
 I'll see you in a week.
+
+[SLIDE 3: Recap]
+- Stop: build your own capstone first
+- One-week time box; cut scope, don't copy
+- Then review the reference and write `DIFF_NOTES.md`
 
 **Recap:** Build the capstone from the brief first, time-boxed to one week, then use the reference solution as a code review and write down the differences.
 
@@ -212,9 +233,9 @@ I'll see you in a week.
 ### Script: Part A — the agents
 
 [AVATAR]
-Welcome back. If you've just finished your week, well done. Open your own `capstone_riley.py` in a second window. As I walk through mine, keep a note of anything you did differently. That's your `DIFF_NOTES.md`.
+About three hundred lines. That's the whole production receptionist, and almost none of it is new. If you've just finished your week, well done. Open your own `capstone_riley.py` in a second window. As I walk through mine, keep a note of anything you did differently. That's your `DIFF_NOTES.md`.
 
-Here's the headline. The reference capstone is under three hundred lines. That's not because it's simple. It's because almost everything was already built in earlier sections. The capstone is mostly *composition*.
+Why so short? Not because it's simple. Because almost everything was already built in earlier sections. The capstone is mostly *composition*.
 
 [SCREEN: `agents/s13_capstone_receptionist.py`, the module docstring. Footer: "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."]
 
@@ -224,6 +245,8 @@ The docstring lists what it combines, with the section each piece came from. Let
 ```python
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
 from typing import Any
 
@@ -243,6 +266,7 @@ from livekit.agents import (
     inference,
     llm,
 )
+from livekit.agents.voice import SpeechHandle
 from livekit.agents.voice.agent_session import SessionConnectOptions
 from s10_observed_agent import attach_observers, setup_observability
 from s11_guarded_agent import GuardrailsMixin, install_pii_log_filter
@@ -260,16 +284,19 @@ from common import (
     caller_number,
     clinic_today,
     create_session,
+    find_sip_participant,
     get_scheduler,
     get_settings,
+    hang_up,
     prewarm,
+    transfer_sip_caller,
 )
 from maple import prompts
 from maple.config import Settings
 from maple.scheduler import ClinicScheduler
 ```
 
-From `common.py`: the tool mixins for booking, verification, knowledge and telephony, the model builders, `create_session` and `prewarm`. From LiveKit: the core classes, plus `APIConnectOptions`, `ErrorEvent` and `SessionConnectOptions`, which we'll use for hardening in the next lecture. From Section 10: `attach_observers` and `setup_observability`. From Section 11: `GuardrailsMixin` and the PII log filter. And our `prompts` module.
+From `common.py`: the tool mixins for booking, verification, knowledge and telephony, the model builders, `create_session` and `prewarm`, plus two helpers from Section 8, `transfer_sip_caller` and `hang_up`, which the error recovery reuses. From LiveKit: the core classes, plus `APIConnectOptions`, `ErrorEvent`, `SpeechHandle` and `SessionConnectOptions`, which we'll use for hardening in the next lecture. From Section 10: `attach_observers` and `setup_observability`. From Section 11: `GuardrailsMixin` and the PII log filter. And our `prompts` module.
 
 Nothing in this file re-implements a tool. Every tool comes from a mixin that already has tests.
 
@@ -296,10 +323,11 @@ Capstone rules:
   existing appointment does: use verify_caller first.
 - For insurance, payment plans or bills, hand off with transfer_to_billing.
 - Before transferring to a human say one short sentence, then call transfer_to_human.
-- When the caller is finished, say goodbye in one sentence, then call end_call."""
+- When the caller is finished, say goodbye in one sentence, then call end_call.
+- If the clinic is closed on the requested day, call find_available_slots for the next open day and offer those times."""
 ```
 
-Four rules that only make sense when everything is combined. New bookings don't need verification, but anything touching an existing appointment does. Billing questions hand off to the specialist. Say one sentence before transferring to a human. And say goodbye before hanging up.
+Five rules that only make sense when everything is combined. New bookings don't need verification, but anything touching an existing appointment does. Billing questions hand off to the specialist. Say one sentence before transferring to a human. Say goodbye before hanging up. And the fifth, about closed days, came out of a failing acceptance test. You'll watch it fail and get fixed in lecture 13.4.
 
 These go on top of the standard blocks. Booking, knowledge, safety, escalation and security all come from `build_instructions`, as you'll see in a second.
 
@@ -366,18 +394,28 @@ Read the class line first. `GuardrailsMixin` comes first, so its `on_user_turn_c
 
 `require_verification = True` turns on the identity gate from Lecture 11.2.
 
+[CODE: same class, highlight `__init__`: the `caller_line` and the `build_instructions(...)` call.]
+
 The constructor takes an optional caller ID. If the call came from a phone, we add a line to the instructions: "Caller ID shows five one two, five five five... confirm it before using it." Notice "confirm it." Caller ID can be spoofed, remember, so it's a convenience, not proof of identity.
 
 Then the instructions, built from blocks: booking, knowledge and security on, plus the language, plus our capstone rules. And an optional `chat_ctx`, which matters for handoffs.
+
+[CODE: same class, highlight `on_enter`, then `transfer_to_billing`.]
 
 `on_enter` has two modes. A fresh call gets the standard greeting, with the AI disclosure, spoken with `session.say`, so it's instant and never varies. A caller coming *back* from billing gets a short "anything else?" instead of a second greeting.
 
 And the handoff tool, `transfer_to_billing`. It records a note in `CallState`, copies the chat history without the old instructions, truncated to the last twelve items, and returns a new `BillingSpecialist` plus a short message. Returning an agent from a tool is how LiveKit does a handoff, the same pattern as Section 7.
 
+[SLIDE 2: Handing off context, not instructions]
+- `copy(exclude_instructions=True)`: Riley's rules stay with Riley
+- `truncate(max_items=12)`: enough context, small prompt
+- One shared `CallState`: verification survives the handoff
+
 Why truncate? Because the specialist needs context, like the caller's name and question, but not the whole call. Twelve items keeps the prompt small and the latency low.
 
 And why `exclude_instructions=True`? Because Riley's instructions shouldn't leak into the specialist's prompt. Each agent brings its own instructions. If you forget this, the billing specialist suddenly thinks it can book appointments, because Riley's booking rules came along with the history.
 
+[AVATAR]
 One more design choice to notice. The greeting uses `session.say` with a fixed string, not `generate_reply`. That costs nothing, starts speaking immediately, and the AI disclosure is exactly the same on every call. For a legal requirement like disclosure, you want the same words every time, not the model's paraphrase.
 
 [SCREEN: Switch to Part B title card.]
@@ -458,7 +496,6 @@ async def entrypoint(ctx: JobContext) -> None:
             tts=models["tts"],
             conn_options=CONN_OPTIONS,
             max_tool_steps=5,
-            preemptive_generation=True,
         )
 ```
 
@@ -466,7 +503,14 @@ Line by line. First, settings. Then `install_pii_log_filter`, before anything lo
 
 Then caller ID. In console mode, there's no real room and no caller, so `is_fake_job` skips this. On a real call, we connect, wait for the participant, and if it's a SIP participant, read the caller's number from its attributes. That number goes into `CallState`.
 
-If `MOCK_MODE` is on, we get the scripted fake LLM from `common.py`, with no STT or TTS. Otherwise, we build the resilient models and create the session. `telephony=True` for phone calls gives slightly longer endpointing, from Lecture 8.3. Custom connection options, five tool steps, and preemptive generation, so the LLM can start on a likely reply before the turn fully ends.
+[CODE: same block, highlight the `if settings.mock_mode:` branch, then the keyword arguments to `create_session(...)`.]
+
+If `MOCK_MODE` is on, we get the scripted fake LLM from `common.py`, with no STT or TTS. Otherwise, we build the resilient models and create the session. `telephony=True` for phone calls gives slightly longer endpointing, from Lecture 8.3. Custom connection options and five tool steps. And preemptive generation, where the LLM starts on a likely reply before the turn fully ends? In 1.8 it's already on by default, through the turn-handling options, so the capstone passes nothing. Passing `preemptive_generation=True` straight to `AgentSession` is deprecated.
+
+[SLIDE 3: Why `max_tool_steps=5`]
+- A reschedule: verify, look up, find slots, reschedule
+- The default of three stops halfway
+- Five leaves room without endless loops
 
 Why five tool steps? A reschedule can take four tool calls in one turn: verify, look up the appointment, find slots, and reschedule. The default of three would cut that off halfway. Five gives room, without letting a confused model loop forever.
 
@@ -479,8 +523,11 @@ Why five tool steps? A reschedule can take four tool calls in one turn: verify, 
         if getattr(ev.error, "recoverable", True):
             return
         logger.error("unrecoverable %s error", type(ev.source).__name__)
+        if session.userdata.call_outcome == "error":
+            return  # already speaking the error line and transferring or hanging up
         session.userdata.call_outcome = "error"
-        session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        spoken = session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        asyncio.create_task(recover_after_error(session, ctx, spoken))  # noqa: RUF006
 
     attach_observers(session, ctx)
     await session.start(agent=CapstoneRiley(caller_id=caller_id), room=ctx.room)
@@ -490,7 +537,7 @@ if __name__ == "__main__":
     cli.run_app(server)
 ```
 
-Then the error handler, which we'll study in the next lecture. Then `attach_observers` from Section 10: metrics to JSONL, per-turn latency logs, and a cost report at shutdown, computed from `session.usage`. And finally, start the session with a fresh `CapstoneRiley`.
+Then the error handler, which we'll study in the next lecture. On an unrecoverable error it speaks a fixed line, then hands off to `recover_after_error`, which transfers the caller or says goodbye and hangs up. Then `attach_observers` from Section 10: metrics to JSONL, per-turn latency logs, and a cost report at shutdown, computed from `session.usage`. And finally, start the session with a fresh `CapstoneRiley`.
 
 One more detail in the decorator: `on_simulation_end`. That's the LiveKit Simulations hook from Lecture 9.14, so the same file can be graded by simulated calls.
 
@@ -530,6 +577,11 @@ make console AGENT=agents/s13_capstone_receptionist.py
 
 Look at the log. Riley handed off to billing. Billing looked up the FAQ. Then, when I asked about booking, billing handed back to Riley, who checked the schedule. Two agents, one call, one shared state.
 
+[SLIDE 4: Recap]
+- The capstone composes tested mixins; no tool is rebuilt
+- Riley and Billing share one `CallState`
+- The entrypoint wraps one session with redaction, tracing, fallbacks
+
 **Recap:** The capstone composes tested mixins, Section 11 guardrails and a small billing specialist, and its entrypoint adds redaction, tracing, caller ID, resilient models and observers around one session.
 
 **Transition:** Next, we harden it: fallbacks, timeouts and what Riley says when something breaks.
@@ -549,10 +601,10 @@ Look at the log. Riley handed off to billing. Billing looked up the FAQ. Then, w
 |---|---|
 | ID | 13.3 |
 | Type | SC (screencast / code-along) |
-| Target duration | 10:00 (~850 spoken words; the rest is screen, typing and demo time) |
-| Learning objectives | 1. Configure per-stage timeouts and retries with `SessionConnectOptions` and `APIConnectOptions`. 2. Build STT, LLM and TTS fallbacks: LiveKit Inference's server-side `fallback=` for STT and TTS, and `llm.FallbackAdapter` for the LLM. 3. Speak a pre-written recovery line on unrecoverable errors, and keep tool failures speakable. |
+| Target duration | 10:00 (~940 spoken words; the rest is screen, typing and demo time) |
+| Learning objectives | 1. Configure per-stage timeouts and retries with `SessionConnectOptions` and `APIConnectOptions`. 2. Build STT, LLM and TTS fallbacks: LiveKit Inference's server-side `fallback=` for STT and TTS, and `llm.FallbackAdapter` for the LLM. 3. Speak a pre-written recovery line on unrecoverable errors, then transfer or end the call cleanly with `recover_after_error`, and keep tool failures speakable. |
 | Prerequisites | 13.2; 12.6 and 12.8 |
-| Files used | `agents/s13_capstone_receptionist.py`, `src/maple/config.py`, `src/maple/prompts.py`, `.env.example` |
+| Files used | `agents/s13_capstone_receptionist.py` (`CONN_OPTIONS`, `build_resilient_models`, `recover_after_error`), `agents/common.py` (`transfer_sip_caller`, `hang_up`), `src/maple/config.py`, `src/maple/prompts.py`, `.env.example` |
 
 > **Verification note:** the fallback model strings (`FALLBACK_LLM_MODEL=google/gemini-2.5-flash`, `FALLBACK_STT_MODEL=assemblyai/universal-streaming`, `FALLBACK_TTS_MODEL=deepgram/aura-2`) are defaults from `.env.example` and have **not** been verified against LiveKit Inference's current model list. Check the list in the LiveKit docs before recording and show a "verify in current docs" caption when they're on screen.
 
@@ -564,7 +616,7 @@ In the chaos demo, you saw the difference between a call that survives a provide
 [SLIDE 1: Three layers of hardening]
 1. Timeouts and retries: `conn_options`
 2. Fallback providers: `fallback=` and `llm.FallbackAdapter`
-3. Spoken recovery: `ERROR_SPEECH` and speakable `ToolError`s
+3. Spoken recovery: `ERROR_SPEECH`, `recover_after_error` and speakable `ToolError`s
 
 [SCREEN: `agents/s13_capstone_receptionist.py`, `CONN_OPTIONS`.]
 
@@ -585,6 +637,13 @@ CONN_OPTIONS = SessionConnectOptions(
 Look at how they differ. STT and TTS get two retries, one second apart, with an eight-second timeout. Those are streaming connections, and a quick reconnect usually works. The LLM gets only one retry, half a second later, with a ten-second timeout. Why fewer? Because the fallback adapter, coming up next, is a better answer than retrying a slow LLM. Every retry is silence the caller has to sit through.
 
 And `max_unrecoverable_errors=3`. After three unrecoverable errors in a row, the session gives up and closes, instead of looping forever.
+
+[SLIDE 2: Library defaults vs Riley's]
+| | Retries | Interval | Timeout |
+|---|---|---|---|
+| `APIConnectOptions()` default | 3 | 2.0 s | 10 s |
+| Riley STT and TTS | 2 | 1.0 s | 8 s |
+| Riley LLM | 1 | 0.5 s | 10 s |
 
 The library defaults are three retries, two seconds apart, ten-second timeouts. They're reasonable. But on a phone call, three retries two seconds apart is six seconds of dead air. Choose these numbers on purpose, using the latency budget you set in Lecture 1.4.
 
@@ -635,9 +694,13 @@ For STT and TTS, LiveKit Inference supports a `fallback=` list. The fallback run
 
 Notice the STT still gets our dental keyterms and smart formatting. Remember from Lecture 11.3, smart formatting is what turns spoken phone numbers into digits, so redaction can catch them.
 
+[CODE: same function, highlight `llm.FallbackAdapter([...], attempt_timeout=5.0)`.]
+
 For the LLM, we use `llm.FallbackAdapter`, which runs *client side*, in our process. It takes a list of LLMs, primary first. If the primary fails, or takes longer than `attempt_timeout`, five seconds here, it moves to the next one. And in the background, it checks whether the primary has recovered, and switches back.
 
 One subtlety you saw in the chaos demo. If the primary fails *after* it already started streaming text, the adapter doesn't retry by default, because the caller already heard half a sentence. There's a `retry_on_chunk_sent` option if you want to change that. For a receptionist, the default is right.
+
+[CODE: same function, highlight the `if settings.provider_mode == "plugins":` branch.]
 
 And look at the top of the function. In `plugins` mode, where you use your own provider keys, the capstone returns plain models with no fallbacks. If you run in plugins mode in production, wrap your plugin instances in `stt.FallbackAdapter`, `llm.FallbackAdapter` and `tts.FallbackAdapter` yourself. The pattern is the same.
 
@@ -656,11 +719,14 @@ Layer three. Spoken recovery.
         if getattr(ev.error, "recoverable", True):
             return
         logger.error("unrecoverable %s error", type(ev.source).__name__)
+        if session.userdata.call_outcome == "error":
+            return  # already speaking the error line and transferring or hanging up
         session.userdata.call_outcome = "error"
-        session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        spoken = session.say(prompts.ERROR_SPEECH, allow_interruptions=False)
+        asyncio.create_task(recover_after_error(session, ctx, spoken))  # noqa: RUF006
 ```
 
-The session emits an `error` event whenever a stage fails. Most errors are recoverable, which means the framework is still retrying, so we ignore them. When an error is *unrecoverable*, we record the outcome in `CallState`, so it shows up in our metrics as an error call, and we speak `ERROR_SPEECH`.
+The session emits an `error` event whenever a stage fails. Most errors are recoverable, which means the framework is still retrying, so we ignore them. When an error is *unrecoverable*, we log it, record the outcome in `CallState`, so it shows up in our metrics as an error call, and speak `ERROR_SPEECH`. The check on `call_outcome` stops a second error from starting a second recovery.
 
 [CODE: `ERROR_SPEECH` in `src/maple/prompts.py`]
 ```python
@@ -671,9 +737,45 @@ ERROR_SPEECH = (
 
 It's a fixed string, spoken with `session.say`, so it doesn't need the LLM. And `allow_interruptions=False`, so the caller hears the whole thing.
 
-Here's an honest limitation, and a good exercise. The line promises a transfer, but the handler only speaks it. A stronger version would follow up with the same transfer logic `transfer_to_human` uses, when the front-desk number is configured and the clinic is open. Try adding that to your own capstone.
+But that line makes a promise: "Let me connect you with someone at the front desk." So the handler doesn't stop at speaking. It starts `recover_after_error`.
 
-[SLIDE 2: Speakable failures inside tools]
+[CODE: `recover_after_error` in `agents/s13_capstone_receptionist.py`]
+```python
+async def recover_after_error(
+    session: AgentSession[CallState], ctx: JobContext, spoken: SpeechHandle
+) -> None:
+    """Make ``ERROR_SPEECH`` true (lecture 13.3).
+
+    The error line promises a transfer, so once it has played we take the same path as
+    ``transfer_to_human``: a phone caller with ``TRANSFER_PHONE_NUMBER`` configured is
+    transferred to the front desk. Web callers, console mode and an unconfigured number
+    get a short goodbye with the clinic phone number, then the call ends cleanly instead
+    of leaving the caller with a dead agent.
+    """
+    state = session.userdata
+    with contextlib.suppress(Exception):  # TTS may be the failing stage; never hang here
+        await asyncio.wait_for(spoken.wait_for_playout(), timeout=20)
+
+    caller = find_sip_participant(ctx.room) if not ctx.is_fake_job() else None
+    if (
+        caller is not None
+        and get_settings().transfer_sip_uri
+        and await transfer_sip_caller(ctx, caller, state)
+    ):
+        return
+    state.notes.append("error: transfer unavailable, ended the call")
+    with contextlib.suppress(Exception):
+        goodbye = session.say(prompts.ERROR_GOODBYE, allow_interruptions=False)
+        await asyncio.wait_for(goodbye.wait_for_playout(), timeout=20)
+    with contextlib.suppress(Exception):
+        await hang_up(session, ctx)
+```
+
+First, it waits for the error line to finish, with a twenty-second cap, because the TTS might be the very thing that failed. Then the same check `transfer_to_human` makes: is there a phone caller, and is a transfer number configured? If so, it calls the shared `transfer_sip_caller` helper from lecture 8.4, and the caller reaches the front desk.
+
+If not, because it's a web call, console mode, or the transfer itself failed, it notes that in `CallState`, speaks `ERROR_GOODBYE` with the clinic's phone number, and hangs up with the same `hang_up` helper `end_call` uses. Either way, the call ends with words and a next step, never a dead line. You heard the goodbye path in the chaos demo, Part B.
+
+[SLIDE 3: Speakable failures inside tools]
 - Scheduler exceptions carry caller-ready messages ("We're closed on Sundays. Would another day work?")
 - `ToolError` sends that message to the LLM, not a stack trace
 - `transfer_to_human` without a SIP caller or number: "offer to take a message"
@@ -692,6 +794,11 @@ LLM_MODEL=openai/not-a-real-model make console-text AGENT=agents/s13_capstone_re
 [SCREEN: Type "What are your hours?". Log: the primary LLM fails, the adapter switches to the fallback, and Riley answers.]
 
 The primary fails immediately, the adapter logs "switching to next LLM," and Riley answers from the fallback model. And the per-turn latency line shows what that switch cost.
+
+[SLIDE 4: Recap]
+- Per-stage timeouts chosen against the latency budget
+- A fallback from a different provider for every model
+- Error line, then transfer or goodbye: never silence
 
 **Recap:** Choose per-stage timeouts on purpose, give every model a fallback from a different provider, and make sure every failure path ends in something Riley can say.
 
@@ -715,9 +822,9 @@ The primary fails immediately, the adapter logs "switching to next LLM," and Ril
 | Target duration | 12:00 (~910 spoken words; the rest is screen, typing and demo time) |
 | Learning objectives | 1. Run every layer of the testing pyramid with the Makefile and read each report. 2. Add capstone-specific acceptance tests for `CapstoneRiley`. 3. Diagnose and fix a failing acceptance test live, then re-run until green. |
 | Prerequisites | 13.2, 13.3; Section 9 |
-| Files used | `Makefile`, `tests/unit/`, `tests/agent/`, `tests/evals/`, `tests/agent/test_capstone.py` (added in this lecture), `.github/workflows/ci.yml` |
+| Files used | `Makefile`, `tests/unit/`, `tests/agent/`, `tests/evals/`, `tests/agent/test_capstone.py` (ships with the repo; walked through here), `.github/workflows/ci.yml` |
 
-> **Recording note:** `tests/agent/test_capstone.py` and the one-line `CAPSTONE_EXTRA` fix are created live in this lecture. Before publishing, make sure both exist in `03-code/` exactly as shown, so students' repos match the video. Numbers below come from the repo's bundled data (`sample_metrics.jsonl`, `stt_references.json`); live-model numbers will differ on your recording.
+> **Recording note:** the repo ships the end state of this lecture: `tests/agent/test_capstone.py` and the closed-day rule at the end of `CAPSTONE_EXTRA`. To record the red run, delete that one `CAPSTONE_EXTRA` line locally, run the capstone tests, then add it back on camera (`git diff` empty afterwards). Numbers below come from the repo's bundled data (`sample_metrics.jsonl`, `stt_references.json`); live-model numbers will differ on your recording.
 
 ### Script
 
@@ -752,9 +859,9 @@ Layer two. The offline agent tests. These use the scripted mock LLM, so they tes
 uv run pytest tests/agent tests/evals -m offline -q
 ```
 
-[SCREEN: `20 passed, 28 deselected`.]
+[SCREEN: `22 passed, 32 deselected`.]
 
-Twenty pass. The twenty-eight deselected are the live ones, which we run next.
+Twenty-two pass. The thirty-two deselected are the live behavior and eval tests, which we run next.
 
 Layer three. Live behavior tests. These use a real LLM, so they cost a few cents.
 
@@ -776,7 +883,11 @@ make eval
 
 Three reports in one command. First, DeepEval judges the golden conversations on three criteria: voice brevity, confirmation read-back and safety escalation. Some golden conversations are deliberately bad, and those are expected to fail. That checks the judge, not just the agent. A judge that passes a markdown monologue is a broken judge.
 
+[SCREEN: scroll to the WER report: `corpus WER (maple): 26.32% | jiwer: 26.32% | match` under `baseline`, `3.76%` under `with_keyterms`.]
+
 Then word error rate. Look at the two lines at the bottom. Nova-3 without keyterms: twenty-six point three percent on our reference set. With the dental keyterms: three point seven six percent. Same audio. That one setting is worth a seven-times improvement on names and dental terms. And our pure-Python WER matches `jiwer` exactly.
+
+[SCREEN: scroll to the latency table: `voice_to_voice  14  1215  1434  1474  1600  OK`, then `PASS: every stage is within budget`.]
 
 Then the latency report against the budget. On the bundled sample data, every stage is inside budget. Voice-to-voice p95 is fourteen hundred and seventy-four milliseconds, against a budget of sixteen hundred. In Lecture 13.5, we'll run this on real calls to the deployed agent.
 
@@ -786,9 +897,9 @@ Layer five. Simulated callers.
 make simulate
 ```
 
-[SCREEN: Four personas, each with a transcript and a verdict: confused senior, impatient caller, injection attacker, emergency caller. `4/4 personas passed`.]
+[SCREEN: Five personas, each with a transcript and a verdict: confused senior, impatient caller, injection attacker, emergency caller, opt-out caller. `5/5 personas passed`.]
 
-Four personas. The confused senior who needs patience. The impatient caller. The injection attacker from Section 11. And the emergency caller, who must be told to call nine one one. Four out of four.
+Five personas. The confused senior who needs patience. The impatient caller. The injection attacker from Section 11. The emergency caller, who must be told to call nine one one. And the opt-out caller from lecture 9.9. Five out of five.
 
 Acceptance test twenty-two asks for the confused senior to book in at least two out of three runs, and the attacker to be refused three out of three. So for your `ACCEPTANCE.md`, run the persona you're measuring three times.
 
@@ -799,19 +910,20 @@ Acceptance test twenty-two asks for the confused senior to book in at least two 
 
 Now, notice something. The existing behavior tests exercise the section agents. The booking agent from Section 5, the multi-agent graph from Section 7, the guarded agent from Section 11. That's deliberate: they're the building blocks. But the capstone adds behavior of its own, like the billing handoff. So it needs its own tests.
 
-Let's write two, for acceptance tests five and ten.
+The repo ships that file. Here are its two tests, for acceptance tests five and ten.
 
-[CODE: new file `tests/agent/test_capstone.py`]
+[CODE: `tests/agent/test_capstone.py`]
 ```python
 """Capstone acceptance tests that need CapstoneRiley (lecture 13.4)."""
 
 from __future__ import annotations
 
 import pytest
-from common import CallState
 from livekit.agents import AgentSession
 from livekit.agents.voice.run_result import FunctionCallEvent
 from s13_capstone_receptionist import BillingSpecialist, CapstoneRiley
+
+from common import CallState
 
 pytestmark = pytest.mark.live
 
@@ -863,7 +975,7 @@ We have two options. Change the tool, so a closed day automatically searches ahe
 
 [CODE: one new line at the end of `CAPSTONE_EXTRA` in `agents/s13_capstone_receptionist.py`]
 ```python
-- If the clinic is closed on the requested day, call find_available_slots for the next open day and offer those times.
+- If the clinic is closed on the requested day, call find_available_slots for the next open day and offer those times."""
 ```
 
 ```bash
@@ -893,6 +1005,11 @@ And in CI, from Lecture 9.10, the `unit` job runs lint, unit tests, offline agen
 
 [AVATAR]
 That's the full pyramid, on the full agent. And the lesson from that one failure is worth repeating. Every component worked. The failure was in how they combined. That's exactly why the capstone needs its own acceptance tests.
+
+[SLIDE 3: Recap]
+- Run the pyramid cheapest first
+- Capstone behavior gets its own acceptance tests
+- Fix the agent, not the test; re-run live layers
 
 **Recap:** Run the pyramid cheapest first, add capstone-specific acceptance tests, let a failing test's judge reason point you to the fix, and re-run every live layer after a prompt change.
 
@@ -1066,6 +1183,11 @@ So here's what we can show Doctor Chen. It works: two real calls, on two channel
 
 That's a go-live review you can pass.
 
+[SLIDE 2: Recap]
+- Smoke-test the image, then deploy it
+- Prove it on phone and web
+- Logs, traces and ten measured calls become evidence
+
 **Recap:** Deploy the tested image, prove it on phone and web, then use logs, traces, the cost report and ten measured calls to fill in your acceptance evidence.
 
 **Transition:** Next, we package all of this into a submission and a portfolio write-up that people will actually read.
@@ -1088,7 +1210,7 @@ That's a go-live review you can pass.
 | Target duration | 5:00 (~600 spoken words) |
 | Learning objectives | 1. Package the capstone so a reviewer understands it in two minutes: README, `ACCEPTANCE.md`, diagram, `DIFF_NOTES.md`. 2. Record a 3-to-5-minute demo that shows evidence, not just a happy path. 3. Submit the Udemy assignment and write a short portfolio post. |
 | Prerequisites | 13.2 to 13.5 (or your own build from the 13.1a gate) |
-| Files used | `05-projects/capstone-riley.md` (portfolio template, submission questions, peer-review checklist) |
+| Files used | `05-projects/capstone-riley.md` (portfolio template, submission questions, peer-review checklist); the repo's `.gitignore` (shown briefly) |
 
 ### Script
 
@@ -1107,6 +1229,8 @@ You built a production voice agent. Now, most people who look at it will give it
 Start with the README. The capstone brief has a template, and it's in this order on purpose.
 
 A one-line summary, with the demo link right at the top. People would rather listen for two minutes than read for ten. Then what it does, in plain words for a non-technical reader. Then your architecture diagram, and one or two sentences on why you chose the cascaded pipeline or the realtime model, with your measured numbers.
+
+[B-ROLL: a mock capstone README scrolling: a demo-video thumbnail and a "call it" line at the top, a plain-language summary, then an architecture diagram.]
 
 Then "How I tested it." Tests per layer, your acceptance score out of twenty-four, and the CI badge. Then a results table. p50 and p95 latency. Cost per minute. Word error rate. Injection pass rate. Each one next to the target you wrote down *before* measuring.
 
@@ -1138,6 +1262,8 @@ And `DIFF_NOTES.md`, from the capstone gate. Three things the reference does dif
 - Fictional data only: demo patients, 555 numbers
 - License and a note: "not for clinical use without a compliance review"
 
+[SCREEN: terminal in your capstone repo: `git check-ignore -v .env .env.production` prints `.gitignore:1:.env` and `.gitignore:2:.env.*`. Then `git log --all --oneline -- .env` prints nothing.]
+
 A quick hygiene check before you publish. No secrets in the repo, including the history. If a key was ever committed, rotate it. CI green on the commit you deployed. Only fictional data: our demo patients and five-five-five numbers. And a license, plus a short note that this isn't ready for real clinical use without a compliance review. That note makes you look more professional, not less.
 
 [SLIDE 5: Submitting]
@@ -1163,6 +1289,11 @@ Last, the post, for LinkedIn or your blog. The brief has a template, and it's un
 [AVATAR]
 One last thought. Don't wait for it to be perfect. A capstone with honest numbers and a clear "what I'd do next" list is far more impressive than a polished demo with no evidence. Ship it this week.
 
+[SLIDE 7: Recap]
+- Lead with a demo and a results table
+- `ACCEPTANCE.md` and `DIFF_NOTES.md`, failures included
+- Clean repo, honest numbers, then review a peer
+
 **Recap:** Lead with a demo and a results table, back it with `ACCEPTANCE.md` and `DIFF_NOTES.md`, keep the repo clean and honest, then submit and review a peer.
 
 **Transition:** Next, one more assignment that proves your skills transfer: ship Riley for a completely different business.
@@ -1185,7 +1316,7 @@ One last thought. Don't wait for it to be perfect. A capstone with honest number
 | Target duration | 4:00 video (~450 spoken words); assignment itself about 6 to 12 hours |
 | Learning objectives | 1. Re-skin the capstone for a new business by replacing the FAQ, tool schema, business-logic module and prompt blocks. 2. Handle the new domain's specific risk in code and prompt, with tests. 3. Adapt at least 15 capstone acceptance tests and ship a second, distinct portfolio project. |
 | Prerequisites | 13.2 to 13.6 (or your own capstone) |
-| Files used | `05-projects/challenges.md` (Challenge 13.7), `10-resources/business-template.md`, `05-projects/capstone-riley.md` |
+| Files used | `05-projects/challenges.md` (Challenge 13.7), `10-resources/business-template.md`, `05-projects/capstone-riley.md`; `src/maple/` (shown briefly as the domain layer) |
 
 ### Script
 
@@ -1203,7 +1334,9 @@ The honest answer should be "Yes. Here's the repo." This assignment gives you th
 
 Pick one of three briefs. They're in `05-projects/challenges.md`, and each one stresses a different skill.
 
-Nonna's Table is a restaurant. Tables for two, four and six. Parties over eight go to the events team. And the domain risk is allergies. Riley must never promise a dish is safe. She notes the allergy on the booking and offers the host.
+[B-ROLL: three quick cards, one per brief: a restaurant table plan with an allergy flag, a salon calendar with two-hour colour blocks, a law-office intake form stamped "no legal advice".]
+
+Nonna's Table is a restaurant. Tables for two, four and six. Parties over eight go to the events team. And the domain risk is allergies. Riley must never promise a dish is safe. It notes the allergy on the booking and offers the host.
 
 Fade & Bloom is a salon. A colour takes two hours, a cut forty-five minutes, and each stylist has their own days. Our dental scheduler uses fixed thirty-minute slots, so you'll generalise it to take a duration. That's a real engineering change.
 
@@ -1219,6 +1352,8 @@ Harbor Legal is a law office, and it's the hardest on purpose. Riley must never 
 | Test data and judge intents | Test pyramid, CI, latency and cost reporting |
 
 Here's what changes and what stays. You'll replace the FAQ, the tool schemas, the business-logic module, the prompt blocks and the test data.
+
+[SCREEN: VS Code explorer in `03-code`: `src/maple/data/faq.md`, `src/maple/scheduler.py` and `src/maple/prompts.py` highlighted as the domain layer; `agents/common.py`, `tests/` and `deploy/` dimmed as the parts that stay.]
 
 What stays is most of the hard stuff. Session wiring, fallbacks, telemetry, redaction, deployment, and the shape of the test pyramid. That's the point. The architecture is reusable. The domain is a layer on top.
 
@@ -1245,6 +1380,11 @@ Three tips. Write the business logic first, with unit tests and no agent, just l
 When you're done, you'll have two production voice agents in two different domains, with the same engineering discipline behind both. That's a strong story. Submit it through the domain-swap assignment in this lecture, and tell us in the Q&A which business you picked.
 
 **Recap:** Swap the domain layer, handle the new domain's risk in code and tests, keep the architecture and the pyramid, and ship a second portfolio project.
+
+[SLIDE 5: You can now]
+- Assemble a production voice agent from tested parts
+- Prove it with measurable acceptance tests and evidence
+- Re-skin the same architecture for a new business
 
 **Transition:** That completes the capstone. Next is Section 14, which is optional: we rebuild Riley's booking flow in Pipecat and compare the stack options.
 

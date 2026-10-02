@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D6">
+<title id="t-D6">D6: The call path</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The call path</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D6</text></g>
+<g id="build-1">
+<text x="96" y="276" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">INBOUND</text>
+<rect x="96.0" y="300" width="236" height="130" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="214.0" y="358.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Caller&#x27;s phone</text>
+<text x="214.0" y="385.29999999999995" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">+1 555 01XX</text>
+<rect x="394.4" y="300" width="236" height="130" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="512.4" y="358.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">PSTN</text>
+<text x="512.4" y="385.29999999999995" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">phone network</text>
+<rect x="692.8" y="300" width="236" height="130" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="810.8" y="359.5" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Twilio Elastic</text>
+<text x="810.8" y="385.9" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">SIP trunk</text>
+<rect x="991.1999999999999" y="300" width="236" height="130" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="1109.1999999999998" y="347.59999999999997" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">LiveKit SIP</text>
+<text x="1109.1999999999998" y="374.24999999999994" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">inbound trunk +</text>
+<text x="1109.1999999999998" y="396.34999999999997" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">dispatch rule</text>
+<rect x="1289.6" y="300" width="236" height="130" rx="8" fill="none" stroke="#64748B" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="1407.6" y="372.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Room call-…</text>
+<rect x="1588.0" y="300" width="236" height="130" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="1706.0" y="358.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Riley</text>
+<text x="1706.0" y="385.29999999999995" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">riley-receptionist</text>
+<path d="M336.0 365.0 L390.4 365.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M634.4 365.0 L688.8 365.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M932.8 365.0 L987.1999999999999 365.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M1231.1999999999998 365.0 L1285.6 365.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M1529.6 365.0 L1584.0 365.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="810.8" y="462" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">8 kHz narrowband audio</text>
+</g>
+<g id="build-2">
+<text x="96" y="536" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">TRANSFER</text>
+<rect x="96.0" y="560" width="236" height="130" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="214.0" y="618.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Front desk phone</text>
+<text x="214.0" y="645.3" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">+1 555 01XX</text>
+<path d="M1706.0 434 L1706.0 613.0 Q1706.0 625.0 1694.0 625.0 L338.0 625.0" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
+<path d="M1109.1999999999998 436 L1109.1999999999998 615.0" fill="none" stroke="#00D4AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 5"/>
+<circle cx="1109.1999999999998" cy="625.0" r="7" fill="#00D4AA"/>
+<text x="1109.1999999999998" y="661.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">via LiveKit SIP</text>
+<path d="M810.8 478 L810.8 615.0" fill="none" stroke="#00D4AA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 5"/>
+<circle cx="810.8" cy="625.0" r="7" fill="#00D4AA"/>
+<text x="810.8" y="661.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">via Twilio</text>
+<text x="1447.6" y="609.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#00D4AA" text-anchor="middle">transfer_sip_participant</text>
+</g>
+<g id="build-3">
+<text x="96" y="796" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">OUTBOUND</text>
+<rect x="96.0" y="820" width="300" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="246.0" y="887.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">s08_outbound_call.py</text>
+<rect x="453.0" y="820" width="300" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="603.0" y="873.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">LiveKit API</text>
+<text x="603.0" y="900.3" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">create SIP participant</text>
+<rect x="810.0" y="820" width="300" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="960.0" y="887.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Outbound trunk</text>
+<rect x="1167.0" y="820" width="300" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="1317.0" y="887.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">PSTN</text>
+<rect x="1524.0" y="820" width="300" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1674.0" y="873.65" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Patient&#x27;s phone</text>
+<text x="1674.0" y="900.3" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">+1 555 01XX</text>
+<path d="M400.0 880 L449.0 880" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-teal)"/>
+<path d="M757.0 880 L806.0 880" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-teal)"/>
+<path d="M1114.0 880 L1163.0 880" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-teal)"/>
+<path d="M1471.0 880 L1520.0 880" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-teal)"/>
+</g>
+</svg>

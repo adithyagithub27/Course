@@ -149,3 +149,13 @@ def test_compare_stores_identical_is_ok():
     _, b = replay_day(4, sessions=60, judge_rate=0.8)
     res = compare_stores(a, b)
     assert all(r.status in {"ok", "insufficient"} for r in res)
+
+
+def test_judge_max_calls_caps_a_run(monkeypatch, tmp_path, capsys):
+    """JUDGE_MAX_CALLS bounds the judge bill per run (production docs, Lecture 8.2)."""
+    from evals.online_judge import main
+
+    monkeypatch.setenv("JUDGE_MAX_CALLS", "5")
+    rc = main(["--store", str(tmp_path / "j.sqlite"), "--seed", "3", "--rate", "1.0", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "scored=5 " in out

@@ -1,0 +1,785 @@
+{
+  "course": "Course 3 · Voice AI Agents",
+  "generated_by": "10-graphics/diagrams/_src/build_diagrams.py",
+  "diagrams": {
+    "D1": {
+      "id": "D1",
+      "title": "The voice pipeline",
+      "file": "D1-voice-pipeline.svg",
+      "lectures": [
+        "1.2",
+        "3.1",
+        "13.1"
+      ],
+      "keywords": [
+        "voice pipeline",
+        "seven components",
+        "where each fails"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D1-step1.svg",
+          "label": "the components",
+          "keywords": []
+        },
+        "2": {
+          "file": "D1-step2.svg",
+          "label": "where each fails",
+          "keywords": [
+            "where each fails",
+            "fails",
+            "failure"
+          ]
+        }
+      }
+    },
+    "D2": {
+      "id": "D2",
+      "title": "Three architectures",
+      "file": "D2-cascaded-vs-s2s-vs-hybrid.svg",
+      "lectures": [
+        "1.3",
+        "6.1",
+        "6.3",
+        "6.4"
+      ],
+      "keywords": [
+        "cascaded",
+        "speech-to-speech",
+        "half-cascade",
+        "hybrid pipeline",
+        "two ways to build riley",
+        "three architectures"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D2-step1.svg",
+          "label": "cascaded",
+          "keywords": [
+            "cascaded"
+          ]
+        },
+        "2": {
+          "file": "D2-step2.svg",
+          "label": "speech-to-speech",
+          "keywords": [
+            "speech-to-speech",
+            "realtime model (hears",
+            "audio in, audio out"
+          ]
+        },
+        "3": {
+          "file": "D2-step3.svg",
+          "label": "half-cascade",
+          "keywords": [
+            "half-cascade",
+            "hybrid",
+            "text output only"
+          ]
+        },
+        "4": {
+          "file": "D2-step4.svg",
+          "label": "trade-offs",
+          "keywords": [
+            "comparison",
+            "head-to-head",
+            "trade-off"
+          ]
+        },
+        "5": {
+          "file": "D2-step5.svg",
+          "label": "6.1 zoom: speech-to-speech with transcript side channel",
+          "keywords": [
+            "audio in, audio out",
+            "where the transcript comes from",
+            "side channel"
+          ]
+        }
+      }
+    },
+    "D3": {
+      "id": "D3",
+      "title": "Where the time goes",
+      "file": "D3-latency-budget-waterfall.svg",
+      "lectures": [
+        "1.4",
+        "9.8",
+        "10.1",
+        "13.5"
+      ],
+      "keywords": [
+        "where the time goes",
+        "latency budget",
+        "voice-to-voice",
+        "ttft",
+        "ttfb",
+        "one turn, timed"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D3-step1.svg",
+          "label": "the axis",
+          "keywords": []
+        },
+        "2": {
+          "file": "D3-step2.svg",
+          "label": "the stages",
+          "keywords": []
+        },
+        "3": {
+          "file": "D3-step3.svg",
+          "label": "the target",
+          "keywords": [
+            "target",
+            "budget"
+          ]
+        },
+        "4": {
+          "file": "D3-step4.svg",
+          "label": "slow turn (p95)",
+          "keywords": [
+            "p95",
+            "slow turn",
+            "measure p95"
+          ]
+        }
+      }
+    },
+    "D4": {
+      "id": "D4",
+      "title": "One turn, on a timeline",
+      "file": "D4-turn-taking-timeline.svg",
+      "lectures": [
+        "3.6",
+        "3.7",
+        "4.4"
+      ],
+      "keywords": [
+        "timeline of one turn",
+        "turn-taking",
+        "one turn, on a timeline",
+        "endpointing",
+        "turn detector",
+        "interruption",
+        "preemptive"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D4-step1.svg",
+          "label": "caller speech and VAD",
+          "keywords": []
+        },
+        "2": {
+          "file": "D4-step2.svg",
+          "label": "turn detection and end-of-utterance delay",
+          "keywords": [
+            "turn detector",
+            "endpointing",
+            "min_delay"
+          ]
+        },
+        "3": {
+          "file": "D4-step3.svg",
+          "label": "Riley answers",
+          "keywords": []
+        },
+        "4": {
+          "file": "D4-step4.svg",
+          "label": "interruptions",
+          "keywords": [
+            "interruption",
+            "min_duration",
+            "false interruption"
+          ]
+        },
+        "5": {
+          "file": "D4-step5.svg",
+          "label": "preemptive generation",
+          "keywords": [
+            "preemptive"
+          ]
+        }
+      }
+    },
+    "D5": {
+      "id": "D5",
+      "title": "Rooms, participants, tracks, dispatch",
+      "file": "D5-livekit-mental-model.svg",
+      "lectures": [
+        "3.1",
+        "12.1"
+      ],
+      "keywords": [
+        "sfu",
+        "into the room",
+        "livekit mental model",
+        "rooms, participants",
+        "dispatch"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D5-step1.svg",
+          "label": "SFU, room and participants",
+          "keywords": []
+        },
+        "2": {
+          "file": "D5-step2.svg",
+          "label": "tracks",
+          "keywords": [
+            "tracks",
+            "track"
+          ]
+        },
+        "3": {
+          "file": "D5-step3.svg",
+          "label": "dispatch",
+          "keywords": [
+            "dispatch",
+            "agent server",
+            "gets into the room",
+            "entrypoint"
+          ]
+        },
+        "4": {
+          "file": "D5-step4.svg",
+          "label": "the job is the agent participant",
+          "keywords": [
+            "job process"
+          ]
+        }
+      }
+    },
+    "D6": {
+      "id": "D6",
+      "title": "The call path",
+      "file": "D6-sip-call-flow.svg",
+      "lectures": [
+        "8.1",
+        "8.2",
+        "8.4",
+        "8.5"
+      ],
+      "keywords": [
+        "call path",
+        "sip trunk",
+        "pstn",
+        "inbound call",
+        "outbound call",
+        "transfer"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D6-step1.svg",
+          "label": "inbound",
+          "keywords": []
+        },
+        "2": {
+          "file": "D6-step2.svg",
+          "label": "transfer",
+          "keywords": [
+            "transfer",
+            "cold vs warm"
+          ]
+        },
+        "3": {
+          "file": "D6-step3.svg",
+          "label": "outbound",
+          "keywords": [
+            "outbound"
+          ]
+        }
+      }
+    },
+    "D7": {
+      "id": "D7",
+      "title": "Riley's team",
+      "file": "D7-handoff-graph.svg",
+      "lectures": [
+        "7.4",
+        "7.5",
+        "7.6"
+      ],
+      "keywords": [
+        "riley's team",
+        "handoff graph",
+        "during a handoff",
+        "handoff"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D7-step1.svg",
+          "label": "the agents",
+          "keywords": []
+        },
+        "2": {
+          "file": "D7-step2.svg",
+          "label": "shared userdata",
+          "keywords": [
+            "callstate",
+            "userdata",
+            "shared"
+          ]
+        },
+        "3": {
+          "file": "D7-step3.svg",
+          "label": "Lab 5: InsuranceAgent",
+          "keywords": [
+            "insurance",
+            "lab 5"
+          ]
+        }
+      }
+    },
+    "D8": {
+      "id": "D8",
+      "title": "The voice testing pyramid",
+      "file": "D8-voice-testing-pyramid.svg",
+      "lectures": [
+        "9.2",
+        "13.4"
+      ],
+      "keywords": [
+        "testing pyramid",
+        "riley's pyramid",
+        "test pyramid"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D8-step1.svg",
+          "label": "unit tests",
+          "keywords": [
+            "unit tests"
+          ]
+        },
+        "2": {
+          "file": "D8-step2.svg",
+          "label": "behavior tests",
+          "keywords": [
+            "behavior tests"
+          ]
+        },
+        "3": {
+          "file": "D8-step3.svg",
+          "label": "evals",
+          "keywords": [
+            "evals"
+          ]
+        },
+        "4": {
+          "file": "D8-step4.svg",
+          "label": "simulated calls",
+          "keywords": [
+            "simulated calls"
+          ]
+        },
+        "5": {
+          "file": "D8-step5.svg",
+          "label": "production monitoring",
+          "keywords": [
+            "production monitoring"
+          ]
+        },
+        "6": {
+          "file": "D8-step6.svg",
+          "label": "13.4 overlay: all layers pass",
+          "keywords": [
+            "run order",
+            "progress",
+            "passes"
+          ]
+        }
+      }
+    },
+    "D9": {
+      "id": "D9",
+      "title": "Failure → test map",
+      "file": "D9-failure-test-map.svg",
+      "lectures": [
+        "9.1",
+        "11.1"
+      ],
+      "keywords": [
+        "failure → test map",
+        "failure map",
+        "eight ways voice agents fail"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D9-step1.svg",
+          "label": "mishearing",
+          "keywords": []
+        },
+        "2": {
+          "file": "D9-step2.svg",
+          "label": "wrong turn-taking",
+          "keywords": []
+        },
+        "3": {
+          "file": "D9-step3.svg",
+          "label": "talking over callers",
+          "keywords": []
+        },
+        "4": {
+          "file": "D9-step4.svg",
+          "label": "hallucinated availability",
+          "keywords": []
+        },
+        "5": {
+          "file": "D9-step5.svg",
+          "label": "wrong tool arguments",
+          "keywords": []
+        },
+        "6": {
+          "file": "D9-step6.svg",
+          "label": "missed escalation",
+          "keywords": []
+        },
+        "7": {
+          "file": "D9-step7.svg",
+          "label": "latency spikes",
+          "keywords": []
+        },
+        "8": {
+          "file": "D9-step8.svg",
+          "label": "prompt injection",
+          "keywords": []
+        }
+      }
+    },
+    "D10": {
+      "id": "D10",
+      "title": "The five numbers",
+      "file": "D10-observability-dashboard.svg",
+      "lectures": [
+        "10.5",
+        "10.6",
+        "13.5"
+      ],
+      "keywords": [
+        "five numbers",
+        "dashboard",
+        "your one-page report"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D10-step1.svg",
+          "label": "p95 latency",
+          "keywords": []
+        },
+        "2": {
+          "file": "D10-step2.svg",
+          "label": "cost/min",
+          "keywords": []
+        },
+        "3": {
+          "file": "D10-step3.svg",
+          "label": "transfers",
+          "keywords": []
+        },
+        "4": {
+          "file": "D10-step4.svg",
+          "label": "contained",
+          "keywords": []
+        },
+        "5": {
+          "file": "D10-step5.svg",
+          "label": "tool failures",
+          "keywords": []
+        },
+        "6": {
+          "file": "D10-step6.svg",
+          "label": "alert",
+          "keywords": [
+            "alert"
+          ]
+        }
+      }
+    },
+    "D11": {
+      "id": "D11",
+      "title": "One call, as a trace",
+      "file": "D11-trace-anatomy.svg",
+      "lectures": [
+        "10.3"
+      ],
+      "keywords": [
+        "traces for you",
+        "trace anatomy",
+        "as a trace",
+        "waterfall"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D11-step1.svg",
+          "label": "",
+          "keywords": []
+        },
+        "2": {
+          "file": "D11-step2.svg",
+          "label": "",
+          "keywords": []
+        },
+        "3": {
+          "file": "D11-step3.svg",
+          "label": "slowest span",
+          "keywords": [
+            "slowest"
+          ]
+        }
+      }
+    },
+    "D12": {
+      "id": "D12",
+      "title": "Five threats, layered defences",
+      "file": "D12-threat-model.svg",
+      "lectures": [
+        "11.1"
+      ],
+      "keywords": [
+        "threat model",
+        "layered model",
+        "five threats"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D12-step1.svg",
+          "label": "spoken injection",
+          "keywords": [
+            "spoken prompt injection",
+            "injection"
+          ]
+        },
+        "2": {
+          "file": "D12-step2.svg",
+          "label": "social engineering",
+          "keywords": [
+            "social engineering"
+          ]
+        },
+        "3": {
+          "file": "D12-step3.svg",
+          "label": "exfiltration via tools",
+          "keywords": [
+            "exfiltration"
+          ]
+        },
+        "4": {
+          "file": "D12-step4.svg",
+          "label": "toll fraud",
+          "keywords": [
+            "toll fraud"
+          ]
+        },
+        "5": {
+          "file": "D12-step5.svg",
+          "label": "voice cloning",
+          "keywords": [
+            "voice cloning",
+            "impersonation"
+          ]
+        },
+        "6": {
+          "file": "D12-step6.svg",
+          "label": "defences",
+          "keywords": [
+            "defence",
+            "defense",
+            "where each layer",
+            "layered"
+          ]
+        }
+      }
+    },
+    "D13": {
+      "id": "D13",
+      "title": "The agent server",
+      "file": "D13-agent-server-scaling.svg",
+      "lectures": [
+        "12.1",
+        "12.4"
+      ],
+      "keywords": [
+        "agent server",
+        "job process",
+        "draining",
+        "load threshold",
+        "prewarm"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D13-step1.svg",
+          "label": "jobs and warm processes",
+          "keywords": []
+        },
+        "2": {
+          "file": "D13-step2.svg",
+          "label": "load threshold",
+          "keywords": [
+            "load",
+            "threshold"
+          ]
+        },
+        "3": {
+          "file": "D13-step3.svg",
+          "label": "memory warning",
+          "keywords": [
+            "memory"
+          ]
+        },
+        "4": {
+          "file": "D13-step4.svg",
+          "label": "draining on deploy",
+          "keywords": [
+            "draining",
+            "sigterm",
+            "deploy"
+          ]
+        }
+      }
+    },
+    "D14": {
+      "id": "D14",
+      "title": "Riley in production",
+      "file": "D14-capstone-architecture.svg",
+      "lectures": [
+        "13.1",
+        "13.2"
+      ],
+      "keywords": [
+        "capstone-riley",
+        "riley in production",
+        "capstone architecture"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D14-step1.svg",
+          "label": "callers",
+          "keywords": []
+        },
+        "2": {
+          "file": "D14-step2.svg",
+          "label": "agent server",
+          "keywords": []
+        },
+        "3": {
+          "file": "D14-step3.svg",
+          "label": "agents and tools",
+          "keywords": []
+        },
+        "4": {
+          "file": "D14-step4.svg",
+          "label": "telemetry",
+          "keywords": []
+        },
+        "5": {
+          "file": "D14-step5.svg",
+          "label": "CI",
+          "keywords": []
+        }
+      }
+    },
+    "D15": {
+      "id": "D15",
+      "title": "Frames through a pipeline",
+      "file": "D15-pipecat-frame-pipeline.svg",
+      "lectures": [
+        "14.1",
+        "14.2"
+      ],
+      "keywords": [
+        "processors and the pipeline",
+        "frame",
+        "pipecat",
+        "pipeline"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D15-step1.svg",
+          "label": "processors",
+          "keywords": []
+        },
+        "2": {
+          "file": "D15-step2.svg",
+          "label": "frames",
+          "keywords": [
+            "frames",
+            "frame"
+          ]
+        },
+        "3": {
+          "file": "D15-step3.svg",
+          "label": "containers",
+          "keywords": [
+            "pipelineworker",
+            "workerrunner",
+            "worker and runner"
+          ]
+        }
+      }
+    },
+    "D16": {
+      "id": "D16",
+      "title": "Build vs buy",
+      "file": "D16-build-vs-buy-matrix.svg",
+      "lectures": [
+        "14.3"
+      ],
+      "keywords": [
+        "build vs buy"
+      ],
+      "spec": "",
+      "steps": {
+        "1": {
+          "file": "D16-step1.svg",
+          "label": "time to first call",
+          "keywords": []
+        },
+        "2": {
+          "file": "D16-step2.svg",
+          "label": "pipeline control",
+          "keywords": []
+        },
+        "3": {
+          "file": "D16-step3.svg",
+          "label": "cost at low volume",
+          "keywords": []
+        },
+        "4": {
+          "file": "D16-step4.svg",
+          "label": "cost at high volume",
+          "keywords": []
+        },
+        "5": {
+          "file": "D16-step5.svg",
+          "label": "compliance control",
+          "keywords": []
+        },
+        "6": {
+          "file": "D16-step6.svg",
+          "label": "lock-in",
+          "keywords": []
+        },
+        "7": {
+          "file": "D16-step7.svg",
+          "label": "testing depth",
+          "keywords": []
+        }
+      }
+    }
+  }
+}

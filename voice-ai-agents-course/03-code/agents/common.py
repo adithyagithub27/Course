@@ -70,6 +70,7 @@ from livekit.agents import (  # noqa: E402
 from maple import prompts  # noqa: E402
 from maple.config import Settings, load_settings, split_model  # noqa: E402
 from maple.knowledge import FaqIndex  # noqa: E402
+from maple.pii import redact  # noqa: E402
 from maple.scheduler import (  # noqa: E402
     Appointment,
     ClinicScheduler,
@@ -733,6 +734,9 @@ class KnowledgeToolsMixin:
         """
         answer = get_faq().answer(question, k=2)
         if answer == "NO_MATCH":
+            # The FAQ-miss log (lectures 7.2-7.3): questions the FAQ could not answer.
+            # Redacted because callers sometimes say names or numbers (Section 11).
+            logger.info("faq_miss: %s", redact(question))
             return (
                 "No matching clinic information. Say you're not sure and offer to take a message "
                 "or transfer the caller to the front desk."

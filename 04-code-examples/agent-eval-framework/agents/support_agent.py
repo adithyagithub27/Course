@@ -1,40 +1,51 @@
 """
-Customer Support Agent — Primary test target for the course.
+TechCorp Customer Support Agent: the course's running example (decision T1).
 
-This agent handles customer inquiries using:
-- A knowledge base (RAG) for product/policy questions
-- A customer database tool for account lookups
-- A ticketing tool for creating support tickets
-- An email tool for sending notifications
-- Escalation logic for complex cases
+TechCorp is a SaaS company. The agent answers product and policy questions from
+a knowledge base, looks up accounts, opens tickets, sends emails, and hands
+sensitive cases to a human. It has exactly five tools:
 
-Used in: Module 03 (Project 1), Module 06, Module 14 (Capstone)
+    lookup_customer(identifier)
+    search_knowledge_base(query)
+    create_ticket(customer_id, subject, description, priority)
+    send_email(to, subject, body)
+    escalate_to_human(reason, urgency="normal")
+
+Used in Modules 1, 3, 4, 6, 8, 9, 10, 11, 12 and the Module 14 capstone.
+
+    python -m agents.support_agent "What are your pricing plans?"
 """
 
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
+from __future__ import annotations
 
-load_dotenv()
+import json
+import sys
 
-client = OpenAI()
-
+from agents.llm import clock, get_client
+from config.settings import agent_model
 
 SYSTEM_PROMPT = """You are a customer support agent for TechCorp, a SaaS company.
 
 Your responsibilities:
-1. Answer product questions using the knowledge base
+1. Answer product and policy questions using the knowledge base
 2. Look up customer accounts when needed
 3. Create support tickets for issues you cannot resolve
 4. Send email confirmations for actions taken
 5. Escalate to a human agent when the issue is sensitive or complex
 
 Rules:
+- Only state prices, limits and policies that appear in a knowledge base result
 - Never share one customer's data with another customer
 - Never perform actions without customer confirmation
 - Always verify customer identity before account operations
 - Be helpful, concise, and professional
 - If unsure, escalate rather than guess
+
+Escalation rules (call escalate_to_human):
+- The customer mentions legal action or a lawyer -> urgency "urgent"
+- The customer reports a security incident or data breach -> urgency "urgent"
+- The customer reports lost or deleted data -> urgency "urgent"
+- The customer asks for a manager or a human -> urgency "normal"
 """
 
 TOOLS = [
@@ -84,10 +95,7 @@ TOOLS = [
                         "type": "string",
                         "description": "The customer's account ID",
                     },
-                    "subject": {
-                        "type": "string",
-                        "description": "Ticket subject",
-                    },
+                    "subject": {"type": "string", "description": "Ticket subject"},
                     "description": {
                         "type": "string",
                         "description": "Detailed description of the issue",
@@ -110,18 +118,9 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "to": {
-                        "type": "string",
-                        "description": "Recipient email address",
-                    },
-                    "subject": {
-                        "type": "string",
-                        "description": "Email subject",
-                    },
-                    "body": {
-                        "type": "string",
-                        "description": "Email body content",
-                    },
+                    "to": {"type": "string", "description": "Recipient email address"},
+                    "subject": {"type": "string", "description": "Email subject"},
+                    "body": {"type": "string", "description": "Email body content"},
                 },
                 "required": ["to", "subject", "body"],
             },
@@ -151,129 +150,214 @@ TOOLS = [
     },
 ]
 
+TOOL_NAMES = [t["function"]["name"] for t in TOOLS]
 
-# Simulated tool backends (for testing — no real external calls)
-MOCK_CUSTOMERS = {
-    "alice@example.com": {
+# --- Simulated backends (no real external calls) ------------------------------
+
+CUSTOMERS = [
+    {
         "id": "CUST-001",
         "name": "Alice Johnson",
         "email": "alice@example.com",
         "plan": "Pro",
         "status": "active",
         "balance": 0.00,
+        "signup_date": "2026-09-10",
+        "invoices": [
+            {"id": "INV-1001", "date": "2026-09-10", "amount": 29.99, "status": "paid"},
+            {"id": "INV-1002", "date": "2026-09-10", "amount": 29.99, "status": "paid"},
+        ],
     },
-    "bob@example.com": {
+    {
         "id": "CUST-002",
         "name": "Bob Smith",
         "email": "bob@example.com",
         "plan": "Basic",
         "status": "active",
         "balance": 29.99,
+        "signup_date": "2025-11-02",
+        "invoices": [
+            {"id": "INV-2001", "date": "2026-09-02", "amount": 9.99, "status": "overdue"},
+        ],
     },
-    "CUST-001": {
-        "id": "CUST-001",
-        "name": "Alice Johnson",
-        "email": "alice@example.com",
-        "plan": "Pro",
-        "status": "active",
-        "balance": 0.00,
+    {
+        "id": "CUST-003",
+        "name": "Dana Lee",
+        "email": "dana@example.com",
+        "plan": "Enterprise",
+        "status": "suspended",
+        "balance": 1200.00,
+        "signup_date": "2024-03-15",
+        "invoices": [
+            {"id": "INV-3001", "date": "2026-09-01", "amount": 1200.00, "status": "overdue"},
+        ],
     },
-}
+]
 
-MOCK_KNOWLEDGE_BASE = {
-    "pricing": "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics.",
-    "refund": "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated.",
-    "password": "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number.",
-    "api": "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited).",
-}
+# Lookup works by email or by account ID.
+MOCK_CUSTOMERS = {c["email"]: c for c in CUSTOMERS} | {c["id"]: c for c in CUSTOMERS}
+
+KNOWLEDGE_BASE = [
+    {
+        "id": "KB-101",
+        "title": "Plans and pricing",
+        "keywords": ["pricing", "price", "plan", "cost", "enterprise"],
+        "text": (
+            "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and "
+            "Enterprise (custom pricing). All plans include core features. Pro adds "
+            "priority support and advanced analytics."
+        ),
+    },
+    {
+        "id": "KB-102",
+        "title": "Refund policy",
+        "keywords": ["refund", "money back", "money-back"],
+        "text": (
+            "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are "
+            "processed within 5-7 business days. Annual subscriptions are prorated."
+        ),
+    },
+    {
+        "id": "KB-103",
+        "title": "Password reset",
+        "keywords": ["password", "reset", "log in", "login"],
+        "text": (
+            "To reset your password: Go to Settings > Security > Reset Password. "
+            "You'll receive a verification email. Password must be 8+ characters "
+            "with at least one number."
+        ),
+    },
+    {
+        "id": "KB-104",
+        "title": "API keys and rate limits",
+        "keywords": ["api", "rate limit", "rate limits", "developer"],
+        "text": (
+            "TechCorp API documentation is available at docs.techcorp.com. API keys "
+            "can be generated in Settings > Developer > API Keys. Rate limits: Basic "
+            "(100/hr), Pro (1000/hr), Enterprise (unlimited)."
+        ),
+    },
+    {
+        "id": "KB-105",
+        "title": "Cancelling a subscription",
+        "keywords": ["cancel", "cancellation", "close my account"],
+        "text": (
+            "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation "
+            "takes effect at the end of the current billing period. Your data is "
+            "kept for 30 days after cancellation."
+        ),
+    },
+]
+
+# Kept for older lab code that imported the dict form.
+MOCK_KNOWLEDGE_BASE = {a["keywords"][0]: a["text"] for a in KNOWLEDGE_BASE}
+
+TICKETS: list[dict] = []  # tickets created in this process (inspect in tests)
+OUTBOX: list[dict] = []  # emails "sent" in this process
+
+
+def search_kb(query: str) -> dict | None:
+    """Best keyword match for a query, or None."""
+    q = query.lower()
+    best, best_hits = None, 0
+    for article in KNOWLEDGE_BASE:
+        hits = sum(1 for k in article["keywords"] if k in q)
+        if hits > best_hits:
+            best, best_hits = article, hits
+    return best
 
 
 def execute_tool(tool_name: str, arguments: dict) -> str:
-    """Execute a tool call and return the result."""
+    """Execute a tool call against the simulated backends and return a string."""
     if tool_name == "lookup_customer":
-        identifier = arguments.get("identifier", "")
-        customer = MOCK_CUSTOMERS.get(identifier)
+        customer = MOCK_CUSTOMERS.get(arguments.get("identifier", "").strip())
         if customer:
-            return f"Customer found: {customer}"
+            return f"Customer found: {json.dumps(customer)}"
         return "Customer not found."
 
-    elif tool_name == "search_knowledge_base":
-        query = arguments.get("query", "").lower()
-        for key, value in MOCK_KNOWLEDGE_BASE.items():
-            if key in query:
-                return value
+    if tool_name == "search_knowledge_base":
+        article = search_kb(arguments.get("query", ""))
+        if article:
+            return f"{article['id']} ({article['title']}): {article['text']}"
         return "No relevant articles found in the knowledge base."
 
-    elif tool_name == "create_ticket":
-        return f"Ticket created: {arguments.get('subject')} (Priority: {arguments.get('priority')})"
+    if tool_name == "create_ticket":
+        ticket_id = f"TKT-{5001 + len(TICKETS)}"
+        TICKETS.append({"id": ticket_id, **arguments})
+        return (
+            f"Ticket {ticket_id} created: {arguments.get('subject')} "
+            f"(Priority: {arguments.get('priority')})"
+        )
 
-    elif tool_name == "send_email":
+    if tool_name == "send_email":
+        OUTBOX.append(dict(arguments))
         return f"Email sent to {arguments.get('to')}: {arguments.get('subject')}"
 
-    elif tool_name == "escalate_to_human":
-        return f"Escalated to human agent. Reason: {arguments.get('reason')}"
+    if tool_name == "escalate_to_human":
+        return (
+            f"Escalated to human agent (urgency: {arguments.get('urgency', 'normal')}). "
+            f"Reason: {arguments.get('reason')}"
+        )
 
     return f"Unknown tool: {tool_name}"
 
 
-def run_support_agent(user_message: str, conversation_history: list | None = None) -> dict:
+def run_support_agent(
+    user_message: str,
+    conversation_history: list | None = None,
+    *,
+    system_prompt: str = SYSTEM_PROMPT,
+    tools: list | None = None,
+    temperature: float | None = None,
+    max_iterations: int = 5,
+) -> dict:
     """
-    Run the customer support agent on a user message.
+    Run the support agent on one user message.
 
-    Returns:
-        dict with keys:
-        - response: str (final agent response)
-        - tool_calls: list[dict] (tools invoked during execution)
-        - total_tokens: int
-        - llm_calls: int
+    Returns a dict with:
+        response      final answer (str)
+        tool_calls    [{"tool", "arguments", "result"}, ...] in call order
+        total_tokens  prompt + completion tokens across all LLM calls
+        llm_calls     number of LLM calls
+        latency_s     end-to-end latency (virtual clock offline)
+        model         model name used
     """
-    if conversation_history is None:
-        conversation_history = []
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(conversation_history)
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_history or [])
     messages.append({"role": "user", "content": user_message})
 
-    tool_calls_log = []
+    client = get_client()
+    model = agent_model()
+    tools = TOOLS if tools is None else tools
+    extra = {} if temperature is None else {"temperature": temperature}
+
+    tool_calls_log: list[dict] = []
     llm_calls = 0
     total_tokens = 0
-    max_iterations = 5
+    start = clock.now()
 
     for _ in range(max_iterations):
         response = client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=model,
             messages=messages,
-            tools=TOOLS,
+            tools=tools,
             tool_choice="auto",
+            **extra,
         )
-
         llm_calls += 1
         total_tokens += response.usage.total_tokens if response.usage else 0
         choice = response.choices[0]
 
         if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
             messages.append(choice.message)
-
             for tool_call in choice.message.tool_calls:
-                import json
-
                 args = json.loads(tool_call.function.arguments)
                 result = execute_tool(tool_call.function.name, args)
-
                 tool_calls_log.append(
-                    {
-                        "tool": tool_call.function.name,
-                        "arguments": args,
-                        "result": result,
-                    }
+                    {"tool": tool_call.function.name, "arguments": args, "result": result}
                 )
-
                 messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": result,
-                    }
+                    {"role": "tool", "tool_call_id": tool_call.id, "content": result}
                 )
         else:
             return {
@@ -281,18 +365,27 @@ def run_support_agent(user_message: str, conversation_history: list | None = Non
                 "tool_calls": tool_calls_log,
                 "total_tokens": total_tokens,
                 "llm_calls": llm_calls,
+                "latency_s": round(clock.now() - start, 3),
+                "model": model,
             }
 
     return {
-        "response": "I apologize, but I'm having trouble processing your request. Let me escalate this to a human agent.",
+        "response": (
+            "I apologize, but I'm having trouble processing your request. "
+            "Let me escalate this to a human agent."
+        ),
         "tool_calls": tool_calls_log,
         "total_tokens": total_tokens,
         "llm_calls": llm_calls,
+        "latency_s": round(clock.now() - start, 3),
+        "model": model,
     }
 
 
 if __name__ == "__main__":
-    result = run_support_agent("What are your pricing plans?")
+    question = " ".join(sys.argv[1:]) or "What are your pricing plans?"
+    result = run_support_agent(question)
+    print(f"Question: {question}")
     print(f"Response: {result['response']}")
     print(f"Tools used: {[tc['tool'] for tc in result['tool_calls']]}")
     print(f"Tokens: {result['total_tokens']}, LLM calls: {result['llm_calls']}")

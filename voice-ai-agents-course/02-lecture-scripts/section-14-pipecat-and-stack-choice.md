@@ -22,9 +22,9 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
 | 14.1 | Pipecat's frame pipeline model | SL | 7:00 | ~890 |
-| 14.2 | Code-along: Riley booking flow in Pipecat | SC | 12:00 | ~1,260 |
+| 14.2 | Code-along: Riley booking flow in Pipecat | SC | 12:00 | ~1,100 |
 | 14.3 | LiveKit Agents vs Pipecat vs managed platforms | SL | 8:00 | ~890 |
-| 14.4 | Quiz: Choosing a stack | QZ | 5:00 (1:00 video) | ~80 |
+| 14.4 | Quiz: Choosing a stack | QZ | 5:00 (1:00 video) | ~120 |
 
 **Verification note for the editor.** Every Pipecat import in this section was checked against `pipecat-ai` 1.12.0 and matches `03-code/pipecat/s14_pipecat_bot.py`. In 1.12, `PipelineTask` and `PipelineRunner` still import but print deprecation warnings: since 1.3 they are `PipelineWorker` (`pipecat.pipeline.worker`) and `WorkerRunner` (`pipecat.workers.runner`). The curriculum table still says `PipelineTask`/`PipelineRunner`; the scripts use the new names and explain the rename, because most tutorials online still use the old ones. Service options use the `settings=Service.Settings(...)` style; passing `model=` or `voice_id=` directly is deprecated in 1.12.
 
@@ -39,7 +39,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | Target duration | 7:00 (~890 spoken words) |
 | Learning objectives | 1. Explain frames, frame processors, transports and the direction frames flow. 2. Describe the roles of `Pipeline`, `PipelineWorker` (formerly `PipelineTask`), `WorkerRunner` (formerly `PipelineRunner`) and `LLMContext`. 3. Map each piece of the LiveKit `AgentSession` you know onto its Pipecat equivalent. |
 | Prerequisites | Sections 3 and 5 (LiveKit pipeline and tools). Section is optional. |
-| Files used | None (slides). Forward reference to `pipecat/s14_pipecat_bot.py` |
+| Files used | `pipecat/s14_pipecat_bot.py` (the pipeline list and the aggregators, shown briefly) |
 
 ### Script
 
@@ -48,11 +48,16 @@ For thirteen sections, we've built Riley on LiveKit Agents. It's a great framewo
 
 Here's why this section exists. You shouldn't pick a framework because it's the one your course used. You should pick it because you understand the trade-offs. And the fastest way to understand them is to build the same thing twice.
 
+[SLIDE 1: This section is optional]
+- Nothing in Section 15 depends on it
+- Short on time? Jump to 14.3, the comparison
+- Choosing a stack for a real project? Watch all three
+
 One thing first. This section is optional. Nothing in Section 15 depends on it, and your capstone is complete without it. If you're short on time, you can skip to Lecture 14.3, the comparison, which is useful even if you never write a line of Pipecat. But if you're choosing a stack for a real project, the full section is worth your thirty minutes.
 
 So in this lecture, the mental model. Next lecture, Riley's booking flow in Pipecat. Then we compare everything, including the managed platforms.
 
-[SLIDE 1: Pipecat in one sentence]
+[SLIDE 2: Pipecat in one sentence]
 - An open-source Python framework for real-time voice and multimodal agents
 - Created by Daily, BSD-licensed, large contributor community
 - Everything is a frame, flowing through a pipeline of processors
@@ -61,7 +66,7 @@ Pipecat is an open-source Python framework for real-time voice and multimodal ag
 
 And its core idea fits in one sentence. Everything is a frame, flowing through a pipeline of processors.
 
-[SLIDE 2: Frames]
+[SLIDE 3: Frames]
 - A frame is a small typed message
 - Audio frames: raw caller audio, synthesized speech
 - Text frames: transcriptions, LLM tokens
@@ -71,7 +76,7 @@ Let's unpack that. A frame is a small, typed message. Some frames carry data. An
 
 Other frames carry signals. "The user started speaking." "The user stopped speaking." "Interrupt now." "End of the pipeline." Those control frames are how Pipecat does turn-taking and barge-in.
 
-[SLIDE 3: Processors and the pipeline]
+[SLIDE 4: Processors and the pipeline]
 Diagram, left to right: `transport.input()` → `stt` → `user aggregator` → `llm` → `tts` → `transport.output()` → `assistant aggregator`
 - Each box is a frame processor
 - Frames flow downstream (left to right) and upstream (right to left)
@@ -79,13 +84,15 @@ Diagram, left to right: `transport.input()` → `stt` → `user aggregator` → 
 
 A frame processor is a box that receives frames, does something, and pushes frames on. The speech-to-text service is a processor. It eats audio frames and emits transcription frames. The LLM service is a processor. It eats a context and emits text frames. The TTS service eats text and emits audio.
 
+[SCREEN: `pipecat/s14_pipecat_bot.py`, scrolled to `pipeline = Pipeline([...])`: the seven boxes from the slide, as real code.]
+
 Chain those boxes in a list, and you have a pipeline. Here's Riley's pipeline. Transport input, STT, user aggregator, LLM, TTS, transport output, assistant aggregator.
 
 Frames flow both ways. Most go downstream, left to right. Some go upstream. For example, when the caller interrupts, a signal travels back so the TTS stops talking.
 
 And each processor only handles the frames it cares about. Everything else passes straight through. That's what makes it easy to drop a custom processor anywhere in the chain.
 
-[SLIDE 4: Transports]
+[SLIDE 5: Transports]
 - Transport = how audio gets in and out
 - WebRTC in the browser (SmallWebRTC, Daily), LiveKit rooms, telephony WebSockets (Twilio, Telnyx, Plivo, Exotel)
 - `transport.input()` starts the pipeline, `transport.output()` ends it
@@ -94,7 +101,7 @@ The first and last boxes are the transport. The transport is how audio gets in a
 
 That's one big design difference from LiveKit Agents. In LiveKit, the transport is LiveKit. In Pipecat, the transport is a plug-in.
 
-[SLIDE 5: Context and aggregators]
+[SLIDE 6: Context and aggregators]
 - `LLMContext`: the conversation history and the tools
 - User aggregator: collects transcription frames into a user message
 - Assistant aggregator: collects spoken text into an assistant message
@@ -104,13 +111,24 @@ Now, the conversation memory. Pipecat keeps it in an `LLMContext` object. It hol
 
 Two processors keep that context up to date. The user aggregator sits after STT. It collects transcription frames until the caller finishes their turn, then adds one user message and triggers the LLM. The assistant aggregator sits at the very end. It collects what Riley actually said and adds that as the assistant message.
 
+[B-ROLL: an interrupted reply. Riley's sentence is cut at "nine thirty or"; only the spoken words drop into the assistant aggregator's box, and the rest fades out.]
+
 Why at the very end? Because if the caller interrupts, only the words that were actually spoken should go into history. Same idea as LiveKit truncating an interrupted reply.
 
 And there's one more benefit of frames that's easy to miss. Because everything flows as frames, you can observe everything. Pipecat has observers that watch frames go by without changing them. That's how its metrics and tracing work: time to first byte, token usage, turn timing. The same numbers we collected in Section 10, from a different angle.
 
+[CODE: from `pipecat/s14_pipecat_bot.py`]
+```python
+    context = LLMContext(tools=TOOLS)
+    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+    )
+```
+
 You create both with one line. `LLMContextAggregatorPair`, passing in the context. In Pipecat 1.12, these live in `pipecat.processors.aggregators.llm_response_universal`. They're called universal because they work with any LLM service.
 
-[SLIDE 6: Worker and runner]
+[SLIDE 7: Worker and runner]
 - `Pipeline([...])`: the list of processors
 - `PipelineWorker(pipeline, params=PipelineParams(...))`: runs one conversation
 - `WorkerRunner()`: add the worker, `run()` it, handles signals and shutdown
@@ -120,7 +138,7 @@ Three objects run the show. `Pipeline` is the list of processors. `PipelineWorke
 
 A quick warning, because you will hit this. Almost every Pipecat tutorial online says `PipelineTask` and `PipelineRunner`. Those were the names before version 1.3. In 1.12 they still work, but you get deprecation warnings. We'll use the new names.
 
-[SLIDE 7: LiveKit to Pipecat translation]
+[SLIDE 8: LiveKit to Pipecat translation]
 | LiveKit Agents | Pipecat |
 |---|---|
 | `AgentSession(stt, llm, tts, vad)` | `Pipeline([...])` + services |
@@ -129,16 +147,21 @@ A quick warning, because you will hit this. Almost every Pipecat tutorial online
 | `RunContext` | `FunctionCallParams` |
 | `session.generate_reply()` | queue an `LLMRunFrame` |
 | `AgentServer` + `cli.run_app` | `bot()` + `pipecat.runner.run.main()`, `WorkerRunner` |
-| `tts_node` override | a custom frame processor |
+| `llm_node` / `tts_node` override | a custom frame processor |
 
 Here's the translation table you'll want next to you in the code-along.
 
 An `AgentSession` becomes a pipeline plus services. An `Agent`'s instructions become the LLM's system instruction. A `@function_tool` becomes a `FunctionSchema` plus a registered handler function. `RunContext` becomes `FunctionCallParams`. Generating a reply becomes queuing an `LLMRunFrame`. And the agent server becomes a `bot` function, started by Pipecat's development runner.
 
-Notice the last row. In LiveKit, we overrode `tts_node` to guard Riley's output. In Pipecat, you'd write a small frame processor and put it between the LLM and TTS. Different shape, same idea.
+Notice the last row. In LiveKit, we overrode `llm_node` in Section 11 to guard Riley's output. In Pipecat, you'd write a small frame processor and put it between the LLM and TTS. Different shape, same idea.
 
 [AVATAR]
 So here's the mental model to take into the next lecture. LiveKit gives you an agent and a session, and you customize through hooks. Pipecat gives you the pipeline itself, and you customize by adding boxes. Neither is better. They're different levels of abstraction. Let's feel the difference by typing it.
+
+[SLIDE 9: Recap]
+- Everything is a frame, flowing through processors
+- Transports are plug-ins at both ends of the pipeline
+- `PipelineWorker` and `WorkerRunner` replace Task and Runner
 
 **Recap:** Pipecat moves typed frames through a pipeline of processors, with a transport at each end, an `LLMContext` for memory, and a worker and runner to execute it.
 
@@ -160,7 +183,7 @@ So here's the mental model to take into the next lecture. LiveKit gives you an a
 |---|---|
 | ID | 14.2 |
 | Type | SC (screencast / code-along) |
-| Target duration | 12:00 (~1,260 spoken words; the rest is screen, typing and demo time) |
+| Target duration | 12:00 (~1,100 spoken words; the rest is screen, typing and demo time) |
 | Learning objectives | 1. Build a Pipecat 1.12 bot with Deepgram STT, OpenAI LLM, Cartesia TTS and Silero VAD. 2. Define tools with `FunctionSchema` and `ToolsSchema`, and handle them with `FunctionCallParams` and `result_callback`. 3. Run the bot with the Pipecat development runner and talk to it in the browser. |
 | Prerequisites | 14.1; 5.2 (the scheduler). Section is optional. |
 | Files used | `pipecat/s14_pipecat_bot.py`, `src/maple/scheduler.py`, `src/maple/prompts.py`, `src/maple/config.py`, `.env` |
@@ -180,7 +203,7 @@ First, dependencies. Pipecat is an optional extra in our `pyproject.toml`, so th
 uv sync --extra pipecat
 ```
 
-That pulls in `pipecat-ai` 1.12 with the Deepgram, OpenAI, Cartesia, Silero, WebRTC and runner extras. Pipecat talks to providers directly, so check your `.env` has `DEEPGRAM_API_KEY`, `OPENAI_API_KEY` and `CARTESIA_API_KEY`. LiveKit Inference doesn't apply here.
+That pulls in `pipecat-ai` 1.12 with its provider extras. Pipecat talks to providers directly, not through LiveKit Inference, so your `.env` needs `DEEPGRAM_API_KEY`, `OPENAI_API_KEY` and `CARTESIA_API_KEY`.
 
 [SCREEN: `pipecat/s14_pipecat_bot.py`, the module docstring with the comparison table.]
 
@@ -231,11 +254,9 @@ load_dotenv(_ROOT / ".env", override=True)
 KEYTERMS = ["Maple Street Dental", "Riley", "hygienist", "crown", "root canal"]
 ```
 
-The path line at the top makes `src` importable when you run the file directly. Then Pipecat, in groups. Tool schemas. Silero VAD. The `LLMRunFrame`. `Pipeline`, and `PipelineWorker` with its params. Context and the universal aggregators. The runner helpers. The three services. Transport params. And `WorkerRunner`.
+The path line at the top makes `src` importable when you run the file directly. Then Pipecat, in groups: schemas, VAD, frames, pipeline and worker, context and aggregators, runner helpers, the three services, transports and `WorkerRunner`. Remember the 1.3 renames from last lecture: `PipelineWorker` and `WorkerRunner` are the current names.
 
-Two of those names are new in recent Pipecat. `PipelineWorker` replaced `PipelineTask`, and `WorkerRunner` replaced `PipelineRunner`, both in version 1.3. The old names still import in 1.12, but they print deprecation warnings. If you follow an older tutorial, that's the translation.
-
-At the bottom, our own code. `prompts`, `load_settings` and the `ClinicScheduler`. Plus a short list of keyterms for Deepgram, the same idea as Lecture 9.7. That's the payoff of keeping business logic in `src/maple`. It moves between frameworks untouched.
+At the bottom, our own code. `prompts`, `load_settings` and the `ClinicScheduler`. Plus a short list of keyterms for Deepgram, the same idea as Lecture 8.3. That's the payoff of keeping business logic in `src/maple`. It moves between frameworks untouched.
 
 Step two. Tool schemas. This is what the LLM sees.
 
@@ -284,7 +305,7 @@ TOOLS = ToolsSchema(standard_tools=[FIND_SLOTS, BOOK, RESCHEDULE, CANCEL])
 
 Here's the first big difference from LiveKit. In LiveKit, `@function_tool` read the Python signature and the docstring and built this schema for us. In Pipecat, we write it explicitly. A name. A description. Properties in JSON Schema. And the required list.
 
-It's more typing, but it's very clear. You can see exactly what the model sees. And notice we kept the same tool names and argument names as the LiveKit version: `find_available_slots`, `slot_start`, and so on. That means our Section 9 transcripts, tests and judges still make sense.
+More typing, but you see exactly what the model sees. And notice we kept the same tool names and argument names as the LiveKit version: `find_available_slots`, `slot_start`, and so on. That means our Section 9 transcripts, tests and judges still make sense.
 
 `ToolsSchema` wraps the list. It's provider-neutral, so the same schemas work with other LLM services.
 
@@ -312,7 +333,7 @@ def book_result(scheduler: ClinicScheduler, args: dict[str, Any]) -> dict[str, A
     return {"booked": f"{appt.patient_name}, {prompts.speak_slot(appt.start)}"}
 ```
 
-These are plain Python functions. They take the scheduler and a dictionary of arguments, and return a dictionary. No Pipecat in sight. So you can unit test them without a pipeline.
+Plain Python functions: the scheduler and the arguments in, a dictionary out. No Pipecat in sight, so you can unit test them without a pipeline.
 
 Look at the error handling. In LiveKit, we raised `ToolError` with a speakable message. Here, we return an `error` field instead. Our scheduler's exception messages were written to be spoken aloud, so the LLM can pass them straight to the caller.
 
@@ -340,7 +361,7 @@ def register_tools(llm: OpenAILLMService, scheduler: ClinicScheduler) -> None:
         llm.register_function(name, handler)
 ```
 
-`register_tools` loops over a dictionary of tool names and functions. For each one, it defines a small async handler. The handler receives `FunctionCallParams`. The model's arguments are in `params.arguments`. We call our plain function, log the result, and pass it back with `params.result_callback`. In Pipecat, you don't return a tool result. You call the callback.
+`register_tools` loops over tool names and functions and defines a small async handler for each. The handler gets `FunctionCallParams`, calls our plain function with `params.arguments`, logs the result, and hands it back through `params.result_callback`. In Pipecat, you don't return a tool result. You call the callback.
 
 One Python detail. See `fn: Any = fn` in the handler's signature? That captures the current function at definition time. Without it, every handler in the loop would call the *last* function, `cancel_result`. That's a classic Python closure bug, and it would make every tool cancel appointments. Not a bug you want in a dental clinic.
 
@@ -387,7 +408,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments) -> Non
 
 First, the calendar, with the same demo patients as the LiveKit version.
 
-Then three services. Each takes an API key and a `Settings` object. That `Settings` style is the current Pipecat pattern. If you pass `model=` directly, it still works in 1.12, but you'll get a deprecation warning. `split_model` turns our LiveKit-style "deepgram slash nova three" into just "nova three". Deepgram also gets our keyterms, so "Maple Street Dental" and "root canal" come through correctly.
+Then three services. Each takes an API key and a `Settings` object, the current Pipecat pattern; passing `model=` directly is deprecated in 1.12. `split_model` turns our LiveKit-style "deepgram slash nova three" into just "nova three". Deepgram also gets our keyterms, so "Maple Street Dental" and "root canal" come through correctly.
 
 The system instruction comes from the same `build_instructions` function the LiveKit agents use, with the booking rules switched on. Then we register the tools.
 
@@ -418,7 +439,7 @@ The system instruction comes from the same `build_instructions` function the Liv
     await runner.add_workers(worker)
 ```
 
-The context holds our tools. `LLMContextAggregatorPair` wraps the context and gives us two processors, which we unpack into the user aggregator and the assistant aggregator. And here's where VAD goes in 1.12: on the user aggregator's params. Silero decides when the caller is speaking, and the aggregator uses that to decide when the turn is over.
+The context holds our tools. `LLMContextAggregatorPair` gives us the user and assistant aggregators. And in 1.12, VAD goes on the user aggregator's params: Silero decides when the caller is speaking, and the aggregator decides when the turn is over.
 
 Then the pipeline. Read it out loud with me. Transport in. STT. User aggregator. LLM. TTS. Transport out. Assistant aggregator. That's the whole voice loop, in seven lines, in order.
 
@@ -492,7 +513,12 @@ In the logs, there's the slot lookup, the booking, and the metrics with time to 
 And if you want to try the phone, the docstring has the Twilio command. It needs a public tunnel like ngrok, so check the Pipecat docs for the current setup.
 
 [AVATAR]
-So that's Riley in Pipecat. Around two hundred and fifty lines, including four tools, and it reused all of our business logic. Here's what I want you to notice. The pipeline is right there in your code. Every box is visible, and you can put a new one anywhere. In LiveKit, the session owned that loop, and we customized it through hooks. Keep that difference in mind for the next lecture.
+So that's Riley in Pipecat. About two hundred and sixty lines, including four tools, and it reused all of our business logic. Here's what I want you to notice. The pipeline is right there in your code. Every box is visible, and you can put a new one anywhere. In LiveKit, the session owned that loop, and we customized it through hooks. Keep that difference in mind for the next lecture.
+
+[SLIDE 1: Recap]
+- Explicit `FunctionSchema`s plus handlers that call back
+- Seven processors in one visible pipeline list
+- Same `src/maple` business logic, unchanged
 
 **Recap:** A Pipecat bot is services plus explicit tool schemas plus a pipeline list, run by a `PipelineWorker` and a `WorkerRunner` under the development runner, and our `src/maple` logic carries over unchanged.
 
@@ -516,7 +542,7 @@ So that's Riley in Pipecat. Around two hundred and fifty lines, including four t
 | Target duration | 8:00 (~890 spoken words) |
 | Learning objectives | 1. Compare LiveKit Agents, Pipecat and managed platforms (Vapi, Retell, ElevenLabs Agents, Bland) on control, cost, compliance and lock-in. 2. Use a build-vs-buy decision matrix for a real project. 3. Explain how the testing and observability skills from this course transfer to any option. |
 | Prerequisites | 14.1, 14.2; Sections 9 and 10 |
-| Files used | `10-resources/architecture-decision-matrix.md` |
+| Files used | `10-resources/architecture-decision-matrix.md`; `tests/agent/test_greeting.py` and `src/maple/costs.py` (shown briefly) |
 
 > **Claims policy for this lecture.** Platform prices, compliance offerings and feature lists change often. Keep all statements qualitative. Before recording, check each vendor's current pricing and compliance pages and add a dated on-screen note: "Vendor details checked on <date>; verify before deciding." Do not show specific per-minute prices.
 
@@ -552,11 +578,13 @@ Three. A managed voice platform. Vapi, Retell, ElevenLabs Agents, Bland, and oth
 
 Let's start with the two frameworks. You've now built Riley in both.
 
-Abstraction. LiveKit gives you an agent and a session. You customize through hooks, like `on_user_turn_completed` and `tts_node`. Pipecat gives you the pipeline itself. You customize by adding processors.
+Abstraction. LiveKit gives you an agent and a session. You customize through hooks, like `on_user_turn_completed` and `llm_node`. Pipecat gives you the pipeline itself. You customize by adding processors.
 
 Transport. LiveKit is built on LiveKit's own WebRTC infrastructure, with SIP for phones. Pipecat treats transport as a plug-in. That matters if you're already on a specific telephony or WebRTC provider.
 
 Tools. LiveKit builds schemas from your Python signatures. Pipecat has you write them explicitly.
+
+[SCREEN: `tests/agent/test_greeting.py`, the `session.run(user_input=...)` line and the `.judge(...)` call: the built-in harness this whole course relied on.]
 
 Testing. This one mattered a lot in this course. LiveKit's built-in test framework gave us `session.run`, `expect` and judges in Section 9. With Pipecat, you'll build more of that harness yourself.
 
@@ -580,11 +608,15 @@ They're not all the same, either. Some started as developer APIs, and expect you
 
 And here's what you trade. Four things.
 
-Control. You get the knobs they expose. If you need a custom guardrail in the middle of the pipeline, like our sentence filter from Section 11, you may not be able to add it.
+Control. You get the knobs they expose. If you need a custom guardrail in the middle of the pipeline, like our streaming output check from Section 11, you may not be able to add it.
+
+[SCREEN: terminal in `03-code`, the 10.4 snippet: `print(cost_breakdown(typical_cascaded_usage(3)).format())` ends in `per minute $0.0646  (3.00 min)`. The build-side number to put next to any platform quote.]
 
 Cost. Most platforms charge a platform fee per minute, on top of the model and telephony costs. At low volume, that's usually worth it for the time saved. At high volume, it can become the biggest line on your bill. Run the numbers with your own call volumes. Our `costs.py` from Section 10 is a good starting point for the build side.
 
 Compliance. If you handle health or payment data, you need to know where audio and transcripts go, how long they're kept, and what contracts the vendor will sign, like a HIPAA business associate agreement in the US. Some vendors offer this. Check the current terms. With a framework, you control that answer yourself, but you also own the work.
+
+[B-ROLL: the `src/maple/` folder icon slides from a "LiveKit Agents" box into a "Pipecat" box, unchanged; a third "Platform" box shows the same logic re-typed into a web form.]
 
 Lock-in. On a platform, your prompts, tools and flows live in their format. Moving means rebuilding. With a framework, they live in your repo, and our `src/maple` logic moved from LiveKit to Pipecat without a single change.
 
@@ -632,7 +664,17 @@ And here's the most important point in this lecture. Whatever you choose, the sk
 
 The framework is a choice. The discipline is what makes it production.
 
+[SLIDE 8: Recap]
+- Frameworks: control, low lock-in, your compliance
+- Platforms: fastest start, platform fee, less control
+- Decide with a matrix and your real volumes
+
 **Recap:** Frameworks trade speed for control, low lock-in and compliance ownership; managed platforms trade control for speed; pick with a matrix and your real call volumes, and keep testing either way.
+
+[SLIDE 9: You can now]
+- Explain Pipecat's frames, processors and transports
+- Port a LiveKit agent's tools and pipeline to Pipecat
+- Choose build or buy with a decision matrix
 
 **Transition:** Lock in these trade-offs with the Section 14 quiz.
 
@@ -651,7 +693,7 @@ The framework is a choice. The discipline is what makes it production.
 |---|---|
 | ID | 14.4 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 5:00 total (1:00 video intro, ~80 spoken words; the rest is quiz time) |
+| Target duration | 5:00 total (1:00 video intro, ~120 spoken words; the rest is quiz time) |
 | Learning objectives | 1. Check understanding of Pipecat's pipeline model and its LiveKit equivalents. 2. Apply the build-vs-buy matrix to short scenarios. |
 | Prerequisites | 14.1 to 14.3 |
 | Files used | `06-assessments/quizzes/section-14.md` |
@@ -659,7 +701,7 @@ The framework is a choice. The discipline is what makes it production.
 ### Script
 
 [AVATAR]
-Six questions to lock in this section.
+Twenty calls a day, or twenty thousand? That one number can flip your whole stack decision. Six questions to lock in this section.
 
 [SLIDE 1: Section 14 quiz: what's covered]
 - Frames, processors, transports and aggregators
@@ -671,6 +713,10 @@ Two questions are about Pipecat's model: what a frame is, and where the aggregat
 
 A tip for the scenarios. Look for the one detail that decides it. Call volume. A compliance requirement. Or how much the team needs to customize the pipeline.
 
+[SCREEN: `pipecat/s14_pipecat_bot.py`, the `Pipeline([...])` list, with `assistant_aggregator` last, after `transport.output()`.]
+
+And for the aggregator question, here's the real pipeline. Note which box comes last.
+
 [PAUSE]
 
 Read the explanations. They're short, and they point back to the right lecture.
@@ -681,6 +727,6 @@ Read the explanations. They're short, and they point back to the right lecture.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Most missed in beta: the position of the assistant aggregator (after `transport.output()`). Point to Lecture 14.1, slide 5.
+- Most missed in beta: the position of the assistant aggregator (after `transport.output()`). Point to Lecture 14.1, slide 6 ("Context and aggregators").
 - Second most missed: assuming managed platforms are always cheaper. Point to the cost-at-volume rows of the matrix.
 - "Can I retake it?" Yes, as many times as you like.

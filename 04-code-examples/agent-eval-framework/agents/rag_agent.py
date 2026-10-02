@@ -1,338 +1,293 @@
 """
-RAG Agent — Enterprise Policy Q&A Agent.
+TechCorp Policy Assistant: a RAG agent over TechCorp's internal policies.
 
-A RAG-based agent that answers questions about company policies
-by retrieving relevant sections from a knowledge base and generating
-responses grounded in the retrieved context.
+Three policy domains (Project 2 needs five golden cases per domain):
+    hr              vacation, remote work, sick leave, reviews, benefits, conduct
+    it_security     passwords/MFA, devices, phishing, data classification, VPN
+    travel_expense  expenses, travel booking, meals/per diem, mileage, approvals
 
-Used in: Module 05 (Project 2), Module 14 (Capstone)
+Retrieval is a simple keyword scorer standing in for a vector database, so the
+retrieval step is visible and testable. ``remove_stopwords=False`` is the
+shipped (slightly naive) behaviour; Module 5 shows how a retrieval fix moves
+context precision.
 
-Enterprise scenario: HR department's policy Q&A bot that answers
-employee questions about vacation, expenses, remote work, etc.
+The two steps are separate functions so Module 5.3 can test them in isolation:
+    retrieve_context(question)            -> list[dict]
+    generate_answer(question, contexts)   -> dict
+    run_rag_agent(question)               -> both, end to end
+
+    python -m agents.rag_agent "How many vacation days do I get?"
 """
 
-import os
-from openai import OpenAI
-from dotenv import load_dotenv
+from __future__ import annotations
 
-load_dotenv()
+import re
+import sys
 
-client = OpenAI()
+from agents.llm import clock, get_client
+from config.settings import agent_model
 
-
-# Enterprise policy knowledge base (simulated vector store)
 POLICY_DOCUMENTS = [
+    # ---- HR ---------------------------------------------------------------
     {
-        "id": "vacation-001",
-        "title": "Vacation Policy",
-        "section": "4.1",
+        "id": "vacation-001", "domain": "hr", "title": "Vacation Policy", "section": "4.1",
         "content": (
-            "All full-time employees are entitled to 15 days of paid vacation "
-            "per calendar year. Unused vacation days may be carried over to the "
-            "following year, up to a maximum of 5 days. Vacation requests must "
-            "be submitted to the employee's direct manager at least 14 calendar "
-            "days before the requested start date. Requests for more than 5 "
-            "consecutive days require VP-level approval. Part-time employees "
-            "receive prorated vacation based on their scheduled hours."
+            "All full-time employees are entitled to 15 days of paid vacation per calendar year. "
+            "Unused vacation days may be carried over to the following year, up to a maximum of 5 days. "
+            "Vacation requests must be submitted to the employee's direct manager at least 14 calendar days "
+            "before the requested start date. Requests for more than 5 consecutive days require VP-level approval. "
+            "Part-time employees receive prorated vacation based on their scheduled hours."
         ),
     },
     {
-        "id": "remote-001",
-        "title": "Remote Work Policy",
-        "section": "5.2",
+        "id": "remote-001", "domain": "hr", "title": "Remote Work Policy", "section": "5.2",
         "content": (
-            "Eligible employees may work remotely for up to three (3) days per "
-            "week, subject to manager approval. A Remote Work Agreement form "
-            "must be completed and signed before commencing remote work. All "
-            "remote employees must be available during core business hours of "
-            "10:00 AM to 3:00 PM in their local timezone. Equipment allowance "
-            "of $500 is provided for home office setup. Remote work privileges "
-            "may be revoked if performance standards are not maintained."
+            "Eligible employees may work remotely for up to three (3) days per week, subject to manager approval. "
+            "A Remote Work Agreement form must be completed and signed before commencing remote work. "
+            "All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone. "
+            "An equipment allowance of $500 is provided for home office setup. "
+            "Remote work privileges may be revoked if performance standards are not maintained."
         ),
     },
     {
-        "id": "expense-001",
-        "title": "Expense Reimbursement Policy",
-        "section": "7.1",
+        "id": "pto-001", "domain": "hr", "title": "Sick Leave", "section": "4.3",
         "content": (
-            "Business expenses must be submitted through the company expense "
-            "portal within 30 days of the expense date. Original receipts are "
-            "required for all expenses exceeding $25. Expenses over $500 require "
-            "prior manager approval. Travel expenses follow the GSA per diem "
-            "rates for meals and incidentals. Approved reimbursements are "
-            "processed within 10 business days. Personal expenses are not "
-            "eligible for reimbursement under any circumstances."
+            "Employees receive 10 days of paid sick leave per year. "
+            "Sick leave may be used for personal illness, medical appointments, or care of an immediate family member. "
+            "A doctor's note is required for absences exceeding 3 consecutive days. "
+            "Unused sick leave does not carry over and is not paid out upon termination."
         ),
     },
     {
-        "id": "pto-001",
-        "title": "Paid Time Off — Sick Leave",
-        "section": "4.3",
+        "id": "perf-001", "domain": "hr", "title": "Performance Review Process", "section": "6.1",
         "content": (
-            "Employees receive 10 days of paid sick leave per year. Sick leave "
-            "may be used for personal illness, medical appointments, or care "
-            "of an immediate family member. A doctor's note is required for "
-            "absences exceeding 3 consecutive days. Unused sick leave does not "
-            "carry over and is not paid out upon termination. Sick leave abuse "
-            "may result in disciplinary action."
+            "Performance reviews are conducted semi-annually in June and December. "
+            "Each review includes a self-assessment, a manager assessment, and a calibration meeting. "
+            "Compensation adjustments and promotions are determined during the December review cycle. "
+            "Employees rated Needs Improvement receive a 60-day performance improvement plan (PIP)."
         ),
     },
     {
-        "id": "conduct-001",
-        "title": "Code of Conduct",
-        "section": "2.1",
+        "id": "benefits-001", "domain": "hr", "title": "Health Benefits", "section": "8.1",
         "content": (
-            "All employees are expected to act with integrity, respect, and "
-            "professionalism. Harassment, discrimination, and retaliation of "
-            "any kind are strictly prohibited. Violations should be reported "
-            "to HR or through the anonymous ethics hotline. The company "
-            "maintains a zero-tolerance policy for workplace violence. "
-            "Confidential company information must not be shared externally "
-            "without authorization."
+            "The company offers three health insurance plans: Basic HMO, Standard PPO, and Premium PPO. "
+            "Enrollment occurs during the annual open enrollment period in November or within 30 days of a qualifying life event. "
+            "The company covers 80% of employee premiums and 50% of dependent premiums. "
+            "Dental and vision insurance are included in all plans."
+        ),
+    },
+    # ---- IT security ------------------------------------------------------
+    {
+        "id": "itsec-001", "domain": "it_security", "title": "Password and MFA Standard", "section": "IT-1",
+        "content": (
+            "Passwords must be at least 14 characters long and must be changed every 180 days. "
+            "Multi-factor authentication (MFA) is mandatory for email, VPN and all production systems. "
+            "Approved MFA methods are the Okta Verify app or a hardware security key; SMS codes are not allowed. "
+            "Passwords must never be shared, including with IT staff."
         ),
     },
     {
-        "id": "perf-001",
-        "title": "Performance Review Process",
-        "section": "6.1",
+        "id": "itsec-002", "domain": "it_security", "title": "Device and Laptop Policy", "section": "IT-2",
         "content": (
-            "Performance reviews are conducted semi-annually in June and "
-            "December. Each review includes self-assessment, manager "
-            "assessment, and a calibration meeting. Ratings use a 5-point "
-            "scale: Exceeds Expectations, Meets Expectations, Developing, "
-            "Needs Improvement, Unsatisfactory. Compensation adjustments "
-            "and promotions are determined during the December review cycle. "
-            "Employees rated Needs Improvement receive a 60-day performance "
-            "improvement plan (PIP)."
+            "Company laptops must use full-disk encryption and lock automatically after 5 minutes of inactivity. "
+            "Personal devices may access email only through the managed Outlook app. "
+            "A lost or stolen device must be reported to the IT Service Desk within 1 hour. "
+            "Software may only be installed from the Self Service portal."
         ),
     },
     {
-        "id": "benefits-001",
-        "title": "Health Benefits",
-        "section": "8.1",
+        "id": "itsec-003", "domain": "it_security", "title": "Phishing and Incident Reporting", "section": "IT-3",
         "content": (
-            "The company offers three health insurance plans: Basic HMO, "
-            "Standard PPO, and Premium PPO. Enrollment occurs during the "
-            "annual open enrollment period in November or within 30 days "
-            "of a qualifying life event. The company covers 80% of employee "
-            "premiums and 50% of dependent premiums. Dental and vision "
-            "insurance are included in all plans. A Health Savings Account "
-            "(HSA) is available with the Standard and Premium plans."
+            "Suspected phishing emails must be reported with the Report Phishing button in Outlook. "
+            "Do not click links or open attachments in a suspected phishing email. "
+            "Security incidents must be reported to security@techcorp.com or the 24/7 hotline at extension 4357. "
+            "The security team acknowledges incident reports within 15 minutes."
+        ),
+    },
+    {
+        "id": "itsec-004", "domain": "it_security", "title": "Data Classification", "section": "IT-4",
+        "content": (
+            "TechCorp data is classified as Public, Internal, Confidential or Restricted. "
+            "Customer personal data is Restricted and may not be stored on personal devices or shared outside approved systems. "
+            "Confidential data may be emailed externally only when encrypted. "
+            "Restricted data may not be pasted into external AI tools."
+        ),
+    },
+    {
+        "id": "itsec-005", "domain": "it_security", "title": "VPN and Remote Access", "section": "IT-5",
+        "content": (
+            "The company VPN must be used on any network outside the office, including home networks. "
+            "VPN sessions disconnect after 12 hours and require MFA to reconnect. "
+            "Public Wi-Fi may only be used with the VPN connected."
+        ),
+    },
+    # ---- Travel & expense -------------------------------------------------
+    {
+        "id": "expense-001", "domain": "travel_expense", "title": "Expense Reimbursement Policy", "section": "7.1",
+        "content": (
+            "Business expenses must be submitted through the company expense portal within 30 days of the expense date. "
+            "Original receipts are required for all expenses exceeding $25. "
+            "Expenses over $500 require prior manager approval. "
+            "Approved reimbursements are processed within 10 business days. "
+            "Personal expenses are not eligible for reimbursement."
+        ),
+    },
+    {
+        "id": "travel-001", "domain": "travel_expense", "title": "Travel Booking", "section": "7.2",
+        "content": (
+            "All business travel must be booked through the Navan travel portal. "
+            "Economy class is required for flights under 6 hours; premium economy is allowed for flights of 6 hours or more. "
+            "International travel requires VP approval at least 21 days before departure. "
+            "Hotel stays are capped at $250 per night in standard cities and $350 per night in high-cost cities."
+        ),
+    },
+    {
+        "id": "travel-002", "domain": "travel_expense", "title": "Meals and Per Diem", "section": "7.3",
+        "content": (
+            "Meals during business travel are reimbursed up to a daily per diem of $75. "
+            "Alcohol is not reimbursable. "
+            "Client entertainment meals require the names of all attendees on the expense report."
+        ),
+    },
+    {
+        "id": "travel-003", "domain": "travel_expense", "title": "Mileage and Ground Transport", "section": "7.4",
+        "content": (
+            "Personal car use for business is reimbursed at $0.70 per mile. "
+            "Rideshare and taxis are reimbursable for business travel; parking at the home office is not. "
+            "Rental cars must be mid-size or smaller unless four or more employees travel together."
         ),
     },
 ]
 
-# Irrelevant documents (noise — for testing noise robustness)
+# Irrelevant documents (noise) for testing noise robustness.
 NOISE_DOCUMENTS = [
     {
-        "id": "noise-001",
-        "title": "Office Cafeteria Menu",
-        "section": "N/A",
+        "id": "noise-001", "domain": "noise", "title": "Office Cafeteria Menu", "section": "N/A",
         "content": (
-            "Monday: Grilled chicken with rice. Tuesday: Pasta primavera. "
-            "Wednesday: Fish tacos. Thursday: Beef stir-fry. Friday: Pizza day. "
-            "Vegetarian options available daily. Cafeteria hours: 11:30 AM to 1:30 PM."
+            "Monday: Grilled chicken with rice. Tuesday: Pasta primavera. Wednesday: Fish tacos. "
+            "Thursday: Beef stir-fry. Friday: Pizza day. Cafeteria hours are 11:30 AM to 1:30 PM."
         ),
     },
     {
-        "id": "noise-002",
-        "title": "Parking Lot Assignments",
-        "section": "N/A",
+        "id": "noise-002", "domain": "noise", "title": "Parking Lot Assignments", "section": "N/A",
         "content": (
-            "Parking spots A1-A20 are reserved for senior leadership. "
-            "Spots B1-B50 are first-come-first-served. Electric vehicle "
-            "charging stations are available in Row C. Motorcycle parking "
-            "is in the covered area near entrance D."
+            "Parking spots A1-A20 are reserved for senior leadership. Spots B1-B50 are first-come-first-served. "
+            "Electric vehicle charging stations are available in Row C."
         ),
     },
 ]
 
+STOPWORDS = {
+    "a", "an", "the", "is", "are", "do", "does", "i", "my", "me", "for", "to", "of", "in", "on",
+    "what", "how", "when", "can", "many", "much", "be", "it", "and", "or", "if", "with", "at",
+    "per", "get", "need", "there", "any", "by", "from", "this", "that", "should", "will", "we",
+}
 
-def retrieve_context(query: str, top_k: int = 3, include_noise: bool = False) -> list[dict]:
+_WORD = re.compile(r"[a-z0-9$%]+")
+
+
+def _words(text: str, remove_stopwords: bool) -> set[str]:
+    words = set(_WORD.findall(text.lower()))
+    return words - STOPWORDS if remove_stopwords else words
+
+
+def retrieve_context(
+    query: str,
+    top_k: int = 3,
+    include_noise: bool = False,
+    remove_stopwords: bool = False,
+) -> list[dict]:
     """
-    Simulate vector search retrieval.
+    Keyword retrieval standing in for vector search.
 
-    In a real system, this would use a vector database (ChromaDB, Pinecone, etc.)
-    with embedding-based similarity search. For course purposes, we use
-    keyword matching to simulate retrieval with controllable quality.
-
-    Args:
-        query: The user's question
-        top_k: Number of documents to retrieve
-        include_noise: If True, mix in irrelevant documents (for testing noise robustness)
+    Score = 3 x (query words in the title) + (query words in the content).
+    With remove_stopwords=False (the shipped default) words like "the" and
+    "for" also count, which is the retrieval weakness Module 5 diagnoses.
     """
-    query_lower = query.lower()
+    docs = POLICY_DOCUMENTS + (NOISE_DOCUMENTS if include_noise else [])
+    q = _words(query, remove_stopwords)
     scored = []
-
-    all_docs = POLICY_DOCUMENTS.copy()
-    if include_noise:
-        all_docs.extend(NOISE_DOCUMENTS)
-
-    for doc in all_docs:
-        score = 0
-        content_lower = doc["content"].lower()
-        title_lower = doc["title"].lower()
-
-        # Simple keyword scoring (simulates embedding similarity)
-        query_words = set(query_lower.split())
-        content_words = set(content_lower.split())
-        title_words = set(title_lower.split())
-
-        # Title match (weighted higher)
-        title_overlap = len(query_words & title_words)
-        score += title_overlap * 3
-
-        # Content match
-        content_overlap = len(query_words & content_words)
-        score += content_overlap
-
-        scored.append((score, doc))
-
-    # Sort by score descending, take top_k
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [doc for _, doc in scored[:top_k]]
+    for i, doc in enumerate(docs):
+        score = 3 * len(q & _words(doc["title"], remove_stopwords)) + len(
+            q & _words(doc["content"], remove_stopwords)
+        )
+        scored.append((score, -i, doc))
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [doc for _score, _i, doc in scored[:top_k]]
 
 
-SYSTEM_PROMPT = """You are an HR Policy Assistant for TechCorp.
+SYSTEM_PROMPT = """You are the TechCorp Policy Assistant for employees.
 
-Your role is to answer employee questions about company policies accurately
-and helpfully, using ONLY the policy documents provided in the context.
+Answer questions about HR, IT security, and travel & expense policies using ONLY
+the policy documents provided in the context.
 
 Rules:
 1. Base your answers strictly on the provided context
 2. If the context doesn't contain the answer, say so clearly
-3. Quote specific policy sections when relevant
-4. Be concise but thorough
-5. Never make up policies or numbers not in the context
-6. If a question involves sensitive HR matters, recommend contacting HR directly
+3. Cite the policy title and section you used
+4. Be concise but complete
+5. Never make up policies or numbers that are not in the context
+6. For sensitive HR matters (harassment, discipline), recommend contacting HR directly
 """
+
+
+def generate_answer(question: str, contexts: list[dict], *, temperature: float = 0.1) -> dict:
+    """Generation step only: answer from the contexts you pass in."""
+    titles = [f"{d['title']} (Section {d['section']})" for d in contexts]
+    context_block = "\n\n---\n\n".join(
+        f"**{t}**\n{d['content']}" for t, d in zip(titles, contexts, strict=True)
+    )
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": (
+                f"Context from company policy documents:\n\n{context_block}\n\n---\n\n"
+                f"Employee question: {question}"
+            ),
+        },
+    ]
+    model = agent_model()
+    start = clock.now()
+    response = get_client().chat.completions.create(
+        model=model, messages=messages, temperature=temperature
+    )
+    return {
+        "answer": response.choices[0].message.content or "",
+        "total_tokens": response.usage.total_tokens if response.usage else 0,
+        "latency_s": round(clock.now() - start, 3),
+        "model": model,
+    }
 
 
 def run_rag_agent(
     question: str,
     top_k: int = 3,
     include_noise: bool = False,
+    remove_stopwords: bool = False,
 ) -> dict:
     """
-    Run the RAG agent on an employee question.
+    Retrieve, then generate.
 
-    Returns:
-        dict with keys:
-        - answer: str (the generated response)
-        - retrieved_contexts: list[str] (retrieved document contents)
-        - retrieved_titles: list[str] (retrieved document titles)
-        - total_tokens: int
-        - model: str
+    Returns: answer, retrieved_contexts (texts), retrieved_ids, retrieved_titles,
+    total_tokens, latency_s, model.
     """
-    # Step 1: Retrieve relevant context
-    retrieved_docs = retrieve_context(question, top_k=top_k, include_noise=include_noise)
-    context_texts = [doc["content"] for doc in retrieved_docs]
-    context_titles = [f"{doc['title']} (Section {doc['section']})" for doc in retrieved_docs]
-
-    # Step 2: Build the prompt with retrieved context
-    context_block = "\n\n---\n\n".join(
-        f"**{title}**\n{content}"
-        for title, content in zip(context_titles, context_texts)
+    docs = retrieve_context(
+        question, top_k=top_k, include_noise=include_noise, remove_stopwords=remove_stopwords
     )
-
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": (
-                f"Context from company policy documents:\n\n"
-                f"{context_block}\n\n"
-                f"---\n\n"
-                f"Employee question: {question}"
-            ),
-        },
-    ]
-
-    # Step 3: Generate answer
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.1,
-    )
-
+    gen = generate_answer(question, docs)
     return {
-        "answer": response.choices[0].message.content or "",
-        "retrieved_contexts": context_texts,
-        "retrieved_titles": context_titles,
-        "total_tokens": response.usage.total_tokens if response.usage else 0,
-        "model": model,
+        "answer": gen["answer"],
+        "retrieved_contexts": [d["content"] for d in docs],
+        "retrieved_ids": [d["id"] for d in docs],
+        "retrieved_titles": [f"{d['title']} (Section {d['section']})" for d in docs],
+        "total_tokens": gen["total_tokens"],
+        "latency_s": gen["latency_s"],
+        "model": gen["model"],
     }
 
 
-# Pre-built evaluation dataset for RAG testing
-RAG_EVAL_DATASET = [
-    {
-        "question": "How many vacation days do employees get per year?",
-        "ground_truth": "All full-time employees are entitled to 15 days of paid vacation per calendar year.",
-        "expected_section": "vacation-001",
-    },
-    {
-        "question": "How many days can I carry over unused vacation?",
-        "ground_truth": "Unused vacation days may be carried over up to a maximum of 5 days.",
-        "expected_section": "vacation-001",
-    },
-    {
-        "question": "How many days per week can I work remotely?",
-        "ground_truth": "Eligible employees may work remotely for up to three (3) days per week, subject to manager approval.",
-        "expected_section": "remote-001",
-    },
-    {
-        "question": "What are the core business hours for remote workers?",
-        "ground_truth": "All remote employees must be available during core business hours of 10:00 AM to 3:00 PM in their local timezone.",
-        "expected_section": "remote-001",
-    },
-    {
-        "question": "What is the deadline for submitting expense reports?",
-        "ground_truth": "Business expenses must be submitted within 30 days of the expense date.",
-        "expected_section": "expense-001",
-    },
-    {
-        "question": "Do I need receipts for a $20 expense?",
-        "ground_truth": "Original receipts are required for all expenses exceeding $25. A $20 expense does not require a receipt.",
-        "expected_section": "expense-001",
-    },
-    {
-        "question": "How many sick days do I get?",
-        "ground_truth": "Employees receive 10 days of paid sick leave per year.",
-        "expected_section": "pto-001",
-    },
-    {
-        "question": "When do I need a doctor's note for sick leave?",
-        "ground_truth": "A doctor's note is required for absences exceeding 3 consecutive days.",
-        "expected_section": "pto-001",
-    },
-    {
-        "question": "When are performance reviews conducted?",
-        "ground_truth": "Performance reviews are conducted semi-annually in June and December.",
-        "expected_section": "perf-001",
-    },
-    {
-        "question": "What percentage of health insurance premiums does the company cover?",
-        "ground_truth": "The company covers 80% of employee premiums and 50% of dependent premiums.",
-        "expected_section": "benefits-001",
-    },
-]
-
-
 if __name__ == "__main__":
-    print("RAG Agent — Enterprise Policy Q&A")
-    print("=" * 50)
-
-    test_questions = [
-        "How many vacation days do I get?",
-        "Can I work from home?",
-        "How do I submit expense reports?",
-    ]
-
-    for q in test_questions:
-        print(f"\nQ: {q}")
-        result = run_rag_agent(q)
-        print(f"A: {result['answer'][:200]}...")
-        print(f"Sources: {result['retrieved_titles']}")
-        print(f"Tokens: {result['total_tokens']}")
+    q = " ".join(sys.argv[1:]) or "How many vacation days do I get?"
+    r = run_rag_agent(q)
+    print(f"Q: {q}\nA: {r['answer']}\nSources: {r['retrieved_ids']}")

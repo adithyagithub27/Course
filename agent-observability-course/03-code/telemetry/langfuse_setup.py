@@ -189,6 +189,20 @@ def push_prompts(
     return n
 
 
+def promote_prompt(name: str, version: int, *, label: str = "production") -> bool:
+    """Move ``label`` to prompt ``version`` (the Incident 3 rollback, Lecture 11.4).
+
+    Wraps ``Langfuse.update_prompt(name=, version=, new_labels=)`` (present in langfuse 4.16).
+    Labels are unique across versions, so this also removes ``label`` from the version that had it.
+    Returns False when Langfuse is not configured.
+    """
+    c = client()
+    if c is None:
+        return False
+    c.update_prompt(name=name, version=version, new_labels=[label])
+    return True
+
+
 def flush() -> None:
     c = client()
     if c is not None:
@@ -220,6 +234,7 @@ __all__ = [
     "init_langfuse",
     "langfuse_enabled",
     "observe",
+    "promote_prompt",
     "propagate_attributes",
     "push_prompts",
     "score_current_trace",

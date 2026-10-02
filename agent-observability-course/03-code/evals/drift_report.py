@@ -4,6 +4,14 @@ Offline usage (no store needed)::
 
     python evals/drift_report.py                      # synthetic: v1 baseline vs v2 (quality_drift) current
     python evals/drift_report.py --store .atlas/spans.sqlite --split-hour 12
+    python -m evals.drift_report --prev 2026-W38 --curr 2026-W39     # two weeks in one store
+    python -m evals.drift_report --prev .atlas/week1.sqlite --curr .atlas/week2.sqlite
+
+Two replayed weeks in one store (each ``make replay`` day is one Monday)::
+
+    make replay                                               # 2026-09-14, ISO week 2026-W38
+    make replay DAY=2026-09-21 SCENARIO=quality_drift KEEP=1  # 2026-09-21, ISO week 2026-W39
+    python -m evals.drift_report --prev 2026-W38 --curr 2026-W39
 
 Metrics compared: judge scores (overall / grounded / resolved), cost per request,
 latency, steps, cache hit ratio.
@@ -12,7 +20,9 @@ latency, steps, cache hit ratio.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,6 +90,59 @@ def compare_split(
     ]
 
 
+_WEEK_RE = re.compile(r"^(\d{4})-W(\d{2})$")
+
+
+def resolve_window(spec: str) -> tuple[float, float] | None:
+    """``2026-W38`` -> that ISO week, ``2026-09-14`` -> that UTC day; None for anything else."""
+    m = _WEEK_RE.match(spec)
+    if m:
+        monday = date.fromisocalendar(int(m.group(1)), int(m.group(2)), 1)
+        start = datetime(monday.year, monday.month, monday.day, tzinfo=UTC)
+        return start.timestamp(), (start + timedelta(days=7)).timestamp()
+    try:
+        d = date.fromisoformat(spec)
+    except ValueError:
+        return None
+    start = datetime(d.year, d.month, d.day, tzinfo=UTC)
+    return start.timestamp(), (start + timedelta(days=1)).timestamp()
+
+
+def compare_specs(
+    prev: str,
+    curr: str,
+    *,
+    store_path: str | None = None,
+    thresholds: DriftThresholds = DriftThresholds(),
+) -> list[DriftResult]:
+    """Compare two windows given as ISO weeks / days (within ``store_path``) or store paths."""
+
+    def load(spec: str) -> tuple[LocalSpanStore, float | None, float | None]:
+        window = resolve_window(spec)
+        if window is not None:
+            path = store_path or Settings.from_env().local_store_path
+            return LocalSpanStore(path), window[0], window[1]
+        if not Path(spec).exists():
+            raise SystemExit(
+                f"--prev/--curr {spec!r} is neither a week (2026-W38), a day nor a store"
+            )
+        return LocalSpanStore(spec), None, None
+
+    bstore, bs, bu = load(prev)
+    cstore, cs, cu = load(curr)
+    b = _metrics(bstore, bs, bu)
+    c = _metrics(cstore, cs, cu)
+    for label, metrics in ((prev, b), (curr, c)):
+        if not metrics["latency_ms"][0]:
+            raise SystemExit(
+                f"no requests in {label}; replay it first, e.g. make replay DAY=2026-09-21 KEEP=1"
+            )
+    return [
+        compare_windows(m, bv, c.get(m, ([], hib))[0], thresholds=thresholds, higher_is_better=hib)
+        for m, (bv, hib) in b.items()
+    ]
+
+
 def synthetic_comparison(seed: int = 7, sessions: int = 150) -> list[DriftResult]:
     """Baseline: a normal day. Current: the same day with the prompt v2 regression."""
     from simulator.replay import replay_day
@@ -115,7 +178,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--sessions", type=int, default=150)
+    ap.add_argument("--prev", default=None, help="baseline: ISO week (2026-W38), day or store path")
+    ap.add_argument("--curr", default=None, help="current: ISO week (2026-W39), day or store path")
+    ap.add_argument("--out", default=None, help="also write the markdown report to this file")
     args = ap.parse_args(argv)
+    if bool(args.prev) != bool(args.curr):
+        ap.error("--prev and --curr go together")
+    if args.prev and args.curr:
+        results = compare_specs(args.prev, args.curr, store_path=args.store)
+        text = render(results, f"{args.prev} -> {args.curr}")
+        print(text)
+        if args.out:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(text, encoding="utf-8")
+        return 1 if any(r.alert for r in results) else 0
     if args.baseline_store and args.store:
         results = compare_stores(LocalSpanStore(args.baseline_store), LocalSpanStore(args.store))
         title = f"{args.baseline_store} -> {args.store}"
@@ -130,7 +206,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             results = synthetic_comparison(args.seed, args.sessions)
             title = f"synthetic seed={args.seed}: v1 baseline vs v2 prompt regression"
-    print(render(results, title))
+    text = render(results, title)
+    print(text)
+    if args.out:
+        Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.out).write_text(text, encoding="utf-8")
     return 1 if any(r.alert for r in results) and args.store else 0
 
 

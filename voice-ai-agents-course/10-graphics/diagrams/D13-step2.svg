@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D13">
+<title id="t-D13">D13: The agent server</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The agent server</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D13 · build 2/4: load threshold</text></g>
+<g id="build-1">
+<rect x="96" y="260" width="330" height="140" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<g transform="translate(118.0 308.0) scale(0.917)"><path d="M14 37 H36 A8 8 0 0 0 36 21 A11 11 0 0 0 15 19 A9 9 0 0 0 14 37 Z" fill="none" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="178" y="324.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">LiveKit</text>
+<text x="178" y="352.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">Cloud or self-hosted</text>
+<rect x="695.0" y="255.0" width="530" height="150" rx="14" fill="none" stroke="#00D4AA33" stroke-width="10"/>
+<rect x="700" y="260" width="520" height="140" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(722.0 308.0) scale(0.917)"><rect x="7" y="8" width="34" height="13" rx="3" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="27" width="34" height="13" rx="3" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="14" cy="14.5" r="2" fill="#00D4AA"/><circle cx="14" cy="33.5" r="2" fill="#00D4AA"/></g>
+<text x="782" y="324.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Agent server</text>
+<text x="782" y="352.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">main process</text>
+<path d="M430 310 L696 310" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)" marker-start="url(#arr-flow)"/>
+<text x="563" y="296" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">WebSocket (outbound)</text>
+<path d="M430 370 L696 370" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-flow)"/>
+<text x="480" y="400" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">new job</text>
+<rect x="96" y="520" width="320" height="130" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(118.0 563.0) scale(0.917)"><rect x="14" y="4" width="20" height="40" rx="4" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 38 H27" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="178" y="579.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">job process</text>
+<text x="178" y="607.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">one call</text>
+<path d="M960 404 L256.0 514" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="448" y="520" width="320" height="130" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(470.0 563.0) scale(0.917)"><rect x="14" y="4" width="20" height="40" rx="4" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 38 H27" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="530" y="579.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">job process</text>
+<text x="530" y="607.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">one call</text>
+<path d="M960 404 L608.0 514" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="800" y="520" width="320" height="130" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(822.0 563.0) scale(0.917)"><rect x="14" y="4" width="20" height="40" rx="4" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 38 H27" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="882" y="579.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">job process</text>
+<text x="882" y="607.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">one call</text>
+<path d="M960 404 L960.0 514" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="1152" y="520" width="320" height="130" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
+<text x="1312.0" y="579.3" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">idle warm process</text>
+<text x="1312.0" y="604.5" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#CBD5E1" text-anchor="middle">setup_fnc (prewarm)</text>
+<path d="M960 404 L1312.0 514" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="1504" y="520" width="320" height="130" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
+<text x="1664.0" y="579.3" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">idle warm process</text>
+<text x="1664.0" y="604.5" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#CBD5E1" text-anchor="middle">setup_fnc (prewarm)</text>
+<path d="M960 404 L1664.0 514" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="1488.0" y="690" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">num_idle_processes</text>
+</g>
+<g id="build-2">
+<path d="M160 900 A120 120 0 0 1 400 900" fill="none" stroke="#64748B" stroke-width="16"/>
+<path d="M160 900 A120 120 0 0 1 350.5 802.9" fill="none" stroke="#00D4AA" stroke-width="16"/>
+<path d="M335.3 824.0 L365.8 781.9" stroke="#FFB020" stroke-width="4"/>
+<text x="280" y="880" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">load</text>
+<text x="384.53430755984704" y="776.9180168257111" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#FFB020" text-anchor="start">0.7  load_threshold</text>
+<text x="430" y="896" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="start">past it: stops accepting new jobs</text>
+</g>
+</svg>

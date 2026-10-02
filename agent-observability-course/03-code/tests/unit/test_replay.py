@@ -70,3 +70,37 @@ def test_plan_hours_cover_day():
     plan = generate_day(9, sessions=200)
     hours = {int(r.hour) for r in plan}
     assert len(hours) >= 18
+
+
+def test_replay_tags_real_features_for_showback():
+    """6.3 / Project 1: generation and agent spans carry the feature, not a constant 'chat'."""
+    from northwind.cost import rollup
+
+    _, store = replay_day(5, sessions=80, judge_rate=0.0)
+    features = set(rollup(store.cost_records("request"), "feature"))
+    assert "chat" not in features and {"policy_question", "create_ticket"} <= features
+    gen_features = {r.feature for r in store.cost_records("generation")}
+    assert gen_features == features
+    root = store.spans(kind="agent")[0]
+    assert f"feature:{root.attr('atlas.feature')}" in root.attr("langfuse.trace.tags")
+
+
+def test_second_day_gets_distinct_ids_and_timestamps():
+    from datetime import date
+
+    store = LocalSpanStore(":memory:")
+    replay_day(5, sessions=10, store=store, judge_rate=0.0)
+    n = store.count()
+    replay_day(5, sessions=10, store=store, judge_rate=0.0, day=date(2026, 9, 21))
+    assert store.count() == 2 * n  # nothing replaced
+    start, end = store.time_range()
+    assert end - start > 6 * 86_400
+
+
+def test_replay_cli_incidents_default_from_atlas_scenario(monkeypatch, tmp_path, capsys):
+    from simulator.replay import main
+
+    monkeypatch.setenv("ATLAS_SCENARIO", "slow_provider")
+    rc = main(["--seed", "5", "--sessions", "60", "--store", str(tmp_path / "s.sqlite"), "--clear"])
+    out = capsys.readouterr().out
+    assert rc == 0 and "slow_provider" in out and "Incidents: slow_provider" in out

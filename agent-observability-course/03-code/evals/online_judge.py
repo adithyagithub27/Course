@@ -87,7 +87,7 @@ class OfflineJudge:
         has_source = "(source:" in low
         has_next = "next step" in low or "ticket tck-" in low or "i've created ticket" in low
         failed = (
-            outcome in {"error", "step_limit"}
+            outcome in {"error", "step_limit", "timeout"}
             or "temporarily unavailable" in low
             or "wasn't able to" in low
         )
@@ -300,7 +300,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--rate", type=float, default=None, help="sample rate (default JUDGE_SAMPLE_RATE)"
     )
-    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="max traces judged this run (default JUDGE_MAX_CALLS; unset = no cap)",
+    )
     ap.add_argument(
         "--dry-run",
         action="store_true",
@@ -320,10 +325,12 @@ def main(argv: list[str] | None = None) -> int:
         from simulator.replay import replay_day
 
         replay_day(args.seed, store=store, judge_rate=0.0)
+    env_cap = os.environ.get("JUDGE_MAX_CALLS", "").strip()
+    limit = args.limit if args.limit is not None else (int(env_cap) if env_cap.isdigit() else None)
     summary = run_judge(
         store,
         rate=args.rate if args.rate is not None else settings.judge_sample_rate,
-        limit=args.limit,
+        limit=limit,
         dry_run=args.dry_run,
         model=args.model or settings.judge_model,
     )

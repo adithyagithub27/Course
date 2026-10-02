@@ -305,7 +305,6 @@ async def entrypoint(ctx: JobContext) -> None:
             tts=models["tts"],
             conn_options=CONN_OPTIONS,
             max_tool_steps=5,
-            preemptive_generation=True,
         )
 
     @session.on("error")

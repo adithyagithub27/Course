@@ -11,6 +11,9 @@ Goldens include deliberate failures. ``expected_failures`` lists the metrics tha
 SHOULD fail for that conversation, so the test checks the judge as much as the agent:
 a judge that passes a markdown monologue is a broken judge.
 
+``turns_from_history`` converts a live ``AgentSession`` history into DeepEval turns, so
+real or simulated calls can be scored with the same metrics.
+
 Run: ``make eval`` or ``pytest tests/evals/test_conversation_quality.py -v``.
 Needs ``OPENAI_API_KEY`` (judge model ``JUDGE_MODEL``, default gpt-4.1-mini); skipped otherwise.
 Verified on deepeval 4.2: ``ConversationalGEval``, ``ConversationalTestCase``, ``Turn``,
@@ -22,11 +25,15 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from maple.config import load_settings
+
+if TYPE_CHECKING:
+    from deepeval.test_case import Turn
+    from livekit.agents.llm import ChatContext
 
 os.environ.setdefault("DEEPEVAL_TELEMETRY_OPT_OUT", "YES")
 
@@ -112,6 +119,31 @@ def to_test_case(golden: dict[str, Any]) -> Any:
         chatbot_role="Riley, the AI phone receptionist for Maple Street Dental. Replies are spoken aloud.",
         turns=[Turn(role=t["role"], content=t["content"]) for t in golden["turns"]],
     )
+
+
+def turns_from_history(history: ChatContext) -> list[Turn]:
+    """Convert an AgentSession's history into DeepEval turns (spoken messages only)."""
+    from deepeval.test_case import Turn
+
+    return [
+        Turn(role=m.role, content=m.text_content or "", interrupted=bool(m.interrupted))
+        for m in history.messages()
+        if m.role in ("user", "assistant") and m.text_content
+    ]
+
+
+@pytest.mark.offline
+def test_turns_from_history_keeps_spoken_turns() -> None:
+    from livekit.agents.llm import ChatContext
+
+    history = ChatContext()
+    history.add_message(role="system", content="You are Riley.")
+    history.add_message(role="assistant", content="Thanks for calling Maple Street Dental.")
+    history.add_message(role="user", content="I need a cleaning on Thursday.")
+    history.add_message(role="assistant", content="Thursday has openings at nine and", interrupted=True)
+    turns = turns_from_history(history)
+    assert [t.role for t in turns] == ["assistant", "user", "assistant"]
+    assert turns[-1].interrupted and not turns[0].interrupted
 
 
 @pytest.mark.eval

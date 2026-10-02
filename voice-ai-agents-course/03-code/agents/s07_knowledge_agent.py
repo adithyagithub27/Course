@@ -25,7 +25,7 @@ Optional extension from lecture 7.8, for callers who switch language mid-call::
 
 The STT runs in Deepgram's code-switching ``multi`` mode, every final transcript
 carries a language code, and ``follow_caller_language`` updates the TTS language when
-it changes. The prompt already tells Riley to switch with the caller.
+it changes. ``FOLLOW_CALLER_RULES`` tells the LLM to switch with the caller.
 """
 
 from __future__ import annotations
@@ -58,6 +58,14 @@ from maple import prompts
 
 logger = logging.getLogger("s07.knowledge")
 
+# Prompt block for FOLLOW_CALLER_LANGUAGE=1 (lecture 7.8). ``build_instructions`` only adds a
+# language block for non-English lines, so the English line that follows the caller needs this.
+FOLLOW_CALLER_RULES = """\
+Language: start in English. If the caller speaks Spanish or Hindi, switch to that language and
+keep using it until the caller switches again. Tool results are in English; translate them.
+Keep the clinic name, people's names and phone numbers as they are. Always pass questions to
+lookup_clinic_info in English."""
+
 
 class KnowledgeRiley(KnowledgeToolsMixin, Agent):
     """Riley with the ``lookup_clinic_info`` tool.
@@ -65,13 +73,16 @@ class KnowledgeRiley(KnowledgeToolsMixin, Agent):
     Args:
         language: ``en``, ``es`` or ``hi``.
         prefetch: Inject FAQ context before each LLM turn instead of relying on the tool.
+        extra: Extra prompt text, e.g. ``FOLLOW_CALLER_RULES`` (lecture 7.8).
     """
 
-    def __init__(self, *, language: str = "en", prefetch: bool = False) -> None:
+    def __init__(self, *, language: str = "en", prefetch: bool = False, extra: str = "") -> None:
         self.language = language
         self.prefetch = prefetch
         super().__init__(
-            instructions=prompts.build_instructions(today=clinic_today(), knowledge=True, language=language),
+            instructions=prompts.build_instructions(
+                today=clinic_today(), knowledge=True, language=language, extra=extra
+            ),
         )
 
     async def on_enter(self) -> None:
@@ -95,8 +106,7 @@ def follow_caller_language(session: AgentSession[CallState], *, initial: str = "
     """Switch the TTS language when the caller changes language mid-call (lecture 7.8).
 
     Needs an STT that reports a language on final transcripts (Deepgram ``multi`` does).
-    The LLM switches on its own: the language block says "if the caller switches, switch
-    with them".
+    The LLM switches because ``FOLLOW_CALLER_RULES`` tells it to.
     """
     current = {"language": initial}
 
@@ -138,7 +148,9 @@ async def entrypoint(ctx: JobContext) -> None:
         tts=inference.TTS(model=settings.tts_model.split(":", 1)[0], voice=settings.tts_voice, language="en"),
     )
     follow_caller_language(session, initial="en")
-    await session.start(agent=KnowledgeRiley(language="en", prefetch=prefetch), room=ctx.room)
+    await session.start(
+        agent=KnowledgeRiley(language="en", prefetch=prefetch, extra=FOLLOW_CALLER_RULES), room=ctx.room
+    )
 
 
 if __name__ == "__main__":

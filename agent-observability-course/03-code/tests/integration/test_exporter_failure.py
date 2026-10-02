@@ -28,6 +28,9 @@ def test_requests_survive_a_dead_exporter():
     assert r.outcome == "resolved"
     health = {h["name"]: h for h in exporter_health()}
     assert health["extra"]["failures"] >= 1 and dead.calls >= 1
+    from telemetry.metrics import EXPORTER_FAILURES
+
+    assert EXPORTER_FAILURES.labels("extra")._value.get() >= 1  # noqa: SLF001
     shutdown_tracing()
 
 

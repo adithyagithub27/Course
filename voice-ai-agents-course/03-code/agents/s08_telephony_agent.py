@@ -7,7 +7,7 @@ Telephony setup (see README "Telephony"):
 
 1. Set ``LIVEKIT_AGENT_NAME`` (or ``[agent] name`` in ``livekit.toml`` for ``start``);
    your dispatch rule must name the same agent.
-2. Set ``TRANSFER_PHONE_NUMBER`` (E.164, e.g. ``+15125550100``) for ``transfer_to_human``.
+2. Set ``TRANSFER_PHONE_NUMBER`` (E.164, e.g. ``+15125550111``, never the number Riley answers) for ``transfer_to_human``.
 3. ``python agents/s08_telephony_agent.py dev`` and call your Twilio number.
 
 Tools: booking tools + ``lookup_clinic_info`` + ``transfer_to_human`` + ``end_call``

@@ -75,3 +75,44 @@ def test_markdown_render():
     md = drift_report_markdown([r])
     assert md.startswith("| metric |") and "| m |" in md
     assert r.as_dict()["metric"] == "m"
+
+
+def test_drift_report_prev_curr_weeks(tmp_path, capsys):
+    """8.5: two replayed Mondays in one store, compared by ISO week."""
+    from datetime import date
+
+    from evals.drift_report import main, resolve_window
+    from simulator.replay import replay_day
+    from telemetry.local_store import LocalSpanStore
+
+    path = tmp_path / "two-weeks.sqlite"
+    store = LocalSpanStore(path)
+    replay_day(7, sessions=120, store=store, judge_rate=0.8)
+    replay_day(
+        7,
+        sessions=120,
+        store=store,
+        judge_rate=0.8,
+        incidents="quality_drift",
+        day=date(2026, 9, 21),
+    )
+    w38, w39 = resolve_window("2026-W38"), resolve_window("2026-W39")
+    assert w38 and w39 and w39[0] - w38[0] == 7 * 86_400
+    out_md = tmp_path / "drift.md"
+    rc = main(
+        ["--prev", "2026-W38", "--curr", "2026-W39", "--store", str(path), "--out", str(out_md)]
+    )
+    text = capsys.readouterr().out
+    assert rc == 1 and "2026-W38 -> 2026-W39" in text and "judge_grounded" in text
+    assert "judge_grounded" in out_md.read_text() and out_md.read_text().strip() == text.strip()
+
+
+def test_drift_report_prev_curr_empty_week_is_explained(tmp_path):
+    from evals.drift_report import main
+    from simulator.replay import replay_day
+    from telemetry.local_store import LocalSpanStore
+
+    path = tmp_path / "one-week.sqlite"
+    replay_day(7, sessions=40, store=LocalSpanStore(path), judge_rate=0.5)
+    with pytest.raises(SystemExit, match="no requests in 2026-W39"):
+        main(["--prev", "2026-W38", "--curr", "2026-W39", "--store", str(path)])

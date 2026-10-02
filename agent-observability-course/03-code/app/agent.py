@@ -24,13 +24,13 @@ from typing import Any, Protocol
 
 from opentelemetry import trace as otel_trace
 
+from app.guardrails import injection_check
 from app.knowledge import KnowledgeBase, get_kb
 from app.mock_llm import (
     SIMPLE_INTENTS,
     MockLLM,
     classify_intent,
     feature_for_intent,
-    looks_like_injection,
 )
 from app.prompts import get_system_prompt, prompt_cache_key
 from app.tools import TOOL_SCHEMAS, TicketStore, ToolContext, execute_tool
@@ -38,7 +38,12 @@ from northwind.budget import BudgetGuard, Decision
 from northwind.config import Settings, get_settings
 from northwind.pii import contains_pii
 from northwind.pricing import CostBreakdown, estimate_cost
-from northwind.tokens import context_diet, count_message_tokens, truncate_tool_result
+from northwind.tokens import (
+    approx_tokens,
+    context_diet,
+    count_message_tokens,
+    truncate_tool_result,
+)
 from telemetry import genai_attrs as ga
 from telemetry import metrics
 from telemetry.langfuse_setup import trace_attributes
@@ -76,7 +81,12 @@ OUTCOMES: tuple[str, ...] = (
     "error",
     "refused",
     "guardrail",
+    "timeout",
 )
+
+#: Belt and braces for ``ATLAS_MAX_STEPS=0`` (unlimited): the request deadline normally stops the
+#: loop long before this, but a server thread must never spin forever.
+UNLIMITED_STEP_CEILING = 2000
 
 ESCALATE_MARKER = "[ESCALATE]"
 INJECTION_REFUSAL = (
@@ -96,6 +106,9 @@ STEP_LIMIT_ANSWER = (
     "in ServiceHub or reply and I'll create one for you."
 )
 ERROR_ANSWER = "Atlas is temporarily unavailable. Please try again in a minute."
+TIMEOUT_ANSWER = (
+    "This request took too long and was stopped. Please try again, or open a ticket in ServiceHub."
+)
 
 
 class LLMClient(Protocol):
@@ -234,6 +247,7 @@ class ToolRecord:
     hits: int | None = None
     top_k: int | None = None
     call_id: str | None = None
+    result_tokens: int = 0  # tokens of the result as sent to the model (after the context diet)
 
     def as_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
@@ -248,6 +262,7 @@ class AgentResult:
     steps: int
     outcome: str
     intent: str
+    feature: str = "chat"
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
@@ -265,6 +280,15 @@ class AgentResult:
     tools: list[ToolRecord] = field(default_factory=list)
     messages: list[dict[str, Any]] = field(default_factory=list)
     guardrail_triggered: bool = False
+
+    @property
+    def model_calls(self) -> int:
+        """LLM calls made (one generation span each, retried attempts included)."""
+        return len(self.generations)
+
+    @property
+    def resolved(self) -> bool:
+        return self.outcome == "resolved"
 
     @property
     def usage(self) -> dict[str, int]:
@@ -385,6 +409,7 @@ class AtlasAgent:
         sleep: Callable[[float], None] = time.sleep,
         tracer: otel_trace.Tracer | None = None,
         capture_content: bool = True,
+        on_step: Callable[[int, int, AgentResult], None] | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self.capture_content = capture_content  # record (masked) messages / tool I/O on spans
@@ -395,12 +420,13 @@ class AtlasAgent:
         self._sleep = sleep
         self._tracer = tracer
         self.breaker = CircuitBreaker()
+        self.on_step = on_step  # progress callback (step, context_tokens, result): loop demo
         self.llm: LLMClient = llm or self._default_llm()
 
     def _default_llm(self) -> LLMClient:
         s = self.settings
         if s.offline or not s.openai_api_key:
-            return MockLLM(seed=7, scenario=s.scenario)
+            return MockLLM(seed=7, scenario=s.scenario, latency_scale=s.mock_latency_scale)
         if s.router_mode:
             return RouterClient(s)
         return OpenAIChatClient(s.openai_api_key, timeout=s.request_timeout_s)
@@ -648,6 +674,7 @@ class AtlasAgent:
             steps=0,
             outcome="resolved",
             intent=intent,
+            feature=feature,
             prompt_version=prompt_version,
         )
 
@@ -680,8 +707,15 @@ class AtlasAgent:
 
             # 1. guardrail: prompt injection ------------------------------------------------
             with self.tracer.start_as_current_span("guardrail injection_check") as g:
-                triggered = looks_like_injection(message)
-                ga.set_guardrail(g, kind="prompt_injection", triggered=triggered)
+                check = injection_check(message)
+                triggered = check.flagged
+                ga.set_guardrail(
+                    g,
+                    kind="prompt_injection",
+                    triggered=triggered,
+                    detail=json.dumps(check.as_dict()),
+                )
+                g.set_attribute("atlas.guardrail.confidence", check.confidence)
             if triggered:
                 metrics.GUARDRAIL.labels(tenant, "prompt_injection").inc()
                 result.guardrail_triggered = True
@@ -747,6 +781,7 @@ class AtlasAgent:
                     diet_on=diet_on,
                     result=result,
                     root=root,
+                    started=started,
                 )
             except RuntimeError as exc:
                 result.outcome, result.answer = "error", ERROR_ANSWER
@@ -776,15 +811,38 @@ class AtlasAgent:
         diet_on: bool,
         result: AgentResult,
         root: otel_trace.Span,
+        started: float | None = None,
     ) -> None:
-        """Model -> tools -> model until a final answer, the step limit or a tool-retry limit."""
+        """Model -> tools -> model until a final answer, the step limit, a tool-retry limit or the
+        request deadline.
+
+        ``max_steps=0`` (``ATLAS_MAX_STEPS=0``) means *unlimited*: the "guards off" run of
+        Lectures 1.1 and 5.6, where only the request deadline (``ATLAS_REQUEST_DEADLINE_S``,
+        default 600 s, like a gateway timeout) ends the conversation.
+        """
         s = self.settings
         tool_failures: dict[str, int] = {}
-        for step in range(1, s.max_steps + 1):
+        unlimited = s.max_steps <= 0
+        last_step = UNLIMITED_STEP_CEILING if unlimited else s.max_steps
+        started = self._clock() if started is None else started
+        for step in range(1, last_step + 1):
+            if step > 1 and self._elapsed_ms(result, started) >= s.request_deadline_s * 1000.0:
+                result.outcome = "timeout"
+                result.answer = TIMEOUT_ANSWER
+                ga.add_event(
+                    root,
+                    "request_deadline_exceeded",
+                    deadline_s=s.request_deadline_s,
+                    steps=result.steps,
+                )
+                root.set_attribute("error.type", "deadline_exceeded")
+                root.set_attribute(ga.LF_OBS_LEVEL, "WARNING")
+                return
             result.steps = step
             with self.tracer.start_as_current_span(f"step {step}") as st:
                 st.set_attribute(ga.ATLAS_STEP, step)
-                st.set_attribute("atlas.context_tokens", count_message_tokens(messages))
+                context_tokens = count_message_tokens(messages)
+                st.set_attribute("atlas.context_tokens", context_tokens)
                 assistant, finish, used_model = self._call_model(
                     model=model,
                     messages=messages,
@@ -799,6 +857,8 @@ class AtlasAgent:
                     result=result,
                 )
                 result.model = used_model
+                if self.on_step is not None:
+                    self.on_step(step, context_tokens, result)
                 tool_calls = assistant.get("tool_calls") or []
                 if not tool_calls:
                     content = assistant.get("content") or ""
@@ -867,8 +927,14 @@ class AtlasAgent:
                             return
         result.outcome = "step_limit"
         result.answer = STEP_LIMIT_ANSWER
-        ga.add_event(root, "step_limit_reached", max_steps=s.max_steps)
+        ga.add_event(root, "step_limit_reached", max_steps=last_step)
         root.set_attribute(ga.LF_OBS_LEVEL, "WARNING")
+
+    def _elapsed_ms(self, result: AgentResult, started: float) -> float:
+        """Request time so far: simulated model latency offline, wall clock online."""
+        if self.settings.offline:
+            return sum(g.latency_ms for g in result.generations)
+        return (self._clock() - started) * 1000.0
 
     def _run_tool(
         self,
@@ -885,6 +951,7 @@ class AtlasAgent:
         result.tool_calls.append(name)
         top_k = tool_ctx.top_k
         with self.tracer.start_as_current_span(ga.tool_span_name(name)) as tspan:
+            tspan.set_attribute(ga.ATLAS_TENANT, tool_ctx.tenant)
             t0 = self._clock()
             hits: int | None = None
             used_k: int | None = None
@@ -911,9 +978,11 @@ class AtlasAgent:
                         scores=[float(r.get("score", 0)) for r in tres.data.get("results", [])],
                         doc_ids=[str(r.get("id")) for r in tres.data.get("results", [])],
                     )
-                if not ok:
+                if not ok:  # a failed tool is a WARNING-level observation with ERROR status
+                    err_type = str(tres.data.get("error", "tool_error"))
                     tspan.set_attribute(ga.LF_OBS_LEVEL, "WARNING")
-                    tspan.set_attribute("error.type", str(tres.data.get("error", "tool_error")))
+                    tspan.set_attribute("error.type", err_type)
+                    tspan.set_status(otel_trace.Status(otel_trace.StatusCode.ERROR, err_type))
             except Exception as exc:  # noqa: BLE001 - unknown tool / bug: surface to the model
                 ok = False
                 content = json.dumps({"error": "tool_exception", "detail": str(exc)[:200]})
@@ -921,6 +990,11 @@ class AtlasAgent:
                 ga.set_error(tspan, exc)
             tool_ms = (self._clock() - t0) * 1000.0
             metrics.record_tool(tool=name, ok=ok, latency_s=tool_ms / 1000.0)
+            raw = content
+            if diet_on:
+                content = truncate_tool_result(content, self.settings.tool_result_token_budget)
+            result_tokens = approx_tokens(content)
+            tspan.set_attribute("atlas.tool.result_tokens", result_tokens)
             result.tools.append(
                 ToolRecord(
                     name=name,
@@ -928,14 +1002,13 @@ class AtlasAgent:
                     ok=ok,
                     latency_ms=tool_ms,
                     arguments=args if isinstance(args, str) else json.dumps(args),
-                    result=content,
+                    result=raw,
                     call_id=tc.get("id"),
                     hits=hits,
                     top_k=used_k,
+                    result_tokens=result_tokens,
                 )
             )
-        if diet_on:
-            content = truncate_tool_result(content, self.settings.tool_result_token_budget)
         return {"role": "tool", "tool_call_id": tc.get("id"), "content": content}, ok
 
     def _finish(
@@ -984,5 +1057,6 @@ class AtlasAgent:
             outcome=result.outcome,
             latency_s=result.latency_ms / 1000.0,
             steps=result.steps,
+            feature=result.feature,
         )
         return result

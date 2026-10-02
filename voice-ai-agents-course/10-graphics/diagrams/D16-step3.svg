@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D16">
+<title id="t-D16">D16: Build vs buy</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Build vs buy</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D16 · build 3/7: cost at low volume</text></g>
+<g id="build-1">
+<text x="420" y="240" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="700" fill="#00D4AA" text-anchor="start">Framework, self-hosted</text>
+<text x="900" y="240" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="700" fill="#00D4AA" text-anchor="start">Framework, managed hosting</text>
+<text x="1370" y="240" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="700" fill="#00D4AA" text-anchor="start">Managed platform</text>
+<text x="420" y="270" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#94A3B8" text-anchor="start">LiveKit Agents, Pipecat</text>
+<text x="900" y="270" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#94A3B8" text-anchor="start">LiveKit Agents, Pipecat</text>
+<text x="1370" y="270" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#94A3B8" text-anchor="start">Vapi, Retell, ElevenLabs Agents, Bland</text>
+<rect x="96" y="300" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<text x="116" y="346.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="21" font-weight="600" fill="#FFFFFF" text-anchor="start">Time to first call</text>
+<text x="420" y="346.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Slowest</text>
+<text x="900" y="346.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Medium</text>
+<text x="1370" y="346.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Fastest</text>
+</g>
+<g id="build-2">
+<rect x="96" y="386" width="1728" height="76" rx="8" fill="#0F1E35" stroke="none" stroke-width="0"/>
+<text x="116" y="432.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="21" font-weight="600" fill="#FFFFFF" text-anchor="start">Pipeline control</text>
+<text x="420" y="432.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Full</text>
+<text x="900" y="432.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Full</text>
+<text x="1370" y="432.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Limited to exposed options</text>
+</g>
+<g id="build-3">
+<rect x="96" y="472" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<text x="116" y="518.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="21" font-weight="600" fill="#FFFFFF" text-anchor="start">Cost at low volume</text>
+<text x="420" y="518.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Engineering time dominates</text>
+<text x="900" y="518.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Engineering time dominates</text>
+<text x="1370" y="518.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#FFFFFF" text-anchor="start">Usually lowest total</text>
+</g>
+</svg>

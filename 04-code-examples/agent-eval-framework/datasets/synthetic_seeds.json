@@ -1,0 +1,37 @@
+[
+  {
+    "input": "What are your pricing plans?",
+    "expected_output": "Basic $9.99/mo, Pro $29.99/mo, Enterprise custom pricing.",
+    "context": [
+      "TechCorp offers three plans: Basic ($9.99/mo), Pro ($29.99/mo), and Enterprise (custom pricing). All plans include core features. Pro adds priority support and advanced analytics."
+    ]
+  },
+  {
+    "input": "How long do refunds take?",
+    "expected_output": "Refunds are processed within 5-7 business days.",
+    "context": [
+      "TechCorp offers a 30-day money-back guarantee on all plans. Refunds are processed within 5-7 business days. Annual subscriptions are prorated."
+    ]
+  },
+  {
+    "input": "How do I reset my password?",
+    "expected_output": "Settings > Security > Reset Password.",
+    "context": [
+      "To reset your password: Go to Settings > Security > Reset Password. You'll receive a verification email. Password must be 8+ characters with at least one number."
+    ]
+  },
+  {
+    "input": "What is the API rate limit on Basic?",
+    "expected_output": "100 requests per hour.",
+    "context": [
+      "TechCorp API documentation is available at docs.techcorp.com. API keys can be generated in Settings > Developer > API Keys. Rate limits: Basic (100/hr), Pro (1000/hr), Enterprise (unlimited)."
+    ]
+  },
+  {
+    "input": "How do I cancel my subscription?",
+    "expected_output": "Settings > Billing > Cancel Subscription; effective at the end of the billing period.",
+    "context": [
+      "To cancel, go to Settings > Billing > Cancel Subscription. Cancellation takes effect at the end of the current billing period. Your data is kept for 30 days after cancellation."
+    ]
+  }
+]

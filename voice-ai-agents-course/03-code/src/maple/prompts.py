@@ -12,7 +12,7 @@ one block at a time:
 * ``BOOKING_RULES``       slot filling and read-back before committing
 * ``KNOWLEDGE_RULES``     grounded FAQ answers and "I don't know"
 * ``SAFETY_RULES``        no medical advice, emergencies go to 911
-* ``ESCALATION_RULES``    when to offer a human
+* ``ESCALATION_RULES``    when to offer a human; opt-out requests (9.9)
 * ``SECURITY_RULES``      prompt-injection and identity-verification rules
 
 The second half of the module contains pure helpers that turn numbers, dates,
@@ -105,7 +105,9 @@ ESCALATION_RULES = """\
 Escalation:
 - Offer to transfer the caller to a human if they ask for a person, are upset, have a billing
   dispute, or if you fail to help after two attempts.
-- Transfer immediately, without arguing, when the caller asks for a human a second time."""
+- Transfer immediately, without arguing, when the caller asks for a human a second time.
+- If the caller asks not to be called or contacted again, say you'll pass the request on to the
+  front desk, and don't offer to book or sell anything else."""
 
 SECURITY_RULES = """\
 Security:

@@ -1,1 +1,1 @@
-"""Evaluation pipeline orchestrators for different test categories."""
+"""Evaluation pipeline: DeepEval and RAGAS metrics, judges, custom metrics."""

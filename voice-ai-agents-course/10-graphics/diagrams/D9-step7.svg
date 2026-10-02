@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D9">
+<title id="t-D9">D9: Failure → test map</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Failure → test map</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D9 · build 7/8: latency spikes</text></g>
+<g id="build-1">
+<text x="166" y="250" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">FAILURE</text>
+<text x="750" y="250" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">PRIMARY TEST</text>
+<text x="1560" y="250" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">LECTURE</text>
+<path d="M96 272 H1824" stroke="#64748B" stroke-width="2"/>
+<rect x="96" y="288" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="326.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="326.0" r="13" fill="#FF4B4B"/><path d="M128.5 320.5 L139.5 331.5 M139.5 320.5 L128.5 331.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="335.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Mishearing</text>
+<g><circle cx="720" cy="326.0" r="13" fill="#00D4AA"/><path d="M714.1 326.3 L718.7 330.9 L726.2 321.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="334.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">WER eval, audio-in tests</text>
+<text x="1560" y="334.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.7, 9.13</text>
+</g>
+<g id="build-2">
+<rect x="96" y="376" width="1728" height="76" rx="8" fill="#0F1E35" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="414.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="414.0" r="13" fill="#FF4B4B"/><path d="M128.5 408.5 L139.5 419.5 M139.5 408.5 L128.5 419.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="423.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Wrong turn-taking</text>
+<g><circle cx="720" cy="414.0" r="13" fill="#00D4AA"/><path d="M714.1 414.3 L718.7 418.9 L726.2 409.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="422.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">EOU delay budget, audio simulations</text>
+<text x="1560" y="422.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.8, 9.14</text>
+</g>
+<g id="build-3">
+<rect x="96" y="464" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="502.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="502.0" r="13" fill="#FF4B4B"/><path d="M128.5 496.5 L139.5 507.5 M139.5 496.5 L128.5 507.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="511.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Talking over callers</text>
+<g><circle cx="720" cy="502.0" r="13" fill="#00D4AA"/><path d="M714.1 502.3 L718.7 506.9 L726.2 497.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="510.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">interruption tests (audio), monitoring</text>
+<text x="1560" y="510.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.14, 10.5</text>
+</g>
+<g id="build-4">
+<rect x="96" y="552" width="1728" height="76" rx="8" fill="#0F1E35" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="590.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="590.0" r="13" fill="#FF4B4B"/><path d="M128.5 584.5 L139.5 595.5 M139.5 584.5 L128.5 595.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="599.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Hallucinated availability</text>
+<g><circle cx="720" cy="590.0" r="13" fill="#00D4AA"/><path d="M714.1 590.3 L718.7 594.9 L726.2 585.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="598.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">tool-order assertion + mocks</text>
+<text x="1560" y="598.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.4, 9.5</text>
+</g>
+<g id="build-5">
+<rect x="96" y="640" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="678.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="678.0" r="13" fill="#FF4B4B"/><path d="M128.5 672.5 L139.5 683.5 M139.5 672.5 L128.5 683.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="687.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Wrong tool arguments</text>
+<g><circle cx="720" cy="678.0" r="13" fill="#00D4AA"/><path d="M714.1 678.3 L718.7 682.9 L726.2 673.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="686.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">argument assertions + state checks</text>
+<text x="1560" y="686.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.4</text>
+</g>
+<g id="build-6">
+<rect x="96" y="728" width="1728" height="76" rx="8" fill="#0F1E35" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="766.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="766.0" r="13" fill="#FF4B4B"/><path d="M128.5 760.5 L139.5 771.5 M139.5 760.5 L128.5 771.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="775.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Missed escalation</text>
+<g><circle cx="720" cy="766.0" r="13" fill="#00D4AA"/><path d="M714.1 766.3 L718.7 770.9 L726.2 761.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="774.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">behavior test + judge + simulated caller</text>
+<text x="1560" y="774.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.4, 9.6, 9.9</text>
+</g>
+<g id="build-7">
+<rect x="96" y="816" width="1728" height="76" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<g><circle cx="134" cy="854.0" r="19" fill="#FF4B4B33"/><circle cx="134" cy="854.0" r="13" fill="#FF4B4B"/><path d="M128.5 848.5 L139.5 859.5 M139.5 848.5 L128.5 859.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="166" y="863.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">Latency spikes</text>
+<g><circle cx="720" cy="854.0" r="13" fill="#00D4AA"/><path d="M714.1 854.3 L718.7 858.9 L726.2 849.3" fill="none" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="750" y="862.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#FFFFFF" text-anchor="start">p95 budget in CI</text>
+<text x="1560" y="862.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#94A3B8" text-anchor="start">9.8</text>
+</g>
+</svg>

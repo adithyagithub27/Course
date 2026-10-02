@@ -11,11 +11,11 @@
 | 4.1 | Why chat prompts fail on voice | SL | 7:00 | ~875 |
 | 4.2 | Anatomy of a voice system prompt | SL | 8:00 | ~925 |
 | 4.3 | Numbers, dates, names and pronunciation | SC | 8:00 | ~775 |
-| 4.4 | Greetings, silence and "are you still there?" | SC | 7:00 | ~675 |
-| 4.5 | Persona and brand voice without the cringe | TH | 5:00 | ~625 |
+| 4.4 | Greetings, silence and "are you still there?" | SC | 7:00 | ~700 |
+| 4.5 | Persona and brand voice without the cringe | TH | 5:00 | ~650 |
 | 4.6 | Lab 3: Rewrite a chat prompt for voice | LAB | 5:00 (1:30 video) | ~225 |
 | 4.7 | Challenge: Riley for your business | AS | 3:00 (1:30 video) | ~225 |
-| 4.8 | Quiz: Prompting for the ear | QZ | 2:00 (0:45 video) | ~75 |
+| 4.8 | Quiz: Prompting for the ear | QZ | 2:00 (0:45 video) | ~100 |
 
 **Files for the whole section:** `03-code/src/maple/prompts.py` (prompt blocks and speech helpers) and `03-code/agents/s04_voice_prompting.py` (reference; students type along in `agents/my_voice_agent.py`).
 
@@ -30,21 +30,21 @@
 | Target duration | 7:00 (~875 spoken words, about 6:15 of talking at 140 wpm) |
 | Learning objectives | 1. Name five ways chat-style output breaks text-to-speech: markdown, lists, length, URLs and symbols, emojis. 2. Explain why longer answers hurt both comprehension and perceived latency. 3. Describe the framework's built-in safety net (`filter_markdown`, `filter_emoji`) and why it isn't enough. |
 | Prerequisites | Section 3 |
-| Files used | Audio clips recorded from `agents/s03_hello_agent.py` with a chat-style prompt |
+| Files used | Audio clip 1 recorded from `03-code/agents/s03_hello_agent.py` with `BROKEN=markdown` (chat-style prompt, text filters off); clip 2 from `03-code/agents/s04_voice_prompting.py` |
 
 ### Script
 
 [AVATAR]
 Listen to this. I asked Riley a simple question, using the kind of system prompt you'd write for a chatbot.
 
-[B-ROLL: Audio clip with waveform animation and live captions. A TTS voice reads a chat-style answer, flatly and far too long.]
+[DEMO: Audio clip with waveform and live captions, recorded with `BROKEN=markdown uv run python agents/s03_hello_agent.py console` (a markdown-and-emoji chat prompt with the TTS text filters switched off; Lecture 3.9 built the toggle). Ask "What are your opening hours?" Keep the real reply unedited. The text below shows the kind of answer to expect; if the real clip runs a different length, change "Twenty-five seconds" in the next avatar line to match.]
 
 **Clip (chat-style Riley):** "Great question! Here are our opening hours. Monday through Thursday: eight A M to five P M. Friday: eight A M to two P M. Saturday: nine A M to one P M. Sunday: closed. You can also check our website at w w w dot maple street dental dot com slash hours for holiday hours. Let me know if you have any other questions! Smiling face with smiling eyes."
 
 [AVATAR]
 Twenty-five seconds. [PAUSE] And by the end, can you remember when they close on Friday? Most people can't. Now the voice-first version.
 
-[B-ROLL: Second clip, same question.]
+[DEMO: Second clip, same question, recorded with `uv run python agents/s04_voice_prompting.py console`, the voice-first Riley you'll finish in this section.]
 
 **Clip (voice-first Riley):** "We're open eight to five Monday through Thursday, and eight to two on Fridays. Is there a day you're hoping to come in?"
 
@@ -131,6 +131,11 @@ Right, "Voice prompt": "You are Riley... on the phone. Everything you write is c
 Here's the shift in one slide. The chat prompt says "be thorough, format clearly." The voice prompt says "you're on the phone, everything becomes speech, keep it short, one question at a time, no formatting, say numbers like a person."
 
 And notice the most important sentence on the right. "Everything you write is converted to speech." The model doesn't know it's talking unless you tell it. That one sentence alone fixes a surprising amount.
+
+[SLIDE 9: Recap]
+- Listeners get one pass: keep replies short
+- Markdown, lists, URLs and emojis break TTS
+- Prompt first; default filters are a safety net
 
 **Recap:** Chat prompts produce markdown, lists, long answers, symbols and emojis that break text-to-speech and bury the caller, so voice prompts must demand short, plain, spoken-style replies.
 
@@ -306,12 +311,19 @@ Pasting the whole FAQ into the prompt. It works, but every turn now pays for tho
 
 Backstory and adjectives. "You are a warm, bubbly, empathetic professional with a passion for smiles." Tokens with no behavior change.
 
+[SCREEN: VS Code, `03-code/src/maple/prompts.py`, `SAFETY_RULES`. Highlight "Never diagnose, recommend medication or doses, or give treatment advice", then "Say you cannot give medical advice and offer the earliest appointment instead."]
+
 "Never say X," with no alternative. The model knows what not to do, but not what to do instead, so it stalls or over-apologizes. Always pair a "never" with an "instead." Look at the safety block: never give medical advice, and instead, offer the earliest appointment.
 
 And rules that contradict each other. "Always confirm details" in one block and "keep calls under a minute" in another. Blocks help here too, because each rule has one home.
 
 [AVATAR]
 One last habit. Write rules as instructions to a person, in plain language, with examples. "Keep replies to one or two short sentences" works. "Be concise" doesn't, because the model's idea of concise is three paragraphs.
+
+[SLIDE 5: Recap]
+- Seven parts: a receptionist's job description
+- Examples beat adjectives; pair "never" with "instead"
+- `build_instructions()` assembles tested blocks
 
 **Recap:** A voice prompt is a job description in seven parts, identity, goal, style, output rules, tools policy, guardrails and escalation, and Riley assembles it from tested blocks with `build_instructions()`.
 
@@ -390,7 +402,7 @@ And because these are plain functions, they're unit-tested. Dates of birth, pric
 
 Now names. Names are the words speech-to-text gets wrong most often, and you can't fix that with a helper, because you don't know the name yet. So we fix it with conversation design: spell it back.
 
-[CODE: step 1, start `agents/my_voice_agent.py` with a spelling rule]
+[CODE: step 1, start `agents/my_voice_agent.py` with the imports and a spelling rule (the reference, `agents/s04_voice_prompting.py`, has the same lines plus a longer docstring and a logger)]
 ```python
 """Riley, prompted for the ear (Lectures 4.3 and 4.4)."""
 
@@ -400,11 +412,12 @@ import asyncio
 import re
 from collections.abc import AsyncIterable
 
-from common import CallState, clinic_today, create_session, get_settings, prewarm
 from livekit.agents import Agent, AgentServer, JobContext, UserStateChangedEvent, cli
 
+from common import CallState, clinic_today, create_session, get_settings, prewarm
 from maple import prompts
 
+# Extra prompt block for names (lecture 4.3): STT gets surnames wrong more than any other word.
 SPELLING_RULES = """\
 Names:
 - After the caller gives their name, spell the last name back letter by letter and ask if it's
@@ -412,7 +425,7 @@ Names:
 - If the caller spells something, use exactly the letters they said."""
 ```
 
-Start a new file, `my_voice_agent.py`. After the imports, a small extra prompt block called spelling rules. Spell the last name back letter by letter, with an example. And if the caller spells something, use exactly those letters. We'll add it to Riley's instructions in a minute with the `extra` parameter.
+Start a new file, `my_voice_agent.py`. After the imports, a small extra prompt block called spelling rules, exactly as it appears in the reference file. Spell the last name back letter by letter, with an example. And if the caller spells something, use exactly those letters. We'll add it to Riley's instructions in a minute with the `extra` parameter.
 
 Why the last name only? Because spelling back a first and last name on every call gets tedious. Match the effort to the risk. For booking, the last name is what the front desk searches by.
 
@@ -426,6 +439,7 @@ Now layer three. Even with good rules, the LLM will sometimes write "Dr. Alvarez
 
 [CODE: step 2, an abbreviation table and a text transform]
 ```python
+# Pronunciation fixes applied to the text stream right before TTS (lecture 4.3).
 ABBREVIATIONS = {
     r"\bDr\.": "Doctor",
     r"\bSt\.": "Street",
@@ -436,7 +450,12 @@ ABBREVIATIONS = {
 
 
 async def expand_abbreviations(text: AsyncIterable[str]) -> AsyncIterable[str]:
-    """TTS text transform: rewrite abbreviations right before speech."""
+    """TTS text transform: rewrite abbreviations chunk by chunk.
+
+    LLM output streams in small chunks, so an abbreviation split across two
+    chunks is missed. Good enough for a demo; production code buffers to word
+    boundaries.
+    """
     async for chunk in text:
         for pattern, spoken in ABBREVIATIONS.items():
             chunk = re.sub(pattern, spoken, chunk)
@@ -452,6 +471,8 @@ One honest limitation. The LLM streams text in small pieces. If "Dr." happens to
 [CODE: step 3, the agent]
 ```python
 class VoiceFirstRiley(Agent):
+    """Riley with the full voice-first prompt and a scripted greeting."""
+
     def __init__(self) -> None:
         super().__init__(
             instructions=prompts.build_instructions(today=clinic_today(), extra=SPELLING_RULES),
@@ -460,13 +481,14 @@ class VoiceFirstRiley(Agent):
 
 Now the agent, VoiceFirstRiley. Its instructions come from `build_instructions`, with today's date so relative dates work, and our spelling rules as an extra block. `clinic_today` returns the real date, or the pinned demo date if you set MAPLE_TODAY.
 
-[CODE: step 4, the server and session with the transform]
+[CODE: step 4, the server and session with the transform (your file at the end of this lecture; the reference already has the silence handling you'll add in Lecture 4.4)]
 ```python
 server = AgentServer(setup_fnc=prewarm)
 
 
 @server.rtc_session()
 async def entrypoint(ctx: JobContext) -> None:
+    """Start Riley with silence handling."""
     settings = get_settings()
     session = create_session(
         settings,
@@ -504,6 +526,11 @@ Listen for three things. [PAUSE] "Doctor," not "D R." [PAUSE] The last name spel
 [AVATAR]
 For production, three upgrades. Buffer to word boundaries. Use your TTS provider's pronunciation dictionary for names that are consistently wrong. And keep the table small and tested, because abbreviations are ambiguous. Our table turns "St." into "Street." That's right for Maple Street, and wrong for a clinic in St. Louis.
 
+[SLIDE 4: Recap]
+- Tools hand the LLM speakable data
+- Spell last names back, letter by letter
+- Transforms run last; keep the default filters
+
 **Recap:** Make numbers and dates speakable with tested helpers before the LLM sees them, confirm names by spelling them back, and use a TTS text transform, alongside the default filters, as the last line of defense.
 
 **Transition:** Next, we'll make Riley greet callers the same way every time, and handle the awkward moment when a caller goes silent.
@@ -523,7 +550,7 @@ For production, three upgrades. Buffer to word boundaries. Use your TTS provider
 |---|---|
 | ID | 4.4 |
 | Type | SC (code-along) |
-| Target duration | 7:00 (~675 spoken words, about 4:49 of talking at 140 wpm) |
+| Target duration | 7:00 (~700 spoken words, about 5:00 of talking at 140 wpm) |
 | Learning objectives | 1. Greet every caller consistently in `on_enter` with `session.say`. 2. Detect silence with `user_away_timeout` and the `user_state_changed` event. 3. Check in once, then hang up gracefully after repeated silence. |
 | Prerequisites | 4.3 |
 | Files used | You type: `03-code/agents/my_voice_agent.py`. Reference: `03-code/agents/s04_voice_prompting.py`. Also `03-code/src/maple/prompts.py` (`GREETING`, `SILENCE_CHECK_IN`, `SILENCE_GOODBYE`), `03-code/agents/common.py` (`CallState.silence_prompts`). |
@@ -551,7 +578,7 @@ Our fixed lines live in `prompts.py`. The greeting: "Thanks for calling Maple St
 [CODE: step 1, add `on_enter` to `VoiceFirstRiley`]
 ```python
     async def on_enter(self) -> None:
-        # A fixed greeting with the AI disclosure, no LLM round trip.
+        """Speak the fixed greeting as soon as the caller connects."""
         self.session.say(prompts.GREETING, allow_interruptions=True)
 ```
 
@@ -596,8 +623,10 @@ Pass the timeout into the session. And create an empty set called background. It
         state = session.userdata
         state.silence_prompts += 1
         if state.silence_prompts < MAX_SILENCE_PROMPTS:
-            await session.say(prompts.SILENCE_CHECK_IN).wait_for_playout()
-            session.reset_away_timer()  # start a fresh countdown for the next check
+            session.say(prompts.SILENCE_CHECK_IN)
+            # The user is now "away". Put them back to "listening" so the away timer
+            # restarts and a second silence fires this handler again.
+            session.reset_away_timer()
             return
         handle = session.say(prompts.SILENCE_GOODBYE, allow_interruptions=False)
         await handle.wait_for_playout()
@@ -607,7 +636,7 @@ Pass the timeout into the session. And create an empty set called background. It
 
 Now the handler. We count silence prompts in the call state. `CallState` already has a field for it, called silence prompts. You'll meet the whole class in Section five.
 
-First time: say the check-in, "Are you still there? Take your time." Wait for it to finish playing. Then reset the away timer. That line matters. Once a caller is marked away, the session won't mark them away again on its own. Resetting the timer starts a fresh twelve-second countdown, so we get a second chance to act.
+First time: say the check-in, "Are you still there? Take your time." We don't wait for it to finish. We reset the away timer straight away, and that line matters. Once a caller is marked away, the session won't mark them away again on its own. Resetting puts them back to listening, so a fresh twelve-second countdown starts. And because the countdown only runs while both of you are quiet, it really starts once the check-in has played.
 
 Second time: say goodbye, and don't allow interruptions, so the goodbye is heard in full. Wait for it to play out. Record the outcome. And shut the session down.
 
@@ -650,6 +679,11 @@ And if I come back after the check-in, Riley just carries on, and the counter re
 [AVATAR]
 One note on hanging up. In console and dev mode, shutting down the session is enough. On a real phone call, you also want the line itself to drop, which means deleting the room. That's the end call tool in Section eight. And whatever you do, say goodbye first. An agent that just goes silent and disconnects feels broken, even when it's working as designed.
 
+[SLIDE 4: Recap]
+- Fixed greeting: `session.say` in `on_enter`
+- `user_away_timeout` plus `user_state_changed` detect silence
+- Check in once, reset the timer, then goodbye
+
 **Recap:** Greet with a fixed `session.say` line in `on_enter`, detect silence with `user_away_timeout` and `user_state_changed`, check in once, reset the timer, and hang up politely on the second silence.
 
 **Transition:** You've shaped what Riley says and when, so next let's talk about how it sounds: persona and brand voice, without the cringe.
@@ -669,10 +703,10 @@ One note on hanging up. In console and dev mode, shutting down the session is en
 |---|---|
 | ID | 4.5 |
 | Type | TH (talking head) |
-| Target duration | 5:00 (~625 spoken words, about 4:28 of talking at 140 wpm) |
+| Target duration | 5:00 (~650 spoken words, about 4:39 of talking at 140 wpm) |
 | Learning objectives | 1. Balance warmth and efficiency for a transactional voice agent. 2. Disclose that the agent is an AI clearly and early. 3. Keep persona consistent across prompt, voice and fixed lines. |
 | Prerequisites | 4.2 |
-| Files used | `03-code/src/maple/prompts.py` (`IDENTITY`, `GREETING`) |
+| Files used | `03-code/src/maple/prompts.py` (`IDENTITY`, `GREETING`), `03-code/agents/s04_voice_prompting.py` (short console demo) |
 
 ### Script
 
@@ -682,19 +716,26 @@ One note on hanging up. In console and dev mode, shutting down the session is en
 [AVATAR]
 Here's the first principle. Callers to a dental clinic want something done. Book a cleaning. Move an appointment. Find out if you take their insurance. Personality should make that faster and more pleasant, never slower.
 
-So think of warmth and efficiency as two dials, not one. A great human receptionist turns both up. They're friendly, and they get you booked in forty seconds. A cringe persona turns warmth all the way up and efficiency down. Jokes, exclamation marks, small talk. A cold bot does the opposite. Correct, but it feels like talking to a form.
-
 [SLIDE 1: Warmth and efficiency are two dials]
 - Warm and efficient: the target ("Oh no, sorry to hear that. Let me find you the earliest slot.")
 - Warm, not efficient: cringe ("Aww, teeth can be so tricky! Don't worry, we'll get you smiling again!")
 - Efficient, not warm: cold ("State preferred date.")
 
+So think of warmth and efficiency as two dials, not one. A great human receptionist turns both up. They're friendly, and they get you booked in forty seconds. A cringe persona turns warmth all the way up and efficiency down. Jokes, exclamation marks, small talk. A cold bot does the opposite. Correct, but it feels like talking to a form. Which of those would you rather call?
+
 Look at the target line. "Oh no, sorry to hear that. Let me find you the earliest slot." Six words of empathy, then straight to action. That's the whole recipe. Acknowledge briefly, then move.
 
 [AVATAR]
-Principle two. Say it's an AI. Early, clearly and without apologizing.
+Principle two. Say it's an AI. Early, clearly and without apologizing. Does Riley pass? Let's ask it.
 
-Riley's greeting says "This is Riley, the clinic's AI assistant." It's in the first sentence. There are three reasons.
+[DEMO: `uv run python agents/s04_voice_prompting.py console`. Riley's fixed greeting plays. Ask: "Wait, am I talking to a real person?" Riley says in one sentence that it's the clinic's AI assistant, and offers to help.]
+
+[SCREEN: VS Code, `03-code/src/maple/prompts.py`. Highlight `GREETING`, then the `IDENTITY` line "If anyone asks whether you are a person, say plainly that you are an AI assistant for the clinic."]
+
+Riley's greeting says "This is Riley, the clinic's AI assistant." It's in the first sentence. And the direct question you just heard is handled by one line in the identity block.
+
+[AVATAR]
+Why disclose at all? There are three reasons.
 
 One, trust. Callers who find out later that they were talking to a bot feel tricked, even when the call went well.
 
@@ -702,7 +743,7 @@ Two, rules. A growing number of places require AI disclosure, especially on phon
 
 Three, it actually helps the conversation. When callers know it's an AI, they speak a little more clearly and they don't expect it to know their life story.
 
-And if someone asks directly, "Am I talking to a real person?", Riley says plainly that it's an AI assistant. That rule lives in the identity block. Never let a persona lie about what it is.
+So when someone asks directly, Riley says plainly that it's an AI assistant. Never let a persona lie about what it is.
 
 [SLIDE 2: Consistency: one Riley everywhere]
 - Prompt: identity and style rules
@@ -729,7 +770,12 @@ Principle four. Match your brand, not your favorite movie character. A pediatric
 [AVATAR]
 Here's your checklist. Screenshot it, and use it in the lab.
 
-And a final tip. Humor and cheerfulness wear thin fast. The first "Have a sparkly day!" is cute. By the tenth call, the front desk staff who listen to recordings will hate it. Aim for a persona that's still pleasant on the hundredth call.
+And a final tip. Humor and cheerfulness wear thin fast. The first "Have a sparkly day!" is cute. By the tenth call, the front desk staff who listen to recordings will hate it. So ask yourself: will this line still be pleasant on the hundredth call?
+
+[SLIDE 4: Recap]
+- Warm and efficient: acknowledge briefly, then act
+- Disclose AI in the first sentence
+- One name, one voice, one tone
 
 **Recap:** Good voice personas are warm and efficient at the same time, disclose that they're AI up front, and stay consistent across prompt, voice and fixed lines.
 
@@ -758,22 +804,22 @@ And a final tip. Humor and cheerfulness wear thin fast. The first "Have a sparkl
 ### Script
 
 [AVATAR]
-Time to practice. This lab gives you a real-world chat prompt and asks you to make it work on the phone.
+A prompt can read perfectly and still sound terrible on the phone. [PAUSE] In this lab you'll hear exactly that, and then fix it. Set aside about forty-five minutes.
 
-[SCREEN: Open `04-labs/lab-03-voice-prompting.md`. Scroll to the "Before" prompt, a chatbot prompt for a fictional veterinary clinic with markdown, long answers and a URL.]
+[SCREEN: Open `04-labs/lab-03-voice-prompting.md`. Scroll to "The 'before' prompt": MapleBot, written for Maple Street Dental's website chat widget, with markdown headers, a table, a URL, emojis and "give your best guess".]
 
-Here's the "before." It's a chatbot prompt for a vet clinic. Notice the "format answers with headings," the "provide comprehensive details," and the link to the website. You've seen what that does to a voice.
+Here's the "before." A contractor wrote it for Maple Street Dental's website chat widget, and now the clinic wants it on the phone. Markdown headers. A table of times. A link to a forms page. Emojis. And "if you don't know, give your best guess." How many problems can you spot before you run it? The solution notes list ten.
 
-[SCREEN: Scroll to the task list and rubric table.]
+[SCREEN: Scroll to the test script table, P1 to P8.]
 
-Your job has three steps. First, rewrite it using the seven parts: identity, goal, style, output rules, tools policy, guardrails and escalation. Second, drop it into a copy of the Section four agent, `s04_voice_prompting.py`, and run it in console mode. Third, ask the five test questions in the lab, out loud, and score each answer against the rubric.
+First, you hear the problem. Copy the Section four agent, swap in the "before" prompt, and say eight test lines out loud: hours, the phone number, a price, the forms link, a booking, an unusual name, "are you a real person," and a question about ibuprofen.
 
-The rubric has five rows. Length: one or two sentences. One question at a time. No symbols, lists or links read aloud. Numbers and dates spoken naturally. And AI disclosure in the greeting.
+[SCREEN: Scroll through Steps 2 to 6, ending on the twenty-point rubric.]
+
+Then you write a tiny voice lint script, write your own voice-first prompt under ten headings, test the silence check-in from Lecture 4.4, compare with the course's prompt, and score yourself. Fourteen out of twenty passes.
 
 [AVATAR]
-One rule for this lab. Judge by ear. Don't read the transcript first. Listen to the answer, score it, and only then look at the text. You'll be surprised how different they feel.
-
-There's a sample solution at the bottom of the lab. Try it yourself before you peek.
+One rule. Judge by ear first. Listen, score, and only then read the transcript. And try it yourself before you peek at the sample solution.
 
 **Recap:** Lab 3 has you rewrite a chat prompt with the seven-part structure and score it by listening against a five-row rubric.
 
@@ -781,7 +827,7 @@ There's a sample solution at the bottom of the lab. Try it yourself before you p
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Students copy Riley's prompt and change the clinic name. Push them to rewrite the vet prompt's specific rules, such as emergency guidance for pets.
+- Students paste `build_instructions()` output instead of writing their own prompt. Step 3 asks them not to: the point is to practise, and Step 5 compares with the course's prompt afterwards.
 - Use `console --text` to iterate fast, but do the final scoring in audio mode. Some problems only show up when spoken.
 - If an answer is too long, the fix is usually an example sentence in the output rules, not more adjectives.
 
@@ -796,29 +842,34 @@ There's a sample solution at the bottom of the lab. Try it yourself before you p
 | Target duration | 3:00 (1:30 video, ~225 spoken words, about 1:36 of talking at 140 wpm) |
 | Learning objectives | 1. Adapt Riley's prompt blocks to a real business you know. 2. Produce a first portfolio artefact: a working prompt and one transcript. |
 | Prerequisites | 4.1 to 4.6 |
-| Files used | `10-resources/business-template.md`, `03-code/src/maple/prompts.py`, `03-code/agents/s04_voice_prompting.py` |
+| Files used | `05-projects/challenges.md` (Challenge 4.7), `10-resources/business-template.md`, `03-code/src/maple/prompts.py`, `03-code/agents/s04_voice_prompting.py` |
 
 ### Script
 
 [AVATAR]
 Here's your first portfolio piece. Take everything from this section and build a receptionist for a business you actually know. A salon. A restaurant. A physio clinic. A law office. Your cousin's bike shop.
 
-[SCREEN: Open `10-resources/business-template.md`. Scroll through its sections: business facts, three brand words, top five caller questions, things the agent must never do, when to hand off to a human.]
+[SCREEN: Open `10-resources/business-template.md`. Scroll through section 1, the business facts table (including "Things the agent must never do" and "Human handoff"), then section 4, the fill-in prompt blocks.]
 
-Start with this template. It asks for the business facts, three brand words, the five questions callers ask most, what the agent must never do, and when it should hand off to a human. Filling it in takes about ten minutes, and it's the same discovery work you'd do for a paying client.
+Start with this template. Section one is a facts table: hours, services, policies, what the agent must never do, and when to hand off to a human. Section four has fill-in prompt blocks, with style and output rules marked "keep from Riley." Filling it in takes about ten minutes, and it's the same discovery work you'd do for a paying client.
 
-[SCREEN: VS Code, copy `agents/s04_voice_prompting.py` to `agents/my_business_agent.py`. Replace the instructions with a new identity and rules, keeping the style and output rules blocks.]
+[SCREEN: VS Code, copy `agents/s04_voice_prompting.py` to `agents/c47_my_business.py`. Replace the instructions with a new identity and rules, keeping the style and output rules blocks.]
 
-Then copy the Section four agent into a new file. Keep the style and output rules, because those work for any voice agent. Rewrite the identity, the guardrails and the escalation rules for your business. And change the fixed greeting.
+Then copy the Section four agent into a new file, `c47_my_business.py`. Keep the style and output rules, because those work for any voice agent. Rewrite the identity, the never-do rules and the escalation rules for your business. And change the fixed greeting.
 
-[SCREEN: Terminal: `uv run python agents/my_business_agent.py console`. Short conversation.]
+[SCREEN: Terminal: `uv run python agents/c47_my_business.py console`. Short conversation.]
 
-Run it in console mode, and ask your five top questions out loud.
+Run it in console mode, and hold a three-to-six-turn conversation with the questions your callers really ask. Then run the voice lint from Lab 3 over the replies.
 
 [AVATAR]
-To finish, post one short transcript in the Q&A, with the business type in the title. Read a few others too. You'll learn a lot from how a restaurant's rules differ from a law office's. And keep your file. You'll give it tools later if you want to take it further.
+To finish, post one transcript in the Q&A with your business type and one thing you changed after hearing it. Invent the names and numbers first. Then read a few others.
 
 **Recap:** The challenge adapts Riley's prompt blocks to a business you know, using the template, and ends with one shared transcript.
+
+[SLIDE 1: You can now]
+- Write a seven-part voice prompt from blocks
+- Make numbers, dates and names speakable
+- Greet, handle silence and hang up politely
 
 **Transition:** Last stop for Section 4: a short quiz on prompting for the ear.
 
@@ -836,7 +887,7 @@ To finish, post one short transcript in the Q&A, with the business type in the t
 |---|---|
 | ID | 4.8 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 2:00 total (0:45 video, ~75 spoken words, about 0:32 of talking at 140 wpm) |
+| Target duration | 2:00 total (0:45 video, ~100 spoken words, about 0:43 of talking at 140 wpm) |
 | Learning objectives | 1. Check understanding of voice prompt structure, speakable formatting and silence handling. |
 | Prerequisites | 4.1 to 4.7 |
 | Files used | `06-assessments/quizzes/section-04.md` |
@@ -844,16 +895,16 @@ To finish, post one short transcript in the Q&A, with the business type in the t
 ### Script
 
 [AVATAR]
-Five quick questions on prompting for the ear.
+Riley reads the clinic's number as "five hundred twelve, five hundred fifty-five, one hundred." [PAUSE] You know how to fix that now. Let's check. Five quick questions.
 
 [SLIDE 1: Section 4 quiz: what's covered]
-- Why chat output breaks TTS
-- The seven parts of a voice prompt
-- Speakable numbers, dates and names
-- `tts_text_transforms` and the default filters
-- Greetings and silence handling
+- Why long answers hurt on voice
+- Speakable phone numbers
+- A timestamp leaking from a tool result
+- Silence and "are you still there?"
+- AI disclosure when asked
 
-You'll get questions on why chat output breaks speech, the seven parts of a voice prompt, making numbers speakable, text transforms, and silence handling. One tip: watch for the question about custom text transforms. Remember what happens to the default filters when you pass your own list.
+You'll get questions on long answers, phone numbers, a tool result that leaks a timestamp, silence handling and AI disclosure. One tip: for the timestamp question, think about the three layers from Lecture 4.3, and pick the one that fixes it for every reply.
 
 **Recap:** The quiz checks voice prompt structure, speakable formatting and silence handling.
 
@@ -861,5 +912,5 @@ You'll get questions on why chat output breaks speech, the seven parts of a voic
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Most missed in beta: the default filters are replaced, not merged, when you pass `tts_text_transforms`.
-- Second most missed: forgetting that `session.say` bypasses the LLM entirely.
+- Most missed in beta: the timestamp question. The robust fix is the data layer (the tool returns speakable text plus a machine value it tells the model never to read), not a prompt rule alone.
+- Related point students raise here: the default filters are replaced, not merged, when you pass your own `tts_text_transforms` list (Lecture 4.3).

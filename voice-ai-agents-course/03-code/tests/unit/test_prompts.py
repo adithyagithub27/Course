@@ -21,6 +21,7 @@ def test_instructions_include_core_blocks() -> None:
     assert "cannot give medical advice" in text
     assert "Today is Monday, 2026-10-05" in text
     assert "verify_caller" in text
+    assert "not to be called or contacted" in text  # opt-out rule (lecture 9.9)
 
 
 def test_blocks_are_optional() -> None:

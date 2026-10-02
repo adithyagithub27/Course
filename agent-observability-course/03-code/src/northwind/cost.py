@@ -156,7 +156,7 @@ def rollup(records: Iterable[CostRecord], by: str = "tenant") -> dict[str, Rollu
             agg.resolved += 1
         elif r.outcome == "escalated":
             agg.escalated += 1
-        elif r.outcome in {"error", "step_limit", "refused"}:
+        elif r.outcome in {"error", "step_limit", "refused", "timeout", "tool_error"}:
             agg.errors += 1
     return out
 

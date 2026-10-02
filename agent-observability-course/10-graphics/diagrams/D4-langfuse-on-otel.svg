@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D4">
+<title id="t-D4">D4: Langfuse on OpenTelemetry</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Langfuse on OpenTelemetry</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D4</text></g>
+<g id="build-1">
+<rect x="96" y="300" width="600" height="480" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="126" y="344" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">OPENTELEMETRY SPAN</text>
+<text x="126" y="392" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="start">chat gpt-4.1-mini</text>
+<text x="126" y="452" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="start">gen_ai.operation.name</text>
+<text x="126" y="502" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="start">gen_ai.request.model</text>
+<text x="126" y="552" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="start">gen_ai.usage.input_tokens</text>
+<text x="126" y="602" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="start">gen_ai.usage.output_tokens</text>
+<text x="126" y="652" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="start">gen_ai.tool.name</text>
+<text x="126" y="702" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="400" fill="#94A3B8" text-anchor="start">trace_id · parent_id</text>
+<path d="M700 540 L950 540" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
+<text x="825" y="500" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">SDK v4 =</text>
+<text x="825" y="590" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">OTel exporter</text>
+<text x="825" y="616" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">+ semantics</text>
+<rect x="960" y="240" width="864" height="640" rx="8" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<text x="980" y="268" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">release</text>
+<rect x="994" y="274" width="796" height="572" rx="8" fill="none" stroke="#64748B" stroke-width="1.5"/>
+<text x="1014" y="302" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">environment</text>
+<rect x="1028" y="308" width="728" height="504" rx="8" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<text x="1048" y="336" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">user</text>
+<rect x="1062" y="342" width="660" height="436" rx="8" fill="none" stroke="#64748B" stroke-width="1.5"/>
+<text x="1082" y="370" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">session</text>
+<rect x="1096" y="376" width="592" height="368" rx="8" fill="none" stroke="#94A3B8" stroke-width="1.5"/>
+<text x="1116" y="404" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start">trace</text>
+<rect x="1176.0" y="440" width="88.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="1220.0" y="465.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#00D4AA" text-anchor="middle">agent</text>
+<rect x="1366.0" y="440" width="148.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="1440.0" y="465.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#00D4AA" text-anchor="middle">generation</text>
+<rect x="1182.0" y="520" width="76.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1220.0" y="545.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">tool</text>
+<rect x="1372.0" y="520" width="136.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1440.0" y="545.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">retriever</text>
+<rect x="1152.0" y="600" width="136.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1220.0" y="625.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">guardrail</text>
+<rect x="1396.0" y="600" width="88.0" height="36.0" rx="18.0" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="1440.0" y="625.2" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#94A3B8" text-anchor="middle">chain</text>
+<text x="1392" y="700" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">observation types</text>
+</g>
+<g id="build-2">
+<rect x="1100.0" y="930" width="92.3" height="36.0" rx="18.0" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="1146.1328125" y="955.2" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#94A3B8" text-anchor="middle">scores</text>
+<rect x="1216.3" y="930" width="107.3" height="36.0" rx="18.0" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="1269.9296875" y="955.2" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#94A3B8" text-anchor="middle">prompts</text>
+<rect x="1347.6" y="930" width="109.9" height="36.0" rx="18.0" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="1402.546875" y="955.2" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#94A3B8" text-anchor="middle">datasets</text>
+<path d="M1090 920 V908 H1467.5 V920" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1278.75" y="898" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FF4B4B" text-anchor="middle">not portable</text>
+<g><circle cx="1501.5" cy="948" r="20" fill="#FF4B4B33"/><circle cx="1501.5" cy="948" r="14" fill="#FF4B4B"/><path d="M1495.6 942.1 L1507.4 953.9 M1507.4 942.1 L1495.6 953.9" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="1084" y="956" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">backend-only:</text>
+</g>
+</svg>

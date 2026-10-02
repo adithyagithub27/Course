@@ -353,72 +353,47 @@ def render_text(summary: dict[str, Any]) -> str:
 
 
 def _load_store(path: str | None, seed: int | None, incidents: str) -> LocalSpanStore:
-    settings = Settings.from_env()
-    store = LocalSpanStore(path or settings.local_store_path)
-    if store.count() == 0 and seed is not None:
-        from simulator.replay import replay_day
+    from console.data import load_store
 
-        replay_day(seed, store=store, incidents=incidents)
-    return store
+    return load_store(path, seed=seed, incidents=incidents)
+
+
+PAGES: tuple[tuple[str, str], ...] = (
+    ("Live cost", "the meter, steps counter, context sparkline and live alerts (1.1)"),
+    ("Cost", "showback by tenant and feature, unit costs, top-10 conversations (2.4, 6.x)"),
+    ("Latency", "p50/p95/p99 per hour against the 4 s budget, span and TTFT detail (7.x)"),
+    ("Quality", "judge scores, grounded rate, feedback, judge-vs-user disagreements (8.x)"),
+    ("Budgets", "cumulative spend per tenant against the caps, EWMA anomalies (6.7)"),
+    ("Traffic", "requests per minute by tenant with last week's shadow line (11.2)"),
+    ("Retrieval", "top_k, hits and result tokens by tenant (5.3, 11.2)"),
+    ("Reliability", "tool error share and LLM retries by reason (11.2, 11.3)"),
+    ("Safety", "injection, refusal and PII-in-output rates (8.4)"),
+    ("Alerts", "batch alert rules, SLOs and budgets over the whole store"),
+    ("Traces", "one conversation's waterfall (2.4, 11.x)"),
+    ("Compare replays", "replays of the same day side by side (6.8, 14.2)"),
+)
 
 
 def streamlit_main() -> None:  # pragma: no cover - UI
-    """Streamlit page."""
+    """Home page: four tiles; the pages in ``console/pages/`` appear in the sidebar."""
     assert st is not None
-    st.set_page_config(page_title="Atlas Ops Console", layout="wide")
-    st.title("Atlas Ops Console")
-    settings = Settings.from_env()
-    path = st.sidebar.text_input("Span store", settings.local_store_path)
-    seed = st.sidebar.number_input("Replay seed if empty", value=7, step=1)
-    incidents = st.sidebar.selectbox(
-        "Incident preset for replay",
-        [
-            "none",
-            "cost_spike",
-            "latency_regression",
-            "quality_drift",
-            "loop",
-            "ticket_flaky",
-            "slow_provider",
-        ],
-    )
-    store = _load_store(path, int(seed), incidents)
-    s = build_summary(store, settings)
+    from console._ui import page
+    from console.data import headline
+
+    d, _settings = page("Atlas Ops Console")
+    h = headline(d)
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total cost (USD)", f"{s['total_cost_usd']:.4f}")
-    c2.metric("Cost / session", f"{s['cost_per_session_usd']:.5f}")
-    c3.metric("p95 latency (ms)", f"{s['latency']['p95']:.0f}")
-    c4.metric("Judge overall", s["quality"]["judge_overall_mean"] or "n/a")
-    tabs = st.tabs(["Cost", "Latency", "Quality", "Budgets & SLOs", "Alerts"])
-    with tabs[0]:
-        st.subheader("Cost by tenant")
-        st.dataframe(list(s["cost_by_tenant"].values()))
-        st.subheader("Hourly cost")
-        st.bar_chart({t: [s["hourly_cost"][h].get(t, 0.0) for h in range(24)] for t in TENANTS})
-        st.subheader("Cost by feature")
-        st.dataframe(list(s["cost_by_feature"].values()))
-        st.subheader("Cost by model")
-        st.dataframe(list(s["cost_by_model"].values()))
-    with tabs[1]:
-        st.json(s["latency"])
-        st.line_chart({"p95 ms": [s["latency_hourly_p95"].get(h, 0.0) for h in range(24)]})
-        st.dataframe([{"tenant": k, **v} for k, v in s["latency_by_tenant"].items()])
-    with tabs[2]:
-        st.json(s["quality"])
-        st.line_chart(
-            {"judge mean": [s["quality"]["judge_hourly_mean"].get(h, None) for h in range(24)]}
-        )
-        if s["drift"]:
-            st.json(s["drift"])
-    with tabs[3]:
-        st.dataframe(s["budgets"])
-        st.dataframe(s["slos"])
-        st.dataframe([{"tool": k, **v} for k, v in s["tools"].items()])
-    with tabs[4]:
-        if s["alerts"]:
-            st.dataframe(s["alerts"])
-        else:
-            st.success("No alerts")
+    c1.metric("Cost (store)", f"${h['total_cost_usd']:,.2f}")
+    c2.metric("Requests / sessions", f"{h['requests']:,} / {h['sessions']:,}")
+    c3.metric("p95 latency", f"{h['p95_ms'] / 1000:.2f} s")
+    c4.metric(
+        "Judge score",
+        f"{h['judge_overall_mean']:.2f}"
+        if h["judge_overall_mean"] is not None
+        else "not yet scored",
+    )
+    st.caption(f"{d.path}: {h['start']} to {h['end']}")
+    st.markdown("\n".join(f"- **{name}**: {what}" for name, what in PAGES))
 
 
 def main(argv: list[str] | None = None) -> int:

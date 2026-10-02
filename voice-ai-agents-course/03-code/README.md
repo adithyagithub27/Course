@@ -105,6 +105,7 @@ tests/agent/      LiveKit behavior tests (live ones need OPENAI_API_KEY; mock-LL
 tests/evals/      DeepEval judge, WER, latency, simulated callers, audio-in eval
 tests/data/       golden conversations, STT references, sample metrics, audio/README.md
 deploy/           Dockerfile and .dockerignore
+uv.lock           locked dependency versions (committed; the Dockerfile uses `uv sync --locked`)
 frontend/         how to put a web UI in front of Riley
 ```
 
@@ -132,14 +133,14 @@ frontend/         how to put a web UI in front of Riley
 | 9.6 | `tests/evals/test_conversation_quality.py`, `tests/data/golden_conversations.json` |
 | 9.7 | `tests/evals/stt_wer_eval.py`, `src/maple/wer.py`, `tests/data/stt_references.json` |
 | 9.8 | `tests/evals/latency_report.py`, `src/maple/latency.py`, `tests/data/sample_metrics.jsonl` |
-| 9.9 | `tests/evals/simulated_caller.py` |
+| 9.9 | `tests/evals/simulated_caller.py` (five personas, including `opt_out`), `ESCALATION_RULES` in `src/maple/prompts.py` |
 | 9.10 | `.github/workflows/ci.yml` |
 | 9.13 | `tests/evals/audio_in_eval.py`, `tests/data/audio/README.md` |
 | 9.14 | `on_simulation_end` in `agents/s13_capstone_receptionist.py` |
 | 10.2-10.4 | `agents/s10_observed_agent.py`, `src/maple/costs.py` |
 | 11.2-11.4 | `agents/s11_guarded_agent.py`, `src/maple/pii.py` |
 | 11.5 | `tests/agent/test_safety.py`, `simulated_caller.py --persona injection_attacker` |
-| 12.2 | `deploy/Dockerfile`, `deploy/.dockerignore` |
+| 12.2 | `deploy/Dockerfile`, `deploy/.dockerignore`, `uv.lock` |
 | 12.5 | `frontend/README.md` |
 | 12.8 | `agents/s12_chaos_demo.py` (kill switch: `touch /tmp/riley-kill-llm`) |
 | 13.x | `agents/s13_capstone_receptionist.py`, whole `tests/` tree |
@@ -191,7 +192,9 @@ docker run --rm --env-file .env -e LIVEKIT_AGENT_NAME=riley-receptionist riley-a
 ```
 
 The image runs `agents/s13_capstone_receptionist.py start` as a non-root user, with model
-weights downloaded at build time. Override with `--build-arg AGENT_FILE=agents/s05_booking_agent.py`.
+weights downloaded at build time. Dependencies install from the committed `uv.lock` with
+`uv sync --locked`; after changing `pyproject.toml`, run `uv lock` and commit the new lock file
+(`uv lock --check` tells you whether it is current). Override with `--build-arg AGENT_FILE=agents/s05_booking_agent.py`.
 For LiveKit Cloud use `lk agent create` / `lk agent deploy` (lecture 12.3).
 
 ---

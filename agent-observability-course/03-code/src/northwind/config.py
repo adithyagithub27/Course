@@ -95,8 +95,12 @@ class Settings:
     # Agent behaviour
     prompt_version: str = "v1"
     prompt_label: str = "production"
-    max_steps: int = 6
+    max_steps: int = 6  # 0 = unlimited: only request_deadline_s stops the loop (Lectures 1.1, 5.6)
     max_tool_retries: int = 0  # 0 = unlimited (the "before" state of Lecture 5.6)
+    request_deadline_s: float = 600.0  # whole-request deadline (the gateway's 10-minute timeout)
+    mock_latency_scale: float = (
+        0.0  # offline: sleep this fraction of simulated latency (live demos)
+    )
     stream: bool = True
     retrieval_top_k: int = 4
     kb_min_score: float = 0.5
@@ -136,6 +140,10 @@ class Settings:
     tenant_hard_cap_usd: float = 40.0
     budget_window_s: int = 86_400
 
+    # Per-tenant concurrency (Lecture 7.5): slots sized from the showback share of sessions
+    tenant_max_inflight: str = "ops=13,eng=7,finance=6,hr=6,other=2"
+    queue_timeout_s: float = 3.0
+
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
         """Read settings from ``env`` (defaults to ``os.environ``)."""
@@ -161,6 +169,8 @@ class Settings:
             prompt_label=g("ATLAS_PROMPT_LABEL") or cls.prompt_label,
             max_steps=_int(g("ATLAS_MAX_STEPS"), cls.max_steps),
             max_tool_retries=_int(g("ATLAS_MAX_TOOL_RETRIES"), cls.max_tool_retries),
+            request_deadline_s=_float(g("ATLAS_REQUEST_DEADLINE_S"), cls.request_deadline_s),
+            mock_latency_scale=_float(g("ATLAS_MOCK_LATENCY_SCALE"), cls.mock_latency_scale),
             stream=_truthy(g("ATLAS_STREAM"), cls.stream),
             retrieval_top_k=_int(g("ATLAS_TOP_K"), cls.retrieval_top_k),
             kb_min_score=_float(g("KB_MIN_SCORE"), cls.kb_min_score),
@@ -197,6 +207,8 @@ class Settings:
             tenant_soft_cap_usd=_float(g("TENANT_SOFT_CAP_USD"), cls.tenant_soft_cap_usd),
             tenant_hard_cap_usd=_float(g("TENANT_HARD_CAP_USD"), cls.tenant_hard_cap_usd),
             budget_window_s=_int(g("BUDGET_WINDOW_S"), cls.budget_window_s),
+            tenant_max_inflight=g("ATLAS_TENANT_MAX_INFLIGHT") or cls.tenant_max_inflight,
+            queue_timeout_s=_float(g("ATLAS_QUEUE_TIMEOUT_S"), cls.queue_timeout_s),
         )
 
     def with_overrides(self, **changes: object) -> Settings:
@@ -206,6 +218,21 @@ class Settings:
         if unknown:
             raise TypeError(f"unknown settings: {sorted(unknown)}")
         return replace(self, **changes)  # type: ignore[arg-type]
+
+    def inflight_limits(self) -> dict[str, int]:
+        """``ATLAS_TENANT_MAX_INFLIGHT`` as {tenant: slots}. ``"8"`` gives every tenant 8 slots;
+        ``"ops=13,eng=7"`` sets some and leaves the others at the default sizes."""
+        defaults = {"ops": 13, "eng": 7, "finance": 6, "hr": 6, "other": 2}
+        raw = (self.tenant_max_inflight or "").strip()
+        if raw.isdigit():
+            return {t: int(raw) for t in defaults}
+        out = dict(defaults)
+        for part in raw.split(","):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                if v.strip().isdigit():
+                    out[k.strip()] = max(1, int(v))
+        return out
 
     @property
     def langfuse_enabled(self) -> bool:

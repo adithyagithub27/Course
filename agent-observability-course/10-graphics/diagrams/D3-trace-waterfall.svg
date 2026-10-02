@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D3">
+<title id="t-D3">D3: One agent run, as a trace</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">One agent run, as a trace</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D3 · build 1/3</text></g>
+<g id="build-1">
+<defs><pattern id="hatch-teal" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1A2742"/><rect width="5" height="12" fill="#00D4AA"/></pattern><pattern id="hatch-white" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1A2742"/><rect width="5" height="12" fill="#FFFFFF" fill-opacity="0.8"/></pattern></defs>
+</g>
+<g id="build-1-only">
+<text x="96" y="300" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">invoke_agent atlas</text>
+<rect x="720.0" y="276" width="980.0" height="34" rx="4" fill="#00D4AA" fill-opacity="0.9"/>
+<text x="1824" y="300" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">agent</text>
+<text x="122" y="364" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">guardrail injection_check</text>
+<rect x="720.0" y="340" width="9.8" height="34" rx="4" fill="#FFFFFF" fill-opacity="0.85"/>
+<text x="1824" y="364" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">guardrail</text>
+<text x="122" y="428" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">step 1</text>
+<rect x="729.8" y="404" width="362.6" height="34" rx="4" fill="#64748B" fill-opacity="0.9"/>
+<text x="1824" y="428" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">chain</text>
+<text x="148" y="492" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="19" font-weight="500" fill="#CBD5E1" text-anchor="start">execute_tool search_knowledge_base</text>
+<rect x="729.8" y="468" width="29.4" height="34" rx="4" fill="#FFFFFF" fill-opacity="0.85"/>
+<text x="1824" y="492" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">retriever</text>
+<text x="148" y="556" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="19" font-weight="500" fill="#CBD5E1" text-anchor="start">chat gpt-4.1-mini</text>
+<rect x="759.2" y="532" width="333.2" height="34" rx="4" fill="#00D4AA" fill-opacity="0.9"/>
+<text x="1824" y="556" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">generation</text>
+<text x="122" y="620" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">step 2</text>
+<rect x="1102.2" y="596" width="597.8" height="34" rx="4" fill="#64748B" fill-opacity="0.9"/>
+<text x="1824" y="620" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">chain</text>
+<text x="148" y="684" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="19" font-weight="500" fill="#CBD5E1" text-anchor="start">execute_tool lookup_ticket</text>
+<rect x="1102.2" y="660" width="68.6" height="34" rx="4" fill="#FFFFFF" fill-opacity="0.85"/>
+<text x="1824" y="684" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">tool</text>
+<text x="148" y="748" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="19" font-weight="500" fill="#CBD5E1" text-anchor="start">chat gpt-4.1-mini</text>
+<rect x="1170.8" y="724" width="529.2" height="34" rx="4" fill="#00D4AA" fill-opacity="0.9"/>
+<text x="1824" y="748" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="end">generation</text>
+<rect x="769.0" y="533" width="244.0" height="27.0" rx="13.5" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="891.0" y="551.9" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#94A3B8" text-anchor="middle">usage: in / out / cached</text>
+<rect x="1180.6" y="661" width="172.0" height="27.0" rx="13.5" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1266.6" y="679.9" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#FFFFFF" text-anchor="middle">args {ticket_id}</text>
+<rect x="1364.6" y="661" width="181.0" height="27.0" rx="13.5" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="1455.1" y="679.9" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="15" font-weight="500" fill="#94A3B8" text-anchor="middle">result [redacted]</text>
+<text x="96" y="818" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="start">happy path · 2 steps · names from telemetry/genai_attrs.py</text>
+</g>
+</svg>

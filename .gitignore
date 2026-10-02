@@ -6,3 +6,10 @@
 **/09-production/generated/
 .env
 .venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.deepeval/
+node_modules/
+**/10-graphics/**/_preview/

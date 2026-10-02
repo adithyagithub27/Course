@@ -6,7 +6,8 @@ AI disclosure), 4.7 (challenge: Riley for your business).
 
 What this file adds on top of s03:
 
-* Instructions assembled from the reusable blocks in ``src/maple/prompts.py``.
+* Instructions assembled from the reusable blocks in ``src/maple/prompts.py``, plus a
+  ``SPELLING_RULES`` block that spells last names back letter by letter (lecture 4.3).
 * A deterministic greeting in ``on_enter`` with ``session.say`` (no LLM round trip).
 * A TTS text transform that expands abbreviations such as "Dr." before speech.
 * ``user_away_timeout`` + the ``user_state_changed`` event: check in once, call
@@ -36,6 +37,13 @@ logger = logging.getLogger("s04")
 SILENCE_TIMEOUT_S = 12.0
 MAX_SILENCE_PROMPTS = 2
 
+# Extra prompt block for names (lecture 4.3): STT gets surnames wrong more than any other word.
+SPELLING_RULES = """\
+Names:
+- After the caller gives their name, spell the last name back letter by letter and ask if it's
+  right, for example "Is that O, R, T, I, Z?"
+- If the caller spells something, use exactly the letters they said."""
+
 # Pronunciation fixes applied to the text stream right before TTS (lecture 4.3).
 ABBREVIATIONS = {
     r"\bDr\.": "Doctor",
@@ -64,7 +72,7 @@ class VoiceFirstRiley(Agent):
 
     def __init__(self) -> None:
         super().__init__(
-            instructions=prompts.build_instructions(today=clinic_today(), knowledge=False),
+            instructions=prompts.build_instructions(today=clinic_today(), extra=SPELLING_RULES),
         )
 
     async def on_enter(self) -> None:

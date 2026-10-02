@@ -1,6 +1,10 @@
 # OpenTelemetry Collector: the traffic cop between Atlas and its backends (Section 13.2).
 #
-# receivers  -> memory_limiter -> attributes (redaction) -> tail_sampling -> batch -> exporters
+# receivers  -> memory_limiter -> attributes/redact -> tail_sampling -> batch -> exporters
+#
+# Processor names (exactly as below): memory_limiter, attributes/redact, tail_sampling, batch.
+# Exporters in the traces pipeline: otlphttp/langfuse, otlphttp/phoenix, debug (+ the
+# spanmetrics connector). Every sampled span goes to Langfuse AND Phoenix (Lecture 13.2).
 #
 # Redaction happens HERE as defence in depth: even if an app forgets to mask, the
 # collector deletes tool results and message bodies and hashes user ids before anything
@@ -84,9 +88,10 @@ exporters:
       enabled: true
       queue_size: 2000
 
-  # Arize Phoenix (Section 12.3): `phoenix serve` listens on 6006.
+  # Arize Phoenix (Sections 12.3 and 13.2): the `phoenix` service in
+  # docker-compose.observability.yml. otlphttp appends /v1/traces to the endpoint.
   otlphttp/phoenix:
-    endpoint: http://host.docker.internal:6006/v1/traces
+    endpoint: http://phoenix:6006
     timeout: 5s
 
   # Collector's own view of the spans for debugging (`docker compose logs otel-collector`).
@@ -115,8 +120,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, attributes/redact, tail_sampling, batch]
-      exporters: [otlphttp/langfuse, debug, spanmetrics]
-      # add otlphttp/phoenix here to fan out to Phoenix as well
+      exporters: [otlphttp/langfuse, otlphttp/phoenix, debug, spanmetrics]
     metrics:
       receivers: [spanmetrics]
       processors: [batch]

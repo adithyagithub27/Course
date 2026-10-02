@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D2">
+<title id="t-D2">D2: Three architectures</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Three architectures</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D2 · build 4/4: trade-offs</text></g>
+<g id="build-1">
+<text x="96" y="268" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">CASCADED</text>
+<rect x="96" y="290" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="171.0" y="358.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio in</text>
+<rect x="1110" y="290" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1185.0" y="358.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio out</text>
+<rect x="330" y="290" width="170" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="415.0" y="358.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">STT</text>
+<rect x="560" y="290" width="170" height="120" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="645.0" y="358.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">LLM</text>
+<rect x="790" y="290" width="170" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="875.0" y="358.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">TTS</text>
+<path d="M250 350.0 L326 350.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M504 350.0 L556 350.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="530.0" y="338.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">text</text>
+<path d="M734 350.0 L786 350.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="760.0" y="338.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">text</text>
+<path d="M964 350.0 L1106 350.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-2">
+<text x="96" y="508" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SPEECH-TO-SPEECH</text>
+<rect x="96" y="530" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="171.0" y="598.4" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio in</text>
+<rect x="1110" y="530" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1185.0" y="598.4" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio out</text>
+<rect x="325.0" y="525.0" width="640" height="130" rx="14" fill="none" stroke="#00D4AA33" stroke-width="10"/>
+<rect x="330" y="530" width="630" height="120" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="645.0" y="583.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Realtime model</text>
+<text x="645.0" y="611.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">hears, thinks, speaks</text>
+<path d="M250 590.0 L326 590.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M964 590.0 L1106 590.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-3">
+<text x="96" y="748" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">HALF-CASCADE (HYBRID)</text>
+<rect x="96" y="770" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="171.0" y="838.4" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio in</text>
+<rect x="1110" y="770" width="150" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="1185.0" y="838.4" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Audio out</text>
+<rect x="330" y="770" width="400" height="120" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="530.0" y="823.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Realtime model</text>
+<text x="530.0" y="851.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">text out</text>
+<rect x="790" y="770" width="170" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="875.0" y="838.4" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Your TTS</text>
+<path d="M250 830.0 L326 830.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M734 830.0 L786 830.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="760.0" y="818.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="500" fill="#94A3B8" text-anchor="middle">text</text>
+<path d="M964 830.0 L1106 830.0" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-4">
+<rect x="1314" y="260" width="510" height="640" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
+<text x="1554.0" y="320" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#00D4AA" text-anchor="middle">Cascaded</text>
+<text x="1654.0" y="320" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#00D4AA" text-anchor="middle">S2S</text>
+<text x="1754.0" y="320" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#00D4AA" text-anchor="middle">Hybrid</text>
+<path d="M1334 346 H1804" stroke="#64748B" stroke-width="1" opacity="0.6"/>
+<text x="1334" y="390" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">Control</text>
+<text x="1554.0" y="390" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<text x="1654.0" y="390" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●○○</text>
+<text x="1754.0" y="390" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<path d="M1334 438 H1804" stroke="#64748B" stroke-width="1" opacity="0.6"/>
+<text x="1334" y="482" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">Cost visibility</text>
+<text x="1554.0" y="482" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<text x="1654.0" y="482" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●○○</text>
+<text x="1754.0" y="482" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<path d="M1334 530 H1804" stroke="#64748B" stroke-width="1" opacity="0.6"/>
+<text x="1334" y="574" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">Latency</text>
+<text x="1554.0" y="574" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<text x="1654.0" y="574" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<text x="1754.0" y="574" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<path d="M1334 622 H1804" stroke="#64748B" stroke-width="1" opacity="0.6"/>
+<text x="1334" y="666" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">Voice choice</text>
+<text x="1554.0" y="666" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<text x="1654.0" y="666" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●○○</text>
+<text x="1754.0" y="666" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<path d="M1334 714 H1804" stroke="#64748B" stroke-width="1" opacity="0.6"/>
+<text x="1334" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">Tool reliability</text>
+<text x="1554.0" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●●</text>
+<text x="1654.0" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<text x="1754.0" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#00D4AA" text-anchor="middle">●●○</text>
+<text x="1334" y="830" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">●●● stronger · qualitative, no benchmarks</text>
+</g>
+</svg>

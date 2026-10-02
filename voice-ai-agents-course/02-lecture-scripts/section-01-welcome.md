@@ -1,7 +1,7 @@
 # Section 1: Welcome and How Voice Agents Work
 
 > **Course:** Production Voice AI Agents with Python: Build, Test, Deploy
-> **Section runtime:** ≈39 min (6 lectures)
+> **Section runtime:** ≈38 min (6 lectures)
 > **Source of truth:** `01-curriculum/curriculum.md`
 > **On-screen footer for every code or API slide:** "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."
 
@@ -22,11 +22,11 @@ Pacing: narration is written at about 140 spoken words per minute. Word counts i
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
 | 1.1 | Meet Riley: one call that works, one that fails, one that's fixed | DM | 5:00 | ~625 |
-| 1.2 | What a voice agent actually is | SL | 7:00 | ~825 |
+| 1.2 | What a voice agent actually is | SL | 7:00 | ~900 |
 | 1.3 | Cascaded vs speech-to-speech architectures | SL | 8:00 | ~975 |
-| 1.4 | The latency budget: why 800 ms is the magic number | SL | 8:00 | ~925 |
-| 1.5 | Course roadmap, repo tour and how to get help | SC | 7:00 | ~725 |
-| 1.6 | Quiz: Voice agent fundamentals | QZ | 4:00 (1:30 video) | ~150 |
+| 1.4 | The latency budget: why 800 ms is the magic number | SL | 8:00 | ~1,000 |
+| 1.5 | Course roadmap, repo tour and how to get help | SC | 6:00 | ~775 |
+| 1.6 | Quiz: Voice agent fundamentals | QZ | 4:00 (1:30 video) | ~175 |
 
 ---
 
@@ -77,7 +77,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word counts i
 
 [SCREEN: Caption: "Call 2". Same phone, same caller. Red caption tag: "Naive agent: chat prompt, no tools, default everything".]
 
-[DEMO: Call 2. Same request to a naive agent. Record it for real: endpointing min delay 0.2 s, no tools, a chat-style prompt. Keep the talk-over audible.]
+[DEMO: Call 2. Same request to a naive agent. Record it for real: endpointing min delay 0.2 s, no tools, a chat-style prompt. Keep the talk-over audible. No reference file ships this agent; the closest is `BROKEN=markdown MIN_ENDPOINTING_DELAY=0.2 uv run python agents/s03_hello_agent.py console` (no tools, a markdown chat prompt, aggressive endpointing; it also turns off the symbol filters, so keep or trim any symbols read aloud).]
 
 **Naive agent:** Hello! Thank you for calling Maple Street Dental! I'd be happy to help you with any questions you might have about our services, hours, or...
 
@@ -100,7 +100,7 @@ The caller hangs up happy. Then she shows up on Friday at nine to a full waiting
 
 Here's the uncomfortable part. Both agents use the same kind of models. The difference isn't a smarter AI. It's engineering. Turn-taking settings. A prompt written for the ear. Real tools with real data. And tests that catch the failures before a caller does.
 
-[SCREEN: Caption: "Call 3". Terminal. Run the capstone test suite: unit tests, behavior tests, evals. Wall of green. Zoom on three passing tests (use the real names from `tests/agent/` and `tests/evals/` at recording time): one asserting only scheduler-returned slots are offered, one asserting a read-back before `book_appointment`, one latency-budget check. Then a latency report with p50 and p95 voice-to-voice, and a cost-per-minute line.]
+[SCREEN: Caption: "Call 3". Terminal. Run the capstone test suite: unit tests, behavior tests, evals. Wall of green. Zoom on three checks: `test_checks_availability_before_offering_times` and `test_reads_back_before_booking_then_books` in `tests/agent/test_booking_flows.py`, then the latency budget check `tests/evals/latency_report.py`, which exits non-zero when p95 is over budget (confirm the names at recording time). Then a latency report with p50 and p95 voice-to-voice, and a cost-per-minute line.]
 
 This is call three. It's the fixed agent, and this time I'm not calling it. I'm testing it. Every failure you just heard has a test. One checks that Riley only offers slots returned by the scheduler tool. One checks that Riley reads back the details before booking. One fails the build if turn-taking pushes latency over budget. There are simulated callers that rush it, confuse it and try to trick it.
 
@@ -116,6 +116,11 @@ So here's the promise. By Section thirteen, your Riley makes call one. On a real
 You'll build it from an empty folder. Tools to book, reschedule and cancel. A knowledge base. Handoffs to a human. Guardrails against tricks. Deployment, monitoring and cost tracking.
 
 Most voice AI tutorials stop at "it talks." That's call two. This course is about getting from call two to call one, and proving it with call three. [PAUSE] Let's start by looking inside.
+
+[SLIDE 1: Recap]
+- Naive agents talk over, mishear and invent slots
+- The fix is engineering, not a smarter model
+- Your Riley will pass call three's tests
 
 **Recap:** A naive voice agent talks over callers, mishears them and invents availability, and this course teaches the engineering and testing that turn it into a production receptionist.
 
@@ -136,10 +141,10 @@ Most voice AI tutorials stop at "it talks." That's call two. This course is abou
 |---|---|
 | ID | 1.2 |
 | Type | SL (slides) |
-| Target duration | 7:00 (~825 spoken words, about 5:54 of talking at 140 wpm) |
+| Target duration | 7:00 (~900 spoken words, about 6:26 of talking at 140 wpm) |
 | Learning objectives | 1. Distinguish a voice agent from an IVR and from a text chatbot. 2. Name the seven components of a voice pipeline: transport, VAD, STT, turn detection, LLM, tools and TTS. 3. Predict a typical failure for each component. |
 | Prerequisites | 1.1 |
-| Files used | Diagram: voice pipeline (slide 3) |
+| Files used | Diagram: voice pipeline (slide 3); `03-code/agents/common.py` (`create_session`, shown briefly) |
 
 ### Script
 
@@ -245,10 +250,19 @@ Table: Component | Typical failure | Where we fix it
 - Tools | wrong args, fake availability | S5, S9
 - TTS | reads symbols, bad numbers | S4
 
+[SCREEN: VS Code, `03-code/agents/common.py`, scrolled to `create_session`. Highlight the `stt=`, `llm=`, `tts=`, `vad=` and `turn_handling=` lines one at a time, while a thumbnail of slide 3 in the corner lights up the matching box.]
+
+And here's that same pipeline in the code you'll use from Section four on. One function in `agents/common.py` builds Riley's session. Speech-to-text, one line. The LLM, one line. Text-to-speech, one line. VAD, one line. Turn detection, one line. Transport is LiveKit itself, so it isn't a line at all, and tools live on the agent, which you'll meet in Section five. Seven boxes on a slide, five lines of Python.
+
 [AVATAR]
 Here's the key idea. Every box adds time. And every box adds a way to fail. A voice agent isn't one model. It's a relay race of seven runners, and the caller only hears the final time.
 
 That's also why testing voice agents is different. A wrong answer might be the LLM's fault. Or the STT misheard. Or turn detection cut the caller off halfway through. You'll learn to test each box on its own, and the whole relay together.
+
+[SLIDE 11: Recap]
+- Seven boxes, from transport to TTS
+- Every box adds latency and a failure mode
+- Test each box, then the whole relay
 
 **Recap:** A voice agent is a real-time pipeline of transport, VAD, STT, turn detection, an LLM with tools, and TTS, and each stage has its own failure mode.
 
@@ -272,7 +286,7 @@ That's also why testing voice agents is different. A wrong answer might be the L
 | Target duration | 8:00 (~975 spoken words, about 6:58 of talking at 140 wpm) |
 | Learning objectives | 1. Explain the cascaded STT → LLM → TTS pipeline and the realtime speech-to-speech approach. 2. Compare them on control, cost, latency, voice quality and tool reliability. 3. Describe the half-cascade hybrid and when to choose it. |
 | Prerequisites | 1.2 |
-| Files used | Comparison table (slide 6), `10-resources/architecture-decision-matrix.md` (preview) |
+| Files used | Comparison table (slide 6), `10-resources/architecture-decision-matrix.md` (preview), `03-code/src/maple/costs.py` (cost calculator run), console log from `03-code/agents/s03_hello_agent.py` |
 
 ### Script
 
@@ -316,6 +330,8 @@ It's also simpler on the wire. One model call instead of three. That can mean lo
 So why doesn't everyone use speech-to-speech? Four reasons.
 
 First, control. In a cascaded pipeline, you pick the best model for each job. A speech-to-text model tuned for phone audio. The cheapest LLM that passes your tests. A voice that matches your brand. With speech-to-speech, you get one vendor's bundle.
+
+[SCREEN: Terminal log from a console session of `03-code/agents/s03_hello_agent.py` (the agent you'll run in Lecture 2.4). Highlight the caller's transcript line, then Riley's reply line: one turn, two plain-text records.]
 
 Second, visibility. Every stage produces text. You can log it, redact it, test it and diff it. When Riley books the wrong day, you can see whether STT misheard "Thursday" or the LLM misread it.
 
@@ -367,6 +383,8 @@ Two stacked bars.
 
 Let's look at latency a bit more carefully, because it's where the marketing claims live. In a cascaded pipeline, time goes to four places: deciding the caller has finished, the final transcript, the LLM's first token and the voice's first audio. In speech-to-speech, the middle steps collapse into one: time to the first audio from the model.
 
+[B-ROLL: Slide 8's two bars animate. The middle segments of the cascaded bar merge into one "time to first audio" block, then the "Endpointing" segment pulses in both bars, and a grey "tool call" block slides into both bars at the same width.]
+
 So speech-to-speech removes a hop or two. But look at what's in both bars. Endpointing. Deciding the caller is done is the same problem in both designs, and it's usually the biggest single slice. And when the agent calls a tool, like checking the calendar, both designs wait for it the same way. We'll put real numbers on every slice in the next lecture.
 
 [SLIDE 9: Cost per minute, a first look (placeholder prices)]
@@ -374,6 +392,22 @@ So speech-to-speech removes a hop or two. But look at what's in both bars. Endpo
 - Speech-to-speech, same call: roughly 28 cents per minute
 - Source: the course's cost calculator, `src/maple/costs.py`, with placeholder list prices
 - Check current pricing; you'll recompute with real usage in Section 10
+
+[SCREEN: Terminal in the course repo. Run the cost calculator for a ten-minute call, cascaded first, then realtime. Zoom on the two "per minute" lines.]
+
+[CODE: the course's cost calculator, `src/maple/costs.py` (you'll run it yourself in Lecture 2.7)]
+```bash
+uv run python -c "from maple.costs import cost_breakdown, typical_cascaded_usage, typical_realtime_usage; print(cost_breakdown(typical_cascaded_usage(10)).format()); print(cost_breakdown(typical_realtime_usage(10)).format())"
+```
+
+[DEMO: Output (excerpt: the last two lines of each report)]
+```text
+total          $0.6838
+per minute     $0.0684  (10.00 min)
+...
+total          $2.7665
+per minute     $0.2767  (10.00 min)
+```
 
 And cost. The course repo includes a small cost calculator. With its placeholder list prices, a typical ten-minute receptionist call costs around seven cents a minute cascaded, and around twenty-eight cents a minute speech-to-speech. That's roughly four times more.
 
@@ -391,6 +425,11 @@ Here's my rule of thumb. If a mistake costs money or trust, like a wrong booking
 And here's the most important part. Don't take anyone's word for it. Not a vendor's. Not mine. In Section 6, you'll run the same five test calls through both architectures and measure latency, cost per minute and tool accuracy yourself.
 
 The best part? In LiveKit Agents, switching is mostly one line. The `Agent` class, the tools and the prompt stay the same. Only the model you hand to the session changes. That's a big reason we're using this framework.
+
+[SLIDE 11: Recap]
+- Cascaded: control, visibility, lower cost
+- Speech-to-speech: hears tone, fewer hops
+- Half-cascade: realtime ears, your own voice
 
 **Recap:** Cascaded pipelines trade some naturalness for control, debuggability and cost, speech-to-speech trades the opposite, and the half-cascade hybrid splits the difference.
 
@@ -411,16 +450,19 @@ The best part? In LiveKit Agents, switching is mostly one line. The `Agent` clas
 |---|---|
 | ID | 1.4 |
 | Type | SL (slides) |
-| Target duration | 8:00 (~925 spoken words, about 6:36 of talking at 140 wpm) |
+| Target duration | 8:00 (~1,000 spoken words, about 7:09 of talking at 140 wpm) |
 | Learning objectives | 1. Define voice-to-voice latency and explain why the human turn gap sets the target. 2. Break a response into five budget line items: network, endpointing, STT final, LLM time-to-first-token and TTS time-to-first-byte. 3. Build an example budget that stays under one second and identify the biggest levers. |
 | Prerequisites | 1.2, 1.3 |
-| Files used | `10-resources/latency-budget-worksheet.md` |
+| Files used | `10-resources/latency-budget-worksheet.md`, `03-code/tests/evals/latency_report.py` (sample-data run), hook clip recorded from `03-code/agents/s03_hello_agent.py` with `BROKEN=long_endpointing` |
 
 ### Script
 
 [AVATAR]
 Say "hello" to a friend. They answer in about two hundred milliseconds. [PAUSE] Say "hello" to a badly built voice agent. [PAUSE] [PAUSE] Two and a half seconds later, it answers. By then, you've already said "hello?" again, and now you're both talking at once.
 
+[DEMO: Audio clip with waveform and a running timer, recorded with `BROKEN=long_endpointing uv run python agents/s03_hello_agent.py console` (minimum endpointing delay 2.5 s; Lecture 3.9 explains the toggle). Caller: "Yes." Flat waveform while the timer counts past two seconds. Caller: "Hello?" Riley starts answering at the same moment, and the two voices collide.]
+
+[AVATAR]
 That gap is the single biggest reason voice agents feel robotic. So let's put a number on it, and then spend it wisely.
 
 [SLIDE 1: How fast do humans take turns?]
@@ -527,10 +569,39 @@ And one more warning. Don't trust averages. If your median is seven hundred mill
 - Section 9: fail a test if p95 exceeds the budget
 - Section 10: dashboards and alerts
 
+[SCREEN: Terminal in the course repo. Run the latency report on the sample call metrics that ship with the repo, with the voice-to-voice budget set to our 800 ms target. Zoom on the `voice_to_voice` row and the FAIL line.]
+
+```bash
+uv run python tests/evals/latency_report.py --voice-to-voice 800
+```
+
+[DEMO: Output]
+```text
+Files: sample_metrics.jsonl  (62 records)
+Budget checked at p95 (milliseconds)
+
+stage               n      p50      p90      p95   budget  status
+-----------------------------------------------------------------
+eou_delay          14      560      617      634      700  OK
+stt_final          14      225      257      267      500  OK
+llm_ttft           15      470      598      661      700  OK
+tts_ttfb           14      170      217      227      300  OK
+voice_to_voice     14     1215     1434     1474      800  OVER
+
+FAIL voice_to_voice: p95=1474 ms exceeds budget 800 ms by 674 ms
+```
+
+Here's a preview of where this goes. This report reads per-turn metrics from a set of sample calls in the repo and checks each line item against a budget. Every stage on its own looks fine. But voice to voice, at the ninety-fifth percentile, is fourteen hundred and seventy-four milliseconds. Six hundred and seventy-four over our target. So what does the command do? It fails, on purpose. That's the check you'll put in your build in Section nine.
+
 [AVATAR]
 Here's the good news. You won't need a stopwatch. LiveKit Agents reports these numbers on every turn: end-of-utterance delay, transcription delay, LLM time-to-first-token and TTS time-to-first-byte. In Section 9, you'll write a test that fails the build if p ninety-five goes over budget. In Section 10, you'll put it on a dashboard.
 
 Grab the latency budget worksheet in the resources folder. Fill in the example column now. You'll fill in your real numbers later, and it's very satisfying to compare.
+
+[SLIDE 12: Recap]
+- Clock runs from caller silence to first sound
+- Five line items; endpointing is usually biggest
+- Aim for about 800 ms, and watch p95
 
 **Recap:** Voice-to-voice latency is the sum of network, endpointing, STT final, LLM time-to-first-token and TTS time-to-first-byte, and a budget of around eight hundred milliseconds keeps conversations feeling natural.
 
@@ -551,10 +622,10 @@ Grab the latency budget worksheet in the resources folder. Fill in the example c
 |---|---|
 | ID | 1.5 |
 | Type | SC (screencast) |
-| Target duration | 7:00 (~725 spoken words, about 5:11 of talking at 140 wpm) |
+| Target duration | 6:00 (~775 spoken words, about 5:32 of talking at 140 wpm, plus screen dwell; reduced from 7:00 in the 2026-10 review) |
 | Learning objectives | 1. Describe the course path from first agent to production deployment. 2. Navigate the `voice-agents-course` repo: `src/maple`, `agents`, `tests`, `deploy`. 3. Ask a question in Q&A that gets a fast, useful answer. |
 | Prerequisites | None |
-| Files used | `03-code/README.md`, `03-code/Makefile`, `03-code/src/maple/`, `03-code/agents/`, `03-code/tests/` |
+| Files used | `03-code/README.md`, `03-code/Makefile` (`make help`, `make test`), `03-code/src/maple/`, `03-code/agents/`, `03-code/tests/` |
 
 ### Script
 
@@ -612,24 +683,28 @@ Each file is runnable on its own. If you fall behind, or something breaks, you c
 
 Then `tests`. Three layers. `unit` runs offline with no keys, and it should always be green. `agent` holds behavior tests that talk to a real LLM, so they skip automatically if you don't have an OpenAI key. And `evals` holds the heavier evaluations: conversation quality, word error rate, latency reports and simulated callers.
 
+[SCREEN: Terminal in the repo folder. Run `make test`. Let the dots scroll, then zoom on the final "passed" line and its time.]
+
+Want proof that the first layer is free? Watch. Make test runs every unit test, a couple of hundred of them, in about a second, with no keys and no network. You'll see that green line more than anything else in this course.
+
 [SCREEN: Show `deploy/`, `pipecat/`, `frontend/README.md`, `.github/workflows/ci.yml`.]
 
 The rest you'll meet later. `deploy` has the Dockerfile. `pipecat` has the comparison build. `frontend` explains how to put a web page in front of Riley. And the CI workflow runs your tests on every push.
 
-[SCREEN: Open `Makefile`. Highlight the targets.]
+[SCREEN: Terminal. Run `make help`, then open `Makefile` beside it.]
 
-[CODE: Makefile targets shown on screen, not typed]
-```make
-make install     # uv sync --extra dev: install dependencies and test tools
-make console     # talk to the current agent in your terminal
-make dev         # run the agent server in dev mode with hot reload
-make test        # offline unit tests (no API keys needed)
-make test-agent  # LiveKit behavior tests (needs OPENAI_API_KEY)
-make eval        # conversation-quality, WER and latency evals
-make lint        # ruff
+[CODE: `make help` output (excerpt: seven of the twenty targets)]
+```text
+  install          Install the project with dev tools (uv sync --extra dev)
+  console          Talk to an agent locally: make console AGENT=agents/s13_capstone_receptionist.py
+  dev              Dev mode with hot reload; connect from the Agents Playground
+  test             Offline unit tests (no keys needed)
+  test-agent       LiveKit behavior tests (live ones need OPENAI_API_KEY)
+  eval             DeepEval judge + WER + latency reports
+  lint             Ruff lint + format check
 ```
 
-Last stop, the Makefile. These seven commands are your shortcuts. `make install`, `make test`, `make console` and `make dev` are the ones you'll use every day. Under the hood they're ordinary `uv run` commands, and I'll always show you the full command the first time.
+Last stop, the Makefile. `make help` lists every shortcut with a one-line description. These seven are the ones to know first, and `make install`, `make test`, `make console` and `make dev` are the ones you'll use every day. Under the hood they're ordinary `uv run` commands, and I'll always show you the full command the first time.
 
 [SCREEN: Open `README.md`, scroll to the "Lecture → file map" table.]
 
@@ -656,7 +731,17 @@ And please, never paste your API keys. If you see a key in a screenshot, rotate 
 
 Finally, the practice. Labs are short and guided, and they come right after the lectures they practice. Projects are bigger and open-ended. Quizzes check the ideas before you build on them. Do the labs. The students who finish this course are the ones who ran the code, not just watched it.
 
+[SLIDE 5: Recap]
+- Fifteen sections: build, test, operate
+- Repo layers: `src/maple`, `agents`, `tests`
+- Good questions: lecture, command, full error, versions
+
 **Recap:** The course moves from build to test to operate, the repo mirrors that with `src/maple`, `agents` and `tests`, and a precise Q&A question gets you unstuck fastest.
+
+[SLIDE 6: You can now]
+- Name the seven parts of a voice pipeline
+- Choose cascaded, speech-to-speech or half-cascade
+- Read a latency budget and find the biggest lever
 
 **Transition:** Before we set anything up, a quick quiz to lock in how voice agents work.
 
@@ -675,7 +760,7 @@ Finally, the practice. Labs are short and guided, and they come right after the 
 |---|---|
 | ID | 1.6 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 4:00 total (1:30 video intro, ~150 spoken words, about 1:04 of talking at 140 wpm; the rest is quiz time) |
+| Target duration | 4:00 total (1:30 video intro, ~175 spoken words, about 1:15 of talking at 140 wpm; the rest is quiz time) |
 | Learning objectives | 1. Check understanding of pipeline components, architectures and the latency budget. 2. Identify any Section 1 lecture to rewatch before building. |
 | Prerequisites | 1.1 to 1.5 |
 | Files used | `06-assessments/quizzes/section-01.md` |
@@ -683,7 +768,7 @@ Finally, the practice. Labs are short and guided, and they come right after the 
 ### Script
 
 [AVATAR]
-Quick checkpoint. Eight questions, about four minutes.
+One idea trips up more students in this section than any other: VAD and turn detection sound like the same thing, and they aren't. [PAUSE] Let's see if it trips you. Eight questions, about four minutes.
 
 [SLIDE 1: Section 1 quiz: what's covered]
 - The seven components of a voice pipeline

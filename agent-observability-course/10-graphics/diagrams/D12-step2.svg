@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D12">
+<title id="t-D12">D12: Choosing a backend</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Choosing a backend</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D12 · build 2/5: compliance control</text></g>
+<g id="diagram-footnote"><text x="96" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8">Qualitative, dated 2026-09-28 (10-resources/backend-decision-matrix.md); re-check before deciding</text></g>
+<g id="build-1">
+<text x="470" y="260" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" fill="#00D4AA" text-anchor="start">Langfuse</text>
+<text x="740" y="260" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" fill="#00D4AA" text-anchor="start">LangSmith</text>
+<text x="1010" y="260" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" fill="#00D4AA" text-anchor="start">Phoenix</text>
+<text x="1280" y="260" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" fill="#00D4AA" text-anchor="start">OpenLLMetry</text>
+<text x="1550" y="260" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="700" fill="#00D4AA" text-anchor="start">Datadog</text>
+<rect x="96" y="300" width="1728" height="106" rx="8" fill="#1A2742" stroke="none" stroke-width="0"/>
+<text x="116" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">Control / self-host</text>
+<text x="470" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="740" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●○○</text>
+<text x="1010" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="1280" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="1550" y="360.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●○○</text>
+</g>
+<g id="build-2">
+<rect x="96" y="420" width="1728" height="106" rx="8" fill="#0F1E35" stroke="none" stroke-width="0"/>
+<text x="116" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">Compliance control</text>
+<text x="470" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="740" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●○</text>
+<text x="1010" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="1280" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●●</text>
+<text x="1550" y="480.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="400" fill="#00D4AA" text-anchor="start">●●○</text>
+</g>
+</svg>

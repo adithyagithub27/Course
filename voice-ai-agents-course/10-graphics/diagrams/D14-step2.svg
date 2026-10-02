@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D14">
+<title id="t-D14">D14: Riley in production</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Riley in production</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 3 · Voice AI Agents · D14 · build 2/5: agent server</text></g>
+<g id="build-1">
+<rect x="96" y="240" width="330" height="76" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<g transform="translate(118.0 261.0) scale(0.708)"><rect x="14" y="4" width="20" height="40" rx="4" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 38 H27" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="168" y="285.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">Phone</text>
+<rect x="96" y="350" width="330" height="76" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="261.0" y="395.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Twilio SIP trunk</text>
+<rect x="96" y="460" width="330" height="110" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="261.0" y="496.09999999999997" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">LiveKit SIP +</text>
+<text x="261.0" y="522.5" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">dispatch rule</text>
+<text x="261.0" y="547.7" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#CBD5E1" text-anchor="middle">riley-receptionist</text>
+<rect x="96" y="640" width="330" height="76" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<g transform="translate(118.0 661.0) scale(0.708)"><circle cx="24" cy="15" r="8" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 43 C8 31 15 27 24 27 C33 27 40 31 40 43" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="168" y="685.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">Web user</text>
+<rect x="96" y="750" width="330" height="76" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="261.0" y="795.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">WebRTC</text>
+<path d="M261 320 L261 346" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M261 430 L261 456" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M261 720 L261 746" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="500" y="520" width="150" height="120" rx="8" fill="none" stroke="#64748B" stroke-width="2" stroke-dasharray="8 4"/>
+<text x="575.0" y="587.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Room</text>
+<path d="M430 515 L496 560" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M430 788 L496 610" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-2">
+<rect x="720" y="230" width="640" height="540" rx="8" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="745" y="272" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#00D4AA" text-anchor="start">Agent server (Docker, start)</text>
+<rect x="745" y="300" width="590" height="100" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="765" y="338" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="start">AgentSession</text>
+<text x="765" y="370" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="start">VAD + turn detector + STT → LLM → TTS</text>
+<text x="1315" y="338" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="end">fallbacks + conn_options</text>
+<path d="M654 580 L716 580" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
+</g>
+</svg>

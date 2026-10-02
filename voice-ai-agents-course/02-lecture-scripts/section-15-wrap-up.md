@@ -1,7 +1,7 @@
 # Section 15: Wrap-up and Next Steps
 
 > **Course:** Production Voice AI Agents with Python: Build, Test, Deploy
-> **Section runtime:** ≈18 min (4 lectures, curriculum v1.1)
+> **Section runtime:** ≈17 min (4 lectures, curriculum v1.1; 15.3 is 4:00)
 > **Upload order (important):** 15.1 → 15.2 → 15.4 → 15.3. Udemy requires the bonus lecture to be the **last** lecture in the course, so the careers lecture (15.4) is uploaded *before* the Bonus Lecture (15.3) even though its ID is higher. The lectures below appear in upload order.
 > **Source of truth:** `01-curriculum/curriculum.md`
 > **On-screen footer for every code or API slide:** "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."
@@ -23,9 +23,9 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
 | 15.1 | What you built and where to go next | TH | 5:00 | ~580 |
-| 15.2 | Final practice test | QZ | 0 min in curriculum (1:00 video intro) | ~80 |
+| 15.2 | Final practice test | QZ | 0 min in curriculum (1:00 video intro) | ~100 |
 | 15.4 | Careers: voice AI roles, interview questions, pricing a client project | TH | 8:00 | ~970 |
-| 15.3 | Bonus Lecture: keep building | TH | 5:00 | ~480 |
+| 15.3 | Bonus lecture: keep building | TH | 4:00 | ~520 |
 
 ---
 
@@ -83,9 +83,13 @@ So what next? Here are four directions, and each one reuses almost everything yo
 
 Multilingual agents. Many STT and TTS providers support multiple languages, and LiveKit lets you switch models per agent. The hard part isn't the code. It's testing. Build a WER reference set per language, and run your behavior tests in each one.
 
+[B-ROLL: the 12.5 web front end with an avatar video tile next to the live captions.]
+
 Avatars. LiveKit Agents supports video avatar providers, so Riley can have a face on the web front end. Same session, same tools, one more output. Measure latency again, because video adds some. And re-run your cost numbers, because video minutes are priced differently.
 
 Outbound campaigns. You built one reminder call in Section 8. Scaling that to thousands is mostly about compliance, retries and answering-machine handling, not about the agent. Revisit Lecture 8.6 before you dial anyone.
+
+[B-ROLL: the three domain-swap briefs from Lecture 13.7 flip past: a restaurant, a property-maintenance line, an IT help desk.]
 
 And new domains. Swap the scheduler and the FAQ, keep the architecture. A restaurant booking line. A property maintenance line. An internal IT help desk. The testing pyramid transfers directly. You've already practised this in the domain-swap assignment, Lecture 13.7.
 
@@ -113,6 +117,11 @@ Here's my challenge for your next seven days. Finish the capstone and push it to
 
 Thank you for building this with me. Riley's on the line. Go put your own agent on one.
 
+[SLIDE 6: Recap]
+- A production voice agent, built and tested
+- Proof: tests, traces and cost per minute
+- Next: multilingual, avatars, outbound or a new domain
+
 **Recap:** You built, tested, secured and deployed a production voice agent, and the same architecture carries you into multilingual, avatar, outbound and new-domain projects.
 
 **Transition:** Next, test yourself with the forty-question final practice test.
@@ -132,7 +141,7 @@ Thank you for building this with me. Riley's on the line. Go put your own agent 
 |---|---|
 | ID | 15.2 |
 | Type | QZ (40-question practice test with short video intro) |
-| Target duration | 0 min in the curriculum runtime (1:00 video intro, ~80 spoken words; students take the test at their own pace) |
+| Target duration | 0 min in the curriculum runtime (1:00 video intro, ~100 spoken words; students take the test at their own pace) |
 | Learning objectives | 1. Check end-to-end understanding across all fifteen sections. 2. Identify the two or three sections to revisit before starting a real project. |
 | Prerequisites | Sections 1 to 14 |
 | Files used | `06-assessments/practice-test.md` |
@@ -140,7 +149,7 @@ Thank you for building this with me. Riley's on the line. Go put your own agent 
 ### Script
 
 [AVATAR]
-Last checkpoint. Forty questions, covering the whole course.
+Which section would you struggle to explain to an interviewer tomorrow? This test will tell you. Last checkpoint: forty questions, covering the whole course.
 
 [SLIDE 1: Final practice test]
 - 40 questions across all 15 sections
@@ -217,6 +226,8 @@ One. Cascaded versus speech-to-speech. Model answer: "Cascaded gives me control:
 
 Two. Where does latency come from? "Endpointing, STT finalisation, LLM time to first token, TTS time to first byte, and network. I measure each stage at p50 and p95 and tune the biggest one first, usually endpointing or the LLM."
 
+[B-ROLL: the Section 9 latency waterfall with its segments labelled: endpointing, STT final, LLM time to first token, TTS time to first byte, network, matching answer two.]
+
 Three. VAD versus turn detection. "VAD detects speech versus silence. Turn detection decides whether the caller has actually finished their thought. A pause isn't always the end of a turn."
 
 Four. Interruptions. "Set a minimum interruption duration so coughs don't cut the agent off, resume after false interruptions, and make sure only the spoken part of an interrupted reply goes into history."
@@ -245,7 +256,9 @@ Nine. Cost. "I compute cost per minute from usage metrics times a price table. F
 
 Ten. Personal data. "Verify identity before revealing anything, redact at the edge before logging or tracing, keep third-party telemetry PII-free by default, and apply a short retention policy."
 
-Eleven. Provider outage. "Fallback providers for STT, LLM and TTS, explicit timeouts, a pre-written error line, and a transfer to a human. I've tested it by revoking a key mid-call." That's Lecture 12.8.
+[B-ROLL: the 12.8 chaos demo clip: the log line "switching to next LLM" scrolls past while the call carries on.]
+
+Eleven. Provider outage. "Fallback providers for STT, LLM and TTS, explicit timeouts, a pre-written error line, then a transfer to a human or a clean goodbye. I've tested it by killing a provider mid-call." That's Lecture 12.8.
 
 Twelve. Deploys. "Each call runs in its own process, the server drains on SIGTERM, and the platform's grace period is at least the drain timeout. Rollbacks are one command."
 
@@ -286,6 +299,11 @@ And agree on response times up front. A voice agent that answers the phone is a 
 [AVATAR]
 Last tip. Whether it's a job interview or a client pitch, lead with a call. Play your two-minute demo. Then show the test suite and the numbers. Most candidates only have the first part. You have all three.
 
+[SLIDE 9: Recap]
+- Search for skills, not titles
+- Answer with a mechanism plus evidence
+- Price as discovery, setup, retainer, pass-through usage
+
 **Recap:** Target voice, conversational and solutions engineering roles, answer interview questions with a mechanism plus evidence, and price client work as discovery, setup, retainer and pass-through usage.
 
 **Transition:** One more short video to finish the course: the bonus lecture.
@@ -299,16 +317,16 @@ Last tip. Whether it's a job interview or a client pitch, lead with a call. Play
 
 ---
 
-## Lecture 15.3 — Bonus Lecture: keep building
+## Lecture 15.3 — Bonus lecture: keep building
 
 | Field | Value |
 |---|---|
 | ID | 15.3 |
 | Type | TH (talking head / avatar) |
-| Target duration | 5:00 (~480 spoken words) |
+| Target duration | 4:00 (~520 spoken words) |
 | Learning objectives | 1. Know where to get help and updates after the course: the Q&A, the repo README and announcements. 2. Know which of the instructor's other courses cover related topics, and who each one is for. |
 | Prerequisites | None |
-| Files used | None. Links go in the lecture's resources panel. |
+| Files used | `pyproject.toml` and `uv.lock` (shown briefly). Links go in the lecture's resources panel. |
 
 > **Udemy bonus-lecture rules (production notes, check the current Udemy Instructor Help Center before publishing):**
 > - This must be the **last** lecture in the course, and its title should begin with "Bonus Lecture".
@@ -320,7 +338,7 @@ Last tip. Whether it's a job interview or a client pitch, lead with a call. Play
 ### Script
 
 [AVATAR]
-You made it to the very end. This is a short bonus lecture. I'll cover how to keep your Riley project up to date, how to get help, and, if you want to go deeper, which of my other courses fit with this one. That last part is completely optional.
+Six months from now, a library upgrade will break something in your agent. Will you find out from a test, or from a caller? This short bonus lecture covers how to keep your Riley project current, how to get help, and, if you want to go deeper, which of my other courses fit with this one. That last part is completely optional.
 
 [SLIDE 1: Keeping your project current]
 - Voice AI libraries release often
@@ -332,7 +350,9 @@ First, updates. Voice AI moves fast. LiveKit Agents and Pipecat release often, a
 
 When something changes, I update the repo README first, with the tested versions and any code changes. Big changes also go out as a course announcement.
 
-And for your own production agent, pin your versions, like we did in `pyproject.toml`. Upgrade on purpose, with your test suite running. That's exactly what the tests are for.
+[SCREEN: `03-code/pyproject.toml`, the `livekit-agents[...]~=1.8` line; the file tree shows `uv.lock` beside it. Terminal: `uv lock --check` prints `Resolved 154 packages`.]
+
+And for your own production agent, pin your versions, like the repo does with `pyproject.toml` and the committed `uv.lock`. Upgrade on purpose, with your test suite running. That's exactly what the tests are for.
 
 Here's an upgrade routine that works. Once a month, read the changelogs for your framework and your providers. Upgrade on a branch. Run the whole pyramid, including the safety suite and a latency report. If the numbers hold, deploy, and keep the rollback ready. Twenty minutes a month keeps you off the "it broke on Friday" list.
 
@@ -368,7 +388,17 @@ That's it. Thank you for taking this course, and for sticking with it all the wa
 
 I'll see you in the Q&A.
 
+[SLIDE 5: Recap]
+- Pin versions; upgrade on a branch with tests
+- Ask in the Q&A with command, error, versions
+- Related courses are optional next steps
+
 **Recap:** Keep your project current through the repo README, get help in the Q&A, and, optionally, go deeper with the Build and Test courses.
+
+[SLIDE 6: You can now]
+- Build a voice agent from pipeline to phone number
+- Test it across the full voice testing pyramid
+- Deploy, observe and price it in production
 
 **Transition:** This is the final lecture of the course. Thank you for learning with me.
 

@@ -8,13 +8,13 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 2.1 | Accounts you need and what they cost | SC | 8:00 | ~725 |
+| 2.1 | Accounts you need and what they cost | SC | 8:00 | ~775 |
 | 2.2 | Python project setup with uv | SC | 8:00 | ~625 |
 | 2.3 | LiveKit CLI, projects and credentials | SC | 7:00 | ~475 |
 | 2.4 | Smoke test: unit tests and console mode | SC | 6:00 | ~450 |
 | 2.5 | Lab 1: Environment verification | LAB | 3:00 (1:30 video) | ~225 |
-| 2.6 | Quick win: run the finished Riley before you build it | SC | 6:00 | ~600 |
-| 2.7 | Spending caps, free tiers and offline mock mode | SC | 6:00 | ~550 |
+| 2.6 | Quick win: run the finished Riley before you build it | SC | 6:00 | ~625 |
+| 2.7 | Spending caps, free tiers and offline mock mode | SC | 6:00 | ~575 |
 
 **Recording note for the whole section:** use a throwaway LiveKit project and throwaway API keys for recording. Blur every key in post, and rotate all keys after the recording session anyway.
 
@@ -26,7 +26,7 @@
 |---|---|
 | ID | 2.1 |
 | Type | SC (screencast) |
-| Target duration | 8:00 (~725 spoken words, about 5:11 of talking at 140 wpm) |
+| Target duration | 8:00 (~775 spoken words, about 5:32 of talking at 140 wpm) |
 | Learning objectives | 1. Create the accounts the course needs and know which are optional. 2. Explain the difference between LiveKit Inference model strings and direct provider plugins. 3. Keep total course spend around ten to twenty dollars using free tiers and spending limits. |
 | Prerequisites | Section 1 |
 | Files used | `10-resources/provider-cost-guide.md`, `03-code/.env.example` |
@@ -34,7 +34,7 @@
 ### Script
 
 [AVATAR]
-Let's talk about money first, because nobody likes a surprise bill. If you follow this course and use the free tiers, you should spend somewhere around ten to twenty dollars in total. Not per month. In total. Let me show you exactly where that goes, and how to put a hard ceiling on it.
+What will this course cost you? [PAUSE] If you use the free tiers, somewhere around ten to twenty dollars. Not per month. In total. The one thing that can blow past that is a test loop left running overnight with no spending cap. So let me show you exactly where the money goes, and how to put a hard ceiling on it before you write a line of code.
 
 [SLIDE 1: What you need, and when]
 - Required now: LiveKit Cloud, OpenAI
@@ -74,7 +74,9 @@ There are two ways to call a model from LiveKit Agents. On the left, model strin
 
 On the right, direct plugins. You import the Deepgram plugin, give it your own Deepgram key, and call Deepgram directly. You pay Deepgram directly, and you get every provider-specific setting.
 
-This course defaults to model strings, because it means fewer accounts on day one. In Lecture 3.5 you'll see when it's worth switching to plugins. The good news is it's a one-line change.
+[SCREEN: VS Code, `03-code/.env.example`, the "Models" block. Highlight `MAPLE_PROVIDER_MODE=inference`, then the `STT_MODEL`, `LLM_MODEL` and `TTS_MODEL` lines.]
+
+This course defaults to model strings, because it means fewer accounts on day one. You can see it in the settings template of the repo you'll clone next lecture: provider mode is "inference," and the three models are plain strings. In Lecture 3.5 you'll see when it's worth switching to plugins. The good news is it's a one-line change in that file.
 
 [SCREEN: Browser. Go to cloud.livekit.io. Click "Sign up", sign in with GitHub. Show the new project dashboard. Hover over the "Settings" and "API keys" menu items but don't open them yet.]
 
@@ -127,6 +129,11 @@ So where does the money actually go? A cascaded call costs a few cents per minut
 Five habits keep your bill tiny. Set that OpenAI limit today. When you're tweaking a prompt, use text mode, which skips speech-to-text and text-to-speech entirely. Run the unit tests as often as you like, because they're offline and free. Stop your dev server when you walk away. And when you finish Section eight, release your Twilio number if you don't need it. In Lecture 2.7, we'll go deeper, including a mock mode that costs nothing at all.
 
 One last thing. Treat your keys like passwords. They never go in a screenshot, a Git commit or a Q&A post. If one leaks, delete it and make a new one. It takes thirty seconds.
+
+[SLIDE 5: Recap]
+- Today you need LiveKit Cloud and OpenAI
+- Model strings: one account, one bill
+- Spending limit plus text mode keeps costs tiny
 
 **Recap:** You need LiveKit Cloud and OpenAI today, LiveKit Inference model strings mean fewer accounts, and a spending limit plus text-mode testing keeps the whole course around ten to twenty dollars.
 
@@ -225,20 +232,22 @@ cp .env.example .env
 
 [SCREEN: VS Code, `.env` open. Walk down the file. Blur values.]
 
-[CODE: the contents of .env (values blank until you fill them)]
+[CODE: your new `.env`, copied from `.env.example` (excerpt; `...` marks lines left out)]
 ```bash
-# LiveKit (filled in Lecture 2.3)
-LIVEKIT_URL=
+# --- LiveKit (required for console with real models, dev, start) ----------
+LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=
 LIVEKIT_API_SECRET=
-
-# Providers
+...
+# --- Provider keys --------------------------------------------------------
+...
 OPENAI_API_KEY=
-DEEPGRAM_API_KEY=        # optional: only for direct plugins
-CARTESIA_API_KEY=        # optional: only for direct plugins
+DEEPGRAM_API_KEY=
+CARTESIA_API_KEY=
 
-# Models (defaults shown; read by src/maple/config.py)
-MAPLE_PROVIDER_MODE=inference     # or "plugins" to use your own provider keys
+# --- Models (src/maple/config.py) -----------------------------------------
+# inference | plugins
+MAPLE_PROVIDER_MODE=inference
 STT_MODEL=deepgram/nova-3
 LLM_MODEL=openai/gpt-4.1-mini
 TTS_MODEL=cartesia/sonic-3
@@ -246,11 +255,17 @@ TTS_VOICE=f786b574-daa5-4673-aa0c-cbe3e8534c02
 REALTIME_MODEL=gpt-realtime
 REALTIME_VOICE=marin
 ```
-(Excerpt. The real `.env.example` has a few more settings, such as telephony and endpointing values, each with a comment. We'll meet them in the sections that use them.)
+(The full file also has the agent name, fallback models, behaviour settings such as `MOCK_MODE`, `MAPLE_TODAY` and the endpointing delays, telephony and observability, each with a comment. We'll meet them in the sections that use them.)
 
-Let's read it top to bottom. Three LiveKit values: the URL of your project, an API key and an API secret. Leave those empty. The LiveKit CLI will give them to us in the next lecture.
+[SCREEN: `.env`, highlight the three `LIVEKIT_` lines.]
+
+Let's read it top to bottom. Three LiveKit values: the URL of your project, an API key and an API secret. Leave them as they are for now. The LiveKit CLI will give us the real values in the next lecture.
+
+[SCREEN: `.env`, highlight `OPENAI_API_KEY`, then the two optional keys below it.]
 
 Then provider keys. Paste your OpenAI key now. Deepgram and Cartesia are optional, so leave them blank unless you created those accounts.
+
+[SCREEN: `.env`, highlight the "Models" block.]
 
 Then the model settings. These are read by `src/maple/config.py`. Provider mode says whether we use LiveKit Inference model strings or your own provider keys. The rest default to the models and voice we use in the course. When a provider launches a new model, or renames an old one, you change it here. You don't touch the code.
 
@@ -282,6 +297,11 @@ This is the same file you'll build from scratch in Section three. Every agent in
 
 [AVATAR]
 If you do this on a new machine, or in a Docker image later, you run download-files once. In Section twelve, we'll bake it into the Docker build so production containers start fast.
+
+[SLIDE 2: Recap]
+- `uv sync --extra dev`: one pinned environment
+- `.env` holds your keys and model names
+- `download-files` fetches local models once
 
 **Recap:** `uv sync --extra dev` installs a pinned environment, dot env holds your keys and model names, and download-files fetches the local models once.
 
@@ -405,6 +425,11 @@ And remember LiveKit Inference from Lecture 2.1? Model strings like "deepgram sl
 [AVATAR]
 Here's a preview of where the CLI shows up again. Section eight uses it to create phone trunks and dispatch rules. Section twelve uses it to deploy Riley to LiveKit Cloud. And newer versions of the CLI can also run your agent locally, with `lk agent console`. In this course I'll mostly run agents with `uv run python`, because it works the same everywhere. Both approaches work.
 
+[SLIDE 3: Recap]
+- `lk cloud auth` links your project
+- `lk app env` prints the three LiveKit values
+- An empty `lk room list` means success
+
 **Recap:** `lk cloud auth` links your project, `lk app env` gives you the three LiveKit values for your `.env`, and an empty `lk room list` proves they work.
 
 **Transition:** Everything's installed and connected, so let's run the smoke test and hear an agent talk through your laptop.
@@ -501,6 +526,11 @@ One more trick. Add dash dash text, and console mode becomes a chat in your term
 [AVATAR]
 So here's your checklist. Make test is green. Console mode greets you and answers out loud. If both are true, your environment is done. You won't need to touch setup again until telephony.
 
+[SLIDE 2: Recap]
+- `make test`: the offline Python side, free
+- `console`: the full voice pipeline, your mic
+- `console --text`: no mic, cheaper prompt experiments
+
 **Recap:** `make test` proves the offline Python side, and console mode proves the full voice pipeline from your mic to LiveKit Inference and back.
 
 **Transition:** Next is a short lab where you'll run through the environment checklist yourself and record your results.
@@ -528,18 +558,18 @@ So here's your checklist. Make test is green. Console mode greets you and answer
 ### Script
 
 [AVATAR]
-Time to verify your setup yourself. This lab takes about ten minutes, and it saves hours later.
+Most "my agent won't talk" questions in Q&A turn out to be a missing key, a muted microphone or a skipped download. Not the code. [PAUSE] This lab rules out all three before you write a line of agent code. Set aside about forty-five minutes. It saves you hours later.
 
-[SCREEN: Open `04-labs/lab-01-environment.md` in VS Code preview. Scroll slowly through the checklist.]
+[SCREEN: Open `04-labs/lab-01-environment.md` in VS Code preview. Scroll slowly through Steps 1 to 8.]
 
-The lab is a checklist. You'll confirm your tool versions: uv, Python, the lk CLI and livekit-agents. You'll confirm dot env has all three LiveKit values and your OpenAI key, and that git status doesn't show it. You'll run make test and write down how many tests passed. You'll run lk room list. And you'll hold a short conversation with Riley in console mode, then again in text mode.
+Eight steps, and you've watched me do most of them. Install uv, clone the repo, install the LiveKit CLI, create your dot env, run the unit tests and download the model files. Then talk to Riley in console mode: ask whether it's a real person, and pause for a second mid-sentence. Did Riley jump in? Finally, save your tool versions to a notes file.
 
-[SCREEN: Highlight the "Observations" table at the bottom of the lab.]
+[SCREEN: Scroll to the "Verification checklist" table at the bottom of the lab.]
 
-At the end, there's a small observations table. How long did Riley take to answer, just by feel? Did it ever interrupt you? Did it mishear anything? Write it down, even if it's rough. In Section three, you'll change turn-taking settings and compare against these first impressions.
+At the bottom, a nine-row checklist, one command per row. Tick every box, and remember that pause test. You'll fix it in Section three.
 
 [AVATAR]
-If anything on the checklist fails, the lab links to the right troubleshooting step. And if you're still stuck, post in Q&A with the lecture number, the command and the full error. [PAUSE] See you in Section three, where you'll build this agent yourself from an empty file.
+If a check fails, the lab's troubleshooting table points to the fix. Still stuck? Post in Q&A with the lecture number, the command and the full error. [PAUSE] Once every box is ticked, there's a reward before Section three: you'll run the finished Riley on your own laptop.
 
 **Recap:** Lab 1 confirms tools, keys, tests and console mode, and captures a first-impressions baseline for later tuning.
 
@@ -547,7 +577,7 @@ If anything on the checklist fails, the lab links to the right troubleshooting s
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Students skip the observations table. Encourage it: comparing "before" and "after" turn tuning in Lab 2 is the most memorable moment of Section 3.
+- Students skip Step 7's pause test and the notes file in Step 8. Encourage both: comparing "before" and "after" turn tuning in Lab 2 is the most memorable moment of Section 3.
 - If `make test` passes but console mode fails, the problem is keys, audio devices or network, never the business logic.
 - Corporate networks sometimes block WebRTC or WebSocket traffic. Try a personal network or hotspot before debugging code.
 
@@ -559,7 +589,7 @@ If anything on the checklist fails, the lab links to the right troubleshooting s
 |---|---|
 | ID | 2.6 |
 | Type | SC (screencast) |
-| Target duration | 6:00 (~600 spoken words, about 4:17 of talking at 140 wpm) |
+| Target duration | 6:00 (~625 spoken words, about 4:28 of talking at 140 wpm) |
 | Learning objectives | 1. Run the finished capstone agent locally with `make console AGENT=...`. 2. Book an appointment and trigger a transfer request, and recognise which course section built each behaviour. 3. Pin a demo date with `MAPLE_TODAY` so every run is reproducible. |
 | Prerequisites | 2.4 |
 | Files used | `03-code/agents/s13_capstone_receptionist.py`, `03-code/Makefile`, `03-code/.env` |
@@ -569,11 +599,11 @@ If anything on the checklist fails, the lab links to the right troubleshooting s
 [AVATAR]
 You've just set up everything. Before you write a single line, let's run the finished product. The same Riley you heard in lecture one, on your own laptop. [PAUSE] Hearing the destination makes the journey a lot easier to follow.
 
-[SCREEN: VS Code, `.env` open. Add one line at the bottom.]
+[SCREEN: VS Code, `.env` open. Highlight the `MAPLE_TODAY` line in the "Behaviour" block.]
 
-One setting first. The clinic's calendar is fake, and it's built relative to today's date. To make my demo match yours exactly, I'll pin the date.
+One setting first. The clinic's calendar is fake, and it's built relative to today's date. To make my demo match yours exactly, the date is pinned. You already have this line, because your dot env started as a copy of dot env dot example. Just check it's there.
 
-[CODE: add to `.env`]
+[CODE: the date pin in `.env` (already there from `.env.example`)]
 ```bash
 MAPLE_TODAY=2026-10-05
 ```
@@ -647,6 +677,11 @@ Here's the thing I want you to notice. None of that was one big clever prompt. I
 
 If you ever get lost later in the course, come back and run this file. It's your reference for "what good looks like."
 
+[SLIDE 2: Recap]
+- One command runs the finished Riley
+- Every behaviour maps to a section ahead
+- `MAPLE_TODAY` makes every demo reproducible
+
 **Recap:** `make console AGENT=agents/s13_capstone_receptionist.py` runs the finished Riley locally, and every behaviour you hear maps to a section you're about to build.
 
 **Transition:** Before you start building, one more setup lecture: how to cap your spending and practice for free with mock mode.
@@ -666,7 +701,7 @@ If you ever get lost later in the course, come back and run this file. It's your
 |---|---|
 | ID | 2.7 |
 | Type | SC (screencast) |
-| Target duration | 6:00 (~550 spoken words, about 3:56 of talking at 140 wpm) |
+| Target duration | 6:00 (~575 spoken words, about 4:06 of talking at 140 wpm) |
 | Learning objectives | 1. Set hard spending limits on OpenAI and check usage on LiveKit Cloud and optional providers. 2. Run Riley at zero cost with `MOCK_MODE=1` and text I/O. 3. Estimate a lab's cost before running it with `src/maple/costs.py`. |
 | Prerequisites | 2.1, 2.4 |
 | Files used | `03-code/src/maple/config.py`, `03-code/agents/common.py`, `03-code/src/maple/costs.py`, `10-resources/provider-cost-guide.md` |
@@ -678,7 +713,7 @@ In Lecture 2.1, I promised the whole course costs around ten to twenty dollars. 
 
 [SCREEN: Browser, platform.openai.com → Settings → Limits. Show the monthly budget field and the notification threshold. Values visible, keys hidden.]
 
-Habit one, hard caps. Start with OpenAI, because it's the one with no free tier. Under Limits, set a monthly budget. I use twenty dollars. Then set an email alert at half of that, so you hear about it early.
+Habit one, hard caps. Why start with OpenAI? Because it's the one with no free tier. Under Limits, set a monthly budget. I use twenty dollars. Then set an email alert at half of that, so you hear about it early.
 
 [SCREEN: Browser, cloud.livekit.io → project → Usage/Billing page. Point to agent session minutes and inference usage for the current month.]
 
@@ -697,7 +732,7 @@ If you created Deepgram or Cartesia accounts for direct plugins, both show usage
 Here's the rough picture using the placeholder price table in the repo. A cascaded call costs a few cents per minute. Text-to-speech is the biggest slice. Speech-to-speech costs several times more per minute. And unit tests, text mode and mock mode cost nothing. Prices change, so check current pricing before you trust any of these numbers.
 
 [AVATAR]
-Habit two, practice for free. Most of your time in this course is spent on prompts and tool logic, not on voices. You don't need to pay for speech while you're doing that.
+Habit two, practice for free. Most of your time in this course is spent on prompts and tool logic, not on voices. So why pay for speech while you're fixing a tool's error message?
 
 [SCREEN: Terminal.]
 
@@ -720,7 +755,7 @@ Watch the log. The fake LLM still calls the real tools, against the real schedul
 You can also put MOCK_MODE equals one in your dot env while you're working on tools, and remove it when you want the real thing. The switch is read by `src/maple/config.py`, and the agents pick it up through `agents/common.py`.
 
 [AVATAR]
-Habit three, estimate before you run. Every lab tells you roughly how many call minutes it needs. Turn that into dollars before you start.
+Habit three, estimate before you run. How many call minutes will the next lab take? Turn that into dollars before you start. Lab 4 in Section six, for example, budgets about fifty cents to a dollar fifty, mostly realtime audio.
 
 [CODE: estimate ten minutes of cascaded calls]
 ```bash
@@ -752,7 +787,17 @@ This uses the course's cost calculator with a typical receptionist call. Ten min
 [AVATAR]
 Here's your checklist. Caps set. Usage page bookmarked. Mock mode for tool work. Text mode when you don't need to hear it. A quick estimate before voice labs. And shut things down when you're done.
 
+[SLIDE 3: Recap]
+- Hard caps stop runaway bills
+- `MOCK_MODE=1` with `--text` costs nothing
+- Estimate a lab's minutes in dollars first
+
 **Recap:** Hard caps prevent surprises, `MOCK_MODE=1` with `console --text` makes practice free, and the cost calculator turns a lab's minutes into dollars before you start.
+
+[SLIDE 4: You can now]
+- Run any course agent with one command
+- Prove keys, tests and audio work in minutes
+- Practise flows at zero cost in mock mode
 
 **Transition:** Your environment is ready and your budget is safe, so Section 3 starts with the LiveKit mental model: rooms, participants, tracks and dispatch.
 

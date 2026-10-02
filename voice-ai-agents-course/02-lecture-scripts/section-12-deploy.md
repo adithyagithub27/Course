@@ -1,7 +1,7 @@
 # Section 12: Deploying to Production
 
 > **Course:** Production Voice AI Agents with Python: Build, Test, Deploy
-> **Section runtime:** ≈57 min (9 lectures, curriculum v1.1)
+> **Section runtime:** ≈56 min (9 lectures, curriculum v1.1; 12.7's video intro is 3:00)
 > **Source of truth:** `01-curriculum/curriculum.md`
 > **On-screen footer for every code or API slide:** "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."
 
@@ -22,14 +22,14 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
 | 12.1 | Agent server architecture and scaling | SL | 8:00 | ~950 |
-| 12.2 | Dockerising the agent | SC | 8:00 | ~810 |
+| 12.2 | Dockerising the agent | SC | 8:00 | ~830 |
 | 12.3 | Deploy to LiveKit Cloud | SC | 10:00 | ~790 |
 | 12.4 | Self-hosting option | SL | 6:00 | ~690 |
 | 12.5 | A web front end for Riley | SC | 8:00 | ~630 |
-| 12.6 | Production readiness checklist | SL | 6:00 | ~630 |
-| 12.7 | Lab 7: Deploy and call your agent | LAB | 4:00 | ~320 |
-| 12.8 | Chaos demo: kill a provider mid-call | DM | 5:00 | ~490 |
-| 12.9 | Quiz: Deployment | QZ | 2:00 (0:45 video) | ~70 |
+| 12.6 | Production readiness checklist | SL | 6:00 | ~650 |
+| 12.7 | Lab 7: Deploy and call your agent | LAB | 3:00 | ~390 |
+| 12.8 | Chaos demo: kill a provider mid-call | DM | 5:00 | ~430 |
+| 12.9 | Quiz: Deployment | QZ | 2:00 (0:45 video) | ~110 |
 
 **Verification notes for the editor.**
 - `AgentServer` options in 12.1 were checked by introspecting `livekit-agents` 1.8.3: `setup_fnc`, `num_idle_processes` (dev 0, production defaults to the CPU count), `load_threshold` (dev disabled, production 0.7), `job_memory_warn_mb` (1000), `job_memory_limit_mb` (0 = off), `drain_timeout` (3600 s), `port` (dev random, production 8081). The health server answers `GET /` with `OK` (or 503) and `GET /worker` with JSON.
@@ -37,7 +37,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 - **Every `lk agent ...` command in 12.3, 12.7 and 12.8, and the front-end starter commands in 12.5, are marked "verify in current docs".** The LiveKit CLI changes faster than the SDK. Re-run each command before recording and update the on-screen text if flags changed.
 - Agent name resolution (checked in `livekit-agents` 1.8.3): `LIVEKIT_AGENT_NAME` is read in every mode; `[agent] name` in `livekit.toml` is used only by `start`, and only when the env var is unset. `dev` never reads `livekit.toml`.
 - The fallback model strings in `.env.example` (`FALLBACK_LLM_MODEL`, `FALLBACK_STT_MODEL`, `FALLBACK_TTS_MODEL`) are **unverified** against LiveKit Inference's current model list. Check before recording 12.8.
-- Code on screen matches `03-code/` (`deploy/Dockerfile`, `deploy/.dockerignore`, `livekit.toml.example`, `frontend/README.md`, `agents/common.py`). The chaos helper `agents/s12_chaos_demo.py` in 12.8 is new and must be added to the repo before publishing.
+- Code on screen matches `03-code/` (`deploy/Dockerfile`, `deploy/.dockerignore`, `livekit.toml.example`, `frontend/README.md`, `agents/common.py`). The chaos helper `agents/s12_chaos_demo.py` in 12.8 ships in the repo. `uv.lock` is committed (decision A10), and the Dockerfile installs from it with `uv sync --locked`.
 
 ---
 
@@ -176,6 +176,11 @@ So in your Dockerfile, the command is always `start`. We'll write that Dockerfil
 [AVATAR]
 So, back to two hundred callers at nine A M. Each call gets its own process. Warm processes absorb the first burst. The load threshold spreads the rest across servers. Memory limits contain any runaway call. And when you deploy at nine fifteen, draining lets every conversation finish. That's the architecture.
 
+[SLIDE 8: Recap]
+- One process per call, prewarmed before it rings
+- Load threshold and memory limits protect live calls
+- Draining lets deploys finish every conversation
+
 **Recap:** An agent server runs each call in its own prewarmed process, sheds load above a threshold, caps memory per call, and drains active calls on shutdown.
 
 **Transition:** Next, we'll package Riley into a production Docker image that runs `start` as a non-root user.
@@ -239,7 +244,9 @@ deploy
 
 The most important lines are `.env` and `.env.*`. Never bake your `.env` into an image. Anyone who can pull the image can read every key inside it. Secrets come in at runtime. The exclamation mark line keeps the harmless example file.
 
-`livekit.toml` is excluded too. The agent's name will come from an environment variable instead, which we'll set as a secret in the next lecture.
+`livekit.toml` never reaches the image either, because the Dockerfile copies only the project files, `src` and `agents`. The agent's name will come from an environment variable instead, which we'll set as a secret in the next lecture.
+
+[CODE: same file, highlight the last block of lines: `metrics`, `console-recordings`, `tests`, `frontend`, `pipecat`, `deploy`, `*.md`.]
 
 The rest keeps the image small. No virtual environment from your laptop, no git history, no tests, no front end, no Pipecat.
 
@@ -279,17 +286,17 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# 1) dependencies only (cached until pyproject.toml changes)
-#    For reproducible builds commit uv.lock, add `COPY uv.lock ./` and use `uv sync --locked`.
-COPY pyproject.toml README.md ./
+# 1) dependencies only (cached until pyproject.toml or uv.lock changes)
+#    --locked installs exactly the versions in the committed uv.lock and fails if it is stale.
+COPY pyproject.toml README.md uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --extra observability
+    uv sync --locked --no-install-project --extra observability
 
 # 2) the project itself
 COPY src ./src
 COPY agents ./agents
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --extra observability
+    uv sync --locked --extra observability
 
 # pip alternative (no uv):
 #   RUN python -m venv /app/.venv && /app/.venv/bin/pip install ".[observability]"
@@ -301,9 +308,13 @@ The builder starts from the official slim Python image, and installs compilers. 
 
 Then we copy the `uv` binary straight out of uv's official image. That's a neat trick. No install script, just one file.
 
+[CODE: same stage, highlight the two `COPY` lines and the two `uv sync --locked` lines.]
+
 Look at the order of the copies. First, only `pyproject.toml`, the README and the lock file. Then we install dependencies, without our own project. Then we copy our code, `src` and `agents`, and sync again. Why split it? Docker caches each step. Dependencies change rarely. Code changes constantly. With this order, a code change rebuilds in seconds, not minutes.
 
-`uv.loc[k]` with square brackets is a small glob trick. It copies the lock file if it exists, and doesn't fail if it doesn't. Commit your `uv.lock`, so production gets exactly the versions you tested.
+`--locked` is the reproducibility switch. uv installs exactly the versions recorded in `uv.lock`, the ones your tests ran against, and the build fails if someone changed `pyproject.toml` without running `uv lock`. That's why `uv.lock` is committed to the repo.
+
+[CODE: same stage, highlight `--extra observability` and `--mount=type=cache,target=/root/.cache/uv`.]
 
 We install the `observability` extra, so OpenTelemetry is available for Langfuse tracing. Dev tools like pytest are a separate extra, so they're left out.
 
@@ -341,13 +352,25 @@ Stage two is what actually ships. A plain slim Python image. No uv, no compilers
 
 Then a non-root user called `riley`. If someone ever finds a hole in a dependency, they land in a container as an unprivileged user, not as root.
 
+[CODE: same stage, highlight `USER riley`, then `RUN python ${AGENT_FILE} download-files`.]
+
 Next, `download-files`. That's one of the five agent CLI commands. It downloads the model weights your plugins need, like Silero VAD and the turn detector's local model, into the image. We run it *after* switching to the `riley` user, so the files land in `riley`'s cache, where the agent will look for them. Without this line, the first call on every new container would wait for a download.
 
 Port eighty eighty-one is the health check, the production default from Lecture 12.1.
 
+[CODE: same stage, highlight the `CMD` line and the word `exec`.]
+
 And the last line. The command is `start`, production mode. Notice the `exec`. We use a shell so the environment variable expands. But `exec` replaces the shell with Python. That matters, because when the platform sends SIGTERM to stop the container, it has to reach Python. Otherwise the shell swallows it, and all that draining from the last lecture never happens.
 
 [SCREEN: Terminal, repo root.]
+
+First, a ten-second check that the lock file matches `pyproject.toml`. If it doesn't, the `--locked` builds will fail.
+
+```bash
+uv lock --check
+```
+
+[SCREEN: `Resolved 154 packages`.]
 
 Build it. Since we haven't built the capstone yet, point it at the Section 11 guarded agent.
 
@@ -392,6 +415,11 @@ docker stop --time 60 $(docker ps -q --filter ancestor=riley-agent)
 [SCREEN: Logs show the server draining, the call continuing, then a clean exit when the call ends.]
 
 The server logs that it's draining. Your call keeps going. When you hang up, the container exits cleanly. That's `exec` doing its job. And `--time 60` is Docker's grace period. It's the same setting you'll meet again in Lecture 12.4.
+
+[SLIDE 1: Recap]
+- Builder installs locked deps; runtime ships slim
+- Models downloaded at build time, as non-root
+- `exec`'d `start` lets SIGTERM reach Python
 
 **Recap:** A two-stage build with uv, model files downloaded at build time as a non-root user, and an `exec`'d `start` command give you a small image that drains calls on shutdown.
 
@@ -476,7 +504,7 @@ name = "riley-receptionist"
 
 Two sections. The project subdomain is the first part of your LiveKit URL. And the agent name. That's the name telephony dispatch rules and the web front end will ask for. When you create the agent, the CLI fills in the agent ID line. Commit `livekit.toml` after that, so every deploy targets the same agent.
 
-Read the notes at the top, because they explain a gotcha. `start` reads the agent name from this file only when `LIVEKIT_AGENT_NAME` isn't set. `dev` never reads it. And our `.dockerignore` keeps `livekit.toml` out of the image. So inside the container, the name must come from an environment variable. We'll set it as a secret.
+Read the notes at the top, because they explain a gotcha. `start` reads the agent name from this file only when `LIVEKIT_AGENT_NAME` isn't set. `dev` never reads it. And our Dockerfile never copies `livekit.toml` into the image. So inside the container, the name must come from an environment variable. We'll set it as a secret.
 
 Step three. Secrets. Create a production env file, and keep it out of git.
 
@@ -486,13 +514,13 @@ OPENAI_API_KEY=sk-...
 DEEPGRAM_API_KEY=...
 CARTESIA_API_KEY=...
 LIVEKIT_AGENT_NAME=riley-receptionist
-TRANSFER_PHONE_NUMBER=+15125550100
+TRANSFER_PHONE_NUMBER=+15125550111
 STT_MODEL=deepgram/nova-3
 LLM_MODEL=openai/gpt-4.1-mini
 TTS_MODEL=cartesia/sonic-3
 ```
 
-Only what the agent needs. The agent name, because `livekit.toml` isn't in the image. Provider keys, if you're using plugins mode. Model settings. The transfer number. Notice what's missing. No LiveKit URL or keys. LiveKit Cloud injects those. If you use LiveKit Inference for the models, you may not need the provider keys at all.
+Only what the agent needs. The agent name, because `livekit.toml` isn't in the image. Provider keys, if you're using plugins mode. Model settings. The transfer number, which is the front desk, never the number Riley answers. Notice what's missing. No LiveKit URL or keys. LiveKit Cloud injects those. If you use LiveKit Inference for the models, you may not need the provider keys at all.
 
 Step four. The Dockerfile. The cloud build looks for a Dockerfile at the root of the directory you deploy from. Ours lives in `deploy/`, so copy it up.
 
@@ -598,6 +626,11 @@ That restarts the agent with the new values, with the same draining behavior.
 [AVATAR]
 Here's the loop to make a habit. Tests pass. Deploy. Check status and make one real call. Watch logs and your Section 10 dashboards for fifteen minutes. And if anything looks off, roll back first and debug second. Rolling back is cheap. Debugging in production while callers wait is not.
 
+[SLIDE 3: Recap]
+- `lk agent create`, then `deploy` for each new version
+- Secrets in a file the image never sees
+- Logs, versions, rollback: practise them before you need them
+
 **Recap:** `lk agent create` registers and deploys from your Dockerfile, `deploy` ships new versions with draining, and `logs`, `versions`, `rollback` and `update-secrets` cover day-two operations.
 
 **Transition:** Next, we'll look at running the same container on your own infrastructure, for teams that need to self-host.
@@ -605,7 +638,7 @@ Here's the loop to make a habit. Tests pass. Deploy. Check status and make one r
 ### Speaker notes: common student mistakes / Q&A
 
 - Mistake: putting `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in the secrets file. LiveKit Cloud injects them. Duplicates can point the agent at the wrong project.
-- Mistake: committing `.env.production`. Add it to `.gitignore` before creating it. If it was committed, rotate every key in it.
+- Mistake: committing `.env.production`. The repo's `.gitignore` already ignores `.env.*` (except `.env.example`); confirm with `git check-ignore -v .env.production`. If it was ever committed, rotate every key in it.
 - "My agent deployed but never answers." Check the agent name. With an agent name set, LiveKit uses explicit dispatch, so the playground, front end or SIP dispatch rule must request `riley-receptionist`.
 - CLI subcommands and flags change between `lk` releases. If a command on screen fails, run `lk agent --help` and check the LiveKit deployment docs; the repo README tracks the current commands.
 
@@ -625,7 +658,7 @@ Here's the loop to make a habit. Tests pass. Deploy. Check status and make one r
 ### Script
 
 [AVATAR]
-Maybe your company runs everything on Kubernetes. Maybe your compliance team wants the agent in your own cloud account. Or maybe you want to use your existing platform, like Render, Fly.io or AWS ECS. The good news: the image you built in Lecture 12.2 runs anywhere containers run. You just need to get five things right.
+Maybe your company runs everything on Kubernetes. Maybe your compliance team wants the agent in your own cloud account. Or maybe you want to use your existing platform, like Render, Fly.io or AWS ECS. The good news: the image you built in Lecture 12.2 runs anywhere containers run. You just need to get five things right, and by the end of this lecture you'll have them as a checklist for any platform, plus a way to decide whether self-hosting is worth it.
 
 [SLIDE 1: Five requirements]
 1. Outbound network access to LiveKit and your model providers
@@ -705,6 +738,8 @@ Autoscaling. The simplest good setup is to scale on CPU. That's the same signal 
 
 Keep at least two replicas. One crashed container shouldn't mean nobody answers the phone. And if your callers are spread out, run replicas in the region closest to your LiveKit project and your model providers. Every network hop is latency the caller hears.
 
+[B-ROLL: an autoscaling graph. CPU crosses 0.6 and a third replica starts; later CPU falls, one replica receives SIGTERM, finishes its last call while draining, then exits.]
+
 Remember the idle processes from Lecture 12.1, too. Each replica keeps warm processes, and each one holds a VAD model in memory. More replicas with fewer idle processes each is usually cheaper than a few huge machines.
 
 And when the autoscaler scales in, it sends SIGTERM. That triggers draining, which is exactly what you want, as long as your grace period is right.
@@ -718,6 +753,11 @@ And when the autoscaler scales in, it sends SIGTERM. That triggers draining, whi
 
 [AVATAR]
 So which should you choose? Self-host when compliance needs it, when you already run a platform well, or when you need custom networking. Otherwise, managed hosting is less work, and the work it saves is the boring, risky kind. Either way, it's the same image and the same code.
+
+[SLIDE 8: Recap]
+- Outbound-only networking plus a health check on 8081
+- Grace period at least as long as `drain_timeout`
+- Scale on CPU below 0.7, two replicas minimum
 
 **Recap:** Self-hosting needs outbound networking, secrets, a health check on 8081, a grace period at least as long as `drain_timeout`, and CPU-based autoscaling with headroom.
 
@@ -858,6 +898,11 @@ Notice one difference from the phone. On the web, there's no SIP participant, so
 [AVATAR]
 Before this goes on a real clinic website, a few guardrails. Anyone who can load the page can start a call, and every call costs money. So rate-limit the token route. Add bot protection if it's public. Keep a maximum call length in the agent. And deploy the Next.js app to any host that supports it, with the secrets in the host's environment.
 
+[SLIDE 3: Recap]
+- The React starter plus a server-side token route
+- Tokens dispatch `riley-receptionist` into a fresh room
+- The API secret never reaches the browser
+
 **Recap:** The React starter plus a server-side token route that dispatches `riley-receptionist` puts your deployed agent in any browser, without exposing your API secret.
 
 **Transition:** Next, the production readiness checklist, so you know Riley is ready before real callers arrive.
@@ -880,7 +925,7 @@ Before this goes on a real clinic website, a few guardrails. Anyone who can load
 | Target duration | 6:00 (~630 spoken words) |
 | Learning objectives | 1. Apply a production readiness checklist covering resilience, observability, security, operations and compliance. 2. Define what Riley says and does when a provider fails. 3. Write the first page of an on-call runbook. |
 | Prerequisites | Sections 9 to 11; 12.1 to 12.5 |
-| Files used | `10-resources/production-checklist.md`, `src/maple/prompts.py` (`ERROR_SPEECH`) |
+| Files used | `10-resources/production-checklist.md`, `src/maple/prompts.py` (`ERROR_SPEECH`, `ERROR_GOODBYE`), `uv.lock` |
 
 ### Script
 
@@ -909,7 +954,9 @@ Resilience first. Every provider fails eventually. So each of the three models n
 
 Every provider call needs a timeout. The defaults in LiveKit are three retries, two seconds apart, with a ten-second timeout. That's reasonable for a web app. On a phone call, three retries two seconds apart is six seconds of silence. Choose them on purpose, against your latency budget.
 
-When something breaks mid-call, Riley needs a line to say. It's already in our prompts module. "Sorry, I'm having a technical problem on my end. Let me connect you with someone at the front desk." Pre-written, tested, and it ends in a transfer, not a dead end.
+[SCREEN: terminal in `03-code`: `grep -n -A2 "ERROR_SPEECH =\|ERROR_GOODBYE =" src/maple/prompts.py`. Two fixed lines: the apology that promises the front desk, and the goodbye with the clinic's number.]
+
+When something breaks mid-call, Riley needs a line to say. It's already in our prompts module. "Sorry, I'm having a technical problem on my end. Let me connect you with someone at the front desk." Pre-written, tested, and it ends in a transfer, or a clean goodbye with the clinic's number when no transfer is possible. Never a dead end.
 
 And graceful degradation. If the booking system is down, Riley shouldn't pretend. It should take a message and promise a callback. A limited Riley is much better than a silent one.
 
@@ -939,7 +986,11 @@ Security and privacy. This is Section 11 as a checklist. Secrets in a secret sto
 - Load tested at 2× expected peak
 - An on-call runbook
 
-Operations. Pin versions, and keep the lock file. Voice libraries release often, and an unplanned upgrade on a Friday is how outages start. Rollback: tested, meaning you've actually run it, not just read about it. Draining: verified with a real call during a deploy. Load: tested at twice your expected peak, with simulated callers in parallel, while you watch the load number on `/worker`. And a runbook.
+Operations. Pin versions, and keep the lock file.
+
+[SCREEN: terminal in `03-code`: `uv lock --check`, then `Resolved 154 packages`; the file tree shows `uv.lock` committed next to `pyproject.toml`.]
+
+Voice libraries release often, and an unplanned upgrade on a Friday is how outages start. The repo commits `uv.lock`, and the Dockerfile installs from it with `--locked`. Rollback: tested, meaning you've actually run it, not just read about it. Draining: verified with a real call during a deploy. Load: tested at twice your expected peak, with simulated callers in parallel, while you watch the load number on `/worker`. And a runbook.
 
 [SLIDE 6: Runbook, page one]
 | Symptom | First check | First action |
@@ -966,6 +1017,11 @@ And compliance, from Lecture 8.6. AI disclosure in the greeting. Riley does this
 [AVATAR]
 Back to Tuesday at ten. With this checklist done, here's what happens instead. The TTS provider fails. The fallback TTS takes over within a turn or two. The error rate alert fires. You check the runbook, see the provider status page, and do nothing, because the system already handled it. That's what production-ready means. Not that nothing breaks. That breaking is boring.
 
+[SLIDE 8: Recap]
+- Every provider has a fallback and a timeout
+- Every failure ends in words, never silence
+- Rollback, draining and the runbook are tested
+
 **Recap:** Production-ready means fallbacks and spoken recovery, observability with alerts, Section 11 security in CI, tested rollbacks and draining, a runbook, and compliance owned by someone.
 
 **Transition:** Now it's your turn: in Lab 7, you'll deploy Riley and call it from the web and a phone.
@@ -985,7 +1041,7 @@ Back to Tuesday at ten. With this checklist done, here's what happens instead. T
 |---|---|
 | ID | 12.7 |
 | Type | LAB (text lab with short video walkthrough) |
-| Target duration | 4:00 video (~320 spoken words); lab itself ~45-60 minutes |
+| Target duration | 3:00 video (~390 spoken words); lab itself about 90 minutes (matches `lab-07-deploy.md`) |
 | Learning objectives | 1. Deploy your own agent to LiveKit Cloud and reach it from the web front end. 2. Point your Section 8 phone number at the deployed agent. 3. Prove draining and rollback work, and record evidence. |
 | Prerequisites | 12.2, 12.3, 12.5; Section 8 phone number (optional but recommended) |
 | Files used | `04-labs/lab-07-deploy.md`, `deploy/Dockerfile`, `livekit.toml`, `frontend/README.md` |
@@ -993,7 +1049,7 @@ Back to Tuesday at ten. With this checklist done, here's what happens instead. T
 ### Script
 
 [AVATAR]
-Time to do it yourself. This lab takes most people forty-five minutes to an hour. By the end, your Riley will be live in the cloud, reachable from a browser and from a phone.
+Until now, Riley lived wherever your laptop was. In the next ninety minutes or so, that changes. By the end of this lab, your Riley will be live in the cloud, reachable from a browser and from a phone, and you'll have proof that a deploy doesn't drop a call.
 
 [SLIDE 1: Lab 7 steps]
 1. Build and run the image locally; `curl :8081/` returns OK
@@ -1003,7 +1059,11 @@ Time to do it yourself. This lab takes most people forty-five minutes to an hour
 5. Change the greeting, `lk agent deploy`, then `lk agent rollback`
 6. Stop a container mid-call and confirm the call continues
 
-Six steps. Let me show you the two that trip people up.
+Six steps. Step one is the safety net, so do it first.
+
+[SCREEN: terminal in `03-code`: `make docker-build`, then `docker run --rm --env-file .env -p 8081:8081 riley-agent`; in a second pane, `curl http://localhost:8081/` returns `OK`.]
+
+If the image doesn't answer `OK` on your laptop, it won't answer in the cloud either. Now the two steps that trip people up.
 
 [SCREEN: Terminal. Local dev agent running in one pane, deployed agent in the cloud.]
 
@@ -1054,26 +1114,27 @@ If you get stuck, the lab file has a troubleshooting table. The most common fix 
 |---|---|
 | ID | 12.8 |
 | Type | DM (live demo) |
-| Target duration | 5:00 (~490 spoken words; the rest is screen, typing and demo time) |
+| Target duration | 5:00 (~430 spoken words, trimmed so the live calls fit; the rest is screen, typing and demo time) |
 | Learning objectives | 1. Watch the capstone's LLM `FallbackAdapter` take over when the primary provider fails mid-call. 2. See spoken error recovery when there is no fallback. 3. Explain why a silent TTS failure is the worst case, and how the capstone guards against it. |
 | Prerequisites | 12.6 (production checklist); read the `build_resilient_models` function in `agents/s13_capstone_receptionist.py` |
 | Files used | `agents/s13_capstone_receptionist.py`, `agents/s12_chaos_demo.py` (recording helper, shown below) |
 
 > **Recording notes.**
 > - Run in `MAPLE_PROVIDER_MODE=inference` (the default). In that mode STT and TTS fall back server side in LiveKit Inference, and the LLM falls back client side through `llm.FallbackAdapter`.
-> - You can't revoke LiveKit Inference keys per provider mid-call, so Part A and B use a kill switch: `agents/s12_chaos_demo.py` wraps the capstone's primary LLM and fails every request while `/tmp/riley-kill-llm` exists. It changes nothing in the capstone. **Add this file to `03-code/agents/` before publishing** so students can repeat the demo.
+> - You can't revoke LiveKit Inference keys per provider mid-call, so Part A and B use a kill switch: `agents/s12_chaos_demo.py` (in the repo) wraps the capstone's primary LLM and fails every request while `/tmp/riley-kill-llm` exists. It changes nothing in the capstone, so students can repeat the demo exactly.
+- Part B is a web call from the Agents Playground: no SIP caller, so after the error line the capstone's `recover_after_error` speaks `ERROR_GOODBYE` and ends the call. On a phone call with `TRANSFER_PHONE_NUMBER` set it transfers instead.
 > - Part C (real key revocation) is optional B-roll: in `MAPLE_PROVIDER_MODE=plugins`, the capstone has no fallbacks. Create a throwaway Cartesia key for the recording, delete it mid-call, then rotate.
 
 ### Script
 
 [AVATAR]
-In Lecture 12.6, I promised that production-ready means breaking is boring. Let's test that promise. We're going to take down a provider in the middle of a live call. Once with fallbacks. Once without. And you'll hear the difference.
+In Lecture 12.6, I promised that production-ready means breaking is boring. Let's test it. We'll take down a provider in the middle of a live call, once with fallbacks and once without, and you'll hear the difference.
 
 [SCREEN: `agents/s13_capstone_receptionist.py`, `build_resilient_models`. Footer: "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."]
 
-Quick reminder of what the capstone does. Speech-to-text and text-to-speech use LiveKit Inference's server-side fallback. The LLM uses `llm.FallbackAdapter`, with our primary model first and a fallback model second, and a five-second attempt timeout.
+Quick reminder: speech-to-text and text-to-speech use LiveKit Inference's server-side fallback, and the LLM uses `llm.FallbackAdapter` with a five-second attempt timeout.
 
-To break things on demand, I use a small helper. It doesn't change the capstone at all.
+To break things on demand, I use a small helper that leaves the capstone untouched.
 
 [CODE: `agents/s12_chaos_demo.py`]
 ```python
@@ -1099,7 +1160,6 @@ from pathlib import Path
 from typing import Any
 
 import s13_capstone_receptionist as capstone
-from common import prewarm
 from livekit.agents import (
     DEFAULT_API_CONNECT_OPTIONS,
     AgentServer,
@@ -1112,6 +1172,7 @@ from livekit.agents import (
 )
 from livekit.agents.types import NOT_GIVEN, NotGivenOr
 
+from common import prewarm
 from maple.config import Settings
 
 KILL_FILE = Path("/tmp/riley-kill-llm")
@@ -1186,7 +1247,7 @@ if __name__ == "__main__":
     cli.run_app(server)
 ```
 
-`ChaosLLM` wraps a real LLM. While a file called `/tmp/riley-kill-llm` exists, every request fails with a connection error, exactly like a provider outage. Delete the file, and it works again. The entrypoint swaps this killable LLM into the capstone's models, inside the job process, and then runs the normal capstone entrypoint. Set `CHAOS_NO_FALLBACK` and there's no backup at all.
+`ChaosLLM` wraps a real LLM. While `/tmp/riley-kill-llm` exists, every request fails with a connection error, exactly like an outage. The entrypoint swaps it into the capstone's models and runs the normal capstone entrypoint. `CHAOS_NO_FALLBACK` removes the backup.
 
 **Part A: with fallbacks.**
 
@@ -1214,7 +1275,7 @@ touch /tmp/riley-kill-llm
 
 [SCREEN: Highlight the agent log: `ChaosLLM failed, switching to next LLM: chaos: primary LLM is down`.]
 
-Did you hear anything wrong? I didn't. But look at the log. "Failed, switching to next LLM." The primary died, the adapter switched to the fallback model, and the caller got a normal answer. The only cost was a short extra pause on that one turn.
+Did you hear anything wrong? Neither did I. But the log says "switching to next LLM." The caller got a normal answer, with one slightly longer pause.
 
 Now bring the primary back.
 
@@ -1244,31 +1305,41 @@ touch /tmp/riley-kill-llm
 
 **Riley:** Sorry, I'm having a technical problem on my end. Let me connect you with someone at the front desk.
 
-[SCREEN: Log shows the LLM retrying, then an unrecoverable LLM error, then the error speech.]
+**Riley:** I'm sorry, I can't connect you right now. Please call the front desk at five one two, five five five, zero one zero zero, or call back in a few minutes. Goodbye.
 
-A pause while the session retries. Then the pre-written error line from `prompts.py`. That's the capstone's `error` handler: when an error is unrecoverable, it speaks `ERROR_SPEECH`, without the LLM. It's not graceful, but the caller isn't left in silence.
+[SCREEN: Log shows the LLM retrying, then the `unrecoverable ... error` line naming the failed component, then the error speech; the room closes after the goodbye.]
+
+A pause while the session retries. Then the `error` handler speaks the fixed error line, no LLM needed. A web call has no phone line to transfer, so `recover_after_error` gives the clinic's number and ends the call cleanly. On a phone call, it would transfer to the front desk.
 
 [B-ROLL: Part C clip, 20 seconds. Plugins mode, no fallbacks. The Cartesia key is deleted in the provider dashboard mid-call. The caller asks a question. Silence. The caller says "Hello? Hello?" and hangs up. Log shows repeated TTS errors.]
 
 **Part C: the worst case.**
 
 [AVATAR]
-And here's the nightmare from Lecture 12.6. This clip is plugins mode, with no fallbacks, and I deleted the TTS key mid-call. Riley still hears the caller. It still thinks. It even tries to say the error line. But it has no voice. Silence, then a hang-up.
+And here's the nightmare from Lecture 12.6: plugins mode, no fallbacks, and I deleted the TTS key mid-call. Riley still hears and thinks. It even tries the error line. But it has no voice. Silence, until the call ends.
 
 That's why TTS gets a fallback before anything else. An agent that can't think can still apologise. An agent that can't speak can't do anything.
 
 [SLIDE 1: What the chaos demo proves]
 | Failure | With fallbacks | Without |
 |---|---|---|
-| LLM down | Fallback model answers; brief pause | Error line spoken |
+| LLM down | Fallback model answers; brief pause | Error line, then transfer or goodbye |
 | TTS down | Backup voice speaks | Silence |
 | Recovery | Automatic, no redeploy | Restart needed |
 
-Here's the summary. With fallbacks, an LLM outage costs one slow turn. Without them, it costs the call. And a TTS outage without a fallback is silence.
-
 Run this drill on your own agent before every major release. It takes five minutes, and it's the only way to know your fallbacks actually work.
 
+[SLIDE 2: Recap]
+- With fallbacks, an LLM outage costs one slow turn
+- Without them: error line, then transfer or goodbye
+- A TTS outage without a fallback is silence
+
 **Recap:** Kill a provider on purpose: with fallbacks the call continues, without them you get an error line at best and silence at worst.
+
+[SLIDE 3: You can now]
+- Package an agent as a slim, locked, non-root image
+- Deploy, roll back and drain without dropping calls
+- Prove your fallbacks by killing a provider mid-call
 
 **Transition:** Lock in the deployment section with a five-question quiz.
 
@@ -1276,7 +1347,7 @@ Run this drill on your own agent before every major release. It takes five minut
 
 - "The fallback took five seconds." That's `attempt_timeout=5.0` on a provider that hangs instead of failing fast. A hard failure, like our kill switch, switches almost immediately. Tune the timeout to your latency budget.
 - The fallback voice sounds different from the primary. Pick a fallback voice that's close, and tell the clinic in advance.
-- In the capstone, `ERROR_SPEECH` promises a transfer, but the `error` handler only speaks the line. A good extension is to call the same transfer helper used by `transfer_to_human` after the line finishes.
+- "Does the error line really transfer?" Yes. After `ERROR_SPEECH` plays, the capstone's `recover_after_error` calls the same `transfer_sip_caller` helper as `transfer_to_human`. Without a SIP caller or a `TRANSFER_PHONE_NUMBER` (web calls, console, Part B), it speaks `ERROR_GOODBYE` with the clinic's number and hangs up. Lecture 13.3 walks through the code.
 - Students on `MAPLE_PROVIDER_MODE=plugins` won't get STT or TTS fallbacks from the capstone. They can wrap their plugin instances in `stt.FallbackAdapter` and `tts.FallbackAdapter` themselves.
 
 ---
@@ -1287,7 +1358,7 @@ Run this drill on your own agent before every major release. It takes five minut
 |---|---|
 | ID | 12.9 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 2:00 total (0:45 video intro, ~70 spoken words; the rest is quiz time) |
+| Target duration | 2:00 total (0:45 video intro, ~110 spoken words; the rest is quiz time) |
 | Learning objectives | 1. Check understanding of agent server scaling, Docker packaging, draining and fallbacks. 2. Identify any Section 12 lecture to rewatch before the capstone. |
 | Prerequisites | 12.1 to 12.8 |
 | Files used | `06-assessments/quizzes/section-12.md` |
@@ -1295,7 +1366,7 @@ Run this drill on your own agent before every major release. It takes five minut
 ### Script
 
 [AVATAR]
-Five quick questions before the capstone.
+You deploy at nine fifteen on a Monday and every active call drops. Whose fault is it, yours or the platform's? Five quick questions before the capstone, and that's one of them.
 
 [SLIDE 1: Section 12 quiz: what's covered]
 - Idle processes, load threshold and memory limits
@@ -1306,6 +1377,10 @@ Five quick questions before the capstone.
 You'll see questions on the agent server settings, the Dockerfile's start command, draining, and what you saw in the chaos demo.
 
 One tip. If a question asks why calls dropped during a deploy, there are two usual suspects. The signal never reached Python, or the platform killed the container before the drain finished.
+
+[SCREEN: `03-code/deploy/Dockerfile`, the last line: `CMD ["sh", "-c", "exec python \"$AGENT_FILE\" start"]`, with `exec` highlighted.]
+
+That one word, `exec`, is the difference between the first suspect and a clean drain.
 
 [PAUSE]
 

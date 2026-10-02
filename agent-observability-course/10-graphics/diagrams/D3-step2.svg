@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D3">
+<title id="t-D3">D3: One agent run, as a trace</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">One agent run, as a trace</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D3 · build 2/3</text></g>
+<g id="build-1">
+<defs><pattern id="hatch-teal" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1A2742"/><rect width="5" height="12" fill="#00D4AA"/></pattern><pattern id="hatch-white" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1A2742"/><rect width="5" height="12" fill="#FFFFFF" fill-opacity="0.8"/></pattern></defs>
+</g>
+<g id="build-2-only">
+<text x="96" y="300" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="start">invoke_agent atlas</text>
+<rect x="720" y="276" width="980" height="34" rx="4" fill="#00D4AA"/>
+<text x="122" y="362" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 1</text>
+<text x="246" y="362" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="727.0" y="342" width="10.4" height="26" rx="3" fill="#00A885"/>
+<rect x="737.4" y="342" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="410" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 2</text>
+<text x="246" y="410" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="751.3" y="390" width="20.9" height="26" rx="3" fill="#00A885"/>
+<rect x="772.1" y="390" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="458" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 3</text>
+<text x="246" y="458" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="786.0" y="438" width="31.3" height="26" rx="3" fill="#00A885"/>
+<rect x="817.3" y="438" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="506" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 4</text>
+<text x="246" y="506" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="831.2" y="486" width="41.7" height="26" rx="3" fill="#00A885"/>
+<rect x="872.9" y="486" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="554" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 5</text>
+<text x="246" y="554" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="886.8" y="534" width="52.1" height="26" rx="3" fill="#00A885"/>
+<rect x="938.9" y="534" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="602" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 6</text>
+<text x="246" y="602" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="952.8" y="582" width="62.6" height="26" rx="3" fill="#00A885"/>
+<rect x="1015.4" y="582" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="650" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 7</text>
+<text x="246" y="650" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1029.3" y="630" width="73.0" height="26" rx="3" fill="#00A885"/>
+<rect x="1102.3" y="630" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="698" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 8</text>
+<text x="246" y="698" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1116.2" y="678" width="83.4" height="26" rx="3" fill="#00A885"/>
+<rect x="1199.6" y="678" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="746" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 9</text>
+<text x="246" y="746" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1213.5" y="726" width="93.8" height="26" rx="3" fill="#00A885"/>
+<rect x="1307.3" y="726" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="794" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 10</text>
+<text x="246" y="794" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1321.2" y="774" width="104.3" height="26" rx="3" fill="#00A885"/>
+<rect x="1425.5" y="774" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="842" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 11</text>
+<text x="246" y="842" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1439.4" y="822" width="114.7" height="26" rx="3" fill="#00A885"/>
+<rect x="1554.0" y="822" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<text x="122" y="890" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="500" fill="#CBD5E1" text-anchor="start">step 12</text>
+<text x="246" y="890" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
+<rect x="1567.9" y="870" width="125.1" height="26" rx="3" fill="#00A885"/>
+<rect x="1693.0" y="870" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
+<g><circle cx="1810" cy="882" r="19" fill="#FF4B4B33"/><circle cx="1810" cy="882" r="13" fill="#FF4B4B"/><path d="M1804.5 876.5 L1815.5 887.5 M1815.5 876.5 L1804.5 887.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="1784" y="890" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FF4B4B" text-anchor="end">tool error ×12</text>
+<text x="720" y="942" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">input re-sent every step: generations grow wider</text>
+</g>
+</svg>

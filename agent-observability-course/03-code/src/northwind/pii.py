@@ -23,7 +23,7 @@ EMPLOYEE_ID_RE = re.compile(r"\bNW-\d{5}\b")
 PHONE_RE = re.compile(
     r"(?<![\w-])(?:\+?\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s.-]?\d{3,4}[\s.-]?\d{3,4}(?![\w-])"
 )
-CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
+CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 # Ticket ids and tracking ids are *not* PII and must survive masking.
 _SAFE_RE = re.compile(r"\b(?:TCK|SHP)-\d{4,8}\b")
 

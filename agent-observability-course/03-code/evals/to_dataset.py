@@ -49,7 +49,7 @@ def select_bad_traces(
             reasons.append(f"judge_overall={j:.2f}")
         if f is not None and f <= 0.25:
             reasons.append("negative_feedback")
-        if span.attr("atlas.outcome") in {"step_limit", "error"}:
+        if span.attr("atlas.outcome") in {"step_limit", "error", "timeout"}:
             reasons.append(str(span.attr("atlas.outcome")))
         if not reasons:
             continue

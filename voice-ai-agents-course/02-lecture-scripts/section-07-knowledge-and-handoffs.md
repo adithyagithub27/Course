@@ -123,7 +123,7 @@ No extra round trip. But you pay the retrieval time and the extra tokens on ever
 
 [AVATAR]
 
-For Riley, most turns are about booking. Clinic questions come up maybe one turn in five. So we'll use the tool approach, and the prompt will say exactly when to call it. If you're building an agent where almost every turn is a question, like a product support line, injection often wins. And you'll know for sure when you measure it against the latency budget in lecture 9.8.
+So which one should Riley use? Most of Riley's turns are about booking. Clinic questions come up maybe one turn in five. So we'll use the tool approach, and the prompt will say exactly when to call it. If you're building an agent where almost every turn is a question, like a product support line, injection often wins. And you'll know for sure when you measure it against the latency budget in lecture 9.8.
 
 [SLIDE 7: What "I don't know" should sound like]
 - Bad: silence, or "I'm sorry, I cannot assist with that request."
@@ -133,9 +133,16 @@ For Riley, most turns are about booking. Clinic questions come up maybe one turn
 
 [AVATAR]
 
-One more slide, because the "I don't know" moment is where voice agents feel either trustworthy or robotic. Silence is the worst answer. A canned "I cannot assist with that request" is the second worst. It sounds like a phone tree. The best answer admits the gap in plain words and offers a next step: a message for the front desk, or a transfer. That keeps the caller moving.
+One more slide. What should Riley actually say when the FAQ has nothing? This is the moment where voice agents feel either trustworthy or robotic. Silence is the worst answer. A canned "I cannot assist with that request" is the second worst. It sounds like a phone tree. The best answer admits the gap in plain words and offers a next step: a message for the front desk, or a transfer. That keeps the caller moving.
+
+[B-ROLL: Two timer bars side by side: a sixty-word answer filling 24 seconds, and a two-sentence answer filling about 8 seconds, with a caller's "Hello?" bubble popping up halfway through the long one.]
 
 And keep the numbers in mind. People speak at roughly a hundred and fifty words a minute, and TTS voices are similar. A sixty-word answer takes about twenty-four seconds to say. [PAUSE] On a phone, twenty-four seconds of one-way talking feels like forever, and it gives the caller plenty of time to interrupt. One or two sentences is about eight seconds. That's the target.
+
+[SLIDE 8: "Can't the model just remember the FAQ?"]
+- It has never seen this clinic's FAQ
+- Without retrieval it copies what other clinics do
+- Grounding: "right, or honestly unsure"
 
 [AVATAR]
 
@@ -143,11 +150,16 @@ A question I get a lot: "Can't the model just remember the FAQ from its training
 
 ### Recap
 
+[SLIDE 9: Recap]
+- Short: one or two chunks, one or two sentences
+- Speakable: clean sources, no tables or links
+- Grounded: answer only from what was found
+
 Voice RAG retrieves a little, speaks a little, answers only from what it found, and says "I don't know" when it found nothing.
 
 ### Transition
 
-Next, we'll build Riley's retriever and her `lookup_clinic_info` tool, and make her admit when she doesn't know.
+Next, we'll build Riley's retriever and its `lookup_clinic_info` tool, and make it admit when it doesn't know.
 
 ### Speaker notes: common mistakes and Q&A
 
@@ -165,7 +177,7 @@ Next, we'll build Riley's retriever and her `lookup_clinic_info` tool, and make 
 | ID | 7.2 |
 | Title | Code-along: FAQ lookup tool |
 | Type | SC (screencast code-along) |
-| Target duration | 10:00 (about 860 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
+| Target duration | 10:00 (about 950 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
 | One idea | A tiny, dependency-free retriever plus one well-described tool gives Riley grounded, speakable answers. |
 | Prerequisites | 7.1, Section 5 |
 | Files used | `src/maple/knowledge.py`, `src/maple/data/faq.md`, `tests/unit/test_knowledge.py`, `agents/common.py` (`KnowledgeToolsMixin`, `get_faq`), `agents/s07_knowledge_agent.py` |
@@ -180,7 +192,7 @@ Next, we'll build Riley's retriever and her `lookup_clinic_info` tool, and make 
 
 [AVATAR]
 
-Let's give Riley a memory for clinic facts. We'll do it in two layers, the same way we did the scheduler in Section 5. First, a pure-Python retriever with unit tests and no network. Then a thin tool that lets Riley call it.
+Ask Riley today whether the clinic takes Delta Dental, and it will guess. [PAUSE] Confidently. By the end of this lecture, it will answer from the clinic's own FAQ, or say it isn't sure. We'll do it in two layers, the same way we did the scheduler in Section 5. First, a pure-Python retriever with unit tests and no network. Then a thin tool that lets Riley call it.
 
 [SCREEN: VS Code, `src/maple/knowledge.py`. Lower third with the API-verified note.]
 
@@ -188,11 +200,15 @@ Open `src/maple/knowledge.py`. It's already in the repo, so I'll walk through it
 
 It does three things. One: it loads `data/faq.md` and splits it into sections, one per `##` heading. "Insurance accepted" is a section. "Parking" is a section. Small sections are what we want for voice.
 
+[SCREEN: Scroll to `tokenize`, `_stem` and `FaqIndex.score`. Highlight the `title_boost` line.]
+
 Two: it scores each section against the caller's question. It lowercases, strips punctuation, drops filler words like "the" and "do", trims simple word endings so "hours" matches "hour", and then uses a BM25-style score. BM25 is a classic search formula. It rewards sections that contain the rare words in your question, like "Delta" or "parking", more than common ones. It also gives a small bonus when a question word appears in the section title. No embeddings. No vector database. No API key.
+
+[SCREEN: Scroll to `shorten`, then to `search` and `answer`.]
 
 Three: it returns the top matches with a score, and trims each answer to at most three sentences, so it's already close to speakable.
 
-[CODE: `src/maple/knowledge.py`, the public surface (highlight in the editor)]
+[CODE: `src/maple/knowledge.py`, the public surface (simplified: bodies, docstrings and the `from_markdown`/`from_file` constructors left out; comments added)]
 
 ```python
 @dataclass(frozen=True)
@@ -206,14 +222,14 @@ class FaqIndex:
     @classmethod
     def from_default(cls) -> FaqIndex: ...          # loads the packaged maple/data/faq.md
 
-    def search(self, query: str, k: int = 2, *, min_score: float = 1.0,
+    def search(self, query: str, k: int = 2, *, min_score: float = 1.5,
                max_sentences: int = 3) -> list[SearchResult]: ...
 
     def answer(self, query: str, k: int = 2) -> str:
         """Return a single speakable string for a tool response, or "NO_MATCH"."""
 ```
 
-Notice `min_score`. Anything scoring below one point zero is dropped, so an off-topic question returns an empty list. And `answer` wraps `search` for tools: it joins the top sections into one string, or returns the exact text `NO_MATCH` when nothing is relevant. That's the grounding rule from lecture 7.1, built into the retriever.
+Notice `min_score`. Anything scoring below one point five is dropped, so an off-topic question returns an empty list. And `answer` wraps `search` for tools: it joins the top sections into one string, or returns the exact text `NO_MATCH` when nothing is relevant. That's the grounding rule from lecture 7.1, built into the retriever.
 
 Why so simple? Because Maple Street Dental's FAQ is about two pages. A keyword retriever over two pages answers in well under a millisecond. An embedding call to a hosted API takes fifty to two hundred milliseconds before the search even starts. For a small knowledge base, simple is faster and more predictable. Lecture 7.3 covers when to upgrade.
 
@@ -231,11 +247,11 @@ All green, in about a tenth of a second. Those tests check things like "a questi
 
 Now the tool. Like the booking tools, it lives in `agents/common.py`, on a mixin, so every Riley from here on can reuse it.
 
-[CODE: `agents/common.py`, `get_faq` and `KnowledgeToolsMixin`]
+[CODE: `agents/common.py`, `get_faq` and `KnowledgeToolsMixin` (excerpt; `...` marks code left out)]
 
 ```python
 _FAQ: FaqIndex | None = None
-
+...
 
 def get_faq() -> FaqIndex:
     """Return the process-wide FAQ index over ``src/maple/data/faq.md``."""
@@ -244,6 +260,7 @@ def get_faq() -> FaqIndex:
         _FAQ = FaqIndex.from_default()
     return _FAQ
 
+...
 
 class KnowledgeToolsMixin:
     """Adds ``lookup_clinic_info`` backed by :class:`maple.knowledge.FaqIndex`."""
@@ -258,6 +275,9 @@ class KnowledgeToolsMixin:
         """
         answer = get_faq().answer(question, k=2)
         if answer == "NO_MATCH":
+            # The FAQ-miss log (lectures 7.2-7.3): questions the FAQ could not answer.
+            # Redacted because callers sometimes say names or numbers (Section 11).
+            logger.info("faq_miss: %s", redact(question))
             return (
                 "No matching clinic information. Say you're not sure and offer to take a message "
                 "or transfer the caller to the front desk."
@@ -269,13 +289,19 @@ Let's read this carefully, because every line is a voice decision.
 
 `get_faq` builds the index once per process and reuses it. Building it inside the tool would re-read and re-index the file on every question.
 
+[SCREEN: Highlight the docstring's topic list.]
+
 The docstring. The model reads it to decide when to call the tool. So it lists the topics explicitly: hours, address, parking, insurance, prices. Vague descriptions like "gets info" lead to tools that never get called.
 
 The `question` argument. We ask for the caller's question in plain words, not keywords. Models are bad at guessing keywords for your retriever. They're good at passing the question along.
 
 `k=2`. Two sections at most. Short.
 
+[SCREEN: Highlight the `NO_MATCH` branch: the `faq_miss` log line, then the two returned instructions.]
+
 The no-match path. We don't return an empty string. We return an instruction the model can act on: say you're not sure, offer a message or a transfer. An empty tool result is an invitation to improvise. [PAUSE] And a hit comes back with its own instruction attached: "Answer only from this, in one or two sentences." The tool result reinforces the prompt.
+
+One more line on a miss: the tool logs the question as `faq_miss`, with any names or numbers redacted. That's your FAQ-miss log. Which questions did the FAQ fail? Lecture 7.3 uses exactly that to decide when keyword search stops being enough.
 
 The prompt side is already done. `build_instructions(knowledge=True)` adds the `KNOWLEDGE_RULES` block from `prompts.py`: call `lookup_clinic_info` for clinic questions, answer only from what it returns, and never guess prices or coverage.
 
@@ -292,14 +318,15 @@ class KnowledgeRiley(KnowledgeToolsMixin, Agent):
     Args:
         language: ``en``, ``es`` or ``hi``.
         prefetch: Inject FAQ context before each LLM turn instead of relying on the tool.
+        extra: Extra prompt text, e.g. ``FOLLOW_CALLER_RULES`` (lecture 7.8).
     """
 
-    def __init__(self, *, language: str = "en", prefetch: bool = False) -> None:
+    def __init__(self, *, language: str = "en", prefetch: bool = False, extra: str = "") -> None:
         self.language = language
         self.prefetch = prefetch
         super().__init__(
             instructions=prompts.build_instructions(
-                today=clinic_today(), knowledge=True, language=language
+                today=clinic_today(), knowledge=True, language=language, extra=extra
             ),
         )
 
@@ -320,11 +347,11 @@ class KnowledgeRiley(KnowledgeToolsMixin, Agent):
             )
 ```
 
-`KnowledgeRiley` mixes in only `KnowledgeToolsMixin`. She's deliberately a knowledge-only agent, so you can see retrieval on its own. In Section 8, `PhoneRiley` combines booking, knowledge and telephony tools in one class.
+`KnowledgeRiley` mixes in only `KnowledgeToolsMixin`. It's deliberately a knowledge-only agent, so you can see retrieval on its own. In Section 8, `PhoneRiley` combines booking, knowledge and telephony tools in one class.
 
-It supports both wiring styles from lecture 7.1. By default, the tool style: the model decides when to call `lookup_clinic_info`. With `prefetch=True`, `on_user_turn_completed` runs after every caller turn, searches for the single best section, and adds it to this turn's context before the LLM runs. The `language` argument is for lecture 7.8; ignore it for now.
+It supports both wiring styles from lecture 7.1. By default, the tool style: the model decides when to call `lookup_clinic_info`. With `prefetch=True`, `on_user_turn_completed` runs after every caller turn, searches for the single best section, and adds it to this turn's context before the LLM runs. The `language` and `extra` arguments are for lecture 7.8; ignore them for now.
 
-[CODE: the entrypoint]
+[CODE: the entrypoint (excerpt: the code after `return` is the lecture 7.8 extension)]
 
 ```python
 @server.rtc_session()
@@ -332,33 +359,37 @@ async def entrypoint(ctx: JobContext) -> None:
     """Start the knowledge agent in the configured language."""
     settings = get_settings()
     prefetch = os.getenv("KNOWLEDGE_MODE", "tool").lower() == "prefetch"
-    logger.info("language=%s prefetch=%s", settings.language, prefetch)
-    session = create_session(settings, proc=ctx.proc, userdata=CallState())
-    await session.start(
-        agent=KnowledgeRiley(language=settings.language, prefetch=prefetch), room=ctx.room
-    )
+    follow = os.getenv("FOLLOW_CALLER_LANGUAGE", "0") == "1"
+    logger.info("language=%s prefetch=%s follow_caller_language=%s", settings.language, prefetch, follow)
+    if not follow:
+        session = create_session(settings, proc=ctx.proc, userdata=CallState())
+        await session.start(
+            agent=KnowledgeRiley(language=settings.language, prefetch=prefetch), room=ctx.room
+        )
+        return
+    ...
 ```
 
-`KNOWLEDGE_MODE` picks the style: `tool` or `prefetch`. `create_session` builds the same cascaded pipeline as every other agent. Run it.
+`KNOWLEDGE_MODE` picks the style: `tool` or `prefetch`. `create_session` builds the same cascaded pipeline as every other agent. The `follow` flag is lecture 7.8's, so leave it off for now. Run it.
 
 [SCREEN: terminal]
 
 ```bash
-uv run agents/s07_knowledge_agent.py console
+uv run python agents/s07_knowledge_agent.py console
 ```
 
-[DEMO: Ask "Where do I park?" Riley calls `lookup_clinic_info`, answers in one sentence about the free Maple Commons garage behind the building, with validation. Ask "Do you take Delta Dental?" Riley answers from the "Insurance accepted" section: in network. Ask "What about Medicaid?" Riley says the clinic doesn't accept Medicaid dental plans. Ask "Do you do Botox?" Riley says she's not sure and offers to take a message.]
+[DEMO: Ask "Where do I park?" Riley calls `lookup_clinic_info`, answers in one sentence about the free Maple Commons garage behind the building, with validation. Ask "Do you take Delta Dental?" Riley answers from the "Insurance accepted" section: in network. Ask "What about Medicaid?" Riley says the clinic doesn't accept Medicaid dental plans. Ask "Do you do Botox?" Riley says it's not sure and offers to take a message, and the log shows a `faq_miss` line.]
 
 "Where do I park?" Watch the log. There's the tool call, with the question in the caller's words. And the answer is one sentence: the free garage behind the building, validated for two hours. Perfect for the phone.
 
 "Do you take Delta Dental?" Yes, in network, straight from the FAQ. "What about Medicaid?" [PAUSE] No. That's the answer our opening caller from lecture 7.1 needed, and it came from the clinic's own words, not from general knowledge.
 
-And the important one. "Do you do Botox?" Nothing in the FAQ scores above the threshold, the tool returns its no-match instruction, and Riley says she's not sure and offers to take a message. That's grounding working.
+And the important one. "Do you do Botox?" Nothing in the FAQ scores above the threshold, the tool returns its no-match instruction, and Riley says it's not sure and offers to take a message. And there's the `faq_miss` line in the log. That's grounding working.
 
 Now try prefetch mode.
 
 ```bash
-KNOWLEDGE_MODE=prefetch uv run agents/s07_knowledge_agent.py console
+KNOWLEDGE_MODE=prefetch uv run python agents/s07_knowledge_agent.py console
 ```
 
 [DEMO: ask "What time do you close on Friday?" No tool call appears in the log; Riley answers "two in the afternoon" directly, noticeably faster.]
@@ -370,6 +401,11 @@ Same question, no tool call in the log, and the answer lands a little sooner, be
 Two layers again. A retriever you can unit-test in a tenth of a second, and a tool whose docstring, argument and "no match" message are all written for a voice conversation.
 
 ### Recap
+
+[SLIDE 1: Recap]
+- A pure-Python retriever, unit-tested, no network
+- One well-described tool: `lookup_clinic_info`
+- No match: say "not sure", log the miss
 
 `FaqIndex` finds the best one or two FAQ sections with no network calls, and `lookup_clinic_info` on `KnowledgeToolsMixin` turns them into grounded, speakable answers or an honest "I'm not sure."
 
@@ -394,10 +430,10 @@ Two pages of FAQ is easy. Next, let's talk about what changes when the knowledge
 | ID | 7.3 |
 | Title | Scaling knowledge: vector stores and latency |
 | Type | SL (slides + avatar) |
-| Target duration | 6:00 (about 650 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 6:00 (about 690 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Upgrade to embeddings and a vector store only when the knowledge base demands it, and hide the added latency with caching and pre-fetch. |
 | Prerequisites | 7.1, 7.2 |
-| Files used | None (conceptual) |
+| Files used | `03-code/src/maple/knowledge.py` (timed with `timeit`), the `faq_miss` log line from `lookup_clinic_info` (7.2) |
 
 **Learning objectives**
 
@@ -430,6 +466,16 @@ Here are the signs. You have hundreds of documents, not two pages. Callers use d
 [AVATAR]
 
 Now the cost. A hosted embedding API call takes somewhere between fifty and two hundred milliseconds. The vector search itself is usually fast, five to fifty. If you add a reranker, that's another hundred to three hundred. So a fancy retrieval stack can eat four hundred milliseconds. Remember lecture 1.4. Our whole turn budget is about a second. Retrieval can't take half of it.
+
+[SCREEN: Terminal in the course repo. Time the course's keyword retriever on one question.]
+
+```bash
+uv run python -m timeit -s "from maple.knowledge import FaqIndex; i = FaqIndex.from_default()" "i.search('where do I park')"
+```
+
+[DEMO: Output, for example `5000 loops, best of 5: 70.6 usec per loop`. Your number will differ.]
+
+Now compare our own retriever. About seventy microseconds per search on my laptop. That's under a tenth of a millisecond. So what does an upgrade really cost? Every number on that slide, on every single lookup.
 
 [SLIDE 3: Hiding retrieval latency]
 - Cache: frequent questions (hours, parking) answered from a warm cache
@@ -464,7 +510,7 @@ And don't lose the voice rules as you scale. Chunk by topic, not by fixed charac
 
 [AVATAR]
 
-For Riley, the keyword retriever stays. I've written down when we'd revisit it: more than fifty documents, or FAQ misses above ten percent of lookups. And here's the nice part of the design. If we swap in a vector store later, the tool's name and signature don't change. The agent doesn't know. The tests from Section 9 keep passing, or they tell us exactly what broke.
+For Riley, the keyword retriever stays. So what would change my mind? I've written down when we'd revisit it: more than fifty documents, or FAQ misses above ten percent of lookups. And here's the nice part of the design. If we swap in a vector store later, the tool's name and signature don't change. The agent doesn't know. The tests from Section 9 keep passing, or they tell us exactly what broke.
 
 [SLIDE 6: A worked example]
 - Maple Street Dental opens 4 more locations: 300 documents, per-location hours and dentists
@@ -476,13 +522,25 @@ For Riley, the keyword retriever stays. I've written down when we'd revisit it: 
 
 Let's make it concrete. Imagine Maple Street Dental grows to five locations. The knowledge base goes from two pages to three hundred documents: different hours, different dentists, different parking. And our miss log shows eighteen percent of lookups finding nothing, even though the answers exist. That's our signal.
 
+[B-ROLL: Diagram builds left to right: caller question → local embedding model (prewarmed) → in-memory vector index → "location = Northside" filter → top chunk → `lookup_clinic_info` result. Timing labels appear: 12 ms, 6 ms, no rerank.]
+
 So we'd upgrade, carefully. A small local embedding model, loaded once in `prewarm`, so there's no network hop. An in-memory vector index, because three hundred documents fit easily in memory. A metadata filter on location, so the Northside caller never hears Downtown's hours. And no reranker, because we measured and didn't need one. [PAUSE] About twenty milliseconds per lookup, measured, not guessed. The tool keeps its name, `lookup_clinic_info`, and its tests from Section 9 tell us whether answers got better or worse. That's what "upgrade when the data says so" looks like.
+
+[SLIDE 7: Vector search always returns something]
+- Keyword search for "Botox": no match (good)
+- Vector search: the nearest section, with a low score
+- Keep a similarity threshold and the no-match path
 
 [AVATAR]
 
 And one caution about vector search specifically: it always returns something. A keyword search for "Botox" in our FAQ returns nothing, which is exactly what we want. A vector search returns the closest section, maybe "Services offered," with a low similarity score. [PAUSE] So when you upgrade, keep a similarity threshold and keep the no-match path. Otherwise the upgrade quietly brings back the hallucinations that retrieval was supposed to remove.
 
 ### Recap
+
+[SLIDE 8: Recap]
+- Upgrade when your data and miss logs say so
+- Retrieval time comes out of the turn budget
+- Hide it: cache, pre-fetch, filler, prewarm
 
 Move to embeddings and a vector store when your data and miss logs say so, and protect the latency budget with caching, pre-fetch, filler and prewarm.
 
@@ -506,10 +564,10 @@ So far, one agent does everything. Next, we'll look at why and when to split Ril
 | ID | 7.4 |
 | Title | Why split one agent into several |
 | Type | SL (slides + avatar) |
-| Target duration | 6:00 (about 630 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 6:00 (about 670 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Split an agent when prompt size, tool confusion or distinct personas hurt quality, and accept the cost of handoff latency and shared state. |
 | Prerequisites | 7.2 |
-| Files used | None (conceptual). Diagram: Greeter → Booking / Billing handoff graph. |
+| Files used | Diagram: Greeter → Booking / Billing handoff graph. `03-code/src/maple/prompts.py` (`build_instructions`, prompt-size check). |
 
 **Learning objectives**
 
@@ -531,6 +589,19 @@ Riley now has six tools and a system prompt that's grown a lot since Section 3. 
 [AVATAR]
 
 Signal one: prompt size. Every turn sends the whole system prompt to the model. More tokens means a slower first token and a higher bill. When your instructions pass about fifteen hundred to two thousand tokens, you'll usually see it in the metrics.
+
+[SCREEN: Terminal in the course repo. Measure Riley's biggest prompt so far, with every block switched on.]
+
+```bash
+uv run python -c "from maple.prompts import build_instructions; p = build_instructions(booking=True, knowledge=True, security=True); print(len(p.split()), 'words,', len(p), 'characters')"
+```
+
+[DEMO: Output]
+```text
+671 words, 3976 characters
+```
+
+So where's Riley today? With every block on, including the security rules from Section eleven, about six hundred and seventy words. That's well under fifteen hundred tokens. By prompt size alone, Riley doesn't need to split yet.
 
 Signal two: tool confusion. With ten tools that sound alike, models pick the wrong one more often. A caller says "I need to sort out my appointment payment," and the model reaches for `reschedule_appointment`. Fewer tools per agent means fewer wrong picks.
 
@@ -568,7 +639,7 @@ Here's the team we'll build. The Greeter says hello, answers quick FAQ questions
 
 A simple checklist. Fewer than about six tools and one persona? Keep one agent. Distinct domains with their own tools? Split. Need a different model or voice for one step, like a cheaper model for the greeter? Split, because each LiveKit `Agent` can override the session's `llm` and `tts`. And for a short, latency-critical call that does one thing, keep one agent.
 
-To be honest, Riley is right on the edge. We're splitting her partly because it's a pattern you'll need on bigger projects, and partly because the billing domain is growing. And in Section 9, the tests will tell us whether it was worth it.
+To be honest, Riley doesn't need to split for prompt size; you just measured that. We're splitting it partly because it's a pattern you'll need on bigger projects, and partly because the billing domain is growing. And in Section 9, the tests will tell us whether it was worth it.
 
 [SLIDE 5: Alternatives to splitting]
 - Update the tool list mid-call: `Agent.update_tools(...)`
@@ -582,11 +653,21 @@ Before you split, know that there are lighter options. A LiveKit `Agent` can cha
 
 Those techniques keep one agent small without the cost of handoffs. [PAUSE] Split when the personas really differ, when you want different models or voices per step, or when the prompt is still too big after trimming. Splitting is a choice, not a default, and in Section 9 we'll write tests that tell us whether it paid off.
 
+[SLIDE 6: Tools by persona: a quick test]
+- List every tool and the persona that uses it
+- One persona owns them all: one agent
+- Clean groups: a team; a messy split: modular prompts
+
 [AVATAR]
 
 Here's a quick way to decide for your own agent. Write down every tool, and next to each one, the persona that should use it. If one persona owns all the tools, you have one agent. If the list splits cleanly into two or three groups, with different tones and different rules, you have a team. [PAUSE] If it splits messily, with tools that everyone needs, keep one agent and use modular prompts. Messy splits create more handoffs than they save.
 
 ### Recap
+
+[SLIDE 7: Recap]
+- Split for prompt size, tool confusion or personas
+- Handoffs cost silence, context and tests
+- Try `update_tools` and modular prompts first
 
 Split a voice agent when prompt size, tool confusion or conflicting personas hurt quality, and pay for it with fast handoffs, shared userdata and carried-over context.
 
@@ -625,7 +706,7 @@ Next, let's build Riley's team: Greeter, Booking and Billing, with handoffs that
 
 [AVATAR]
 
-Let's build Riley's team. By the end of this lecture, a caller will reach the Greeter, get handed to Booking, book a cleaning, go back to the front desk, get handed to Billing to ask about insurance, and never repeat their name once.
+"Sorry, can I have your name again?" [PAUSE] Nothing makes a transferred caller hang up faster. By the end of this lecture, a caller will reach the Greeter, get handed to Booking, book a cleaning, go back to the front desk, get handed to Billing to ask about insurance, and never repeat their name once.
 
 [SCREEN: VS Code, `agents/s07_multi_agent.py`. Lower third with the API-verified note.]
 
@@ -634,6 +715,10 @@ Open `agents/s07_multi_agent.py`. Imports first.
 [CODE: step 1: imports]
 
 ```python
+from __future__ import annotations
+
+from livekit.agents import Agent, AgentServer, ChatContext, JobContext, RunContext, cli, function_tool
+
 from common import (
     BookingToolsMixin,
     CallState,
@@ -644,8 +729,6 @@ from common import (
     get_settings,
     prewarm,
 )
-from livekit.agents import Agent, AgentServer, ChatContext, JobContext, RunContext, cli, function_tool
-
 from maple import prompts
 from maple.scheduler import ClinicScheduler
 ```
@@ -707,9 +790,15 @@ class GreeterAgent(KnowledgeToolsMixin, Agent):
 
 Three things to notice.
 
+[SCREEN: Highlight `GreeterAgent.on_enter` and its `if self.chat_ctx.items:` branch.]
+
 First, `on_enter`. Every LiveKit `Agent` gets this hook when it becomes the active agent. The Greeter checks whether it already has conversation items. If not, it's the start of the call, so it says the fixed greeting with the AI disclosure. If yes, the caller has come back from a specialist, so it just asks if there's anything else. No second "Thanks for calling Maple Street Dental."
 
+[SCREEN: Highlight `return BookingAgent(chat_ctx=carry_over(self)), "Transferring to the booking specialist."`]
+
 Second, the handoff tools. The whole trick is the return value. [PAUSE] When a function tool returns an `Agent`, LiveKit switches the session to that agent. That's the handoff. Here we return a tuple: the new agent, plus a short message. The message becomes the tool's result in the conversation history, so the specialist can see why it was called. You can also return the agent on its own when there's nothing to say.
+
+[SCREEN: Highlight the two handoff docstrings, side by side.]
 
 Third, the names. `transfer_to_booking` and `transfer_to_billing` move the caller between AI specialists. In Section 8 we'll add `transfer_to_human`, which moves the caller to a real person on the phone. The docstrings are what keep them apart: "booking specialist" and "billing specialist" versus "a person at the front desk." When tools share a verb, the docstrings have to do the work.
 
@@ -806,10 +895,10 @@ One session. One `CallState`. The call starts with the Greeter. Handoffs happen 
 [SCREEN: terminal]
 
 ```bash
-uv run agents/s07_multi_agent.py console
+uv run python agents/s07_multi_agent.py console
 ```
 
-[DEMO: Full call. 1) Riley greets. 2) Caller: "Hi, I'm Priya Shah, I'd like to book a cleaning tomorrow morning." Log: `transfer_to_booking`. 3) Booking agent: "Happy to help with that, Priya. I have eight thirty, nine or nine thirty tomorrow morning..." (no re-asking the name). 4) Choose nine, give the number 512 555 0199, confirm the read-back; `book_appointment` fires. 5) Caller: "Great. Also, do you take Aetna?" Booking calls `back_to_front_desk`; the Greeter calls `transfer_to_billing`. 6) Billing answers from the "Insurance accepted" section: in network. 7) Caller says bye.]
+[DEMO: Full call. 1) Riley greets. 2) Caller: "Hi, I'm Priya Shah, I'd like to book a cleaning tomorrow morning." Log: `transfer_to_booking`. 3) Booking agent: "Happy to help with that, Priya. I have eight, eight thirty or nine tomorrow morning..." (no re-asking the name). 4) Choose nine, give the number 512 555 0199, confirm the read-back; `book_appointment` fires. 5) Caller: "Great. Also, do you take Aetna?" Booking calls `back_to_front_desk`; the Greeter calls `transfer_to_billing`. 6) Billing answers from the "Insurance accepted" section: in network. 7) Caller says bye.]
 
 Listen for three things. [PAUSE] The Booking agent says "Happy to help with that, Priya." It didn't ask her name again. That's the carried-over context. The read-back and booking work exactly as in Section 5, because they're the same tools. And when Priya asks about insurance, the call goes back through the front desk to Billing, which answers from the FAQ: Aetna is in network.
 
@@ -832,13 +921,25 @@ One more thing to check: latency. Each handoff added a short pause while the new
 
 Let's slow down and replay one handoff step by step, because it's easy to wave hands here. The Greeter's model decides the caller wants an appointment, and calls `transfer_to_booking`. The tool runs: it writes a note into `CallState`, builds a `BookingAgent` with the recent conversation, and returns it with a short message. LiveKit sees an agent in the return value and swaps the active agent. The message becomes the tool's result in the history. Then `BookingAgent.on_enter` runs, and its `generate_reply` produces the first thing the caller hears from the specialist.
 
+[B-ROLL: The handoff as an animation. The "Greeter" card slides out and the "Booking" card slides in; the room, the audio line and the `CallState` folder underneath stay perfectly still.]
+
 What doesn't change is just as important. [PAUSE] It's the same session, the same room, the same audio connection, and the same `CallState` object. The caller never hears a click or a hold tone. From their side, Riley just got more specific. That's why one voice for every specialist is usually right for a small clinic: the team is an implementation detail, not something the caller should notice.
+
+[SLIDE 2: A different model per specialist?]
+- Each `Agent` can take its own `llm=`, `tts=` or `stt=`
+- Small, fast model to route; stronger model for money
+- Two models means two prompts and two test suites
 
 [AVATAR]
 
 A question from students every time: "Could the specialists use a different LLM?" Yes. Each `Agent` can take its own `llm=`, `tts=` or `stt=`, overriding the session's. A common pattern is a small, fast model for the Greeter, which mostly routes, and a stronger model for Billing, where mistakes about money are expensive. [PAUSE] Measure before you do it, though. Two models means two sets of prompts to tune and two sets of tests to keep green.
 
 ### Recap
+
+[SLIDE 3: Recap]
+- A tool that returns an `Agent` hands off
+- `carry_over` passes recent context, not instructions
+- `CallState` carries the facts across agents
 
 A function tool that returns an `Agent` (with an optional message) performs the handoff, `carry_over` passes the recent conversation without the old instructions, and `CallState` carries the facts.
 
@@ -877,7 +978,7 @@ In the lab, you'll add a fourth specialist, an Insurance agent, to the team.
 
 [AVATAR]
 
-Maple Street Dental's insurance questions now make up a quarter of their calls, and the answers are getting specific: which plans are in network, which aren't, and what callers actually say. "Delta." "Delta Dental PPO." "Cigna DHMO." Your job: give Riley an Insurance specialist.
+Maple Street Dental's insurance questions now make up a quarter of their calls, and the answers are getting specific: which plans are in network, which aren't, and what callers actually say. "Delta." "Delta Dental PPO." "Cigna DHMO." Your job: give Riley an Insurance specialist. Plan about an hour.
 
 [SCREEN: `04-labs/lab-05-handoffs.md`: the routing diagram, then Steps 1 to 7.]
 
@@ -916,7 +1017,7 @@ When your Insurance agent is working, take the short quiz on knowledge and hando
 | ID | 7.7 |
 | Title | Quiz: Knowledge and handoffs |
 | Type | QZ (quiz; short video intro) |
-| Target duration | Video 1:00 (about 100 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | Video 1:00 (about 120 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Check you can design grounded voice retrieval and safe handoffs. |
 | Prerequisites | 7.1 to 7.6 |
 | Files used | `06-assessments/quizzes/section-07.md` (6 questions) |
@@ -930,11 +1031,11 @@ When your Insurance agent is working, take the short quiz on knowledge and hando
 
 [AVATAR]
 
-Six questions this time. Two on voice RAG: when to use a tool versus pre-turn injection, and what a tool should return when it finds nothing. Two on scaling: where retrieval latency comes from and how to hide it. And two on handoffs: how a tool hands off to another agent, and why a caller might end up repeating their name.
+A caller asks about Botox, and your FAQ has nothing. What should Riley say? [PAUSE] If you answered instantly, you're ready. Six questions this time. Two on voice RAG: a tool versus pre-turn injection, and what to do when the lookup finds nothing. One on scaling: whether a sixteen-section FAQ needs a vector database. One on when to split an agent. And two on handoffs: how the Greeter hands off, and why a caller might end up repeating their name.
 
 [SLIDE 1: Quiz: 6 questions]
-- Voice RAG patterns
-- Retrieval latency
+- Voice RAG patterns and "no match"
+- Scaling and when to split
 - Handoff mechanics and shared state
 
 [AVATAR]
@@ -965,10 +1066,10 @@ One more lecture in this section: Riley learns to speak Spanish and Hindi.
 | ID | 7.8 |
 | Title | Multilingual Riley: Spanish and Hindi callers |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 800 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
+| Target duration | 8:00 (about 860 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
 | One idea | A multilingual voice agent needs the language set in four places (STT, turn detection, TTS, prompt), plus a plan for callers who switch mid-call and a test plan per language. |
 | Prerequisites | 7.2 (FAQ tool); Section 3 (turn detection) |
-| Files used | `agents/s07_knowledge_agent.py` (`LANGUAGE` env), `agents/common.py` (`build_stt`, `build_tts`), `src/maple/config.py` (`SUPPORTED_LANGUAGES`, `settings.language`), `src/maple/prompts.py` (`language_block`, `GREETINGS`) |
+| Files used | `agents/s07_knowledge_agent.py` (`LANGUAGE` env; `FOLLOW_CALLER_LANGUAGE=1`, `follow_caller_language`, `FOLLOW_CALLER_RULES`), `agents/common.py` (`build_stt`, `build_tts`), `src/maple/config.py` (`SUPPORTED_LANGUAGES`, `settings.language`), `src/maple/prompts.py` (`language_block`, `GREETINGS`) |
 
 **Learning objectives**
 
@@ -1000,12 +1101,13 @@ In our repo, all four come from one environment variable, `LANGUAGE`. Open `src/
 
 ```python
 SUPPORTED_LANGUAGES: dict[str, str] = {"en": "English", "es": "Spanish", "hi": "Hindi"}
-
+...
 @dataclass(frozen=True)
 class Settings:
     ...
-    language: Language = "en"                    # env: LANGUAGE
+    language: Language = "en"
 ```
+(`...` marks lines left out. `load_settings` reads it from `LANGUAGE`.)
 
 [SCREEN: `agents/common.py`, `build_stt` and `build_tts`.]
 
@@ -1043,17 +1145,19 @@ What about turn detection? [PAUSE] Nothing to change. LiveKit's `inference.TurnD
 
 Now the prompt. `prompts.py` has a `GREETINGS` dictionary, with the AI-disclosure greeting in each language. And `language_block`, which `build_instructions` appends for non-English calls. For Spanish, it tells Riley to speak Spanish for the whole call, translate tool results, which come back in English, into natural spoken Spanish, and never translate names, phone numbers or the clinic name. For Hindi it adds one practical line: use simple conversational Hindi, and common English words like "appointment" and "insurance" are fine. That's how many people in India actually talk about dental visits, and it keeps the TTS from stumbling over formal vocabulary.
 
+[SCREEN: `src/maple/data/faq.md`: one English file, scrolled past a few sections.]
+
 That's our FAQ strategy, too. We don't maintain three FAQ files. The retriever searches the English FAQ, and the LLM translates the one or two sentences it speaks. For a two-page FAQ, that's accurate enough. For medical or legal wording, you'd review translations by hand and store them.
 
 [CODE: `agents/s07_knowledge_agent.py` (the language lines, highlight)]
 
 ```python
-    def __init__(self, *, language: str = "en", prefetch: bool = False) -> None:
+    def __init__(self, *, language: str = "en", prefetch: bool = False, extra: str = "") -> None:
         self.language = language
         self.prefetch = prefetch
         super().__init__(
             instructions=prompts.build_instructions(
-                today=clinic_today(), knowledge=True, language=language
+                today=clinic_today(), knowledge=True, language=language, extra=extra
             ),
         )
 
@@ -1067,19 +1171,19 @@ And the agent from lecture 7.2 already passes `language` into `build_instruction
 [SCREEN: terminal]
 
 ```bash
-LANGUAGE=es uv run agents/s07_knowledge_agent.py console
+LANGUAGE=es uv run python agents/s07_knowledge_agent.py console
 ```
 
 [DEMO: Riley greets in Spanish. Speak Spanish: "Hola, ¿a qué hora cierran los viernes?" Riley calls `lookup_clinic_info` and answers in Spanish: open until two on Fridays. Then: "¿Y dónde puedo estacionar?" Show the tool call argument in the log.]
 
-Riley greets in Spanish, with the AI disclosure. "¿A qué hora cierran los viernes?" She looks it up and answers in Spanish: open until two on Fridays.
+Riley greets in Spanish, with the AI disclosure. "¿A qué hora cierran los viernes?" Riley looks it up and answers in Spanish: open until two on Fridays.
 
-Now watch the tool call for the parking question. [PAUSE] On this run, the model passed the question to `lookup_clinic_info` in English: "where can I park." That's lucky, not guaranteed. Our FAQ index is a keyword index over English text. If the model passes "¿dónde puedo estacionar?" as is, no English words match, and Riley honestly says she isn't sure. The fix is one line in the tool's docstring or the language block: "pass FAQ questions to the tool in English." Keep that in mind any time your knowledge base has only one language.
+Now watch the tool call for the parking question. [PAUSE] On this run, the model passed the question to `lookup_clinic_info` in English: "where can I park." That's lucky, not guaranteed. Our FAQ index is a keyword index over English text. If the model passes "¿dónde puedo estacionar?" as is, no English words match, and Riley honestly says it isn't sure. The fix is one line in the prompt: "pass FAQ questions to the tool in English." The follow-the-caller setup you'll see in a minute already has that line. Keep it in mind any time your knowledge base has only one language.
 
 Hindi works the same way.
 
 ```bash
-LANGUAGE=hi uv run agents/s07_knowledge_agent.py console
+LANGUAGE=hi uv run python agents/s07_knowledge_agent.py console
 ```
 
 [DEMO: Hindi greeting from `GREETINGS["hi"]`. Ask in Hindi about Saturday hours; Riley answers in simple Hindi.]
@@ -1087,44 +1191,71 @@ LANGUAGE=hi uv run agents/s07_knowledge_agent.py console
 [SLIDE 2: Callers who switch languages mid-call]
 - Fixed-language lines (`LANGUAGE=es` or `hi`) are simplest and most robust
 - For an English line that should follow the caller: STT in `multi` mode
-- Each final transcript carries a language code (`ev.language`)
-- On a change, update the TTS language; the prompt already says "switch with them"
+- Each final transcript carries a language code (`ev.language`, e.g. "es-419")
+- On a change, update the TTS language; `FOLLOW_CALLER_RULES` tells the LLM to switch
+- In the repo: `FOLLOW_CALLER_LANGUAGE=1`
 
 [AVATAR]
 
-The repo runs one language per line, which is what I'd deploy for a dedicated Spanish number. But what about a caller on the English line who says, "Perdón, ¿podemos hablar en español?" Here's an optional extension you can add to the entrypoint. It isn't in the repo file, so type it in if you want to try it.
+By default the repo runs one language per line, which is what I'd deploy for a dedicated Spanish number. But what about a caller on the English line who says, "Perdón, ¿podemos hablar en español?" The reference file already handles that, behind one switch.
 
-[CODE: optional extension for `agents/s07_knowledge_agent.py` (not in the repo file)]
+[SCREEN: VS Code, `agents/s07_knowledge_agent.py`, scrolled to `follow_caller_language`.]
+
+[CODE: `agents/s07_knowledge_agent.py`, the mid-call language switch]
 
 ```python
-from livekit.agents import UserInputTranscribedEvent, inference
+def follow_caller_language(session: AgentSession[CallState], *, initial: str = "en") -> None:
+    """Switch the TTS language when the caller changes language mid-call (lecture 7.8).
 
-
-@server.rtc_session()
-async def entrypoint(ctx: JobContext) -> None:
-    settings = get_settings()
-    session = create_session(
-        settings,
-        proc=ctx.proc,
-        userdata=CallState(),
-        stt=inference.STT(model="deepgram/nova-3", language="multi"),   # code-switching STT
-        tts=inference.TTS(model="cartesia/sonic-3", voice=settings.tts_voice, language="en"),
-    )
-    current = {"language": "en"}
+    Needs an STT that reports a language on final transcripts (Deepgram ``multi`` does).
+    The LLM switches because ``FOLLOW_CALLER_RULES`` tells it to.
+    """
+    current = {"language": initial}
 
     @session.on("user_input_transcribed")
     def _follow_caller_language(ev: UserInputTranscribedEvent) -> None:
         if not ev.is_final or ev.language is None:
             return
-        spoken = ev.language.language                  # "es-419" -> "es"
+        spoken = str(ev.language).split("-", 1)[0]  # "es-419" -> "es"
         if spoken in ("en", "es", "hi") and spoken != current["language"]:
+            logger.info("caller switched language: %s -> %s", current["language"], spoken)
             current["language"] = spoken
-            session.tts.update_options(language=spoken)
-
-    await session.start(agent=KnowledgeRiley(language="en"), room=ctx.room)
+            if session.tts is not None:
+                session.tts.update_options(language=spoken)
 ```
 
-The STT runs in Deepgram's `multi` mode, which handles callers who switch languages, even mid-sentence. Every final transcript event carries a language code. When it changes, we update the TTS language with `update_options`. The LLM switches on its own, because the English language block tells Riley to offer Spanish, and the other blocks say "if the caller switches, switch with them." Check that your STT actually reports a language before relying on this. Some models and modes don't.
+Every final transcript event carries a language code, like "es-419" for Latin American Spanish. The code is a plain string, so we keep the part before the dash. When it changes, we log it and update the TTS language with `update_options`.
+
+[SCREEN: Scroll to the end of `entrypoint`, the `FOLLOW_CALLER_LANGUAGE` branch, then up to `FOLLOW_CALLER_RULES` near the top of the file.]
+
+[CODE: the entrypoint's `FOLLOW_CALLER_LANGUAGE=1` branch (excerpt)]
+
+```python
+    # Lecture 7.8 extension: code-switching STT, TTS follows the caller, prompt starts in English.
+    session = create_session(
+        settings,
+        proc=ctx.proc,
+        userdata=CallState(),
+        stt=inference.STT(model=settings.stt_model, language="multi"),
+        tts=inference.TTS(model=settings.tts_model.split(":", 1)[0], voice=settings.tts_voice, language="en"),
+    )
+    follow_caller_language(session, initial="en")
+    await session.start(
+        agent=KnowledgeRiley(language="en", prefetch=prefetch, extra=FOLLOW_CALLER_RULES), room=ctx.room
+    )
+```
+
+Here's the branch that uses it. The STT runs in Deepgram's `multi` mode, which handles callers who switch languages, even mid-sentence. The TTS starts in English. And the agent gets one extra prompt block, `FOLLOW_CALLER_RULES`: start in English, switch with the caller, translate tool results, and pass FAQ questions to the tool in English. That last line fixes the parking problem you just saw.
+
+[SCREEN: terminal]
+
+```bash
+FOLLOW_CALLER_LANGUAGE=1 uv run python agents/s07_knowledge_agent.py console
+```
+
+[DEMO: Start in English: "Hi, what time do you close on Friday?" Riley answers in English. Then: "Perdón, ¿podemos hablar en español?" The log shows `caller switched language: en -> es`, and Riley's next reply is in Spanish. Ask "¿Dónde puedo estacionar?" and show the `lookup_clinic_info` argument in English.]
+
+There's the log line: caller switched language, English to Spanish. One warning. Check that your STT actually reports a language before relying on this. Some models and modes don't.
 
 [SLIDE 3: What to test differently per language]
 - WER per language, with native-speaker reference transcripts (9.7)
@@ -1135,11 +1266,23 @@ The STT runs in Deepgram's `multi` mode, which handles callers who switch langua
 
 [AVATAR]
 
+[AVATAR]
+
 Finally, testing. Everything in Section 9 applies, once per language. Word error rate, with reference transcripts from native speakers, because English speakers reading Spanish scripts give you optimistic numbers. Behavior tests with judge intents like "responds in Spanish and states the Friday hours." Dates and numbers, which is where multilingual agents break most often. Keyterm support, which differs by language. And latency per language, because not every model is equally fast in every language. There's already one Spanish-caller conversation in the Section 9 golden set.
 
 ### Recap
 
-One `LANGUAGE` setting drives STT, TTS, greeting and prompt, the turn detector adapts per language, and an optional `user_input_transcribed` handler lets Riley follow a caller who switches mid-call.
+[SLIDE 4: Recap]
+- One `LANGUAGE` setting drives all four places
+- English FAQ, translated by the LLM
+- `FOLLOW_CALLER_LANGUAGE=1` follows mid-call switches
+
+One `LANGUAGE` setting drives STT, TTS, greeting and prompt, the turn detector adapts per language, and `FOLLOW_CALLER_LANGUAGE=1` switches on the repo's `follow_caller_language` handler for callers who switch mid-call.
+
+[SLIDE 5: You can now]
+- Ground answers in a FAQ, or say "not sure"
+- Hand callers between specialist agents
+- Serve Spanish and Hindi callers
 
 ### Transition
 
@@ -1151,5 +1294,6 @@ Next up is Section 8, where Riley gets a real phone number, takes inbound calls,
 - **Wrong voice**: an English voice speaking Hindi sounds accented. Pick a native voice per language with `TTS_VOICE`.
 - **Spanish query, English index**: the keyword FAQ index only matches English words. Tell the model to pass FAQ questions in English, or translate the FAQ.
 - **`ev.language` is `None`**: some STT models or modes don't report language; mid-call switching then can't work, so run separate numbers per language.
+- **`ev.language.language` raises `AttributeError`**: `ev.language` is a `LanguageCode`, a `str` subclass. Use `str(ev.language).split("-", 1)[0]`, as the repo does.
 - **Translating names and numbers**: the language block says not to, but test it. "Maple Street Dental" should never become "Clínica Dental Calle Arce."
 

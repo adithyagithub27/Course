@@ -28,17 +28,17 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# 1) dependencies only (cached until pyproject.toml changes)
-#    For reproducible builds commit uv.lock, add `COPY uv.lock ./` and use `uv sync --locked`.
-COPY pyproject.toml README.md ./
+# 1) dependencies only (cached until pyproject.toml or uv.lock changes)
+#    --locked installs exactly the versions in the committed uv.lock and fails if it is stale.
+COPY pyproject.toml README.md uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --extra observability
+    uv sync --locked --no-install-project --extra observability
 
 # 2) the project itself
 COPY src ./src
 COPY agents ./agents
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --extra observability
+    uv sync --locked --extra observability
 
 # pip alternative (no uv):
 #   RUN python -m venv /app/.venv && /app/.venv/bin/pip install ".[observability]"

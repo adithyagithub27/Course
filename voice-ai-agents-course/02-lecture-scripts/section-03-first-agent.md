@@ -1,23 +1,23 @@
 # Section 3: Your First Voice Agent with LiveKit Agents
 
 > **Course:** Production Voice AI Agents with Python: Build, Test, Deploy
-> **Section runtime:** ≈68 min (10 lectures)
+> **Section runtime:** ≈66 min (10 lectures)
 > **Source of truth:** `01-curriculum/curriculum.md`
 > **On-screen footer for every code or API slide:** "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."
 > **Cue legend:** see `section-01-welcome.md`. Word counts are spoken words only; where talking time is shorter than the target duration, the rest is demo audio, typing, command output and on-screen dwell. Code-along lectures are paced below 140 words per minute to leave room for typing and running commands.
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 3.1 | LiveKit mental model: rooms, participants, tracks, dispatch | SL | 8:00 | ~800 |
-| 3.2 | AgentSession and Agent: the two core classes | SL | 7:00 | ~800 |
-| 3.3 | Code-along: hello Riley in 30 lines | SC | 10:00 | ~675 |
+| 3.1 | LiveKit mental model: rooms, participants, tracks, dispatch | SL | 8:00 | ~900 |
+| 3.2 | AgentSession and Agent: the two core classes | SL | 7:00 | ~850 |
+| 3.3 | Code-along: hello Riley in 30 lines | SC | 10:00 | ~700 |
 | 3.4 | Dev mode and the Agents Playground | DM | 6:00 | ~475 |
-| 3.5 | Choosing STT, LLM and TTS providers | SL | 9:00 | ~850 |
-| 3.6 | VAD, turn detection and interruptions | SL | 9:00 | ~875 |
+| 3.5 | Choosing STT, LLM and TTS providers | SL | 8:00 | ~850 |
+| 3.6 | VAD, turn detection and interruptions | SL | 8:00 | ~975 |
 | 3.7 | Tuning turn-taking live | DM | 5:00 | ~475 |
 | 3.8 | Lab 2: Customise your first agent | LAB | 4:00 (1:30 video) | ~225 |
 | 3.9 | Break it: five ways your first agent fails, and what each sounds like | DM | 7:00 | ~550 |
-| 3.10 | Quiz: First agent and turn-taking | QZ | 3:00 (1:00 video) | ~125 |
+| 3.10 | Quiz: First agent and turn-taking | QZ | 3:00 (1:00 video) | ~150 |
 
 **API guardrails for this section (do not deviate on screen):** `AgentServer()` + `@server.rtc_session()` + `cli.run_app(server)`; `AgentSession(..., turn_handling=TurnHandlingOptions(...))`; `session.start(agent=..., room=ctx.room)`; turn detection with `inference.TurnDetector()`. Never show `WorkerOptions(entrypoint_fnc=...)`, `room_input_options=`, or `MultilingualModel` from the deprecated `turn_detector` plugin, even as "the old way".
 
@@ -29,10 +29,10 @@
 |---|---|
 | ID | 3.1 |
 | Type | SL (slides) |
-| Target duration | 8:00 (~800 spoken words, about 5:43 of talking at 140 wpm) |
+| Target duration | 8:00 (~900 spoken words, about 6:26 of talking at 140 wpm) |
 | Learning objectives | 1. Explain rooms, participants and tracks, and why the agent is "just another participant". 2. Describe how an agent server registers with LiveKit and gets dispatched into rooms as jobs. 3. Map those ideas to `AgentServer`, `@server.rtc_session()` and `JobContext`. |
 | Prerequisites | Section 2 complete |
-| Files used | Diagram: LiveKit architecture (slides 2 and 6) |
+| Files used | Diagram: LiveKit architecture (slides 2 and 6); `03-code/agents/s03_hello_agent.py` (shown, and `--help` run); `03-code/.env.example` (`LIVEKIT_AGENT_NAME`) |
 
 ### Script
 
@@ -126,6 +126,10 @@ There are two dispatch styles. With automatic dispatch, your agent joins every n
 
 With explicit dispatch, you give the agent a name, and it only joins when something asks for it by name. You'll need that for phone numbers in Section eight, and whenever one project runs more than one kind of agent.
 
+[SCREEN: VS Code, `03-code/.env.example`. Highlight the commented-out `# LIVEKIT_AGENT_NAME=riley-receptionist` line and the comment above it.]
+
+In the repo, the name is one commented-out line in the settings template. The comment says it all: leave it unset for Sections three to seven, so the playground can reach your agent, and switch it on in Section eight.
+
 [SLIDE 10: How this maps to code]
 ```python
 from livekit.agents import AgentServer, JobContext, cli
@@ -149,8 +153,36 @@ Here's how the picture maps to code. You'll type this in two lectures.
 
 `AgentServer` is the thing that registers with LiveKit. The `rtc_session` decorator marks your entrypoint. It says, "every time a job arrives, call this function." The function receives a `JobContext`, and `ctx.room` is the room you were dispatched into. And `cli.run_app` gives the file its commands: console, dev, start and download-files.
 
+[SCREEN: VS Code, `03-code/agents/s03_hello_agent.py`. Highlight `server = AgentServer()`, then `@server.rtc_session()` above `async def entrypoint(ctx: JobContext)`, then `cli.run_app(server)` at the bottom of the file.]
+
+Here's the same shape in the reference file you'll compare against all through this section. Server, entrypoint, run app. Every agent in this course starts exactly like this.
+
+[SCREEN: Terminal in the repo folder. Ask the file for help and zoom on the Commands box.]
+
+```bash
+uv run python agents/s03_hello_agent.py --help
+```
+
+[DEMO: Output (excerpt: the Commands box)]
+```text
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ console         Run a LiveKit Agents in console mode.                        │
+│ start                                                                        │
+│ dev             Run a LiveKit Agents in development mode.                    │
+│ connect                                                                      │
+│ download-files                                                               │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+And here's what `cli.run_app` gave the file. Console, start, dev, connect and download-files. You've already used two of them. So which ones register with LiveKit Cloud and wait for jobs? Dev, and start in production. Console runs the whole job on your laptop instead.
+
 [AVATAR]
 So when you hear "the agent joins the room," picture it literally. A new participant walks into a meeting, subscribes to the caller's microphone, and starts publishing its own voice. Everything else in this course, including phones, handoffs and transfers, is a variation on that picture.
+
+[SLIDE 11: Recap]
+- A call is a room; Riley is a participant
+- Participants publish and subscribe to tracks
+- Servers register; LiveKit dispatches jobs to them
 
 **Recap:** LiveKit calls are rooms full of participants publishing tracks, and your agent server gets dispatched into those rooms as jobs through an `@server.rtc_session()` entrypoint.
 
@@ -171,10 +203,10 @@ So when you hear "the agent joins the room," picture it literally. A new partici
 |---|---|
 | ID | 3.2 |
 | Type | SL (slides) |
-| Target duration | 7:00 (~800 spoken words, about 5:43 of talking at 140 wpm) |
+| Target duration | 7:00 (~850 spoken words, about 6:04 of talking at 140 wpm) |
 | Learning objectives | 1. Explain what belongs on `Agent` (instructions, tools, per-agent overrides, lifecycle hooks) versus `AgentSession` (models, turn handling, userdata, events). 2. Read an `AgentSession(...)` constructor and name each argument's job. 3. Describe what `session.start(agent=..., room=ctx.room)` does. |
 | Prerequisites | 3.1 |
-| Files used | None (slides only) |
+| Files used | `03-code/agents/s03_hello_agent.py` (shown briefly) |
 
 ### Script
 
@@ -303,8 +335,17 @@ Table: Setting | Put it on
 
 Here's a cheat sheet. Instructions and tools go on the agent. Default models and turn-taking go on the session. Per-call data goes in the session's userdata. And if one specialist needs something different, override it on that agent.
 
+[SCREEN: VS Code, `03-code/agents/s03_hello_agent.py`. Highlight `class HelloRiley(Agent)` and its `instructions` line, then scroll to the `AgentSession(` call in the entrypoint and highlight `stt=`, `llm=`, `tts=`, `vad=` and `turn_handling=`.]
+
+Here's the rule in a real file. The agent class holds the instructions, and nothing else yet. The session, built inside the entrypoint, holds the models, the VAD and the turn handling. You'll type your own version of this in the next lecture.
+
 [AVATAR]
 When a setting "doesn't work," the first question is always: did I put it on the session or the agent? Because agent settings override session settings. And that's usually the answer.
+
+[SLIDE 9: Recap]
+- Session: the line, with models, turn-taking, state
+- Agent: the role, with instructions, tools, hooks
+- Agent settings override session settings
 
 **Recap:** `AgentSession` is the per-call runtime that owns models, turn-taking and state, and `Agent` is the swappable role that owns instructions, tools and hooks.
 
@@ -325,7 +366,7 @@ When a setting "doesn't work," the first question is always: did I put it on the
 |---|---|
 | ID | 3.3 |
 | Type | SC (code-along) |
-| Target duration | 10:00 (~675 spoken words, about 4:49 of talking at 140 wpm) |
+| Target duration | 10:00 (~700 spoken words, about 5:00 of talking at 140 wpm) |
 | Learning objectives | 1. Build a working cascaded voice agent from an empty file with `AgentServer`, `@server.rtc_session()`, `AgentSession` and `Agent`. 2. Configure STT, LLM, TTS, VAD and the semantic turn detector with `TurnHandlingOptions`. 3. Run it in console mode and read the logs. |
 | Prerequisites | 3.1, 3.2, Section 2 complete |
 | Files used | You type: `03-code/agents/my_hello_agent.py`. Reference: `03-code/agents/s03_hello_agent.py`. Also `03-code/src/maple/prompts.py` (`HELLO_INSTRUCTIONS`), `03-code/agents/common.py`. |
@@ -333,7 +374,7 @@ When a setting "doesn't work," the first question is always: did I put it on the
 ### Script
 
 [AVATAR]
-Time to build. In about thirty lines, you'll write a voice agent that listens, thinks and speaks, running on the same framework companies use in production. I'll type every line and explain it as we go. Open your editor and follow along.
+Thirty lines. [PAUSE] That's all it takes to write a voice agent that listens, thinks and speaks, on the same framework companies run in production. By the end of this lecture, it'll be greeting you through your own speakers. I'll type every line and explain it as we go. Open your editor and follow along.
 
 [SCREEN: VS Code, repo open. Right-click `agents/` → New File → `my_hello_agent.py`.]
 
@@ -401,7 +442,7 @@ Now the entrypoint. The `rtc_session` decorator tells the server, "run this func
 
 Inside, we build the session. Speech-to-text is Deepgram Nova-3. The LLM is GPT four point one mini. The voice is Cartesia Sonic-3. These are LiveKit Inference strings, so they're billed through your LiveKit project, and you don't need separate provider keys.
 
-VAD is Silero, loaded right here. And turn handling uses the semantic turn detector. It reads the words and predicts whether the caller has finished. Remember, all turn-taking settings live inside TurnHandlingOptions. We'll add endpointing and interruption settings in Lecture 3.6.
+VAD is Silero, loaded right here. And turn handling uses the semantic turn detector. It reads the words and predicts whether the caller has finished. Remember, all turn-taking settings live inside TurnHandlingOptions. Lecture 3.6 explains endpointing and interruption settings, and you'll add them to this file in 3.7.
 
 [CODE: step 5, start and greet]
 ```python
@@ -411,7 +452,7 @@ VAD is Silero, loaded right here. And turn handling uses the semantic turn detec
     )
 ```
 
-Two more lines. `session.start` joins the room with our agent in charge. Notice both awaits. Forget the await on start, and nothing happens, with no error message.
+Two more lines. `session.start` joins the room with our agent in charge. Notice both awaits. What happens if you forget the await on start? Nothing. No error message, no greeting, just silence.
 
 Then `generate_reply`, with a one-off instruction to greet the caller. Without this, Riley would sit silently until the caller spoke first.
 
@@ -491,7 +532,7 @@ uv run python agents/my_hello_agent.py console
 
 [PAUSE]
 
-There it is. Riley greets me, I ask about cleanings, and it answers in a sentence or two. That's the output rules from the prompt doing their job.
+There it is. Riley greets me, I ask about cleanings, and it answers in a sentence or two. Why so short? That's the output rules from the prompt doing their job.
 
 [SCREEN: Scroll up through the terminal log output. Highlight the user transcript line, the agent reply, and any metrics lines.]
 
@@ -512,6 +553,11 @@ Now scroll up through the logs. You can see what the speech-to-text heard. You c
 Here's every line and its job on one slide. If any of these feel fuzzy, rewatch Lecture 3.2. Everything else in this course builds on this file.
 
 One more thing. Right now the model names are hard-coded. That's fine for a first agent, but it means changing a voice means changing code. In Lecture 3.5, we'll move them into configuration.
+
+[SLIDE 2: Recap]
+- `AgentServer` plus an `@server.rtc_session()` entrypoint
+- `AgentSession`: STT, LLM, TTS, VAD, turn detection
+- `Agent`: instructions now, tools later
 
 **Recap:** About thirty lines of Python give you a working voice agent: an `AgentServer`, an `@server.rtc_session()` entrypoint, an `AgentSession` with STT, LLM, TTS, VAD and turn detection, and an `Agent` with instructions.
 
@@ -572,7 +618,7 @@ The browser asks for the microphone. Allow it. And a moment later, Riley joins a
 
 [PAUSE]
 
-Look at the terminal. You'll see a new job appear. LiveKit dispatched it to my laptop, my server started a process, and the entrypoint ran. Exactly the five steps from Lecture 3.1.
+So where did Riley come from? Look at the terminal. You'll see a new job appear. LiveKit dispatched it to my laptop, my server started a process, and the entrypoint ran. Exactly the five steps from Lecture 3.1.
 
 [DEMO: Ask: "Hi Riley, do you do teeth whitening?" Riley answers briefly. Point at the transcript panel.]
 
@@ -595,7 +641,7 @@ Now, hot reload. I'll change the greeting instruction to mention that we're open
 
 [DEMO: Terminal shows the server reloading.]
 
-The server reloaded. But notice the call that's already running keeps the old code. Hot reload applies to new jobs. So I'll disconnect in the playground and connect again.
+The server reloaded. But did the call that's already running change? No. It keeps the old code, because hot reload applies to new jobs. So I'll disconnect in the playground and connect again.
 
 [DEMO: Disconnect, reconnect. Riley greets with the new Saturday line.]
 
@@ -612,6 +658,11 @@ New room, new job, new greeting. That's your edit loop for the rest of the cours
 Two more tips. First, keep only one dev server running. If you have two terminals both running dev, both register, and you can't predict which one gets your call. That one confuses everybody at least once.
 
 Second, you're not limited to the playground. In Section twelve, you'll put a real web front end in front of Riley using LiveKit's React starter. And in Section eight, a phone number. The agent code won't change. Only the caller does.
+
+[SLIDE 3: Recap]
+- `dev` registers your laptop with LiveKit Cloud
+- The playground joins as caller, with live transcripts
+- Hot reload changes new calls, not live ones
 
 **Recap:** `dev` mode registers your local agent server with LiveKit Cloud so the Agents Playground can call it, with live transcripts and hot reload for new sessions.
 
@@ -632,10 +683,10 @@ Second, you're not limited to the playground. In Section twelve, you'll put a re
 |---|---|
 | ID | 3.5 |
 | Type | SL (slides with a short code walkthrough) |
-| Target duration | 9:00 (~850 spoken words, about 6:04 of talking at 140 wpm) |
+| Target duration | 8:00 (~850 spoken words, about 6:04 of talking at 140 wpm, plus code and test-run dwell; reduced from 9:00 in the 2026-10 review) |
 | Learning objectives | 1. Compare STT, LLM and TTS providers on accuracy, latency, price, voices and languages. 2. Switch between LiveKit Inference model strings and direct provider plugins. 3. Drive every model choice from `.env` via `src/maple/config.py`, and know the builder helpers in `agents/common.py` used from Section 4 on. |
 | Prerequisites | 3.3, 2.1 |
-| Files used | `03-code/src/maple/config.py`, `03-code/agents/common.py` (`build_stt`, `build_llm`, `build_tts`, `create_session`), `03-code/agents/s03_hello_agent.py`, your `agents/my_hello_agent.py` |
+| Files used | `03-code/src/maple/config.py`, `03-code/tests/unit/test_config.py`, `03-code/agents/common.py` (`build_stt`, `build_llm`, `build_tts`, `create_session`), `03-code/agents/s03_hello_agent.py`, your `agents/my_hello_agent.py` |
 
 ### Script
 
@@ -726,6 +777,16 @@ Now let's see how the repo makes swapping painless. Open `src/maple/config.py`. 
 
 Two helpers worth knowing. `tts_model_with_voice` glues the voice ID onto the TTS string, using that colon format. And `split_model` turns "openai slash gpt four point one mini" into the provider and the model name, which the plugin path needs.
 
+[SCREEN: Terminal. Run the config unit tests.]
+
+```bash
+uv run pytest tests/unit/test_config.py -q
+```
+
+[DEMO: The config tests pass in well under a second.]
+
+And because this is pure Python, it's tested like pure Python. Defaults, overrides from the environment, blank values, bad values, the colon format and `split_model`. All green in a fraction of a second, with no keys. So when a model swap misbehaves, you can rule out the config layer in one command.
+
 [SCREEN: VS Code, `agents/my_hello_agent.py`. Replace the three hard-coded strings with settings.]
 
 [CODE: refactor the session in `my_hello_agent.py` to read from config]
@@ -768,6 +829,11 @@ And now every experiment is a one-line change in dot env. A different voice. A d
 [AVATAR]
 Here's my advice for choosing. Start with the defaults. Get the whole agent working. Then measure. In Section nine, you'll measure STT accuracy on your words. In Section ten, you'll measure latency and cost per minute. Then change one model at a time, and let the numbers decide.
 
+[SLIDE 8: Recap]
+- Judge models on your own calls
+- Model strings or plugins: a one-line swap
+- Every model choice lives in `.env`
+
 **Recap:** Judge models on accuracy, latency, price, voice and data handling, plug them in as LiveKit Inference strings or direct plugins, and keep every choice in `.env` through `config.py` and the builders in `common.py`.
 
 **Transition:** Next, the settings that make Riley feel human or robotic: VAD, turn detection and interruptions.
@@ -788,15 +854,20 @@ Here's my advice for choosing. Start with the defaults. Get the whole agent work
 |---|---|
 | ID | 3.6 |
 | Type | SL (slides) |
-| Target duration | 9:00 (~875 spoken words, about 6:15 of talking at 140 wpm) |
+| Target duration | 8:00 (~975 spoken words, about 6:58 of talking at 140 wpm, plus two audio clips and a code beat; reduced from 9:00 in the 2026-10 review) |
 | Learning objectives | 1. Explain how Silero VAD, endpointing delays and the semantic turn detector work together to end a turn. 2. Configure `TurnHandlingOptions` with `EndpointingOptions` (fixed vs dynamic, `min_delay`, `max_delay`) and `InterruptionOptions` (`min_duration`, `min_words`, false-interruption resume). 3. Describe preemptive generation and its trade-off. |
 | Prerequisites | 3.3, 1.4 |
-| Files used | Diagram: turn-taking timeline (slides 2 and 5) |
+| Files used | Diagram: turn-taking timeline (slides 2 and 5); two hook clips recorded from `03-code/agents/s03_hello_agent.py` with the 3.7 endpointing values; `03-code/agents/common.py` (`build_turn_handling`) |
 
 ### Script
 
 [AVATAR]
-Two complaints account for most bad reviews of voice agents. "It kept cutting me off." And "it took forever to answer." [PAUSE] They're the same problem pointing in opposite directions. Both come down to one decision, made many times per call: has the caller finished? Let's look at exactly how Riley makes that decision, and every setting that controls it.
+Two complaints account for most bad reviews of voice agents. "It kept cutting me off." And "it took forever to answer." Here's what each one sounds like.
+
+[DEMO: Two short audio clips with waveforms, back to back, recorded with the reference agent. Clip 1, "cut off": `MIN_ENDPOINTING_DELAY=0.1 MAX_ENDPOINTING_DELAY=0.6 uv run python agents/s03_hello_agent.py console`; the caller says "My number is five one two..." and Riley jumps in mid-number. Clip 2, "took forever": the same command with `MIN_ENDPOINTING_DELAY=1.5 MAX_ENDPOINTING_DELAY=5.0`; the caller says "Yes." and a long silence follows. You'll make both yourself in Lecture 3.7.]
+
+[AVATAR]
+They're the same problem pointing in opposite directions. Both come down to one decision, made many times per call: has the caller finished? Let's look at exactly how Riley makes that decision, and every setting that controls it.
 
 [SLIDE 1: Three layers decide "your turn is over"]
 - VAD: is there speech right now? (Silero, frame by frame)
@@ -931,8 +1002,17 @@ session = AgentSession(
 
 Here's everything in one place. It all lives inside turn handling options. Turn detection, endpointing and interruption. These are the defaults, written out so you can see them. In the next lecture, we'll change them and listen to the difference.
 
+[SCREEN: VS Code, `03-code/agents/common.py`, scrolled to `build_turn_handling`. Highlight the `min_delay` line, then the three `InterruptionOptions` arguments.]
+
+And here's what Riley actually uses from Section four on: `build_turn_handling` in `common.py`. The turn detector. Endpointing delays read from your dot env. And interruptions with a half-second minimum, false-interruption resume switched on, and a slightly shorter timeout of one and a half seconds. Notice one more line. On a phone call, the minimum delay is raised to at least point seven seconds. Why would a phone line need a longer wait? You'll find out in Section eight.
+
 [AVATAR]
 Here's the mental model to keep. The turn detector decides whether the caller is probably done. Endpointing decides how long to wait in each case. And interruption settings decide what happens when both of you talk at once. Tune them in that order.
+
+[SLIDE 10: Recap]
+- VAD hears speech; the detector reads the words
+- Endpointing delays decide how long to wait
+- Interruption options filter coughs and "mm-hm"
 
 **Recap:** VAD detects speech, the semantic turn detector judges whether the words are finished, endpointing delays set how long to wait, and interruption options decide what counts as a real interruption.
 
@@ -1057,6 +1137,11 @@ Keep min words at two if you like it. It's a good default for phone calls, and y
 [AVATAR]
 Three mistakes to avoid. A low maximum delay that overrides the turn detector. Changing several settings at once, so you can't tell what helped. And tuning with speakers instead of headphones, where Riley hears its own voice and "interrupts" itself.
 
+[SLIDE 3: Recap]
+- Same three phrases, one change per run
+- A low `max_delay` overrides the turn detector
+- `min_words=2` lets backchannels pass
+
 **Recap:** Use the same three test phrases, change one setting at a time, and listen: `max_delay` protects pauses, `min_delay` sets snappiness, and `min_words` stops backchannels from interrupting.
 
 **Transition:** Next is Lab 2, where you'll run these experiments yourself with your own voice, model and turn settings.
@@ -1084,22 +1169,22 @@ Three mistakes to avoid. A low maximum delay that overrides the turn detector. C
 ### Script
 
 [AVATAR]
-Your turn to tune Riley. This lab is about building an ear for voice agents, and that only comes from changing one thing at a time and listening.
+Which voice, which model and which delays make Riley sound right? [PAUSE] I can't answer that for you. Your ears can, if you change one thing at a time and listen. That's this lab. Plan about an hour.
 
-[SCREEN: Open `04-labs/lab-02-first-agent.md`. Scroll through the three experiments.]
+[SCREEN: Open `04-labs/lab-02-first-agent.md`. Scroll to the "How this lab works" table of four test lines.]
 
-There are three experiments. Experiment one, the voice. Pick two voices from your TTS provider's library, set `TTS_VOICE` in your dot env, and have the same short conversation with each. Experiment two, the model. Try a second LLM model string and note whether replies get faster, slower, longer or shorter. Experiment three, turn-taking. Run the three test phrases from Lecture 3.7 with three endpointing settings: the default, a snappy one and a patient one.
+Every run, you say the same four lines. A plain question. Your name, with a one-second pause in the middle. A question you interrupt with "wait, sorry." And a cough or an "mm-hmm" while Riley talks, which shouldn't stop it.
 
-[SCREEN: Scroll to the observation table: columns "Setting", "Felt latency (1-5)", "Interruptions", "Mishearings", "Notes".]
+[SCREEN: Scroll through Steps 1 to 6.]
 
-For each run, fill in one row of this table. Felt latency from one to five. How many times Riley cut you off. Anything it misheard. And a short note.
+Step one turns on metrics logging, so you get numbers, not just impressions. Then five experiments. A, the voice. B, the LLM. C, the endpointing delays. D, the turn detector switched off. E, interruption sensitivity.
 
-[SCREEN: Scroll to the "Compare with Lab 1" box.]
+[SCREEN: Scroll to the observations table in Step 7.]
 
-Finally, compare with your first impressions from Lab 1. What changed? What would you ship?
+Each run fills one row: end-of-utterance delay, time to first token, time to first byte, and whether line two got cut off, line three barged in cleanly, and line four caused a false stop. Then pick your best configuration and write down why.
 
 [AVATAR]
-Two rules. Change one setting per run. And always restart the agent after editing dot env. At the end, put back the settings you liked best. We'll build on them in Section four.
+Two rules. One change per run. And restart the agent after every dot env edit. Keep your chosen settings: you'll reuse them when you tune the phone agent in Section eight.
 
 **Recap:** Lab 2 has you swap voice, model and endpointing through `.env`, one change at a time, and record what you hear.
 
@@ -1108,6 +1193,7 @@ Two rules. Change one setting per run. And always restart the agent after editin
 ### Speaker notes: common student mistakes / Q&A
 
 - Students change three settings at once and can't tell which one helped. Enforce one change per run.
+- Step 1 edits `agents/s03_hello_agent.py` to log metrics. Remind students to keep a clean copy, or work in their own `my_hello_agent.py`.
 - A new `LLM_MODEL` string must be one LiveKit Inference supports. If you get a model error, check the LiveKit Inference model list or switch `MAPLE_PROVIDER_MODE=plugins` with your own key.
 - Voice IDs are long identifiers. Copy them exactly from the provider's voice library.
 
@@ -1222,7 +1308,17 @@ The broken case swapped in an older, general-purpose model. The fix is a current
 [AVATAR]
 Here's the cheat sheet. Symptom, cause and the first setting to check. Screenshot it. When you get a complaint, start at the matching row, and always read the transcript before blaming the LLM.
 
+[SLIDE 3: Recap]
+- Every failure has a sound and a setting
+- `BROKEN=<case>` reproduces each one on demand
+- Read the transcript before blaming the LLM
+
 **Recap:** Short endpointing cuts callers off, long endpointing causes awkward silences and collisions, disabled interruptions talk over callers, chat prompts make TTS read symbols, and mismatched STT mishears domain words, each with one setting to fix it.
+
+[SLIDE 4: You can now]
+- Build and run a voice agent from scratch
+- Tune turn-taking by ear, one setting at a time
+- Trace a caller's complaint to one setting
 
 **Transition:** Let's lock this in with a short quiz on your first agent and turn-taking.
 
@@ -1241,7 +1337,7 @@ Here's the cheat sheet. Symptom, cause and the first setting to check. Screensho
 |---|---|
 | ID | 3.10 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 3:00 total (1:00 video, ~125 spoken words, about 0:54 of talking at 140 wpm) |
+| Target duration | 3:00 total (1:00 video, ~150 spoken words, about 1:04 of talking at 140 wpm) |
 | Learning objectives | 1. Check understanding of dispatch, `AgentSession` vs `Agent`, and turn-taking settings. 2. Identify which lecture to revisit before adding prompts and tools. |
 | Prerequisites | 3.1 to 3.9 |
 | Files used | `06-assessments/quizzes/section-03.md` |
@@ -1249,7 +1345,7 @@ Here's the cheat sheet. Symptom, cause and the first setting to check. Screensho
 ### Script
 
 [AVATAR]
-Five questions on your first agent. About three minutes.
+A caller says Riley waits forever after every "yes." Which setting do you check first? [PAUSE] If you hesitated, this quiz is for you. Five questions on your first agent, about three minutes.
 
 [SLIDE 1: Section 3 quiz: what's covered]
 - Rooms, participants, tracks and dispatch

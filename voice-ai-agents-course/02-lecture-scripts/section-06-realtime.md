@@ -29,10 +29,10 @@
 | ID | 6.1 |
 | Title | How realtime speech models work |
 | Type | SL (slides + avatar) |
-| Target duration | 8:00 (about 990 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 8:00 (about 1,070 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | A speech-to-speech model hears audio and speaks audio in one model, which removes two hops but changes what you can control. |
 | Prerequisites | Lecture 1.3 (cascaded vs speech-to-speech), Section 5 (Riley's booking tools) |
-| Files used | None (conceptual). Diagram: `09-production` slide deck, "realtime pipeline". |
+| Files used | Diagram: `09-production` slide deck, "realtime pipeline". Shown briefly: the livekit-agents source file `livekit/agents/llm/_realtime/openai_utils.py` in `03-code/.venv` (realtime defaults). |
 
 **Learning objectives**
 
@@ -53,7 +53,7 @@ For five sections, Riley has been a relay race. Your voice goes to a speech-to-t
 
 [AVATAR]
 
-Here's the picture. On the top, the cascaded pipeline you've been building. Three models, each one replaceable. On the bottom, the realtime pipeline. One model. Audio goes in. Audio comes out. [PAUSE] The good news is that almost nothing else changes. Riley keeps her instructions. Riley keeps her four booking tools. Riley keeps her `CallState` userdata. LiveKit's `AgentSession` hides the difference behind one parameter. You'll see that in the next lecture. Right now, let's understand what's happening inside the box.
+Here's the picture. On the top, the cascaded pipeline you've been building. Three models, each one replaceable. On the bottom, the realtime pipeline. One model. Audio goes in. Audio comes out. [PAUSE] The good news is that almost nothing else changes. Riley keeps its instructions. Riley keeps its four booking tools. Riley keeps its `CallState` userdata. LiveKit's `AgentSession` hides the difference behind one parameter. You'll see that in the next lecture. Right now, let's understand what's happening inside the box.
 
 [SLIDE 2: What "audio in, audio out" really means]
 - Caller audio is streamed to the model as audio tokens, roughly every 20 to 100 milliseconds
@@ -64,6 +64,8 @@ Here's the picture. On the top, the cascaded pipeline you've been building. Thre
 [AVATAR]
 
 A realtime model doesn't convert your words to text first. It turns the audio into tokens, the same way a text model turns words into tokens. Then it reasons over those audio tokens. [PAUSE] That's why it can hear things a transcript throws away. A rising tone on "Tuesday?" A sigh before "I guess that works." A caller who sounds rushed. The reply is generated as audio tokens and streamed back to the caller while the model is still thinking about the rest of the sentence.
+
+[B-ROLL: Animation. The caller's waveform is chopped into small audio-token blocks that flow into one "realtime model" box; reply blocks stream out of the other side and start playing while later blocks are still being generated. A stopwatch shows no "final transcript" or "first sentence" wait.]
 
 This is where the speed comes from. There's no waiting for a final transcript. There's no waiting for the first sentence of text before speech synthesis can start. In my own tests, a realtime Riley usually starts speaking somewhere between half a second and eight hundred milliseconds after the caller stops. A well-tuned cascaded Riley lands closer to eight hundred milliseconds to one point two seconds. We'll measure both properly in lecture 6.4, so don't take my word for it yet.
 
@@ -91,9 +93,9 @@ Next, turn-taking. In Section 3, Riley used Silero VAD plus LiveKit's turn detec
 
 Server VAD is the simple one. It waits for a fixed stretch of silence, say five hundred milliseconds, and then declares the turn over. It's fast, but it cuts off people who pause to think.
 
-Semantic VAD is smarter. A classifier listens to the words and the intonation and asks: does this person sound finished? "My phone number is five five five..." [PAUSE] Not finished. Semantic VAD waits. You tune it with one knob called eagerness. Low waits longer. High jumps in sooner. LiveKit's default for OpenAI is semantic VAD at medium eagerness. In our code we'll set it to auto, which lets the model adapt, and I'll show you when to switch to low: a dental clinic, where callers read out phone numbers and insurance IDs, is exactly that case.
-
 [B-ROLL: animated waveform of a caller saying "my number is five five five... uh... two one two..." with a server-VAD cutoff marker firing too early, and a semantic-VAD marker waiting until the end]
+
+Semantic VAD is smarter. A classifier listens to the words and the intonation and asks: does this person sound finished? "My phone number is five five five..." [PAUSE] Not finished. Semantic VAD waits. You tune it with one knob called eagerness. Low waits longer. High jumps in sooner. LiveKit's default for OpenAI is semantic VAD at medium eagerness. In our code we'll set it to auto, which lets the model adapt, and I'll show you when to switch to low: a dental clinic, where callers read out phone numbers and insurance IDs, is exactly that case.
 
 [SLIDE 5: Voices]
 - Voices are baked into the model, chosen per session
@@ -106,14 +108,18 @@ Semantic VAD is smarter. A classifier listens to the words and the intonation an
 Now voices. In a cascaded pipeline, the voice belongs to your TTS provider. You can pick from hundreds of voices or clone your own. In a realtime model, the voice belongs to the model. OpenAI ships a small set. We'll use `marin`, which is one of the two newest and most natural. [PAUSE] That's a real trade-off for a business. If Maple Street Dental already has a brand voice on their phone menu, a realtime model can't match it. Lecture 6.3 shows the hybrid fix for exactly that.
 
 [SLIDE 6: Session limits you must design for]
-- Max session length: OpenAI caps a realtime session (60 minutes at time of recording)
-- LiveKit recycles the connection by default every 20 minutes (`max_session_duration`)
+- Max session length: OpenAI caps a realtime session (60 minutes at time of recording; verify in OpenAI's docs)
+- LiveKit's plugin recycles the connection every 20 minutes by default (`max_session_duration`, 1,200 s in livekit-agents 1.8.3)
 - Context grows every turn: long calls cost more per minute
 - Audio tokens are priced far higher than text tokens
 
 [AVATAR]
 
 Limits. A realtime connection is a long-lived session with the provider. OpenAI caps how long it can live. When I recorded this, the cap was sixty minutes. LiveKit's plugin quietly recycles the connection every twenty minutes by default, and carries the chat history across. You'll almost never hit this on a receptionist call. But you will hit it if a caller is put on hold and forgets to hang up.
+
+[SCREEN: VS Code, `03-code/agents/s06_realtime_agent.py`. Go to Definition on `openai.realtime.RealtimeModel`, then open `.venv/lib/python3.11/site-packages/livekit/agents/llm/_realtime/openai_utils.py` (your Python version in the path may differ). Highlight `DEFAULT_TURN_DETECTION` with `eagerness="medium"`, `DEFAULT_INPUT_AUDIO_TRANSCRIPTION` with `gpt-4o-mini-transcribe`, and `DEFAULT_MAX_SESSION_DURATION = 20 * 60`.]
+
+I don't want you to take those defaults on trust, so here's where they live. From the realtime agent file, go to the definition of `RealtimeModel` and follow it to this module in livekit-agents one point eight point three. Three constants. Semantic VAD at medium eagerness. The side-channel transcription model. And a maximum session duration of twenty times sixty seconds. Pass `max_session_duration` yourself to change it. And when you upgrade the library, check this file again.
 
 The bigger limit is money. Every turn, the whole conversation so far is fed back into the model. On a realtime model that history includes audio tokens. Audio tokens cost many times more than text tokens. So a ten-minute call doesn't cost ten times a one-minute call. It costs more. We'll put real numbers on this in lecture 10.4.
 
@@ -143,18 +149,23 @@ Here's my rule of thumb. If the conversation is casual and speed is everything, 
 
 ### Recap
 
+[SLIDE 9: Recap]
+- One model hears audio and speaks audio
+- Transcripts and turn detection run server-side
+- Speed costs control, voice choice and money
+
 A realtime model hears audio and speaks audio in one hop, with a side-channel transcript and server-side turn detection, and you trade some control and cost for that speed.
 
 ### Transition
 
-In the next lecture, we'll put Riley on `gpt-realtime` with one changed line, and find out which of her Section 5 habits break.
+In the next lecture, we'll put Riley on `gpt-realtime` with one changed line, and find out which of its Section 5 habits break.
 
 ### Speaker notes: common mistakes and Q&A
 
 - **"The transcript is wrong, so the model misheard."** Not necessarily. The transcript comes from a separate transcription model. Check the audio recording before blaming the realtime model.
 - **"Can I use my ElevenLabs or Cartesia cloned voice with pure realtime?"** No. Built-in voices only. Use the hybrid setup in 6.3 with `modalities=["text"]` plus your own TTS.
 - **"Is semantic VAD always better?"** It's better for callers who pause mid-sentence. Server VAD can feel snappier for short yes/no exchanges. Tune per use case and measure in 6.4.
-- **Session cap numbers change.** Tell students to confirm the current provider session limit in OpenAI's docs; the 20-minute recycle is LiveKit's `max_session_duration` default in 1.8.
+- **Session cap numbers change.** Tell students to confirm the current provider session limit in OpenAI's docs. The 20-minute recycle is verified on livekit-agents 1.8.3: `openai.realtime.RealtimeModel` uses `DEFAULT_MAX_SESSION_DURATION = 20 * 60` from `livekit/agents/llm/_realtime/openai_utils.py` unless you pass `max_session_duration` (the plugin's separate `GPTLiveModel` defaults to `None`; the course doesn't use it). On recycle, the plugin replays the chat history without function calls. Re-check after every library upgrade.
 
 ---
 
@@ -165,7 +176,7 @@ In the next lecture, we'll put Riley on `gpt-realtime` with one changed line, an
 | ID | 6.2 |
 | Title | Code-along: Riley on `gpt-realtime` |
 | Type | SC (screencast code-along) |
-| Target duration | 10:00 (about 920 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
+| Target duration | 10:00 (about 970 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
 | One idea | Swapping Riley to speech-to-speech is one changed argument on `AgentSession`, plus one habit change: without a TTS, Riley can't `say()` fixed text. |
 | Prerequisites | 6.1; Section 5 booking tools working; `OPENAI_API_KEY` in `.env` |
 | Files used | `agents/s06_realtime_agent.py`, `agents/common.py` (`BookingToolsMixin`, `CallState`, `create_session`), `src/maple/config.py` |
@@ -180,7 +191,7 @@ In the next lecture, we'll put Riley on `gpt-realtime` with one changed line, an
 
 [AVATAR]
 
-Riley's brain is about to change. Her tools won't. By the end of this lecture, the same four booking tools from Section 5 will be driven by a speech-to-speech model, and you'll hear the difference. Let's open the editor.
+Riley's brain is about to change. Its tools won't. By the end of this lecture, the same four booking tools from Section 5 will be driven by a speech-to-speech model, and you'll hear the difference. Let's open the editor.
 
 [SCREEN: VS Code, repo root, `agents/` open. Lower third: "APIs verified on livekit-agents 1.8 / pipecat-ai 1.12; check the repo README for updates."]
 
@@ -193,13 +204,14 @@ First, config. Open `src/maple/config.py`. Every model name already comes from a
 ```python
 DEFAULT_REALTIME_MODEL = "gpt-realtime"
 DEFAULT_REALTIME_VOICE = "marin"
-
+...
 @dataclass(frozen=True)
 class Settings:
     ...
-    realtime_model: str = DEFAULT_REALTIME_MODEL   # env: REALTIME_MODEL
-    realtime_voice: str = DEFAULT_REALTIME_VOICE   # env: REALTIME_VOICE
+    realtime_model: str = DEFAULT_REALTIME_MODEL
+    realtime_voice: str = DEFAULT_REALTIME_VOICE
 ```
+(`...` marks lines left out. `load_settings` reads them from `REALTIME_MODEL` and `REALTIME_VOICE`.)
 
 Why environment variables again? Because realtime model names change more often than any other model name in this stack. When OpenAI ships the next one, you change `.env`, not your code.
 
@@ -208,8 +220,14 @@ Now the agent file. Imports first.
 [CODE: `agents/s06_realtime_agent.py`, step 1: imports]
 
 ```python
+from __future__ import annotations
+
 import logging
 import os
+
+from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli
+from livekit.plugins import openai
+from openai.types import realtime
 
 from common import (
     BookingToolsMixin,
@@ -219,10 +237,6 @@ from common import (
     get_scheduler,
     get_settings,
 )
-from livekit.agents import Agent, AgentServer, AgentSession, JobContext, cli
-from livekit.plugins import openai
-from openai.types import realtime
-
 from maple import prompts
 from maple.config import Settings
 from maple.scheduler import ClinicScheduler
@@ -251,7 +265,9 @@ class RealtimeRiley(BookingToolsMixin, Agent):
         )
 ```
 
-`RealtimeRiley` mixes in `BookingToolsMixin`, so she has `find_available_slots`, `book_appointment`, `reschedule_appointment` and `cancel_appointment`, exactly as in Section 5. Same instructions, built by `build_instructions` with the booking rules. Same scheduler.
+`RealtimeRiley` mixes in `BookingToolsMixin`, so it has `find_available_slots`, `book_appointment`, `reschedule_appointment` and `cancel_appointment`, exactly as in Section 5. Same instructions, built by `build_instructions` with the booking rules. Same scheduler.
+
+[SCREEN: Highlight `on_enter` and its `generate_reply(...)` call.]
 
 One line is different, and it's the most important thing in this lecture. [PAUSE] In Section 5, Riley greeted with `session.say(prompts.GREETING)`. `say` speaks fixed text through the text-to-speech model. A pure realtime session has no text-to-speech model. OpenAI's realtime model can't read out arbitrary text you hand it. So calling `say` here raises an error: "trying to generate speech from text without a TTS model." Instead, we use `generate_reply` with instructions: "Greet the caller with exactly this sentence." The model speaks it in its own voice.
 
@@ -259,11 +275,15 @@ One line is different, and it's the most important thing in this lecture. [PAUSE
 - `session.say(text)` → spoken by the TTS → needs `tts=` on the session
 - Pure realtime: no TTS → `RuntimeError: trying to generate speech from text without a TTS model...`
 - Use `session.generate_reply(instructions="Say ...")` instead
-- Same for string filler speech (`context.with_filler("One moment...")`)
+- String fillers use `say` too: the mixin's `_filler` skips them here (`can_say`)
 
 [AVATAR]
 
-The same rule applies to filler speech from lecture 5.5. When you pass `with_filler` a string, LiveKit speaks it with `say`. Our demo scheduler answers instantly, so the filler never fires and you won't see a problem today. But connect a slow, real booking system to a pure realtime Riley and the filler will fail the moment it tries to speak. You have two fixes: use the hybrid setup from the next lecture, which has a TTS again, or pass `with_filler` a function that calls `generate_reply`. There's a snippet in the lecture notes.
+The same rule applies to filler speech from lecture 5.5. When you pass `with_filler` a string, LiveKit speaks it with `say`. So do Riley's booking tools crash here when the calendar is slow? No. Remember the `_filler` helper from lecture 5.7? It asks `can_say` first, and on a pure realtime session it skips string fillers. The tool still runs. The caller just hears a little more silence.
+
+[SCREEN: VS Code, `agents/common.py`: `can_say`, then `BookingToolsMixin._filler`. Then `tests/agent/test_mock_mode.py`, scrolled to `test_string_fillers_are_skipped_only_in_pure_realtime_mode`.]
+
+And that behaviour has a test. String fillers are skipped only in pure realtime mode, and still play in cascaded and hybrid sessions. If you want a filler on pure realtime anyway, use the hybrid setup from the next lecture, which has a TTS again, or pass `with_filler` a function that calls `generate_reply`. There's a snippet in the lecture notes.
 
 [CODE: step 3: the realtime model]
 
@@ -275,8 +295,8 @@ def build_realtime_model(settings: Settings, *, hybrid: bool) -> openai.realtime
     which keeps Riley's brand voice identical across architectures (lecture 6.3).
     """
     return openai.realtime.RealtimeModel(
-        model=settings.realtime_model,          # "gpt-realtime"
-        voice=settings.realtime_voice,          # "marin"
+        model=settings.realtime_model,  # "gpt-realtime"
+        voice=settings.realtime_voice,  # "marin"
         modalities=["text"] if hybrid else ["audio"],
         turn_detection=realtime.realtime_audio_input_turn_detection.SemanticVad(
             type="semantic_vad",
@@ -328,7 +348,7 @@ Let's run it.
 [SCREEN: terminal]
 
 ```bash
-uv run agents/s06_realtime_agent.py console
+uv run python agents/s06_realtime_agent.py console
 ```
 
 [DEMO: console mode. Riley greets in the `marin` voice. Speak: "Hi, I'd like to book a cleaning next Tuesday morning." Riley answers quickly and calls `find_available_slots`; the terminal log shows the function call and its arguments.]
@@ -337,9 +357,9 @@ Listen to how fast that first reply lands. [PAUSE] And look at the log. There's 
 
 [DEMO: pick a time, give name and number "Alex Kim, 512 555 0188". Riley reads back and asks for confirmation. Say "yes". `book_appointment` fires with name, phone, slot_start and reason.]
 
-The booking goes through. And listen to the read-back. Riley still confirms the name, day and time before calling `book_appointment`, because that rule lives in her instructions, and instructions travel with the agent.
+The booking goes through. And listen to the read-back. Riley still confirms the name, day and time before calling `book_appointment`, because that rule lives in its instructions, and instructions travel with the agent.
 
-One more check. Interrupt her.
+One more check. Interrupt it.
 
 [DEMO: while Riley reads back, say "No, Thursday." Riley stops mid-sentence and re-checks Thursday.]
 
@@ -348,6 +368,8 @@ The barge-in worked, because of `interrupt_response=True`. OpenAI's server heard
 [SCREEN: terminal log from the booking demo, scrolled back to the start of the call.]
 
 Before we move on, let's read the log together, because realtime sessions log differently from cascaded ones. At the top, the realtime session connects to OpenAI. There's no "STT connected" line and no "TTS connected" line, because there's no separate STT or TTS. Then each of your turns shows up twice: once as the side-channel transcript of what you said, and once as the model's response. [PAUSE] Notice the transcript line sometimes arrives after Riley has already started speaking. That's normal. The model answered from the audio, and the transcription model finished a moment later. It's lecture 6.1's "the transcript is a witness" in action.
+
+[SCREEN: Zoom on the `find_available_slots` call in the log and its JSON arguments.]
 
 Look at the tool call too. The arguments are JSON, exactly like the cascaded version: a `day` and a `part_of_day`. The model chose "2026-10-06" for next Tuesday, because Riley's instructions include today's date through `build_instructions`. If you ever see a realtime Riley book the wrong week, check that line of the prompt first.
 
@@ -359,6 +381,11 @@ Let's review. Changed: one argument on `AgentSession`, and the greeting now uses
 
 ### Recap
 
+[SLIDE 2: Recap]
+- Same tools, prompt and userdata; new model
+- Greet with `generate_reply`: no TTS for `say()`
+- Tune turn-taking with semantic VAD `eagerness`
+
 `RealtimeRiley` runs on `gpt-realtime` with the `marin` voice and semantic VAD, reuses every Section 5 booking tool, and greets with `generate_reply` because a pure realtime session has no TTS for `say()`.
 
 ### Transition
@@ -367,7 +394,7 @@ Next, we'll keep the realtime brain but give Riley back a voice you choose, with
 
 ### Speaker notes: common mistakes and Q&A
 
-- **`RuntimeError ... without a TTS model`**: `session.say(...)` or a string filler in pure realtime mode. Use `generate_reply(instructions=...)`, the hybrid mode (6.3), or a callable filler:
+- **`RuntimeError ... without a TTS model`**: `session.say(...)`, or a string filler you pass to `context.with_filler` yourself, in pure realtime mode. (The course's booking tools go through `BookingToolsMixin._filler`, which skips string fillers there; see `tests/agent/test_mock_mode.py::test_string_fillers_are_skipped_only_in_pure_realtime_mode`.) Use `generate_reply(instructions=...)`, the hybrid mode (6.3), or a callable filler:
   ```python
   async with context.with_filler(
       lambda step: context.session.generate_reply(instructions="Say briefly that you're checking the schedule."),
@@ -403,7 +430,7 @@ Next, we'll keep the realtime brain but give Riley back a voice you choose, with
 
 [AVATAR]
 
-Maple Street Dental called. They love how fast Riley is. They don't love that she doesn't sound like the voice on their website. [PAUSE] This is the most common complaint I hear about speech-to-speech agents in business settings. The fix is called a half-cascade, or hybrid. The realtime model still listens to raw audio. But instead of speaking, it writes text. And your own TTS speaks that text.
+Maple Street Dental called. They love how fast Riley is. They don't love that it doesn't sound like the voice on their website. [PAUSE] This is the most common complaint I hear about speech-to-speech agents in business settings. The fix is called a half-cascade, or hybrid. The realtime model still listens to raw audio. But instead of speaking, it writes text. And your own TTS speaks that text.
 
 [SLIDE 1: The hybrid pipeline]
 - Caller audio → realtime model (hears tone, pauses; semantic VAD)
@@ -456,7 +483,7 @@ Second, the session. In hybrid mode we add `tts=build_tts(settings)`, the same h
 [SCREEN: terminal]
 
 ```bash
-REALTIME_HYBRID=1 uv run agents/s06_realtime_agent.py console
+REALTIME_HYBRID=1 uv run python agents/s06_realtime_agent.py console
 ```
 
 [DEMO: say "Hi, do you have anything Thursday afternoon for a filling?" Riley answers in the Cartesia voice from Section 3.]
@@ -466,7 +493,7 @@ That's Riley's Section 3 voice again, with a realtime brain behind it.
 Now pure realtime, same question.
 
 ```bash
-uv run agents/s06_realtime_agent.py console
+uv run python agents/s06_realtime_agent.py console
 ```
 
 [DEMO: same question. Riley answers in `marin`.]
@@ -477,21 +504,39 @@ Can you hear the difference? The realtime voice is a bit more expressive. The hy
 - Use `modalities=["text"]`, not the default `["text", "audio"]`, or you pay for audio you throw away
 - The `voice=` argument is ignored in text mode
 - Latency = realtime text TTFT + TTS TTFB
-- Transcripts: caller side from the transcription model, Riley's side is her exact text
+- Transcripts: caller side from the transcription model, Riley's side is its exact text
 
 [AVATAR]
 
-Four gotchas. One: set modalities to text only. The plugin's default is text and audio, and if you add a TTS on top, you pay for audio output tokens you never play. Two: the voice argument does nothing in text mode. Three: your latency is now the realtime model's time to first text token plus the TTS time to first byte. Four, a bonus: Riley's side of the transcript is now exact, because it's the text she actually spoke. That makes the judge tests in Section 9 more trustworthy.
+Four gotchas. One: set modalities to text only. The plugin's default is text and audio, and if you add a TTS on top, you pay for audio output tokens you never play. Two: the voice argument does nothing in text mode. Three: your latency is now the realtime model's time to first text token plus the TTS time to first byte. Four, a bonus: Riley's side of the transcript is now exact, because it's the text Riley actually spoke. That makes the judge tests in Section 9 more trustworthy.
+
+[SLIDE 4: When to choose the hybrid]
+- The voice is part of the brand
+- You need exact wording: policies, read-backs
+- You want a text checkpoint for guardrails
+- Skip it when every millisecond counts
 
 [AVATAR]
 
 So when should you choose the hybrid? Here's how I think about it. Pick it when the voice is part of the brand, when you need exact wording for things like policies and read-backs, or when you want the text checkpoint for guardrails, but you still want realtime's natural turn-taking and its ear for tone. Skip it when every millisecond counts and a built-in voice is acceptable, because pure realtime is still faster.
 
-Let's put numbers on that trade. Say pure realtime starts speaking about six hundred and fifty milliseconds after the caller stops. The hybrid waits for the first text tokens, maybe four hundred milliseconds, then Cartesia needs another hundred and fifty or so to start the audio. That lands around eight hundred to eight hundred and fifty milliseconds. [PAUSE] Still under our one-second target from lecture 1.4, and still faster than a typical cascaded turn on a phone line. For Maple Street Dental, that's a very reasonable price for keeping their brand voice. In the next lecture, we'll check whether my guesses survive real measurement.
+[SLIDE 5: Hybrid latency, a worked example]
+- Pure realtime: about 650 ms to first audio
+- Hybrid: the same listening, then first text instead of first audio
+- Plus one TTS hop: about 150 to 200 ms
+- About 800 to 850 ms: still under the 1-second target
+Footer: "Illustrative numbers. You'll measure your own in 6.4."
+
+Let's put numbers on that trade. Say pure realtime starts speaking about six hundred and fifty milliseconds after the caller stops. The hybrid listens the same way, but waits for the first text tokens instead of the first audio, and then Cartesia needs another hundred and fifty to two hundred milliseconds to start speaking. So add roughly one TTS hop: around eight hundred to eight hundred and fifty milliseconds. [PAUSE] Still under our one-second target from lecture 1.4, and still faster than a typical cascaded turn on a phone line. For Maple Street Dental, that's a very reasonable price for keeping their brand voice. In the next lecture, we'll check whether my guesses survive real measurement.
 
 ### Recap
 
-Setting `modalities=["text"]` and adding `tts=build_tts(settings)` with `REALTIME_HYBRID=1` gives Riley a realtime brain with her brand voice and text-level control, for the price of one TTS hop.
+[SLIDE 6: Recap]
+- `modalities=["text"]` plus `tts=build_tts(settings)`
+- Brand voice, `say()` and a text checkpoint return
+- The price: one TTS hop of latency
+
+Setting `modalities=["text"]` and adding `tts=build_tts(settings)` with `REALTIME_HYBRID=1` gives Riley a realtime brain with its brand voice and text-level control, for the price of one TTS hop.
 
 ### Transition
 
@@ -545,11 +590,11 @@ Here's the script. Five calls that cover what a receptionist actually does. A qu
 - Latency: end of caller speech → first Riley audio (median of 5 turns)
 - Cost per minute: from usage summary × price table
 - Tool accuracy: right tool, right arguments, first try (out of 5)
-- Interruptions: did she stop within half a second and handle the new request? (out of 5)
+- Interruptions: did it stop within half a second and handle the new request? (out of 5)
 
 [AVATAR]
 
-And here's what we measure. Latency is the gap between the moment I stop talking and the moment Riley starts. Cost per minute comes from the usage LiveKit reports, multiplied by a price table. Tool accuracy asks: did Riley call the right tool with the right arguments on the first try? And interruptions asks: when I cut her off, did she actually stop, and did she handle what I said?
+And here's what we measure. Latency is the gap between the moment I stop talking and the moment Riley starts. Cost per minute comes from the usage LiveKit reports, multiplied by a price table. Tool accuracy asks: did Riley call the right tool with the right arguments on the first try? And interruptions asks: when I cut Riley off, did it actually stop, and did it handle what I said?
 
 For latency today, I've pasted a three-line metrics logger into each entrypoint, right after the session is created. It's a preview of Section 10, where we'll do this properly and export to a file. For now, it just prints each metric as it arrives.
 
@@ -567,26 +612,30 @@ from livekit.agents import MetricsCollectedEvent, metrics
 
 ```bash
 # pane 1: cascaded (Section 5)
-MAPLE_TODAY=2026-10-05 uv run agents/s05_booking_agent.py console
+MAPLE_TODAY=2026-10-05 uv run python agents/s05_booking_agent.py console
 
 # pane 2: pure realtime
-MAPLE_TODAY=2026-10-05 uv run agents/s06_realtime_agent.py console
+MAPLE_TODAY=2026-10-05 uv run python agents/s06_realtime_agent.py console
 
 # pane 3: hybrid
-MAPLE_TODAY=2026-10-05 REALTIME_HYBRID=1 uv run agents/s06_realtime_agent.py console
+MAPLE_TODAY=2026-10-05 REALTIME_HYBRID=1 uv run python agents/s06_realtime_agent.py console
 ```
 
 [DEMO: Cascaded Riley, calls 1 to 5 from the card. Point out log lines for end-of-utterance delay, LLM time to first token and TTS time to first byte after each turn.]
 
 Cascaded first. Call one, the Friday hours. Watch the log. End of utterance delay around half a second, because of the turn detector's minimum delay. LLM time to first token a bit under half a second. TTS time to first byte around a hundred and fifty milliseconds. Add them up and we're a little over a second. You can feel that small gap.
 
+[SCREEN: Cascaded pane, zoom on the `book_appointment` line in the log and its four arguments.]
+
 Call two, the booking. Riley asks for anything missing, reads back "Tuesday, October sixth at nine in the morning, Alex Kim," and then calls `book_appointment`. Look at the arguments in the log. Name, phone, reason, start time. All correct. That's one for one on tool accuracy.
 
-Call four, the barge-in. I cut her off during the read-back. [PAUSE] She stops. She re-checks the afternoon. Good.
+Call four, the barge-in. I cut Riley off during the read-back. [PAUSE] It stops. It re-checks the afternoon. Good.
 
 [DEMO: Realtime Riley, same five calls.]
 
 Now pure realtime. Same card. Call one. [PAUSE] Did you hear that? The answer started noticeably sooner. There's no STT final and no TTS hop. The realtime metrics log a time to first token for the whole speech-to-speech response, and it's sitting around six hundred milliseconds on my connection.
+
+[SCREEN: Realtime pane, zoom on the two `book_appointment` calls in the log: the phone number with dashes in one, without in the other.]
 
 Call two, the booking. The read-back is more natural. Listen to the phone number. "Five one two, five five five, zero one eight eight." It grouped the digits without our Section 4 text transforms. But look at the tool call. [PAUSE] On this run, it passed the phone number with dashes in one call and without in another. Our scheduler normalizes phone numbers, so the booking still worked. But if it didn't, that's the kind of drift you'd only catch with the tool-argument tests in Section 9.
 
@@ -599,6 +648,8 @@ Finally, hybrid. The answers start a little later than pure realtime, because of
 [DEMO: SIDE-BY-SIDE PLAYBACK. Pre-recorded audio of calls 2 and 4 from each architecture (captured with LiveKit session recording or OBS during the runs above). Editor layout: three stacked waveform lanes labelled Cascaded / Realtime / Hybrid, aligned so "caller stops speaking" sits on one vertical line; a red marker on each lane where Riley's first audio starts; the gap in milliseconds printed next to each marker. Play call 2 lane by lane, then call 4 (the barge-in) lane by lane.]
 
 Numbers are easy to skim, so let's listen instead. Here's call two, the booking, from all three versions, lined up so the moment I stop talking sits on the same vertical line. [PAUSE] Cascaded. [PAUSE] Realtime. [PAUSE] Hybrid. Hear how the realtime answer lands almost on top of my last word? And how cascaded leaves a small breath first? That breath is the gap you saw in the logs.
+
+[SCREEN: The call-4 lanes, stacked, with a red marker on each lane where Riley stops talking after the caller starts.]
 
 Now call four, the barge-in. Watch the red markers. Cascaded stops a beat after I start talking. Realtime stops almost instantly. Hybrid is close to realtime, because the same server is listening. [PAUSE] Also listen to the voices. Realtime's `marin` is more expressive. Hybrid and cascaded share the Cartesia brand voice. That difference doesn't show up in any metric, and it might matter more to the clinic than a hundred milliseconds. And one more thing about those red markers. [PAUSE] The gap you can see on a waveform is the fairest latency number of all. Cascaded Riley reports separate stages, while realtime Riley mostly reports one time to first token, so their log numbers aren't directly comparable. What the caller hears is.
 
@@ -617,6 +668,8 @@ Now call four, the barge-in. Watch the red markers. Cascaded stops a beat after 
 
 Here's my sheet. Treat these numbers as illustrative. Prices move, networks differ, and five calls is a small sample. [PAUSE] Cascaded was the slowest at about one point one seconds, but the cheapest, at roughly six and a half cents a minute, and it went five for five on tool calls. Realtime was the fastest at about six hundred and fifty milliseconds, and the best at interruptions, but it cost roughly two and a half times as much per minute. Hybrid landed in the middle on both.
 
+[SCREEN: `10-resources/architecture-decision-matrix.md`, the cost row. Type in the three cost-per-minute numbers.]
+
 Why is realtime so much more expensive? Remember lecture 6.1. Audio tokens cost far more than text tokens, and every turn re-sends the conversation so far. Longer calls make that gap wider, not narrower. Lecture 10.4 turns this into an exact calculation in `src/maple/costs.py`.
 
 [SLIDE 4: Decision matrix for Maple Street Dental]
@@ -630,11 +683,18 @@ Why is realtime so much more expensive? Remember lecture 6.1. Audio tokens cost 
 
 Now apply it to a real business. Maple Street Dental takes about four hundred calls a day, three minutes each. That's twelve hundred minutes a day. At six and a half cents a minute, that's about seventy-eight dollars a day. At sixteen cents a minute, it's about a hundred and ninety-two. [PAUSE] Over a month, that difference is around three thousand four hundred dollars. They also want their brand voice, and they want dates and names read back precisely.
 
+[SCREEN: `10-resources/architecture-decision-matrix.md`, scrolled to the "Decision record template". Fill it in live: "Decision: cascaded on LiveKit", with hybrid noted as the A/B candidate.]
+
 So my decision for Riley is: cascaded as the default, which is what the rest of this course builds on. Hybrid is an A/B candidate for later, if callers complain about speed. Pure realtime is a great fit for a different business, like a casual language-practice app where expressiveness beats everything.
 
 Your decision might differ. That's fine. What matters is that you made it with your numbers.
 
 ### Recap
+
+[SLIDE 5: Recap]
+- Same five calls, same words, same network
+- Compare latency, cost, tool accuracy, interruptions
+- Business requirements pick the winner
 
 Run the same scripted calls through each architecture, compare latency, cost per minute, tool accuracy and interruptions, and let the business requirements pick the winner.
 
@@ -660,7 +720,7 @@ Your turn: in Lab 4 you'll run the same five calls and fill in your own comparis
 | ID | 6.5 |
 | Title | Lab 4: Measure both architectures |
 | Type | LAB (guided lab; video intro/walkthrough) |
-| Target duration | Video 2:00 (about 220 spoken words at ~140 wpm, plus slide and pause time); lab work about 45 minutes off-video |
+| Target duration | Video 2:00 (about 250 spoken words at ~140 wpm, plus slide and pause time); lab work about 75 minutes off-video |
 | One idea | Produce your own architecture comparison with real numbers and a written recommendation. |
 | Prerequisites | 6.2, 6.3, 6.4 |
 | Files used | `04-labs/lab-04-realtime-vs-cascaded.md`, `agents/lab04_cascaded.py` and `agents/lab04_realtime.py` (copies you make), `labs/lab04_compare.py` (you create it), `10-resources/architecture-decision-matrix.md` |
@@ -675,11 +735,13 @@ Your turn: in Lab 4 you'll run the same five calls and fill in your own comparis
 
 [AVATAR]
 
-Time to get your own numbers. This lab takes about forty-five minutes and costs roughly fifty cents to a dollar fifty in API usage, mostly realtime audio. It's the lab I'd most like you to do, because your network and your voice will give you different results from mine.
+Every number in this section so far was mine. My network, my voice, my prices. [PAUSE] Yours will be different. This lab gets you your own. It takes about seventy-five minutes and costs roughly fifty cents to a dollar fifty in API usage, mostly realtime audio.
 
 [SCREEN: `04-labs/lab-04-realtime-vs-cascaded.md`, scrolling through Steps 1 to 6.]
 
 Open `04-labs/lab-04-realtime-vs-cascaded.md`. Step one pins "today" with `MAPLE_TODAY=2026-10-05`, so both agents offer the same slots. Step two: copy the booking agent and the realtime agent to `lab04_cascaded.py` and `lab04_realtime.py`, and paste in a small exporter that writes metrics and usage to the `metrics` folder. Step three: the same five calls from lecture 6.4, read from the card.
+
+[SCREEN: Scroll to Step 4, "Measure perceived latency (the fair comparison)".]
 
 Step four is the one people skip, so don't. The two architectures report different metrics: cascaded gives you separate stages, realtime mostly gives you one time to first token. Comparing those numbers directly isn't fair. So you'll record your screen audio and measure the actual silence between the end of your words and the start of Riley's, like the side-by-side playback in lecture 6.4.
 
@@ -692,6 +754,11 @@ Then write your recommendation: which architecture you'd pick for Maple Street D
 ### Recap
 
 The lab turns lecture 6.4's demo into your own measured comparison and a data-backed recommendation.
+
+[SLIDE 1: You can now]
+- Put Riley on a speech-to-speech model
+- Keep a brand voice with the hybrid
+- Choose an architecture with your own numbers
 
 ### Transition
 
@@ -720,23 +787,24 @@ When your sheet is done, take the short quiz to lock in the section.
 
 **Learning objectives**
 
-1. Recall realtime configuration (`modalities`, voice, semantic VAD eagerness).
-2. Apply trade-offs between cascaded, realtime and hybrid to a scenario.
+1. Revisit Section 5 tool design: descriptions, `ToolError`, filler speech and userdata.
+2. Recall realtime configuration (`RealtimeModel`, `modalities`) and why transcripts can differ from what the model heard.
+3. Apply trade-offs between cascaded, realtime and hybrid to a scenario.
 
 ### Script
 
 [AVATAR]
 
-Eight quick questions. They cover three things. First, how a realtime model hears, speaks and decides when your turn is over. Second, the configuration: what `modalities=["text"]` does, and why `session.say` breaks without a TTS. Third, choosing an architecture for a scenario.
+You switch Riley to `gpt-realtime`, and the greeting throws an error. Do you know why? [PAUSE] Then you're ready. Eight quick questions. The first four revisit Section 5's tools: tool descriptions, tool errors, filler speech and userdata. The last four are this section: configuring a realtime session, why a transcript can differ from what Riley understood, the hybrid, and choosing an architecture from real numbers.
 
 [SLIDE 1: Quiz: 8 questions]
-- Realtime internals and turn detection
-- Configuration and gotchas
-- Scenario: pick an architecture and justify it
+- Tools: descriptions, `ToolError`, fillers, userdata
+- Realtime session configuration and transcripts
+- Hybrid, and picking an architecture from numbers
 
 [AVATAR]
 
-A tip before you start: question three describes a clinic with a strict script for cancellation policies and a brand voice on its phone menu. Think about which parts of the pipeline each architecture lets you control, and the answer follows.
+A tip before you start: question eight gives you head-to-head numbers. Decide with what the clinic cares about most, not with the fastest number.
 
 If you miss one, the feedback points to the exact lecture to revisit. No time limit. Take it now while the lab numbers are fresh.
 
@@ -751,4 +819,4 @@ Next up is Section 7, where Riley learns to answer clinic questions from a knowl
 ### Speaker notes: common mistakes and Q&A
 
 - Students often confuse "semantic VAD" with LiveKit's turn detector model. Both judge whether the caller is finished; one runs on OpenAI's server, the other in your agent process.
-- The most-missed question is usually "which setup lets `session.say` work?" Answer: any setup with a TTS (cascaded or hybrid).
+- The most-missed realtime question is usually the session change (Q5): the realtime model replaces `stt`, `llm` and `tts` as one `llm=`, and the same `@function_tool` methods keep working.

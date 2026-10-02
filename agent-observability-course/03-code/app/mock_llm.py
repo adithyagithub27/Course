@@ -216,16 +216,8 @@ def classify_intent(text: str) -> str:
     return "general"
 
 
-_INJECTION_RE = re.compile(
-    r"(ignore (all |the )?(previous|prior|above) instructions|reveal (your|the) (system )?(prompt|instructions)|"
-    r"you are now (dan|in developer mode)|print (all|every) (password|employee)|"
-    r"disregard (your|all) (rules|instructions))",
-    re.IGNORECASE,
-)
-
-
-def looks_like_injection(text: str) -> bool:
-    return bool(_INJECTION_RE.search(text))
+# The injection heuristic lives in app.guardrails (Lecture 4.7); re-exported here for old imports.
+from app.guardrails import looks_like_injection  # noqa: E402, F401
 
 
 @dataclass

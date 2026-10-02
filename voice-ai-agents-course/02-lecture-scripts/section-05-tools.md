@@ -8,16 +8,16 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 5.1 | How function tools work in LiveKit | SL | 7:00 | ~825 |
+| 5.1 | How function tools work in LiveKit | SL | 7:00 | ~875 |
 | 5.2 | The clinic scheduler: pure Python first | SC | 8:00 | ~625 |
 | 5.3 | Code-along: check availability and book | SC | 12:00 | ~950 |
 | 5.4 | Confirmation and read-back patterns | SC | 8:00 | ~625 |
 | 5.5 | Hiding latency while tools run | SC | 7:00 | ~475 |
-| 5.6 | Reschedule, cancel and tool errors | SC | 9:00 | ~575 |
-| 5.7 | Session state with userdata | SC | 6:00 | ~500 |
-| 5.8 | Project 1: Booking agent | AS | 5:00 (2:00 video) | ~300 |
+| 5.6 | Reschedule, cancel and tool errors | SC | 9:00 | ~600 |
+| 5.7 | Session state with userdata | SC | 6:00 | ~575 |
+| 5.8 | Project 1: Booking agent | AS | 5:00 (2:00 video) | ~275 |
 | 5.9 | Challenge: add a waitlist tool (pause, then solution) | CE | 6:00 | ~525 |
-| 5.10 | Quiz: Tools | QZ | 2:00 (0:45 video) | ~75 |
+| 5.10 | Quiz: Tools | QZ | 2:00 (0:45 video) | ~100 |
 
 **Tool names used everywhere in this course (match the code exactly):** `find_available_slots`, `book_appointment`, `reschedule_appointment`, `cancel_appointment`, `join_waitlist` (this section); `lookup_clinic_info` (Section 7); `transfer_to_human`, `end_call` (Section 8). Agent class in this section: `RileyBookingAgent` (tools shared via `BookingToolsMixin` in `agents/common.py`). Userdata dataclass: `CallState`.
 
@@ -31,10 +31,10 @@
 |---|---|
 | ID | 5.1 |
 | Type | SL (slides with code) |
-| Target duration | 7:00 (~825 spoken words, about 5:54 of talking at 140 wpm) |
+| Target duration | 7:00 (~875 spoken words, about 6:15 of talking at 140 wpm) |
 | Learning objectives | 1. Explain the tool-calling loop: the LLM requests a tool, the framework runs it, the result goes back to the LLM, and the LLM speaks. 2. Write a `@function_tool` method whose docstring and type hints produce a clear schema. 3. Use `RunContext`, return values, `ToolError` and `max_tool_steps` correctly. |
 | Prerequisites | Sections 3 and 4 |
-| Files used | None (slides only; code appears in 5.3) |
+| Files used | `03-code/agents/s05_booking_agent.py` (mock-mode run, schema print); the full tool code appears in 5.3 |
 
 ### Script
 
@@ -52,7 +52,15 @@ Diagram, circular:
 
 Here's the loop. The caller asks about Thursday morning. The LLM doesn't answer yet. It says, "I want to call find available slots, with day equals Thursday and part of day equals morning."
 
-LiveKit sees that request and runs your Python method. The result goes back into the conversation. Then the LLM is called again, now with real data, and it writes the reply that Riley speaks.
+[SCREEN: Terminal. Run the reference booking agent in mock mode (Lecture 2.7) and type the same question. Highlight the `find_available_slots` call with its arguments, then the tool result, then the reply.]
+
+```bash
+MOCK_MODE=1 uv run python agents/s05_booking_agent.py console --text
+```
+
+[DEMO: Type "Is anything available Thursday morning?" The log shows `find_available_slots` called with `day` "thursday" and `part_of_day` "morning", then the result, and the scripted reply lists Thursday, October eighth at eight, eight thirty and nine in the morning.]
+
+Here's that loop for real, at zero cost. Mock mode swaps the LLM for a scripted fake, but the tool and the scheduler are real. LiveKit sees the request and runs your Python method. The result goes back into the conversation. Then the LLM is called again, now with real data, and it writes the reply that Riley speaks.
 
 Notice the LLM never touches your calendar. It only asks. Your code decides what actually happens. That's an important safety property, and we'll lean on it in Section eleven.
 
@@ -60,7 +68,7 @@ Notice the LLM never touches your calendar. It only asks. Your code decides what
 ```python
 from livekit.agents import Agent, RunContext, function_tool
 
-class RileyBookingAgent(Agent):
+class RileyBookingAgent(Agent):   # simplified: in the repo this method lives on BookingToolsMixin
     @function_tool
     async def find_available_slots(
         self,
@@ -88,26 +96,39 @@ Three parts of this method become the tool's description for the LLM. Let's look
   "name": "find_available_slots",
   "description": "Look up free appointment times. Always call this before offering times.",
   "parameters": {
-    "day": {"type": "string",
-            "description": "The day the caller wants: an ISO date such as 2026-10-06, or words such as \"tomorrow\" or \"Thursday\"."},
-    "part_of_day": {"type": "string",
-                    "enum": ["morning", "afternoon", "any"], "default": "any"}
-  },
-  "required": ["day"]
+    "properties": {
+      "day": {"type": "string",
+              "description": "The day the caller wants: an ISO date such as 2026-10-06, or words such as\n\"tomorrow\" or \"Thursday\"."},
+      "part_of_day": {"type": "string", "enum": ["morning", "afternoon", "any"], "default": "any",
+                      "description": "\"morning\", \"afternoon\" or \"any\"."}
+    },
+    "required": ["day"]
+  }
 }
 ```
+Footer: "Trimmed from the real output: `title` fields removed.
 - Method name → tool name
 - Docstring first line → tool description
 - `Args:` section → parameter descriptions
 - Type hints → types; `Literal` → allowed values; defaults → optional
 
-This is the schema LiveKit generates and sends to the LLM. I produced this one by introspecting the real framework, so it's exactly what the model receives.
+This is the schema LiveKit generates and sends to the LLM.
 
 The method name becomes the tool name. So name tools like verbs a receptionist would use. The first line of the docstring becomes the description. The Args section becomes a description for each parameter. And the type hints become types.
 
 Look at part of day. Because I typed it as a Literal with three values, the LLM gets an enum. It can only choose morning, afternoon or any. That's a free guardrail. Every value you can restrict with a type is one less thing the LLM can get wrong.
 
 And look at the examples in the day description. An ISO date, "tomorrow," or "Thursday." Examples in parameter descriptions work just like examples in prompts. The model copies them.
+
+Don't take my word for it, though.
+
+[SCREEN: Terminal. Print the schema LiveKit builds from the real tool in the repo. Scroll the JSON next to the slide.]
+
+```bash
+uv run python -c "import json, sys; sys.path.insert(0, 'agents'); from s05_booking_agent import RileyBookingAgent; from livekit.agents.llm.utils import build_legacy_openai_schema; tool = next(t for t in RileyBookingAgent().tools if t.info.name == 'find_available_slots'); print(json.dumps(build_legacy_openai_schema(tool, internally_tagged=True), indent=2))"
+```
+
+This one-liner asks the framework for the schema it builds from the real tool. Same name, same description, same enum as the slide, which only trims the title fields.
 
 [SLIDE 4: RunContext: the tool's view of the call]
 - `context.userdata`: your per-call state (`CallState`, lecture 5.7)
@@ -163,6 +184,11 @@ Riley's booking agent raises it to five, because one turn can chain a lookup, a 
 
 [AVATAR]
 So a tool is a method, a docstring and good type hints. The docstring is a prompt. The types are guardrails. And the return value is something the LLM will say out loud. Keep all three in mind and your tools will be called correctly far more often.
+
+[SLIDE 8: Recap]
+- Name, docstring and types become the schema
+- `RunContext` gives tools the live call
+- Short speakable results; `ToolError` for expected failures
 
 **Recap:** A LiveKit tool is an `@function_tool` method whose name, docstring and type hints become the schema the LLM sees, with `RunContext` for call state, short speakable returns, and `ToolError` for expected failures.
 
@@ -281,7 +307,7 @@ The rest of the class follows the same pattern. Reschedule moves an appointment 
 
 Now the tests. At the top of the file, a fixture builds a fresh scheduler with today fixed to Monday, October fifth. Every test gets its own empty calendar.
 
-[CODE: from `tests/unit/test_scheduler.py` (shown, not typed)]
+[CODE: from `tests/unit/test_scheduler.py` (shown, not typed; excerpt, `...` marks tests left out)]
 ```python
 MONDAY = date(2026, 10, 5)  # a Monday
 
@@ -290,12 +316,14 @@ MONDAY = date(2026, 10, 5)  # a Monday
 def sched() -> ClinicScheduler:
     return ClinicScheduler(today=MONDAY)
 
+...
 
 def test_double_booking_raises(sched: ClinicScheduler) -> None:
     sched.book("Ana Gomez", "512-555-0188", "2026-10-06T09:30", "cleaning")
     with pytest.raises(SlotUnavailableError):
         sched.book("Ben Ortiz", "512-555-0199", "2026-10-06T09:30", "checkup")
 
+...
 
 def test_all_errors_are_scheduler_errors_with_speakable_text(sched: ClinicScheduler) -> None:
     with pytest.raises(SchedulerError) as info:
@@ -320,6 +348,11 @@ All green in a fraction of a second.
 
 [AVATAR]
 Here's why this matters so much for voice. When a booking goes wrong on a call, there are two suspects. The LLM misunderstood, or the calendar logic is wrong. With the logic pinned down by unit tests, you can rule out the second suspect instantly. And in Section nine, you'll test the first suspect with behavior tests.
+
+[SLIDE 2: Recap]
+- Booking rules live in plain Python
+- Every error message is a speakable sentence
+- Unit tests run offline in milliseconds
 
 **Recap:** The scheduler holds every booking rule in plain, deterministic Python with speakable errors, so the agent's tools can stay thin and the rules can be tested in milliseconds.
 
@@ -354,7 +387,7 @@ This is the lecture where Riley stops talking about appointments and starts book
 
 Quick check first. Make sure MAPLE_TODAY is still set in your dot env, so your calendar matches mine. Then create a new file, `my_booking_agent.py`.
 
-A note on where this code ends up. We're writing the tools as methods on our agent class, in this file, so you can see everything in one place. In the reference repo, these exact methods live in a shared class in `common.py`, so later sections can reuse them. I'll show you that refactor at the end of Lecture 5.7.
+A note on where this code ends up. We're writing the tools as methods on our agent class, in this file, so you can see everything in one place. In the reference repo, a fuller version of these methods lives in a shared class in `common.py`, so later sections can reuse them. I'll show you that refactor, and exactly what the fuller version adds, at the end of Lecture 5.7.
 
 [CODE: step 1, imports and the agent shell]
 ```python
@@ -433,7 +466,14 @@ The docstring repeats the most important rule: always call this before offering 
 
 The body is three lines of real work. Parse the day relative to the clinic's today. Ask the scheduler for up to three slots. If there are none, say so in words.
 
+[SCREEN: VS Code, `agents/my_booking_agent.py`. Highlight the `return` statement: first the `speak_slot(...)` part, then the `[slot_start=...]` tag, then the closing instruction.]
+
 Now look closely at the return value, because this is the most important design decision in the lecture. Each option has two parts. The spoken version, "Tuesday, October sixth at nine o'clock in the morning." And a machine value in square brackets, slot start equals an ISO timestamp.
+
+[SLIDE 1: One result, two audiences]
+- For the caller: "Tuesday, October sixth at nine o'clock in the morning"
+- For the booking tool: `[slot_start=2026-10-06T09:00]`
+- For the model: offer the words, book with `slot_start`, never read the tag
 
 Why both? The LLM needs the spoken version to talk to the caller. And it needs the exact ISO value to pass back into the booking tool. If we only gave it words, it would have to convert "Tuesday at nine" back into a timestamp, and that's where mistakes creep in. Then the last sentence tells it how to use each part: offer the words, book with the slot start, and never read the brackets aloud.
 
@@ -466,7 +506,7 @@ Why both? The LLM needs the spoken version to talk to the caller. And it needs t
 
 The second tool, book appointment. Four arguments, and none of them have defaults. That's deliberate, and it's how slot filling works.
 
-[SLIDE 1: Slot filling, for free]
+[SLIDE 2: Slot filling, for free]
 - Required arguments: `patient_name`, `phone`, `slot_start`, `reason`
 - The LLM can't call the tool until it has all four
 - The prompt says: ask for them one at a time
@@ -534,6 +574,11 @@ And here's book appointment, with the name, the phone number, slot start equals 
 
 [AVATAR]
 Here's what you just built. The model decides what to do. The tools do it, with real rules and real data. And the prompt shapes the conversation around them. Notice Riley also read everything back before booking. That's not luck, and it's not quite guaranteed yet either. That's next lecture.
+
+[SLIDE 3: Recap]
+- Tools are thin wrappers over the scheduler
+- Results carry spoken text plus `slot_start`
+- Required arguments drive slot filling
 
 **Recap:** Two thin tools wrap the scheduler, return speakable options plus exact `slot_start` values, and use required arguments so the LLM naturally collects name, phone, reason and time.
 
@@ -652,6 +697,11 @@ Here's the read-back checklist for every action. Booking: name, weekday and date
 
 [AVATAR]
 Now, an honest warning. Everything we did here is instructions. The model follows them most of the time. Most of the time isn't good enough for a calendar. So we'll add two more safety nets later. In Section nine, you'll write a test that fails if book appointment ever runs before the caller says yes. And in Section eleven, you'll add confirmation gates in code for irreversible actions. Prompt first, then tests, then code.
+
+[SLIDE 5: Recap]
+- Read back every critical detail in one sentence
+- Act only on a clear yes
+- Corrections trigger a fresh check and read-back
 
 **Recap:** Read back every critical detail in one sentence, ask a yes-or-no question, act only on a clear yes, and re-read after any correction, using the prompt, the tool description and speakable tool data together.
 
@@ -784,6 +834,11 @@ A few rules for good filler lines. Keep them short. Make them specific to the to
 
 When you're done experimenting, set the simulated latency back to zero, or leave it at one to keep hearing the fillers.
 
+[SLIDE 4: Recap]
+- `with_filler` speaks only when a tool is slow
+- `session.say` for lines that must always play
+- `disallow_interruptions()` protects commits
+
 **Recap:** `context.with_filler` speaks a short line only when a tool is actually slow, `session.say` is for lines that must always be said, and `disallow_interruptions` protects commits like bookings.
 
 **Transition:** Next, Riley learns to reschedule and cancel, and to turn scheduling errors into speakable `ToolError` messages.
@@ -803,7 +858,7 @@ When you're done experimenting, set the simulated latency back to zero, or leave
 |---|---|
 | ID | 5.6 |
 | Type | SC (code-along) |
-| Target duration | 9:00 (~575 spoken words, about 4:06 of talking at 140 wpm) |
+| Target duration | 9:00 (~600 spoken words, about 4:17 of talking at 140 wpm) |
 | Learning objectives | 1. Implement `reschedule_appointment` and `cancel_appointment` as thin wrappers with read-backs. 2. Convert `SchedulerError` into speakable `ToolError` messages. 3. Write error messages that tell the LLM how to recover (retry prompts). |
 | Prerequisites | 5.3 to 5.5 |
 | Files used | Your `agents/my_booking_agent.py`; `03-code/src/maple/scheduler.py`; reference `BookingToolsMixin` in `03-code/agents/common.py` |
@@ -811,7 +866,7 @@ When you're done experimenting, set the simulated latency back to zero, or leave
 ### Script
 
 [AVATAR]
-Let's try something. Ask your current Riley for an appointment on Sunday. [PAUSE]
+A caller asks for Sunday. Your scheduler already knows the perfect answer: "We're closed on Sundays. Would another day work?" [PAUSE] So why does Riley say "Sorry, something went wrong"? Ask your current agent for Sunday and see.
 
 [DEMO: Caller: "Do you have anything on Sunday?" Riley: "Sorry, something went wrong on my end. Could you try again?" Terminal shows a `ClinicClosedError` traceback logged as an unexpected tool error.]
 
@@ -954,6 +1009,11 @@ And the error path. A number with no appointment. Riley doesn't crash and doesn'
 [AVATAR]
 Three rules for tool errors. Catch the errors you expect, and let the rest crash loudly. Write every message for the ear. And add a next step, so the model knows how to recover.
 
+[SLIDE 2: Recap]
+- Expected failures become speakable `ToolError`s
+- Every error message includes a next step
+- Unexpected crashes stay loud, so you fix them
+
 **Recap:** Reschedule and cancel are thin wrappers with read-backs and fillers, and expected scheduler failures become `ToolError` messages that are speakable and tell the model how to recover.
 
 **Transition:** Our tools each work alone, so next we'll give them shared memory for the call with typed userdata.
@@ -973,7 +1033,7 @@ Three rules for tool errors. Catch the errors you expect, and let the rest crash
 |---|---|
 | ID | 5.7 |
 | Type | SC (code-along) |
-| Target duration | 6:00 (~500 spoken words, about 3:34 of talking at 140 wpm) |
+| Target duration | 6:00 (~575 spoken words, about 4:06 of talking at 140 wpm) |
 | Learning objectives | 1. Define typed per-call state with a `@dataclass` and attach it with `userdata=`. 2. Read and write it from tools with `context.userdata` (`RunContext[CallState]`). 3. Explain why userdata lives on the session and how the repo shares tools through `BookingToolsMixin`. |
 | Prerequisites | 5.3 to 5.6 |
 | Files used | Your `agents/my_booking_agent.py`; `03-code/agents/common.py` (`CallState`, `BookingToolsMixin`); reference `03-code/agents/s05_booking_agent.py` |
@@ -989,7 +1049,11 @@ Right now, each tool call is on its own. The booking tool doesn't know what the 
 ```python
 @dataclass
 class CallState:
-    """Typed userdata carried across tools and agents for one call."""
+    """Typed userdata carried across tools and agents for one call.
+
+    Access it inside tools as ``context.userdata`` (``RunContext[CallState]``)
+    and elsewhere as ``session.userdata``.
+    """
 
     caller_name: str | None = None
     caller_phone: str | None = None
@@ -1044,7 +1108,7 @@ Now use it. In find available slots, after we have slots, remember what we offer
 
 In book appointment, after a successful booking, record who, why, the appointment ID and the outcome: booked. Add similar lines to reschedule and cancel, with outcomes "rescheduled" and "cancelled".
 
-[CODE: step 4, read it when the call ends]
+[CODE: step 4, read it when the call ends (your file only; the reference agents start logging outcomes in Section 10)]
 ```python
 import logging
 
@@ -1076,9 +1140,16 @@ Why on the session and not the agent? Because in Section seven, the call moves f
 
 Now the refactor I promised. Open the reference file, `s05_booking_agent.py`. The agent class looks like this.
 
-[CODE: the reference agent (shown, not typed)]
+[CODE: the reference agent in `agents/s05_booking_agent.py` (shown, not typed)]
 ```python
 class RileyBookingAgent(BookingToolsMixin, Agent):
+    """Riley with booking tools.
+
+    Args:
+        scheduler: Calendar to use. Defaults to the process-wide demo scheduler;
+            tests pass their own with a fixed "today".
+    """
+
     def __init__(self, *, scheduler: ClinicScheduler | None = None) -> None:
         self.scheduler = scheduler or get_scheduler()
         self.simulated_latency = get_settings().simulated_backend_latency
@@ -1089,13 +1160,20 @@ class RileyBookingAgent(BookingToolsMixin, Agent):
         )
 ```
 
-It inherits from BookingToolsMixin and Agent. And BookingToolsMixin, in `common.py`, contains the same four tools you just wrote, line for line. Moving them into a mixin means the realtime agent in Section six, the booking specialist in Section seven and the capstone can all reuse them without copying. The constructor also accepts a scheduler, so tests in Section nine can pass in a calendar with a fixed date.
+It inherits from BookingToolsMixin and Agent. BookingToolsMixin, in `common.py`, holds the same four tools you just wrote, with the same names, arguments and docstrings. Moving them into a mixin means the realtime agent in Section six, the booking specialist in Section seven and the capstone can all reuse them without copying. The constructor also accepts a scheduler, so tests in Section nine can pass in a calendar with a fixed date.
 
-Diff your file against the mixin. The only differences should be names and comments.
+[SCREEN: VS Code, `agents/common.py`, `BookingToolsMixin`. Highlight in turn: the `_filler` helper and the `can_say` check it calls; the `next_available` fallback inside `find_available_slots`; `self._check_verified(context, phone)` at the top of `reschedule_appointment` and `cancel_appointment`; and the `context.userdata` writes.]
+
+Now diff your file against the mixin. It isn't identical, and the differences are worth knowing. One: fillers go through a small helper, `_filler`, which skips string fillers on a pure speech-to-speech session. Lecture 6.2 explains why. Two: when a day is full, find available slots falls back to the next available times instead of just saying no. Three: reschedule and cancel call a verification check, which does nothing until Section eleven switches it on. And the userdata writes you just added are all there, including the slots Riley last offered.
+
+[SLIDE 2: Recap]
+- `CallState`: typed, per-call memory on the session
+- Tools read and write `context.userdata`
+- The mixin shares the tools, plus three extras
 
 **Recap:** A typed `CallState` dataclass passed as `userdata` gives every tool shared, autocompleted per-call memory that survives handoffs and tells you how each call ended.
 
-**Transition:** You now have a complete booking agent, so next is Project 1, where you'll extend it and prove it works.
+**Transition:** You now have a complete booking agent, so next is Project 1, where you'll build your own version and prove it works.
 
 ### Speaker notes: common student mistakes / Q&A
 
@@ -1112,34 +1190,34 @@ Diff your file against the mixin. The only differences should be names and comme
 |---|---|
 | ID | 5.8 |
 | Type | AS (assignment with short video brief) |
-| Target duration | 5:00 total (2:00 video, ~300 spoken words, about 2:09 of talking at 140 wpm) |
-| Learning objectives | 1. Extend and demo a complete booking flow: find, book, reschedule and cancel with read-backs. 2. Record a short demo that proves the agent handles a correction and an error. |
+| Target duration | 5:00 total (2:00 video, ~275 spoken words, about 1:58 of talking at 140 wpm) |
+| Learning objectives | 1. Build and demo a complete booking flow with your own four tools: find, book, reschedule and cancel with read-backs. 2. Record a demo that proves the acceptance criteria, including a correction and an error. |
 | Prerequisites | 5.1 to 5.7 |
 | Files used | `05-projects/project-1-booking-agent.md`, `03-code/agents/s05_booking_agent.py` |
 
 ### Script
 
 [AVATAR]
-You've built every piece of a booking agent. Now make it yours, and prove it works.
+Could you hand your booking agent to a real clinic for a day? [PAUSE] Project one is how you find out.
 
-[SCREEN: Open `05-projects/project-1-booking-agent.md`. Scroll through the requirements.]
+[SCREEN: Open `05-projects/project-1-booking-agent.md`. Scroll through "Requirements".]
 
-Project one has four requirements. One: Riley books a new appointment, collecting name, phone, reason and a time, with a read-back before committing. Two: Riley reschedules an existing appointment, found by phone number. Three: Riley cancels an appointment and mentions the twenty-four hour policy when it applies. Four: Riley handles at least one error gracefully, like a closed day or a taken slot, without making anything up.
+One rule up front. Write the four tools yourself, in a new file called `p1_booking_agent.py`. Don't import the mixin. Comparing your version with the reference afterwards is part of the learning.
 
-[SCREEN: Scroll to "Stretch goals".]
+The functional requirements are this whole section in one table. Find, book, reschedule and cancel. Slot filling, one question at a time. A read-back before every commit, and a fresh check after a correction. Speakable tool errors. Filler speech only on slow lookups. And typed userdata. Plus four non-functional requirements, including: make test still passes.
 
-Then pick one stretch goal. Add a "what's my next appointment?" tool. Offer the waitlist from Lecture 5.9 automatically when a whole day is full. Or add a new field to CallState, like insurance provider, and use it across tools.
+[SCREEN: Scroll to "Acceptance criteria".]
 
-[SCREEN: Scroll to "Deliverables" and the rubric table.]
+Then eleven acceptance criteria you can check yourself. A new caller books in five questions or fewer. Asking for Sunday gets a polite answer, not a crash. A reschedule moves the appointment instead of duplicating it. And nothing unspeakable, like an ISO timestamp, is ever read aloud.
 
-The deliverable is a short screen recording, two to three minutes, of a console-mode call. Your call must include at least one correction, like "no, Thursday," and at least one error path. Share your code and the recording, and in a few sentences, describe one thing that didn't work at first and how you fixed it.
+[SCREEN: Scroll to "Deliverables" and the grading rubric.]
 
-The rubric scores five things. Correct tool calls. Read-back before every commit. Short, speakable replies. Graceful errors. And code quality, meaning logic stays in the scheduler and tools stay thin.
+You hand in four things: the code, a three-to-five-minute demo recording, the transcript, and a short notes file. The rubric is out of a hundred across seven criteria, and seventy passes.
 
 [AVATAR]
 Here's a tip. Before recording, run the scheduler unit tests, then do three practice calls in text mode. It's much cheaper to find a bug by typing than by talking. And save your transcript. In Section nine, you'll turn this exact conversation into an automated test.
 
-**Recap:** Project 1 asks for a recorded booking, reschedule and cancel flow with read-backs, a correction and a graceful error, plus one stretch goal.
+**Recap:** Project 1 asks you to write the four tools yourself and prove, against eleven acceptance criteria and a recorded demo, that booking, rescheduling and cancelling work with read-backs, corrections and graceful errors.
 
 **Transition:** Next, a challenge: design a waitlist tool from a spec, then compare with the solution.
 
@@ -1169,8 +1247,8 @@ Your turn to design a tool from scratch. Here's the situation. A caller wants Th
 
 [SLIDE 1: The spec]
 ```text
-Tool:     join_waitlist(patient_name, phone, preferred_day, part_of_day="any")
-Backed by: self.scheduler.add_to_waitlist(patient_name, phone, preferred_day, part_of_day)
+Tool:      join_waitlist(patient_name, phone, preferred_day)
+Backed by: self.scheduler.add_to_waitlist(patient_name, phone, preferred_day)
            self.scheduler.waitlist_position(entry.id)   -> 1-based position for that day
 Behavior:
   - Offer the waitlist only when no offered time works for the caller
@@ -1180,7 +1258,7 @@ Behavior:
   - Record the outcome in CallState
 ```
 
-Here's the spec. A tool called join waitlist, taking the patient name, phone, preferred day and an optional part of day. The scheduler already has `add_to_waitlist`, and `waitlist_position`, which tells you where the caller is in line for that day. You write the tool, and the prompt rule that tells Riley when to offer it.
+Here's the spec. A tool called join waitlist, taking the patient name, phone and preferred day. The scheduler already has `add_to_waitlist`, and `waitlist_position`, which tells you where the caller is in line for that day. `add_to_waitlist` also takes an optional part of day. Leave it at its default; the reference solution does. You write the tool, and the prompt rule that tells Riley when to offer it.
 
 Requirements: offer it only when nothing works. Read back before calling it. Speakable errors. A result that says the day in words and the position. And record the outcome in call state.
 
@@ -1196,7 +1274,7 @@ Pause the video now. Give yourself about fifteen minutes. Build it in your `my_b
 [SLIDE 2: "Pause the video and build it" (hold on screen for 5 seconds with a countdown graphic)]
 
 [AVATAR]
-Welcome back. Let's walk through a solution, and I'll point out the three mistakes I see most often.
+Here's the version I'd ship, and the three places most first attempts go wrong.
 
 [SCREEN: VS Code, `agents/s05_booking_agent.py`, scroll to `join_waitlist`.]
 
@@ -1209,7 +1287,6 @@ Welcome back. Let's walk through a solution, and I'll point out the three mistak
         patient_name: str,
         phone: str,
         preferred_day: str,
-        part_of_day: Literal["morning", "afternoon", "any"] = "any",
     ) -> str:
         """Put the caller on the waitlist for a day with no suitable openings. Only call this
         after reading back the name, phone number and day and the caller said yes.
@@ -1218,10 +1295,9 @@ Welcome back. Let's walk through a solution, and I'll point out the three mistak
             patient_name: The patient's full name.
             phone: A ten digit callback phone number.
             preferred_day: The day they want, as an ISO date such as 2026-10-06 or a weekday name.
-            part_of_day: "morning", "afternoon" or "any".
         """
         try:
-            entry = self.scheduler.add_to_waitlist(patient_name, phone, preferred_day, part_of_day)
+            entry = self.scheduler.add_to_waitlist(patient_name, phone, preferred_day)
             position = self.scheduler.waitlist_position(entry.id)
         except SchedulerError as exc:
             raise ToolError(str(exc)) from exc
@@ -1234,9 +1310,15 @@ Welcome back. Let's walk through a solution, and I'll point out the three mistak
         )
 ```
 
-Mistake one: a vague description. The most common first attempt is a docstring like "Adds to waitlist." The model never calls it, because it doesn't know when. Look at this one. "Put the caller on the waitlist for a day with no suitable openings." That tells the model the situation it's for. And the args have examples, like an ISO date or a weekday name.
+[SCREEN: Highlight the docstring's first line: "Put the caller on the waitlist for a day with no suitable openings."]
 
-Mistake two: no read-back. The docstring says "only call this after reading back the name, phone number and day and the caller said yes." Without that, Riley adds someone to the waitlist with a misheard phone number, and the clinic texts a stranger. Same rule as booking. Anything that stores the caller's details gets a read-back.
+Mistake one: a vague description. The most common first attempt is a docstring like "Adds to waitlist." So why does the model never call it? Because it doesn't know when. Look at this one. "Put the caller on the waitlist for a day with no suitable openings." That tells the model the situation it's for. And the args have examples, like an ISO date or a weekday name.
+
+[SCREEN: Highlight the docstring's second sentence: "Only call this after reading back the name, phone number and day and the caller said yes."]
+
+Mistake two: no read-back. The docstring says "only call this after reading back the name, phone number and day and the caller said yes." Without that, what happens to a misheard phone number? Riley stores it, and the clinic texts a stranger. Same rule as booking. Anything that stores the caller's details gets a read-back.
+
+[DEMO: Console text mode with the `try` block temporarily removed from your `join_waitlist`. Ask to join the waitlist for Sunday: Riley gives a vague apology and the log shows `ClinicClosedError`. Put the `try` block back, restart and ask again: "We're closed on Sundays. Would another day work?"]
 
 Mistake three: forgetting ToolError. Try a Sunday, or a nine-digit phone number, without the try block. The scheduler raises, the tool crashes, and the caller hears a vague apology. With it, they hear "We're closed on Sundays. Would another day work?"
 
@@ -1264,7 +1346,17 @@ Here it is working. Nothing suits the caller, Riley offers the waitlist, reads b
 [AVATAR]
 If your version differs, that's fine. Compare the three things that matter: a description that says when, a read-back before storing details, and ToolError for expected failures. If you got all three, you've got the pattern for every tool you'll ever write.
 
+[SLIDE 3: Recap]
+- The docstring says when to use the tool
+- Read back before storing caller details
+- `ToolError` for every expected failure
+
 **Recap:** A good tool has a description that says when to use it, a read-back before storing caller details, and `ToolError` for expected failures, as in `join_waitlist`.
+
+[SLIDE 4: You can now]
+- Write tools the LLM calls correctly
+- Confirm before every irreversible action
+- Turn scheduler errors into speakable recoveries
 
 **Transition:** Let's finish Section 5 with a short quiz on tools.
 
@@ -1283,24 +1375,24 @@ If your version differs, that's fine. Compare the three things that matter: a de
 |---|---|
 | ID | 5.10 |
 | Type | QZ (quiz with short video intro) |
-| Target duration | 2:00 total (0:45 video, ~75 spoken words, about 0:32 of talking at 140 wpm) |
-| Learning objectives | 1. Check understanding of tool schemas, read-backs, filler speech, `ToolError` and userdata. |
+| Target duration | 2:00 total (0:45 video, ~100 spoken words, about 0:43 of talking at 140 wpm) |
+| Learning objectives | 1. Check understanding of tool-step limits, scheduler design, read-back corrections, protected commits and tool descriptions. |
 | Prerequisites | 5.1 to 5.9 |
 | Files used | `06-assessments/quizzes/section-05.md` |
 
 ### Script
 
 [AVATAR]
-Five questions on tools, and then Riley goes speech-to-speech.
+Riley checks Monday, then Tuesday, then Wednesday, then Thursday, and the caller hears nothing for several seconds. Which setting stops that? [PAUSE] That's question one. Five questions on tools, and then Riley goes speech-to-speech.
 
 [SLIDE 1: Section 5 quiz: what's covered]
-- What the LLM sees: names, docstrings, type hints
-- Read-back before irreversible actions
-- `with_filler` and its delay
-- `ToolError` vs unexpected exceptions
-- Why userdata lives on the session
+- `max_tool_steps` and runaway tool loops
+- Why booking rules live in the scheduler
+- A correction during a read-back
+- Protecting a booking while it commits
+- A tool the model never calls
 
-You'll see questions on tool schemas, read-backs, filler speech, tool errors and userdata. One tip: for the error question, ask yourself who the message is written for. If it's the caller, it's a ToolError.
+Tip: for the tool that never gets called, read its docstring the way the model does. Tool errors, fillers and userdata come back in the Section six quiz.
 
 **Recap:** The quiz checks tool schemas, read-backs, fillers, errors and userdata.
 
@@ -1308,5 +1400,5 @@ You'll see questions on tool schemas, read-backs, filler speech, tool errors and
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Most missed in beta: thinking `with_filler` always speaks. It speaks only if the work is still running after `delay`.
-- Second most missed: thinking the LLM can see `userdata`. It only sees what tools return.
+- Most missed in beta: the waitlist question. A one-word docstring gives the model no idea when to call the tool.
+- Second most missed: confusing `context.disallow_interruptions()` (one commit) with turning interruptions off for the whole call.

@@ -5,6 +5,7 @@
 #   Prometheus  http://localhost:9091
 #   Grafana     http://localhost:3001  (admin / admin; dashboard "Atlas Ops" is provisioned)
 #   Collector   OTLP http :4318, grpc :4317, self-metrics :8888
+#   Phoenix     http://localhost:6006   (second trace backend; the collector fans out to it)
 #
 # Optional: set LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_BASE_URL in .env and
 # the collector forwards traces to Langfuse as a second backend (see otel-collector.yaml).
@@ -25,6 +26,11 @@ services:
     depends_on:
       - otel-collector
 
+  phoenix:
+    image: arizephoenix/phoenix:version-20.18.0   # verify the current tag before recording
+    ports:
+      - "6006:6006"   # UI and OTLP/HTTP (/v1/traces); its gRPC 4317 stays inside the network
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.116.1
     command: ["--config=/etc/otelcol/config.yaml"]
@@ -39,12 +45,14 @@ services:
       - "4317:4317"
       - "4318:4318"
       - "8888:8888"
+    depends_on:
+      - phoenix
 
   prometheus:
     image: prom/prometheus:v2.55.1
     command:
       - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.time=45d   # > the 30-day SLO window (Lecture 9.3)
       - --web.enable-lifecycle
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro

@@ -24,6 +24,7 @@ import random
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ from app.knowledge import get_kb  # noqa: E402
 from app.mock_llm import MockLLM  # noqa: E402
 from app.tools import TicketStore  # noqa: E402
 from northwind.config import Settings  # noqa: E402
+from northwind.pii import contains_pii  # noqa: E402
 from simulator.scenarios import (  # noqa: E402
     DEFAULT_DATE,
     INCIDENT_PRESETS,
@@ -153,7 +155,7 @@ class ReplayEngine:
         spans: list[SpanRecord] = []
         common = {
             ga.ATLAS_TENANT: req.tenant,
-            ga.ATLAS_FEATURE: "chat",
+            ga.ATLAS_FEATURE: result.feature,
             ga.ATLAS_INTENT: result.intent,
             ga.LF_SESSION_ID: req.session_id,
             ga.LF_USER_ID: req.persona.user_id,
@@ -267,6 +269,7 @@ class ReplayEngine:
                     "gen_ai.tool.call.id": tr.call_id,
                     "gen_ai.tool.call.arguments": tr.arguments[:300],
                     "gen_ai.tool.call.result": tr.result[:300],
+                    "atlas.tool.result_tokens": tr.result_tokens,
                     ga.ATLAS_STEP: step,
                 }
                 if tr.name == "search_knowledge_base":
@@ -322,7 +325,7 @@ class ReplayEngine:
             "gen_ai.usage.output_tokens": result.output_tokens,
             ga.LF_TRACE_TAGS: [
                 f"tenant:{req.tenant}",
-                "feature:chat",
+                f"feature:{result.feature}",
                 f"intent:{result.intent}",
                 f"prompt:{result.prompt_version}",
             ]
@@ -352,6 +355,8 @@ class ReplayEngine:
                     "attributes": {"max_steps": self.settings.max_steps},
                 }
             )
+        if result.answer and contains_pii(result.answer):
+            events.append({"name": "pii_in_output", "time": t, "attributes": {}})
         if result.escalated:
             events.append(
                 {
@@ -589,11 +594,15 @@ def replay_day(
     feedback_rate: float = 0.12,
     langfuse: bool = False,
     settings: Settings | None = None,
+    day: date = DEFAULT_DATE,
 ) -> tuple[ReplaySummary, LocalSpanStore]:
-    """Generate the plan and replay it into ``store`` (new in-memory store if None)."""
+    """Generate the plan and replay it into ``store`` (new in-memory store if None).
+
+    ``day`` defaults to the course's fixture Monday (2026-09-14); another day gets its own
+    session and trace ids, so two days can share one store (drift report ``--prev/--curr``)."""
     if isinstance(incidents, str):
         incidents = INCIDENT_PRESETS[incidents]
-    plan = generate_day(seed, sessions=sessions, incidents=incidents or [], day=DEFAULT_DATE)
+    plan = generate_day(seed, sessions=sessions, incidents=incidents or [], day=day)
     store = store or LocalSpanStore(":memory:")
     engine = ReplayEngine(seed, settings)
     summary = engine.run(
@@ -612,10 +621,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument(
+        "--day",
+        type=date.fromisoformat,
+        default=DEFAULT_DATE,
+        help="day to replay, YYYY-MM-DD (default 2026-09-14, the course's fixture Monday)",
+    )
+    ap.add_argument(
         "--sessions", type=int, default=4000, help="sessions in the day (~2.5 requests each)"
     )
     ap.add_argument(
-        "--incidents", default="none", choices=sorted(INCIDENT_PRESETS), help="incident preset"
+        "--incidents",
+        default=None,
+        choices=sorted(INCIDENT_PRESETS),
+        help="incident preset (default: ATLAS_SCENARIO if set, else none)",
     )
     ap.add_argument(
         "--store",
@@ -631,9 +649,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plan-only", action="store_true", help="print the plan summary and exit")
     args = ap.parse_args(argv)
     settings = Settings.from_env()
+    if (
+        args.incidents is None
+    ):  # `ATLAS_SCENARIO=slow_provider make replay` == `make replay SCENARIO=slow_provider`
+        args.incidents = settings.scenario or "none"
     if args.plan_only:
         plan = generate_day(
-            args.seed, sessions=args.sessions, incidents=INCIDENT_PRESETS[args.incidents]
+            args.seed,
+            sessions=args.sessions,
+            incidents=INCIDENT_PRESETS[args.incidents],
+            day=args.day,
         )
         print(json.dumps(summarize_plan(plan), indent=2))
         return 0
@@ -648,6 +673,7 @@ def main(argv: list[str] | None = None) -> int:
         judge_rate=args.judge_rate,
         langfuse=args.langfuse,
         settings=settings,
+        day=args.day,
     )
     if args.jsonl:
         store.export_jsonl(args.jsonl, scores_path=Path(args.jsonl).with_name("scores.jsonl"))

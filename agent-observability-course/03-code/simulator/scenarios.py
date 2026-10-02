@@ -175,7 +175,10 @@ def generate_day(
             tenant = rng.choices(list(tenant_weights), weights=list(tenant_weights.values()))[0]
             persona = rng.choice(by_tenant[tenant])
             intent = pick_intent(persona, rng)
-            session_id = f"s{seed:02d}-{n:05d}"
+            # a second replayed day (``--day``) gets its own session ids so stores can hold both
+            session_id = (
+                f"s{seed:02d}-{n:05d}" if day == DEFAULT_DATE else f"s{seed:02d}-{day:%m%d}-{n:05d}"
+            )
             slots = session_slots(rng)
             ts = base + hour * 3600 + rng.random() * 3600
             turns = (

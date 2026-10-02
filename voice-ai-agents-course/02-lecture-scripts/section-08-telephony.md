@@ -34,7 +34,7 @@
 
 [AVATAR]
 
-Most of Maple Street Dental's patients will never open a web page to talk to Riley. They'll do what they've always done. Pick up a phone and dial. [PAUSE] So far, Riley has lived in your laptop's microphone and a browser tab. In this section she gets a real phone number. Before we touch a console, let's understand the path a call takes, because every telephony bug you'll ever debug lives on one link of this chain.
+Most of Maple Street Dental's patients will never open a web page to talk to Riley. They'll do what they've always done. Pick up a phone and dial. [PAUSE] So far, Riley has lived in your laptop's microphone and a browser tab. In this section it gets a real phone number. Before we touch a console, let's understand the path a call takes, because every telephony bug you'll ever debug lives on one link of this chain.
 
 [SLIDE 1: The call path]
 - Caller's phone → PSTN (the public phone network)
@@ -51,9 +51,13 @@ Here's the path. A caller dials the clinic's number. That call travels over the 
 
 Our software doesn't speak those. It speaks SIP, the Session Initiation Protocol, which is how internet phone systems set up calls. So we need a bridge. That bridge is a SIP trunk. Twilio owns the phone number, receives the call from the carrier, and forwards it over SIP to LiveKit.
 
-LiveKit's SIP service receives it and does something very familiar. It creates a room, and puts the caller into it as a participant. A special kind of participant, a SIP participant, but still a participant with an audio track. [PAUSE] And then a dispatch rule tells LiveKit which agent to send into that room. Riley joins, exactly like she joins a browser room today.
+[B-ROLL: the call-path animation continues: a SIP INVITE leaves the Twilio box, reaches the LiveKit box, and a new "room" circle opens with a caller icon labelled "SIP participant".]
 
-That's the key insight of this whole section. From Riley's point of view, a phone caller is just another participant. Almost none of her code changes.
+LiveKit's SIP service receives it and does something very familiar. It creates a room, and puts the caller into it as a participant. A special kind of participant, a SIP participant, but still a participant with an audio track. [PAUSE] And then a dispatch rule tells LiveKit which agent to send into that room. Riley joins, exactly like it joins a browser room today.
+
+[SCREEN: `agents/s08_telephony_agent.py`, the entrypoint. Highlight `if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:`, the only line in the file that asks whether the caller is on a phone.]
+
+That's the key insight of this whole section. From Riley's point of view, a phone caller is just another participant. Almost none of its code changes.
 
 [SLIDE 2: Four things you'll configure]
 - Twilio Elastic SIP trunk: owns the number; origination points to LiveKit, termination accepts calls from LiveKit
@@ -79,7 +83,7 @@ Fourth, for outbound calls, a LiveKit outbound trunk that points back at Twilio.
 
 [AVATAR]
 
-One idea from Section 3 becomes important now: agent names. In dev, Riley had no name, so LiveKit dispatched her into every room automatically. That's handy for a playground and dangerous for a phone system. With a name, like `riley-receptionist`, the agent is only dispatched when something asks for it by name. The dispatch rule asks for it. The outbound reminder script asks for it. Nothing else does. In LiveKit Agents 1.8, the name comes from the `LIVEKIT_AGENT_NAME` environment variable, or from the `[agent]` section of `livekit.toml` when you deploy.
+One idea from Section 3 becomes important now: agent names. In dev, Riley had no name, so LiveKit dispatched it into every room automatically. That's handy for a playground and dangerous for a phone system. With a name, like `riley-receptionist`, the agent is only dispatched when something asks for it by name. The dispatch rule asks for it. The outbound reminder script asks for it. Nothing else does. In LiveKit Agents 1.8, the name comes from the `LIVEKIT_AGENT_NAME` environment variable, or from the `[agent]` section of `livekit.toml` when you deploy.
 
 [SLIDE 4: Phone audio is not laptop audio]
 - Phone networks carry 8 kHz narrowband audio (G.711); your laptop mic gives 48 kHz
@@ -123,13 +127,20 @@ Last slide, and keep it handy. When a test call fails, it fails at one of these 
 
 [AVATAR]
 
-Here's the chain again, as a timeline, so you know what "fast" looks like. The caller dials. The carrier hands the call to Twilio. Twilio sends a SIP INVITE, which is SIP's way of saying "incoming call," to your LiveKit SIP address. LiveKit checks the number against your inbound trunk, applies the dispatch rule, creates a fresh room, and dispatches Riley. With prewarmed agent processes, that's all well under a second. Then Riley greets, and the caller hears her within a second or two of the call connecting.
+Here's the chain again, as a timeline, so you know what "fast" looks like. The caller dials. The carrier hands the call to Twilio. Twilio sends a SIP INVITE, which is SIP's way of saying "incoming call," to your LiveKit SIP address. LiveKit checks the number against your inbound trunk, applies the dispatch rule, creates a fresh room, and dispatches Riley. With prewarmed agent processes, that's all well under a second. Then Riley greets, and the caller hears it within a second or two of the call connecting.
+
+[B-ROLL: two waveforms side by side. Left: laptop mic, full 48 kHz spectrum. Right: the same sentence at 8 kHz G.711, the high frequencies above 3.4 kHz shaded red as "lost". A label: "converted for the agent, not restored".]
 
 On the audio side, the phone network typically uses a codec called G.711 at eight kilohertz. LiveKit converts it for the agent, so your code doesn't change. [PAUSE] But the audio quality is still eight kilohertz. Conversion doesn't bring back the frequencies the phone network threw away. That's why the tuning in lecture 8.3 matters.
 
 [AVATAR]
 
 A question from the Q&A: "Why not just use WebRTC in the browser and skip all this?" For many products you should. Web and app callers get wideband audio, no per-minute phone charges and simpler setup. But a dental clinic's patients call a phone number. So does almost every small business's. Meeting callers where they already are is the whole point of this section.
+
+[SLIDE 8: Recap]
+- Phone, Twilio trunk, LiveKit SIP, room, named agent
+- A phone caller is just another room participant
+- 8 kHz phone audio needs its own tuning
 
 ### Recap
 
@@ -285,7 +296,7 @@ Why both? In LiveKit Agents 1.8, `dev` and `console` read the environment variab
 
 Now the phone-ready agent file, `agents/s08_telephony_agent.py`. We'll dig into its phone-specific parts in the next two lectures, but let's read it once and run it.
 
-[CODE: `agents/s08_telephony_agent.py` (imports trimmed)]
+[CODE: `agents/s08_telephony_agent.py` (imports and module docstring trimmed)]
 
 ```python
 PHONE_RULES = """\
@@ -297,7 +308,12 @@ Phone calls:
 
 
 class PhoneRiley(BookingToolsMixin, KnowledgeToolsMixin, TelephonyToolsMixin, Agent):
-    """Riley for phone calls."""
+    """Riley for phone calls.
+
+    Args:
+        caller_id: Caller's number from SIP attributes, used to skip asking for it.
+        scheduler: Calendar (defaults to the demo scheduler).
+    """
 
     def __init__(self, *, caller_id: str | None = None, scheduler: ClinicScheduler | None = None) -> None:
         self.scheduler = scheduler or get_scheduler()
@@ -348,16 +364,18 @@ if __name__ == "__main__":
     cli.run_app(server)
 ```
 
-This is the same Riley you've built all along, assembled from mixins. `BookingToolsMixin` from Section 5. `KnowledgeToolsMixin` from Section 7. And a new one, `TelephonyToolsMixin`, which adds `transfer_to_human` and `end_call`; we'll open it in lecture 8.4. `PHONE_RULES` adds three lines to her prompt: ask again when the line is unclear, announce a transfer before doing it, and say goodbye before hanging up.
+This is the same Riley you've built all along, assembled from mixins. `BookingToolsMixin` from Section 5. `KnowledgeToolsMixin` from Section 7. And a new one, `TelephonyToolsMixin`, which adds `transfer_to_human` and `end_call`; we'll open it in lecture 8.4. `PHONE_RULES` adds three lines to its prompt: ask again when the line is unclear, announce a transfer before doing it, and say goodbye before hanging up.
 
 `on_enter` answers immediately with the fixed greeting, AI disclosure included. On the phone, silence after pickup makes callers think the line is dead.
 
 The entrypoint waits for the caller, reads caller ID, which is next lecture's topic, and builds the session with `create_session(..., telephony=True)`. That flag switches on the phone tuning we'll look at in 8.3.
 
+[SCREEN: terminal, repo root, `.env` open in a split pane with `LIVEKIT_AGENT_NAME=riley-receptionist` highlighted.]
+
 Run it in dev mode. Not console. Console mode uses your laptop mic and never registers with LiveKit, so phone calls can't reach it.
 
 ```bash
-uv run agents/s08_telephony_agent.py dev
+uv run python agents/s08_telephony_agent.py dev
 ```
 
 [DEMO: terminal shows the agent registering with agent name `riley-receptionist`. Then pick up a mobile phone, dial the clinic number. Captions on screen. Riley: "Thanks for calling Maple Street Dental. This is Riley, the clinic's AI assistant. How can I help you today?" Caller: "What time do you close on Friday?" Riley: "On Fridays we're open from eight until two in the afternoon." Hang up.]
@@ -366,7 +384,7 @@ Look at the log first: "registered worker," with our agent name. Now I'll call f
 
 [PAUSE]
 
-There she is. On a real phone line. And she answered the Friday hours question from the FAQ, in one sentence.
+There it is. Riley, on a real phone line. And it answered the Friday hours question from the FAQ, in one sentence.
 
 [SCREEN: LiveKit Cloud dashboard → Sessions / Rooms. A room named `call-...` with two participants: a SIP participant and the agent.]
 
@@ -374,7 +392,7 @@ In the LiveKit dashboard, you can see the room the dispatch rule created. Its na
 
 [AVATAR]
 
-If your call didn't connect, go back to the last slide of lecture 8.1 and walk the chain in order. Number attached to the trunk. Origination URI correct. Number in E.164 on the inbound trunk. Agent name identical in the dispatch rule and your `.env`. Agent running in `dev`, not `console`.
+If your call didn't connect, go back to the "Where calls fail" slide in lecture 8.1 and walk the chain in order. Number attached to the trunk. Origination URI correct. Number in E.164 on the inbound trunk. Agent name identical in the dispatch rule and your `.env`. Agent running in `dev`, not `console`.
 
 [SLIDE 2: Debugging an inbound call, in order]
 1. `lk sip inbound list`: is the number there, in E.164?
@@ -390,6 +408,11 @@ Here's the checklist I use when a test call fails, in order. Each step rules out
 [AVATAR]
 
 One more thing about the files we just created: they belong in version control, secrets removed. The inbound trunk and dispatch rule JSON are your phone system's configuration. When someone asks in six months "why do calls go to room names starting with call-?", the answer is in `telephony/dispatch-rule.json`, with a commit message. [PAUSE] Console clicks leave no history. Files do.
+
+[SLIDE 3: Recap]
+- Twilio trunk origination points at your LiveKit SIP URI
+- Inbound trunk plus dispatch rule name `riley-receptionist`
+- Run the named agent in `dev`, never `console`
 
 ### Recap
 
@@ -430,7 +453,7 @@ It works, but it's tuned for a laptop microphone. Next, we'll tune Riley for rea
 
 [AVATAR]
 
-On my first real test call, I said "I'd like to see Doctor Alvarez." [PAUSE] Riley heard "doctor all the rest." Then she asked for my phone number, which she already had, because I was calling from it. Two small things. Together they make an AI receptionist feel like a phone tree. Let's fix both.
+On my first real test call, I said "I'd like to see Doctor Alvarez." [PAUSE] Riley heard "doctor all the rest." Then it asked for my phone number, which it already had, because I was calling from that number. Two small things. Together they make an AI receptionist feel like a phone tree. Let's fix both.
 
 [SCREEN: `agents/common.py`, scroll to `DENTAL_KEYTERMS` and `build_stt`.]
 
@@ -474,7 +497,9 @@ def build_turn_handling(settings: Settings, *, telephony: bool = False) -> TurnH
 
 Second, turn-taking. `create_session(..., telephony=True)` passes the flag through, and with it, the minimum endpointing delay goes from half a second to at least seven hundred milliseconds. Phone callers pause more, often because they're reading a card or checking a calendar. That extra two hundred milliseconds stops Riley from jumping in mid-thought. It costs us two hundred milliseconds of latency on every turn, which is why we don't do it for browser callers.
 
-Interruptions stay on, with `resume_false_interruption=True`. On a phone line, a cough or a car horn can look like an interruption. If the caller doesn't actually say anything within one and a half seconds, Riley picks up where she left off instead of going silent.
+Interruptions stay on, with `resume_false_interruption=True`. On a phone line, a cough or a car horn can look like an interruption. If the caller doesn't actually say anything within one and a half seconds, Riley picks up where it left off instead of going silent.
+
+[SCREEN: `telephony/inbound-trunk.json` from lecture 8.2, highlight `"krispEnabled": true`.]
 
 Noise is the third piece. We already turned on Krisp noise cancellation on the inbound trunk in the last lecture, so the audio is cleaned before it reaches the agent.
 
@@ -526,17 +551,17 @@ A SIP participant carries attributes set by LiveKit. `sip.phoneNumber` is the ca
             )
 ```
 
-In the entrypoint, we connect, wait for the first participant, and if it's a SIP participant, read the number. In console mode there's no real room, so `is_fake_job()` skips all of this. We store the number in `CallState`, so tools can use it, and pass it to `PhoneRiley`. Her constructor turns it into one extra prompt line, spoken the way a person reads a number, with `speak_phone` from Section 4: "Ask whether this is the best number to reach them." [PAUSE] One question instead of ten digits read aloud over a noisy line. That's faster, and it removes a whole class of transcription errors.
+In the entrypoint, we connect, wait for the first participant, and if it's a SIP participant, read the number. In console mode there's no real room, so `is_fake_job()` skips all of this. We store the number in `CallState`, so tools can use it, and pass it to `PhoneRiley`. Its constructor turns the number into one extra prompt line, spoken the way a person reads a number, with `speak_phone` from Section 4: "Ask whether this is the best number to reach them." [PAUSE] One question instead of ten digits read aloud over a noisy line. That's faster, and it removes a whole class of transcription errors.
 
 Run it and call again.
 
 ```bash
-uv run agents/s08_telephony_agent.py dev
+uv run python agents/s08_telephony_agent.py dev
 ```
 
-[DEMO: call from mobile. "Hi, I'd like to book a cleaning with Doctor Alvarez next Thursday." Riley repeats "Doctor Alvarez" correctly. When she needs a number: "Is the number you're calling from, the one ending in zero one four two, the best one to reach you?" Caller: "Yes." Booking completes.]
+[DEMO: call from mobile. "Hi, I'd like to book a cleaning with Doctor Alvarez next Thursday." Riley repeats "Doctor Alvarez" correctly. When it needs a number: "Is the number you're calling from, the one ending in zero one four two, the best one to reach you?" Caller: "Yes." Booking completes.]
 
-"Doctor Alvarez," heard correctly. And instead of asking for my number, she asked if the one I'm calling from is best. One word, "yes," and we're done.
+"Doctor Alvarez," heard correctly. And instead of asking for my number, it asked if the one I'm calling from is best. One word, "yes," and we're done.
 
 [AVATAR]
 
@@ -544,7 +569,12 @@ A caller's number is personal data. It's now in your prompt, which means it's in
 
 [AVATAR]
 
-A quick word on how to know your tuning worked, because "it sounds better" isn't evidence. Make five test calls before the change and five after, from a real phone, ideally from a car or a noisy room. Listen for three things: did Riley cut you off while you read a number, did she mishear a name, and did she ask for information she already had? Then, in Section 9, we'll replace this listening with numbers: word error rate for the ears, and the end-of-utterance delay budget for turn-taking. [PAUSE] Tuning without measuring is guessing. For now, your ears are the measuring tool.
+A quick word on how to know your tuning worked, because "it sounds better" isn't evidence. Make five test calls before the change and five after, from a real phone, ideally from a car or a noisy room. Listen for three things: did Riley cut you off while you read a number, did it mishear a name, and did it ask for information it already had? Then, in Section 9, we'll replace this listening with numbers: word error rate for the ears, and the end-of-utterance delay budget for turn-taking. [PAUSE] Tuning without measuring is guessing. For now, your ears are the measuring tool.
+
+[SLIDE 1: Recap]
+- Deepgram keyterms fix names and dental words
+- Phone endpointing waits at least 0.7 seconds
+- Caller ID from `sip.phoneNumber` is confirmed, not trusted
 
 ### Recap
 
@@ -573,11 +603,11 @@ Next: the two tools every phone agent needs, handing a caller to a human and han
 | Target duration | 9:00 (about 890 spoken words at ~140 wpm; remaining time is on-screen code, runs and demo audio) |
 | One idea | A phone agent must know when to hand a caller to a person and how to hang up, and both tools must fail safely. |
 | Prerequisites | 8.2, 8.3; a second phone number to receive transfers; call transfer enabled on the Twilio trunk |
-| Files used | `agents/common.py` (`TelephonyToolsMixin`), `agents/s08_telephony_agent.py`, `.env` (`TRANSFER_PHONE_NUMBER`) |
+| Files used | `agents/common.py` (`TelephonyToolsMixin`, `transfer_sip_caller`, `hang_up`), `agents/s08_telephony_agent.py`, `.env` (`TRANSFER_PHONE_NUMBER`) |
 
 **Learning objectives**
 
-1. Implement `transfer_to_human` with `get_job_context().transfer_sip_participant(...)`, including a spoken announcement and a safe fallback.
+1. Implement `transfer_to_human` with `transfer_sip_participant(...)` (through the shared `transfer_sip_caller` helper), including a spoken announcement and a safe fallback.
 2. Explain cold versus warm transfer and when each fits a clinic.
 3. Implement `end_call` so Riley says goodbye before disconnecting everyone.
 
@@ -633,7 +663,7 @@ class TelephonyToolsMixin:
 
 The docstring does two jobs. It tells the model what the tool does. And it tells the model to announce the transfer first. The `reason` argument forces the model to say why, in one sentence. We store it, so the front desk dashboard and our tests can see it.
 
-When does Riley use it? That's in her prompt already, in the `ESCALATION_RULES` block from `prompts.py`: offer a human if the caller asks for one, is upset, has a billing dispute, or Riley has failed twice. And transfer immediately, without arguing, if they ask a second time.
+When does Riley use it? That's in its prompt already, in the `ESCALATION_RULES` block from `prompts.py`: offer a human if the caller asks for one, is upset, has a billing dispute, or Riley has failed twice. And transfer immediately, without arguing, if they ask a second time.
 
 [CODE: step 2: guard rails]
 
@@ -658,19 +688,36 @@ Before we transfer anything, three checks. Is there a job context at all? In a t
 
 ```python
         await context.wait_for_playout()  # let "I'm transferring you now" finish first
-        try:
-            await job_ctx.transfer_sip_participant(caller, settings.transfer_sip_uri)
-        except Exception as exc:  # SIP errors surface as API errors
-            logger.exception("transfer failed")
-            state.call_outcome = "transfer_failed"
-            raise ToolError("The transfer didn't go through. Apologize and offer to take a message.") from exc
-        state.call_outcome = "transferred"
+        if not await transfer_sip_caller(job_ctx, caller, state):
+            raise ToolError("The transfer didn't go through. Apologize and offer to take a message.")
         return "The caller has been transferred."
 ```
 
-`context.wait_for_playout()` waits for whatever Riley said just before calling this tool, like "Of course, I'm transferring you to the front desk now," to finish playing. Without it, the transfer can cut her off mid-sentence.
+`context.wait_for_playout()` waits for whatever Riley said just before calling this tool, like "Of course, I'm transferring you to the front desk now," to finish playing. Without it, the transfer can cut Riley off mid-sentence.
 
-Then the one line that does the work: `transfer_sip_participant`, with the caller and the `tel:` URI. It returns once the phone system accepts the transfer. If it fails, say because REFER isn't enabled, we log it, record the outcome, and give Riley a speakable fallback.
+The transfer itself lives in a small shared helper, `transfer_sip_caller`, a few lines above the mixin. Why a helper? Because in lecture 13.3, the capstone's error handler needs exactly the same transfer.
+
+[CODE: `transfer_sip_caller` in `agents/common.py`]
+
+```python
+async def transfer_sip_caller(job_ctx: JobContext, caller: rtc.RemoteParticipant, state: CallState) -> bool:
+    """Blind-transfer the phone caller to ``TRANSFER_PHONE_NUMBER`` and record the outcome.
+
+    Shared by ``transfer_to_human`` and the capstone's error handler (lecture 13.3).
+    Returns ``False`` when the SIP transfer failed (the caller is still on the line).
+    """
+    settings = get_settings()
+    try:
+        await job_ctx.transfer_sip_participant(caller, settings.transfer_sip_uri)
+    except Exception:  # SIP errors surface as API errors
+        logger.exception("transfer failed")
+        state.call_outcome = "transfer_failed"
+        return False
+    state.call_outcome = "transferred"
+    return True
+```
+
+Here's the one line that does the work: `transfer_sip_participant`, with the caller and the `tel:` URI. It returns once the phone system accepts the transfer. If it fails, say because REFER isn't enabled, the helper logs it, records the outcome and returns `False`, and the tool turns that into a speakable fallback for Riley.
 
 Now `end_call`.
 
@@ -684,27 +731,36 @@ Now `end_call`.
         if state.call_outcome == "in_progress":
             state.call_outcome = "completed"
         await context.wait_for_playout()  # let the goodbye finish
-        job_ctx = get_job_context(required=False)
-        if job_ctx is None or job_ctx.is_fake_job():
-            context.session.shutdown()
-            return None
-        # Deleting the room disconnects everyone, including the SIP caller.
-        await job_ctx.delete_room()
+        await hang_up(context.session, get_job_context(required=False))
         return None
 ```
 
 Why does Riley need a hang-up tool at all? Because on a phone, if the agent never hangs up, the line stays open. You pay per minute for silence, and the caller hears nothing until they give up.
 
-The pattern is the same. Say goodbye, wait for playout, then act. Deleting the room disconnects every participant, including the SIP caller, which ends the phone call. In console mode or tests there's no room to delete, so we just shut the session down. We also record the call outcome. That field becomes one of our dashboard metrics in Section 10.
+The pattern is the same. Say goodbye, wait for playout, then act. We also record the call outcome. That field becomes one of our dashboard metrics in Section 10. And the hang-up itself is another small shared helper.
+
+[CODE: `hang_up` in `agents/common.py`]
+
+```python
+async def hang_up(session: AgentSession[Any], job_ctx: JobContext | None) -> None:
+    """End the call: delete the room on a real job, shut the session down in console mode or tests."""
+    if job_ctx is None or job_ctx.is_fake_job():
+        session.shutdown()
+        return
+    # Deleting the room disconnects everyone, including the SIP caller.
+    await job_ctx.delete_room()
+```
+
+On a real call, deleting the room disconnects every participant, including the SIP caller, which ends the phone call. In console mode or tests there's no room to delete, so it just shuts the session down.
 
 LiveKit also ships a ready-made `EndCallTool` in `livekit.agents.beta`. It's a good option. We wrote our own so you can see exactly what happens and set the outcome field.
 
 [SCREEN: `agents/s08_telephony_agent.py`; the class line already includes `TelephonyToolsMixin`, and `PHONE_RULES` tells Riley to announce transfers and say goodbye first.]
 
-`PhoneRiley` already inherits both tools through `TelephonyToolsMixin`, and her `PHONE_RULES` tell her to announce a transfer and say goodbye before acting. Let's test.
+`PhoneRiley` already inherits both tools through `TelephonyToolsMixin`, and its `PHONE_RULES` tell it to announce a transfer and say goodbye before acting. Let's test.
 
 ```bash
-uv run agents/s08_telephony_agent.py dev
+uv run python agents/s08_telephony_agent.py dev
 ```
 
 [DEMO: call Riley. "I have a question about a charge on my bill, can I talk to someone?" Riley: "Of course. I'm transferring you to a member of our front desk team now." A second phone (the front desk) rings; answer it. Split-screen captions. Then a second call: book nothing, say "That's all, thanks, bye." Riley: "Thanks for calling Maple Street Dental. Have a great day. Goodbye." Call ends; dashboard shows the room closed.]
@@ -713,7 +769,17 @@ uv run agents/s08_telephony_agent.py dev
 
 [AVATAR]
 
-One more production habit. Test the failure path on purpose. Unset `TRANSFER_PHONE_NUMBER`, call, and ask for a human. Riley should apologize and offer to take a message. If she goes silent instead, your caller would too.
+One more production habit. Test the failure path on purpose. The cheapest way costs no phone minutes at all: console mode, where there's no SIP caller to transfer.
+
+[SCREEN: terminal]
+
+```bash
+make console-text AGENT=agents/s08_telephony_agent.py
+```
+
+[DEMO: type "Can I talk to a person, please?" The log shows `ToolError while executing tool: Transfers aren't available on this line. Apologize and offer to take a message so the front desk can call back.` Riley replies with an apology and an offer to take a message (for example: "I'm sorry, I can't transfer you on this line, but I can take a message for the front desk. What's your name?").]
+
+There's the `ToolError` in the log, and Riley apologizes and offers to take a message. On a real phone line, unset `TRANSFER_PHONE_NUMBER` and you hit the same path. If Riley went silent instead, your caller would too.
 
 [SLIDE 2: When to upgrade to a warm transfer]
 - Callers complain about repeating themselves to staff
@@ -727,9 +793,14 @@ When is it worth moving from cold to warm transfers? When callers complain about
 
 A warm transfer has more moving parts: put the caller on hold, dial the staff member into a separate conversation, summarise the call for them, then connect the two and leave. LiveKit Agents 1.8 ships a beta building block for this, `WarmTransferTask`, in `livekit.agents.beta.workflows`. It's beta, so check its current API before you build on it. [PAUSE] For most clinics, a cold transfer with a clear reason logged in `CallState` is the right first step.
 
+[SLIDE 3: Recap]
+- Announce, wait for playout, then transfer or hang up
+- No SIP caller or number: a speakable `ToolError`
+- Shared helpers: `transfer_sip_caller` and `hang_up`
+
 ### Recap
 
-`transfer_to_human` announces, waits for playout, calls `transfer_sip_participant` and falls back to a message, and `end_call` says goodbye before deleting the room.
+`transfer_to_human` announces, waits for playout, transfers through `transfer_sip_caller` and falls back to a message, and `end_call` says goodbye before `hang_up` deletes the room.
 
 ### Transition
 
@@ -847,9 +918,7 @@ class ReminderRiley(BookingToolsMixin, TelephonyToolsMixin, Agent):
 
     def __init__(self, *, patient_name: str, appointment_summary: str) -> None:
         self.scheduler = get_scheduler()
-        context = (
-            f"\nYou are calling {patient_name} about this appointment: {appointment_summary}."
-        )
+        context = f"\nYou are calling {patient_name} about this appointment: {appointment_summary}."
         super().__init__(
             instructions=prompts.build_instructions(
                 today=self.scheduler.today,
@@ -859,7 +928,7 @@ class ReminderRiley(BookingToolsMixin, TelephonyToolsMixin, Agent):
         )
 ```
 
-`ReminderRiley` has the booking tools, so a patient can reschedule on the spot, and the telephony tools, so she can hang up or transfer. Her prompt adds `REMINDER_CALL_EXTRA` from `prompts.py`. It says: this is an outbound call you placed, say who you are and why you're calling in the first sentence, confirm the appointment, help them reschedule if needed, and if you reach voicemail, leave a short message with the day, time and clinic number, then end the call. The appointment itself is looked up from the scheduler by phone number, so the metadata only carries a number and a name, never medical details.
+`ReminderRiley` has the booking tools, so a patient can reschedule on the spot, and the telephony tools, so it can hang up or transfer. Its prompt adds `REMINDER_CALL_EXTRA` from `prompts.py`. It says: this is an outbound call you placed, say who you are and why you're calling in the first sentence, confirm the appointment, help them reschedule if needed, and if you reach voicemail, leave a short message with the day, time and clinic number, then end the call. The appointment itself is looked up from the scheduler by phone number, so the metadata only carries a number and a name, never medical details.
 
 [CODE: the entrypoint]
 
@@ -907,16 +976,26 @@ async def entrypoint(ctx: JobContext) -> None:
         return
     # Answered. Let the patient say "hello" first on real calls; this nudge speaks
     # first if they stay silent. Voicemail handling is described in the prompt.
-    await session.generate_reply(instructions="The patient answered. Introduce yourself and the reason for the call.")
+    await session.generate_reply(
+        instructions="The patient answered. Introduce yourself and the reason for the call."
+    )
 ```
 
 Let's walk through it. The entrypoint reads `ctx.job.metadata`, the JSON the dispatcher sent, and builds `ReminderRiley` with the patient's name and appointment. If there's no phone number, we're in console or playground testing, so it just starts the conversation. If there's no outbound trunk configured, it logs a clear error and shuts down.
 
+[CODE: same entrypoint, highlight `await session.start(agent=agent, room=ctx.room)`, then the `create_sip_participant(...)` call and `wait_until_answered=True`.]
+
 Then the order matters. We start the session first, so Riley is already listening when the patient answers. Then `ctx.api.sip.create_sip_participant` with a `CreateSIPParticipantRequest`: our room, our outbound trunk, the number to call, an identity for the patient, and `wait_until_answered=True`, which means this line doesn't return until they pick up or the call fails.
+
+[SLIDE 2: When the outbound call fails]
+- `create_sip_participant` raises `api.TwirpError`
+- `exc.metadata["sip_status_code"]` says why
+- 486: busy · 480: unavailable or no answer
+- Log it, then `ctx.shutdown(...)`: never leave Riley in an empty room
 
 If it fails, LiveKit raises a `TwirpError`. The SIP status code tells you why: four eighty-six means busy, four eighty means unavailable or no answer. We log it and shut the job down, so Riley isn't left alone in an empty room.
 
-Once answered, a short `generate_reply` has Riley introduce herself and the reason for the call. [PAUSE] There's a shortcut you'll see in LiveKit's docs: `ctx.add_sip_participant(call_to=..., trunk_id=..., participant_identity=...)`. It sends the same request, but it doesn't wait for an answer, so we use the API directly here.
+Once answered, a short `generate_reply` has Riley introduce itself and the reason for the call. [PAUSE] There's a shortcut you'll see in LiveKit's docs: `ctx.add_sip_participant(call_to=..., trunk_id=..., participant_identity=...)`. It sends the same request, but it doesn't wait for an answer, so we use the API directly here.
 
 Let's call my own mobile. On a Twilio trial, the destination must be a verified number. The reminder worker runs under its own agent name, so it can't be confused with the inbound receptionist.
 
@@ -924,18 +1003,18 @@ Let's call my own mobile. On a Twilio trial, the destination must be a verified 
 
 ```bash
 # pane 1: the reminder agent worker
-LIVEKIT_AGENT_NAME=riley-outbound uv run agents/s08_outbound_call.py dev
+LIVEKIT_AGENT_NAME=riley-outbound uv run python agents/s08_outbound_call.py dev
 
 # pane 2: place the call
-uv run agents/s08_outbound_call.py dispatch --agent-name riley-outbound \
+uv run python agents/s08_outbound_call.py dispatch --agent-name riley-outbound \
     --to +15125550142 --name "Jordan Lee"
 ```
 
 [DEMO: pane 2 prints "Dispatched riley-outbound to room reminder-...; the agent will dial +15125550142." The phone rings. Answer: "Hello?" Riley: "Hi, this is Riley, the AI assistant from Maple Street Dental, calling to remind Jordan Lee about a cleaning on Tuesday at ten in the morning. Will you be able to make it?" Answer: "Actually, can we move it to Wednesday?" Riley calls `find_available_slots`, reads back a new time, and calls `reschedule_appointment` after a yes. Then a second dispatch that goes to voicemail: Riley leaves a short message and calls `end_call`.]
 
-The phone rings. I answer, and Riley introduces herself as an AI assistant, says why she's calling, names the appointment from the demo calendar, and asks one question. I ask to move it. She uses the same `find_available_slots` and `reschedule_appointment` tools as inbound calls. And on the second call, which goes to voicemail, she leaves a short message and hangs up.
+The phone rings. I answer, and Riley introduces itself as an AI assistant, says why it's calling, names the appointment from the demo calendar, and asks one question. I ask to move it. It uses the same `find_available_slots` and `reschedule_appointment` tools as inbound calls. And on the second call, which goes to voicemail, it leaves a short message and hangs up.
 
-[SLIDE 2: Answering machines and failed calls]
+[SLIDE 3: Answering machines and failed calls]
 - Voicemail picks up a large share of reminder calls
 - Prompt-level handling: recognise a greeting, leave a 15-second message, `end_call`
 - LiveKit Agents 1.8 also includes `AMD` (answering-machine detection): start it before dialing so it hears the first words
@@ -949,13 +1028,18 @@ Now the messy part. Many reminder calls reach voicemail. Riley's prompt already 
 
 One design decision worth pointing out. We run the reminder agent as a separate worker, with its own agent name, `riley-outbound`, instead of adding reminder logic to the inbound receptionist. That keeps each agent simple, it means a bug in reminder calls can never affect inbound callers, and it lets you scale them separately: inbound needs capacity at nine in the morning, reminders can run in a quiet afternoon batch. [PAUSE] In production, the `dispatch` step usually isn't a person at a terminal. It's a scheduled job that reads tomorrow's appointments, checks consent and do-not-call lists, and dispatches one reminder per patient, a few at a time.
 
+[SLIDE 4: Recap]
+- Explicit dispatch carries who to call as metadata
+- Agent dials with `CreateSIPParticipantRequest(wait_until_answered=True)`
+- Separate `riley-outbound` worker; retry once, never loop
+
 ### Recap
 
-An outbound call is an explicit dispatch with metadata, then `CreateSIPParticipantRequest(wait_until_answered=True)` from the agent's own room, with `ReminderRiley` reading `ctx.job.metadata` to know who she's calling and why.
+An outbound call is an explicit dispatch with metadata, then `CreateSIPParticipantRequest(wait_until_answered=True)` from the agent's own room, with `ReminderRiley` reading `ctx.job.metadata` to know who it's calling and why.
 
 ### Transition
 
-Riley can now call real people. Before she does, let's talk about the rules: disclosure, consent and recording.
+Riley can now call real people. Before it does, let's talk about the rules: disclosure, consent and recording.
 
 ### Speaker notes: common mistakes and Q&A
 
@@ -1008,7 +1092,7 @@ Before we go any further, one important sentence. [PAUSE] This lecture is not le
 
 Five areas. Let's take them one at a time.
 
-One: AI disclosure. More and more jurisdictions require, or strongly expect, that a caller is told when they're talking to an AI. Even where it isn't required, it's the right default. Riley's first sentence already does it: "This is Riley, the clinic's AI assistant." And her prompt says that if anyone asks whether she's a person, she says plainly that she's an AI. [PAUSE] Don't let a persona tweak remove that sentence. In Section 9, we'll write a test that fails if it disappears.
+One: AI disclosure. More and more jurisdictions require, or strongly expect, that a caller is told when they're talking to an AI. Even where it isn't required, it's the right default. Riley's first sentence already does it: "This is Riley, the clinic's AI assistant." And its prompt says that if anyone asks whether it's a person, it says plainly that it's an AI. [PAUSE] Don't let a persona tweak remove that sentence. In Section 9, we'll write a test that fails if it disappears.
 
 [SLIDE 3: Recording consent]
 - One-party consent: one participant may consent (many US states)
@@ -1069,6 +1153,11 @@ Here's the good news for engineers. Most of these items turn into small, testabl
 
 The checklist in the resources folder turns all of this into boxes to tick and questions for your lawyer. Use it before your first real caller, and again before your first outbound campaign. Once more, because it matters: this is not legal advice. It's a list of things to get proper advice on.
 
+[SLIDE 8: Recap]
+- Disclose AI, announce recording, honor opt-outs
+- Outbound AI calls need consent (TCPA)
+- Not legal advice: take the checklist to counsel
+
 ### Recap
 
 Check AI disclosure, recording consent, outbound calling rules, do-not-call and data retention with a qualified lawyer before Riley talks to real patients; this lecture is not legal advice.
@@ -1093,7 +1182,7 @@ Now it's your turn to put all of Section 8 together: Project 2, your own phone r
 | ID | 8.7 |
 | Title | Project 2: Phone receptionist |
 | Type | AS (assignment; video intro/walkthrough) |
-| Target duration | Video 2:30 (about 280 spoken words at ~140 wpm, plus slide and pause time); project work 2 to 3 hours off-video |
+| Target duration | Video 2:30 (about 280 spoken words at ~140 wpm, plus slide and pause time); project work 3 to 6 hours off-video (matches the Project 2 header) |
 | One idea | Ship a receptionist that answers, books and transfers on a real call, by phone number or, where that isn't possible, by web client plus a SIP test call. |
 | Prerequisites | 8.1 to 8.6 |
 | Files used | `05-projects/project-2-phone-receptionist.md`, `agents/s08_telephony_agent.py`, `telephony/*.json`, `10-resources/telephony-compliance-checklist.md` |
@@ -1108,17 +1197,24 @@ Now it's your turn to put all of Section 8 together: Project 2, your own phone r
 
 [AVATAR]
 
-Project 2. You're going to put your own receptionist on a real call. It can be Riley for Maple Street Dental, or your own business from the Section 4 challenge.
+Here's the test of everything in this section: a stranger dials a number, and your agent books them, transfers them, and hangs up cleanly. No laptop mic, no playground. That's Project 2. It can be Riley for Maple Street Dental, or your own business from the Section 4 challenge.
 
 [SCREEN: `05-projects/project-2-phone-receptionist.md`: requirements, the two paths, deliverables, rubric.]
 
 Open `05-projects/project-2-phone-receptionist.md`. The requirements fit on one screen. The call opens with an AI disclosure. A booking completes, with a read-back. A transfer reaches a second destination. And the call ends cleanly with `end_call`.
 
+[SLIDE 1: Two paths, same requirements]
+- Path A: Twilio number, Elastic SIP trunk, LiveKit inbound trunk and dispatch rule
+- Path B: web client with explicit dispatch, plus a softphone call to your LiveKit SIP URI
+- Both: AI disclosure, a booking with read-back, a transfer, a clean `end_call`
+
 There are two ways to do it. Path A is what we did in this section: a Twilio number, an Elastic SIP trunk, and a LiveKit inbound trunk and dispatch rule.
+
+[SCREEN: `05-projects/project-2-phone-receptionist.md`, scrolled to the Path B steps: the softphone settings and the `sip:` address.]
 
 Path B is for you if you can't get a Twilio number. Some countries require identity documents or a local business address, and some students simply don't want to pay for one. Path B has two parts. First, a web client: connect to your named agent from the Agents Playground or the React starter, and dispatch it explicitly with `lk dispatch create`. Second, a SIP test: use a free softphone app such as Linphone to call your LiveKit SIP URI directly, so the call still goes through your inbound trunk, your dispatch rule and the `sip.phoneNumber` caller ID path. The project file has the exact steps, and a note to verify them in the current LiveKit console. For the transfer requirement on Path B, transfer to a second SIP address instead of a phone number.
 
-[SLIDE 1: Deliverables]
+[SLIDE 2: Deliverables]
 - 2-minute recording of a real call, with captions (phone or softphone)
 - `telephony/` JSON files with secrets removed, plus a short README
 - Completed compliance checklist, with the "question for counsel" column filled in
@@ -1131,6 +1227,11 @@ The rubric rewards the failure paths. What happens when the transfer number is u
 ### Recap
 
 Project 2 proves you can put a voice agent on a real call, by phone number or by web client plus a SIP test, that books, transfers and hangs up safely.
+
+[SLIDE 3: You can now]
+- Put a voice agent on a real phone number, inbound and outbound
+- Tune speech-to-text and turn-taking for 8 kHz phone audio
+- Transfer callers to a human and hang up safely
 
 ### Transition
 
@@ -1152,7 +1253,7 @@ Before Section 9, a five-question quiz to check the telephony essentials.
 | ID | 8.8 |
 | Title | Quiz: Telephony |
 | Type | QZ (quiz; short video intro) |
-| Target duration | Video 1:00 (about 120 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | Video 1:00 (about 130 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Check you can trace a call path and choose the right telephony tool for each job. |
 | Prerequisites | 8.1 to 8.7 |
 | Files used | `06-assessments/quizzes/section-08.md` (5 questions) |
@@ -1166,7 +1267,7 @@ Before Section 9, a five-question quiz to check the telephony essentials.
 
 [AVATAR]
 
-Five questions. One on the call path: a caller hears silence after the call connects, so which link do you check first? One on agent names and explicit dispatch. One on `transfer_to_human`, and why Riley waits for playout before transferring. One on outbound reminder calls. And one on compliance: disclosure, consent and do-not-call.
+A caller dials your clinic, the line connects, and they hear nothing. Could you find the broken link in two minutes? That's question one of five. The others cover agent names and explicit dispatch, why `transfer_to_human` waits for playout, outbound reminder calls, and compliance: disclosure, consent and do-not-call.
 
 [SLIDE 1: Quiz: 5 questions]
 - Call path and dispatch
@@ -1177,7 +1278,11 @@ Five questions. One on the call path: a caller hears silence after the call conn
 
 A tip for the call-path question: walk the chain from the caller to the agent, in order, and ask at each link whether the call could have got this far. The first link where the answer is "no" is where to look.
 
-Every answer links back to its lecture. About five minutes. And remember, the compliance question tests what to check, not legal advice.
+[SCREEN: terminal in `03-code`: `grep -n "riley-receptionist" .env.example livekit.toml.example`. Two hits: `# LIVEKIT_AGENT_NAME=riley-receptionist` (uncommented in your `.env` since lecture 8.2) and `name = "riley-receptionist"`, the names the dispatch rule must match exactly.]
+
+And when it's silence, the agent name is the usual suspect. It lives in two files, and both must match the dispatch rule.
+
+Every answer links back to its lecture. About five minutes, and the compliance question tests what to check, not legal advice.
 
 ### Recap
 
@@ -1185,7 +1290,7 @@ The quiz checks the telephony chain, the phone-specific tools and the compliance
 
 ### Transition
 
-Riley is now live on a phone. That makes Section 9 the most important section of the course: how to test and evaluate her before real patients find the bugs.
+Riley is now live on a phone. That makes Section 9 the most important section of the course: how to test and evaluate it before real patients find the bugs.
 
 ### Speaker notes: common mistakes and Q&A
 

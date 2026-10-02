@@ -11,6 +11,9 @@ In Langfuse the prompt is managed as ``atlas-system`` with labels
 
 from __future__ import annotations
 
+import argparse
+import sys
+
 from telemetry.langfuse_setup import get_prompt_text
 
 PROMPT_NAME = "atlas-system"
@@ -152,6 +155,10 @@ Answer style:
 
 PROMPTS: dict[str, str] = {"v1": ATLAS_SYSTEM_V1, "v2": ATLAS_SYSTEM_V2}
 
+# Short aliases used in the Section 4 scripts.
+ATLAS_V1 = ATLAS_SYSTEM_V1
+ATLAS_V2 = ATLAS_SYSTEM_V2
+
 #: Marker text that only exists in v2; the mock LLM and the judge heuristics key off it.
 V2_MARKER = "avoid unnecessary references"
 
@@ -177,3 +184,51 @@ def get_system_prompt(
 def prompt_cache_key(version: str, tenant: str) -> str:
     """Stable per-prompt, per-tenant cache key (Section 6.4)."""
     return f"atlas-{version}-{tenant}"
+
+
+def register_prompts(*, production_version: str = "v1", settings: object | None = None) -> int:
+    """Create ``atlas-system`` in Langfuse: one version per entry of :data:`PROMPTS`, the
+    ``production_version`` labelled ``production`` and the rest ``staging`` (Lecture 4.4).
+
+    Creating a prompt that already exists adds a new version. Returns the number of versions
+    pushed (0 when Langfuse keys are not configured)."""
+    from telemetry.langfuse_setup import init_langfuse, push_prompts
+
+    init_langfuse(settings)  # type: ignore[arg-type]
+    return push_prompts(PROMPTS, name=PROMPT_NAME, production_version=production_version)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """``python -m app.prompts register`` | ``python -m app.prompts promote --version 1``."""
+    ap = argparse.ArgumentParser(prog="python -m app.prompts", description=__doc__.split("\n")[0])
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    reg = sub.add_parser("register", help="push v1/v2 to Langfuse as atlas-system")
+    reg.add_argument("--production", default="v1", choices=sorted(PROMPTS))
+    pro = sub.add_parser("promote", help="move a label to a Langfuse prompt version (rollback)")
+    pro.add_argument("--version", type=int, required=True, help="Langfuse version number")
+    pro.add_argument("--label", default="production")
+    sub.add_parser("show", help="print the local prompt versions")
+    args = ap.parse_args(argv)
+    if args.cmd == "show":
+        for v, text in PROMPTS.items():
+            print(f"--- {PROMPT_NAME} {v} ({len(text.split())} words)\n{text}")
+        return 0
+    if args.cmd == "register":
+        n = register_prompts(production_version=args.production)
+        if n == 0:
+            print("Langfuse is not configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY); nothing pushed.")
+        else:
+            print(f"pushed {n} versions of {PROMPT_NAME}; {args.production} is labelled production")
+        return 0
+    from telemetry.langfuse_setup import init_langfuse, promote_prompt
+
+    init_langfuse()
+    if not promote_prompt(PROMPT_NAME, args.version, label=args.label):
+        print("Langfuse is not configured (LANGFUSE_PUBLIC_KEY/SECRET_KEY); nothing changed.")
+        return 0
+    print(f"{PROMPT_NAME} version {args.version} is now labelled {args.label}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -49,6 +49,16 @@ log = logging.getLogger("atlas.telemetry")
 TRACER_NAME = "atlas"
 
 
+def _count_failure(name: str) -> None:
+    """``atlas_telemetry_export_failures_total{name}`` (Lecture 13.5, alert AtlasTelemetryExportFailures)."""
+    try:
+        from telemetry.metrics import EXPORTER_FAILURES
+
+        EXPORTER_FAILURES.labels(name).inc()
+    except Exception:  # noqa: BLE001 - metrics must never break exporting
+        pass
+
+
 class SafeSpanExporter(SpanExporter):
     """Wrap any exporter so failures are counted, logged once and never raised."""
 
@@ -64,6 +74,7 @@ class SafeSpanExporter(SpanExporter):
             result = self.inner.export(spans)
         except Exception as exc:  # noqa: BLE001
             self.failures += 1
+            _count_failure(self.name)
             if not self._warned:
                 log.warning("telemetry exporter %s failed (%s); dropping spans", self.name, exc)
                 self._warned = True
@@ -72,6 +83,7 @@ class SafeSpanExporter(SpanExporter):
             self.exported += len(spans)
         else:
             self.failures += 1
+            _count_failure(self.name)
         return result
 
     def shutdown(self) -> None:

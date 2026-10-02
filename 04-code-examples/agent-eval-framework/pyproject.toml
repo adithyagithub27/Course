@@ -1,20 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
 [project]
 name = "agent-eval-framework"
-version = "0.1.0"
-description = "A reusable framework for testing and evaluating AI agents"
+version = "2.0.0"
+description = "TechCorp agent evaluation framework: companion repo for the Udemy course 'AI Agent Testing & Evaluation'"
 readme = "README.md"
-license = {text = "MIT"}
+license = { text = "MIT" }
 requires-python = ">=3.11"
+# Single source of truth for dependencies (decision T6). requirements.txt is
+# generated from uv.lock by `make requirements` for people who prefer pip.
+dependencies = [
+  "openai~=2.54",                              # T6 freezes the 2.x line (same as Course 4)
+  "deepeval~=4.2",
+  "ragas~=0.4.3",
+  "langfuse~=4.16",
+  "opentelemetry-sdk~=1.45",
+  "opentelemetry-semantic-conventions>=0.66b0", # official gen_ai.* attribute names
+  "mcp~=2.2",                                  # official Model Context Protocol SDK
+  "tiktoken>=0.14",
+  "python-dotenv>=1.0",
+  "pyyaml>=6.0",
+  "pydantic>=2.7",
+  "streamlit>=1.50",
+  "pandas>=2.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agents", "config", "evaluators", "observability", "performance",
+            "regression", "monitoring", "security", "mcp_server", "capstone", "reports"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers -p no:cacheprovider"
 asyncio_mode = "auto"
 markers = [
-    "functional: Functional quality tests",
-    "evaluation: LLM output quality tests",
-    "rag: RAG pipeline tests",
-    "security: Security and red team tests",
-    "tool_calling: Tool calling tests",
-    "regression: Regression tests",
-    "slow: Tests that take >30s",
+  "live: calls the real OpenAI API (needs OPENAI_API_KEY and OFFLINE=0; skipped otherwise)",
+  "functional: functional quality tests (Module 3)",
+  "evaluation: LLM output quality tests (Module 4)",
+  "rag: RAG pipeline tests (Module 5)",
+  "tool_calling: tool selection and argument tests (Module 6)",
+  "multi_agent: multi-agent tests (Module 7)",
+  "security: red-team and PII tests (Module 8)",
+  "observability: tracing tests (Module 9)",
+  "performance: latency, cost and reliability tests (Module 10)",
+  "regression: golden-dataset regression tests (Module 11)",
+  "smoke: fast smoke subset that CI runs on every push (Module 12)",
 ]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+  "ignore::UserWarning",
+]
+
+[tool.uv]
+# ragas 0.4.3 imports langchain_community.chat_models.vertexai, which
+# langchain-community 0.4.2 removed. Keep this until ragas ships a fix.
+constraint-dependencies = ["langchain-community<0.4.2"]
