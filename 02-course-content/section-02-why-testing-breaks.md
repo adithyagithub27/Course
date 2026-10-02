@@ -8,9 +8,9 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 2.1 | Deterministic vs. Non-Deterministic: The Testing Paradigm Shift | SL | 7:00 | 0 |
-| 2.2 | The 5 Dimensions of Agent Quality (Beyond Pass/Fail) | SL | 7:00 | 0 |
-| 2.3 | Designing a Test Strategy for AI Agents | SL | 7:00 | 0 |
+| 2.1 | Deterministic vs. Non-Deterministic: The Testing Paradigm Shift | SL | 7:00 | 886 |
+| 2.2 | The 5 Dimensions of Agent Quality (Beyond Pass/Fail) | SL | 7:00 | 853 |
+| 2.3 | Designing a Test Strategy for AI Agents | SL | 7:00 | 939 |
 
 **Section guardrails (do not deviate on screen):** the five quality dimensions are exactly Correctness, Faithfulness, Relevance, Safety, Reliability (latency and cost sit under Reliability; there is no "Performance" or "User Experience" dimension). The test structure is the five-layer agent eval pyramid: unit evals, component evals, trajectory evals, end-to-end evals, production monitoring (no "test diamond", no four-layer pyramid). Thresholds come from `config/eval_config.yaml`.
 
@@ -23,7 +23,7 @@
 | ID | 2.1 |
 | Title | Deterministic vs. Non-Deterministic: The Testing Paradigm Shift |
 | Type | SL (diagram lecture with one terminal demo and a code comparison) |
-| Target duration | 7:00 (980 words at 140 wpm) |
+| Target duration | 7:00 (980 words at 140 wpm; 886 spoken) |
 | Learning objectives | 1. Explain why exact-match assertions fail on correct agent answers. 2. Name the five assumptions of traditional testing that agents break. 3. Choose between exact, contains, semantic and LLM-judge checks, and replace exact expectations with thresholds. |
 | Prerequisites | Section 1 |
 | Files used | `demos/m02_assertion_flakiness.py`; `demos/m03_first_eval.py` (test function, preview); Diagrams D2 (`D2-deterministic-vs-non-deterministic.svg`), D4 (preview) |
@@ -41,12 +41,12 @@ Ten runs. Same question: "How long do refunds take?" Every answer says five to s
 By the end of this lecture, you'll be able to explain why exact-match assertions fail for agents, and choose a better check for each situation.
 
 [SLIDE 2: Same input, same output. Always?]
-Diagram: D2 build 1. Left: "Deterministic": input `add(2, 3)` → function box → `5`, the same every run. Examples underneath: calculator, database query, sort.
+Diagram: D2 build 1. Left, "Traditional software": Input → `f(x)` → "Same output, every time", with the chip `assert output == expected` and a green pass dot.
 
 In Module 1 you saw how agents fail. Now, why can't your existing tests catch those failures? Start with the assumption under every test you've ever written. Same input, same output. Call `add` with two and three, you get five. Today, tomorrow, forever. That's determinism, and assertions are built on it.
 
 [SLIDE 3: Language models break the assumption]
-Diagram: D2 build 2. Right: "Non-deterministic": "How long do refunds take?" → LLM agent → three different sentences, each with a green check: "Refunds are processed within 5-7 business days." / "Expect your refund within 5-7 business days." / "It takes 5-7 business days for a refund to be processed."
+Diagram: D2 build 2. Right, "AI agent": Input → LLM agent → Output A, B, C, "all may be correct"; `assert output == expected` fails (red), "score meaning, not strings" passes. Editor overlay on A, B, C: "Refunds are processed within 5-7 business days." / "Expect your refund within 5-7 business days." / "It takes 5-7 business days for a refund to be processed."
 
 Language models break it. As you saw in Lecture 1.1, they sample each token. Same input, different wording. Even at temperature zero, a model update or a longer context can shift the output. So which of these three answers is the right one? All of them. That's the problem for a test that knows only one.
 
@@ -170,7 +170,7 @@ Next: Lecture 2.2 — The 5 Dimensions of Agent Quality (Beyond Pass/Fail).
 | ID | 2.2 |
 | Title | The 5 Dimensions of Agent Quality (Beyond Pass/Fail) |
 | Type | SL (teach, with one scorecard demo) |
-| Target duration | 7:00 (980 words at 140 wpm) |
+| Target duration | 7:00 (980 words at 140 wpm; 853 spoken) |
 | Learning objectives | 1. Define the five quality dimensions: correctness, faithfulness, relevance, safety, reliability. 2. Tell correctness from faithfulness with an example. 3. Read a five-dimension scorecard and name the metric and threshold behind each dimension. |
 | Prerequisites | 2.1 |
 | Files used | `demos/m02_five_dimensions.py`; `evaluators/dimensions.py`; `config/eval_config.yaml`; Diagram D5 (`D5-five-dimensions-radar.svg`) |
@@ -302,7 +302,7 @@ Next: Lecture 2.3 — Designing a Test Strategy for AI Agents.
 | ID | 2.3 |
 | Title | Designing a Test Strategy for AI Agents |
 | Type | SL (teach plus template, one terminal demo) |
-| Target duration | 7:00 (980 words at 140 wpm) |
+| Target duration | 7:00 (980 words at 140 wpm; 939 spoken) |
 | Learning objectives | 1. Describe the five-layer agent eval pyramid: unit, component, trajectory, end-to-end, production monitoring. 2. Place a given test at the right layer and choose how often it runs. 3. Fill in the test strategy template for an agent, mapping components to quality dimensions and test types. |
 | Prerequisites | 2.2 |
 | Files used | `demos/m02_test_strategy.py`; `tests/unit/`, `tests/component/`, `tests/trajectory/`, `tests/e2e/`, `tests/production/`; `11-course-assets/templates/test-strategy-template.md`; Diagrams D4 (`D4-agent-eval-pyramid.svg`), D6 (`D6-test-strategy-matrix.svg`), D1 |
@@ -327,7 +327,7 @@ You know why exact matching breaks, and you know the five dimensions. Now you ne
 [SLIDE 3: Layer 1: unit evals]
 Diagram: D4 build 2 (unit evals: "one prompt, one metric"), plus a callout: "deterministic checks on tools, parsers, guards · every commit · nearly free".
 
-Layer one: unit evals. Deterministic checks with no judge model. Does `lookup_customer` find Alice by email and by account ID? Does `create_ticket` reject a priority that isn't low, medium, high or critical? Does the loop guard stop at five calls? These run on every commit and cost nothing, so you want lots of them. In our repo, that's forty-four tests. Why bother testing a tool that has no AI in it? Because when the agent fails, you want to rule out the plumbing in seconds.
+Layer one: unit evals. Deterministic checks with no judge model. Does `lookup_customer` find Alice by email and by account ID? Does a search for an unknown topic say "no relevant articles" instead of returning junk? Does the agent expose exactly five tools? These run on every commit and cost nothing, so you want lots of them. In our repo, that's forty-four tests. Why bother testing a tool that has no AI in it? Because when the agent fails, you want to rule out the plumbing in seconds.
 
 [SLIDE 4: Layer 2: component evals]
 Diagram: D4 build 3 (component evals: "retriever, tools, judge"), callout: "one piece at a time · every commit · cents".
@@ -337,7 +337,7 @@ Layer two: component evals. One piece of the agent at a time. Does the retriever
 [SLIDE 5: Layer 3: trajectory evals]
 Diagram: D4 build 4 (trajectory evals: "the steps it took"), callout: "tool choice, arguments, order, loops · every PR".
 
-Layer three: trajectory evals. Now you test the path. Given "I was charged twice, create a ticket", does the agent call `lookup_customer` and then `create_ticket`, in that order, with the customer ID from the lookup? Does it refuse to call any tool for "tell me about Bob's account"? This is where wrong tool selection, wrong arguments and loops get caught. Fifty-four tests, on every pull request.
+Layer three: trajectory evals. Now you test the path. Given "I was charged twice, create a ticket", does the agent call `lookup_customer` and then `create_ticket`, in that order, with the customer ID from the lookup? Does it refuse to call any tool for "tell me about Bob's account"? Does the five-call cap stop a runaway loop? This is where wrong tool selection, wrong arguments and loops get caught. Fifty-four tests, on every pull request.
 
 [SLIDE 6: Layer 4: end-to-end evals]
 Diagram: D4 build 5 (end-to-end evals: "full task, golden dataset"), callout: "LLM-judge metrics, red team · every PR or nightly".

@@ -8,10 +8,10 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 3.1 | Meet DeepEval: pytest for AI | DM | 8:00 | 0 |
-| 3.2 | Test Cases, Golden Datasets & Assertions | SC | 8:00 | 0 |
-| 3.3 | Running Your First Agent Eval (End-to-End) | SC | 7:00 | 0 |
-| 3.4 | [PROJECT 1] Test a Customer Support Agent | PRJ | 7:00 | 0 |
+| 3.1 | Meet DeepEval: pytest for AI | DM | 8:00 | 993 |
+| 3.2 | Test Cases, Golden Datasets & Assertions | SC | 8:00 | 811 |
+| 3.3 | Running Your First Agent Eval (End-to-End) | SC | 7:00 | 733 |
+| 3.4 | [PROJECT 1] Test a Customer Support Agent | PRJ | 7:00 | 716 |
 
 **Section guardrails (do not deviate on screen):** DeepEval 4.2 API only: `from deepeval import assert_test, evaluate`, `from deepeval.test_case import LLMTestCase, ToolCall, SingleTurnParams`, `EvaluationDataset(goldens=[Golden(...)])`. The judge is `get_judge()` (gpt-4.1 live, the mock judge offline); never hard-code `model="gpt-4o-mini"`. The golden dataset is `datasets/golden_support.json`: 10 cases, four categories, faq 3, account 3, escalation 2, security 2. Never run the agent at import time inside a test file.
 
@@ -24,7 +24,7 @@
 | ID | 3.1 |
 | Title | Meet DeepEval: pytest for AI |
 | Type | DM (demo: code walk-through and terminal run) |
-| Target duration | 8:00 (1,120 words at 140 wpm) |
+| Target duration | 8:00 (1,120 words at 140 wpm; 993 spoken) |
 | Learning objectives | 1. Explain what DeepEval adds to pytest: test cases, metrics, thresholds and a judge model. 2. Write a test that runs the TechCorp agent and asserts Answer Relevancy of at least 0.7. 3. Read a metric's score, threshold, verdict and reason. |
 | Prerequisites | Section 2 |
 | Files used | `demos/m03_first_eval.py`; `evaluators/judge.py` (`get_judge`); `config/settings.py` (`judge_model`); `agents/support_agent.py` |
@@ -197,7 +197,7 @@ Next: Lecture 3.2 — Test Cases, Golden Datasets & Assertions.
 | ID | 3.2 |
 | Title | Test Cases, Golden Datasets & Assertions |
 | Type | SC (build-along: dataset file, loader and test case builder) |
-| Target duration | 8:00 (1,120 words at 140 wpm; ~850 spoken, the rest is reading JSON and output on screen) |
+| Target duration | 8:00 (1,120 words at 140 wpm; 811 spoken, the rest is reading JSON and output on screen) |
 | Learning objectives | 1. Explain each `LLMTestCase` field and which metrics need it, including `retrieval_context`, `tools_called` and `expected_tools`. 2. Build a golden dataset that covers every category with at least one hard case. 3. Explain `assert_test`'s rule: every metric must pass. |
 | Prerequisites | 3.1 |
 | Files used | `datasets/golden_support.json`; `demos/m03_golden_dataset.py`; `evaluators/golden.py` (`load`, `SUPPORT_CATEGORIES`); `evaluators/deepeval_suite.py` (`to_test_case`, `golden_dataset`) |
@@ -367,7 +367,7 @@ Next: Lecture 3.3 — Running Your First Agent Eval (End-to-End).
 | ID | 3.3 |
 | Title | Running Your First Agent Eval (End-to-End) |
 | Type | SC (build-along: wire agent, dataset and metrics; run two ways) |
-| Target duration | 7:00 (980 words at 140 wpm; ~760 spoken, the rest is test output) |
+| Target duration | 7:00 (980 words at 140 wpm; 733 spoken, the rest is test output) |
 | Learning objectives | 1. Run the golden dataset through the agent and three metrics end to end. 2. Run the same suite as a pytest file with `deepeval test run`. 3. Read per-case scores, verdicts and reasons, and the aggregate pass rate. |
 | Prerequisites | 3.2 |
 | Files used | `demos/m03_eval_support_agent.py`; `evaluators/deepeval_suite.py` (`run_suite`, `default_metrics_for`, `save_report`); `tests/e2e/test_golden_support.py`; `demos/m11_regression_simulation.py` (hook output only) |
@@ -496,7 +496,7 @@ uv run deepeval test run tests/e2e/test_golden_support.py
    » Pass Rate: 100.0% | Passed: 10 | Failed: 0
 ```
 
-DeepEval's runner gives you pytest's summary, thirteen tests including three structural checks on the dataset, and then a results table: every case, every metric, its score, threshold, status and reason. At the bottom: ten evaluated cases, pass rate one hundred percent.
+DeepEval's runner gives you pytest's summary, thirteen tests, including three extra checks on the datasets themselves, and then a results table: every case, every metric, its score, threshold, status and reason. At the bottom: ten evaluated cases, pass rate one hundred percent.
 
 [SLIDE 5: Reading a result]
 - Score and threshold: how close to the bar?
@@ -549,7 +549,7 @@ Next: Lecture 3.4 — [PROJECT 1] Test a Customer Support Agent.
 | ID | 3.4 |
 | Title | [PROJECT 1] Test a Customer Support Agent |
 | Type | PRJ (project walk-through and build-along) |
-| Target duration | 7:00 (980 words at 140 wpm; ~760 spoken, the rest is code and report on screen) |
+| Target duration | 7:00 (980 words at 140 wpm; 716 spoken, the rest is code and report on screen) |
 | Learning objectives | 1. Assemble a 10-case, three-metric evaluation for the TechCorp agent (Answer Relevancy, Faithfulness, custom GEval correctness). 2. Produce a pass/fail report by category and metric. 3. Turn a failing case into an engineering action item. |
 | Prerequisites | 3.1 to 3.3 |
 | Files used | `demos/m03_project1_eval.py`; `evaluators/metrics.py` (`answer_relevancy`, `faithfulness`, `correctness`); `datasets/golden_support.json`; `agents/support_agent.py`; `08-projects/project-1-customer-support/README.md`; `reports/results/project1_report.md` (generated) |

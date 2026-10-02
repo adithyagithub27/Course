@@ -40,7 +40,7 @@ packages = ["agents", "config", "evaluators", "observability", "performance",
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "demos"]
 addopts = "-ra --strict-markers -p no:cacheprovider"
 asyncio_mode = "auto"
 markers = [

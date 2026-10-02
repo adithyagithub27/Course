@@ -8,10 +8,10 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 1.1 | LLMs in 10 Minutes: Tokens, Context, Temperature | SL | 8:00 | 0 |
-| 1.2 | What Makes an Agent an Agent (Not a Chatbot) | DM | 7:00 | 0 |
-| 1.3 | Agent Architecture: The Loop, Tools, Memory, Planning | SL | 7:00 | 0 |
-| 1.4 | The 6 Ways AI Agents Fail (And Why Testing Is Hard) | DM | 6:00 | 0 |
+| 1.1 | LLMs in 10 Minutes: Tokens, Context, Temperature | SL | 8:00 | 1002 |
+| 1.2 | What Makes an Agent an Agent (Not a Chatbot) | DM | 7:00 | 891 |
+| 1.3 | Agent Architecture: The Loop, Tools, Memory, Planning | SL | 7:00 | 903 |
+| 1.4 | The 6 Ways AI Agents Fail (And Why Testing Is Hard) | DM | 6:00 | 734 |
 
 **Section guardrails (do not deviate on screen):** one agent, TechCorp support (`agents/support_agent.py`), a SaaS company with plans, invoices and a knowledge base (KB-101 to KB-105). No orders, no inventory, no `lookup_order`, no TechGear, no LangChain agent code. The six failure modes are exactly: hallucination, wrong tool selection, incorrect tool arguments, reasoning errors, goal drift, infinite loops. Prices on screen carry "verify current pricing".
 
@@ -24,7 +24,7 @@
 | ID | 1.1 |
 | Title | LLMs in 10 Minutes: Tokens, Context, Temperature |
 | Type | SL (slides with two short terminal demos) |
-| Target duration | 8:00 (1,120 words at 140 wpm) |
+| Target duration | 8:00 (1,120 words at 140 wpm; 1,002 spoken) |
 | Learning objectives | 1. Explain tokens and estimate what a test run costs from token counts. 2. Describe what fills a context window on an agent's first call and why long contexts change behaviour. 3. Explain how temperature makes the same question produce different, equally correct answers, and what that does to exact-match tests. |
 | Prerequisites | Section 0 complete (`make install`) |
 | Files used | `demos/m01_token_demo.py`; `demos/m01_temperature_demo.py`; `performance/tokens.py`; `config/settings.py` (`PRICES_PER_1M`); `agents/support_agent.py` (`SYSTEM_PROMPT`, `TOOLS`) |
@@ -154,7 +154,7 @@ Can you just set temperature to zero for testing? It helps, but it's not a guara
 - Measure how often it behaves the same
 - Course threshold: consistency of at least 0.7
 
-There's a second habit worth starting now. When the output can vary, one run proves very little. So how many runs do you need? In Module 10 you'll run the same case several times and measure consistency: how often the agent takes the same tools and gives a passing answer. Our quality policy asks for at least zero point seven.
+There's a second habit worth starting now. When the output can vary, one run proves very little. So how many runs do you need? In Module 10 you'll run the same case several times and measure consistency: how often the agent takes the same path of tools. Our quality policy asks for at least zero point seven.
 
 [SLIDE 10: Recap]
 - Tokens set your cost and truncation risk
@@ -191,7 +191,7 @@ Next: Lecture 1.2 — What Makes an Agent an Agent (Not a Chatbot).
 | ID | 1.2 |
 | Title | What Makes an Agent an Agent (Not a Chatbot) |
 | Type | DM (diagram plus one terminal demo and a code walk-through) |
-| Target duration | 7:00 (980 words at 140 wpm) |
+| Target duration | 7:00 (980 words at 140 wpm; 891 spoken) |
 | Learning objectives | 1. Distinguish a chatbot (one call, text in, text out) from an agent (LLM plus tools in a loop). 2. Read an agent trace step by step: tool choice, arguments, tool result, final answer. 3. Explain why agents must be tested on their trajectory, not just the final answer. |
 | Prerequisites | 1.1 |
 | Files used | `demos/m01_agent_vs_chatbot.py`; `agents/support_agent.py` (`run_support_agent`, the loop); Diagram D3 (`D3-agent-loop.svg`) |
@@ -356,7 +356,7 @@ Next: Lecture 1.3 — Agent Architecture: The Loop, Tools, Memory, Planning.
 | ID | 1.3 |
 | Title | Agent Architecture: The Loop, Tools, Memory, Planning |
 | Type | SL (animated diagram, with a code tour and one terminal demo) |
-| Target duration | 7:00 (980 words at 140 wpm) |
+| Target duration | 7:00 (980 words at 140 wpm; 903 spoken) |
 | Learning objectives | 1. Map any agent to four testable components: the LLM, tools, memory, planning. 2. Name the failure surfaces of each component, including the three per tool (selection, arguments, result use). 3. Locate each component in the TechCorp agent's code. |
 | Prerequisites | 1.2 |
 | Files used | `agents/support_agent.py` (`SYSTEM_PROMPT`, `TOOLS`, `KNOWLEDGE_BASE`, `run_support_agent`); `demos/m01_lab_run_agent.py`; `datasets/failure_gallery.json`; Diagrams D3, D6 |
@@ -477,7 +477,7 @@ Next: Lecture 1.4 — The 6 Ways AI Agents Fail (And Why Testing Is Hard).
 | ID | 1.4 |
 | Title | The 6 Ways AI Agents Fail (And Why Testing Is Hard) |
 | Type | DM (teach plus recorded failure gallery) |
-| Target duration | 6:00 (840 words at 140 wpm) |
+| Target duration | 6:00 (840 words at 140 wpm; 734 spoken) |
 | Learning objectives | 1. Name the six failure modes: hallucination, wrong tool selection, incorrect tool arguments, reasoning errors, goal drift, infinite loops. 2. Give a TechCorp example of each and the check that catches it. 3. Explain why step-level tests miss trajectory-level failures. |
 | Prerequisites | 1.3 |
 | Files used | `demos/m01_failure_gallery.py`; `datasets/failure_gallery.json`; `evaluators/tool_metrics.py` (`check_arguments`); `performance/reliability.py` (`detect_tool_loop`); `evaluators/metrics.py`; Diagram D1 |

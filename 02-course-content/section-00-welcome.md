@@ -9,8 +9,8 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 0.1 | Your AI Agent Just Failed in Production — Now What? | SL | 3:00 | 424 |
-| 0.2 | Course Roadmap & Environment Setup | SC | 5:00 | 591 |
+| 0.1 | Your AI Agent Just Failed in Production — Now What? | SL | 3:00 | 391 |
+| 0.2 | Course Roadmap & Environment Setup | SC | 5:00 | 573 |
 
 **Section guardrails (do not deviate on screen):** the running example is the TechCorp support agent (`agents/support_agent.py`, five tools: `lookup_customer`, `search_knowledge_base`, `create_ticket`, `send_email`, `escalate_to_human`). Install is `make install` (`uv sync --locked`), not `pip install` plus a hand-made venv. No API key is needed for anything in this section. Never type a real key on camera.
 
@@ -23,7 +23,7 @@
 | ID | 0.1 |
 | Title | Your AI Agent Just Failed in Production — Now What? |
 | Type | SL (hook and showcase, one short demo) |
-| Target duration | 3:00 (420 spoken words at 140 wpm) |
+| Target duration | 3:00 (420 words at 140 wpm; 391 spoken) |
 | Learning objectives | 1. Describe how a one-line prompt change can make a support agent invent policy without any error in the logs. 2. Name the four systems the course builds: evaluation suite, red-team report, monitoring dashboard, CI quality gate. 3. Explain why an evaluation, not a unit test, catches this class of failure. |
 | Prerequisites | None |
 | Files used | `demos/m00_agent_failure.py`; `regression/regression_suite.py` (`PROMPT_V2_REGRESSED`); `agents/support_agent.py` (`SYSTEM_PROMPT`); Diagram D1 (`10-graphics/diagrams/D1-six-failure-modes.svg`) |
@@ -112,7 +112,7 @@ Next: Lecture 0.2 — Course Roadmap & Environment Setup.
 | ID | 0.2 |
 | Title | Course Roadmap & Environment Setup |
 | Type | SC (screencast: terminal and editor) |
-| Target duration | 5:00 (700 words at 140 wpm; ~590 spoken, the rest is install and test output) |
+| Target duration | 5:00 (700 words at 140 wpm; 573 spoken, the rest is install and test output) |
 | Learning objectives | 1. Install the locked environment with `make install` and run the offline suite with `make test` (204 passed, 5 skipped). 2. Explain offline mode and when an `OPENAI_API_KEY` is needed. 3. Navigate the 16-module roadmap and the repo folders that each part of the course uses. |
 | Prerequisites | 0.1; Python 3.11+ and `uv` installed |
 | Files used | `Makefile`; `pyproject.toml`; `uv.lock`; `.env.example`; `README.md`; `demos/m00_verify_setup.py`; `demos/m00_hello_eval.py`; `tests/` |
