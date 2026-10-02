@@ -20,7 +20,6 @@
 <text x="740.0" y="970" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">day 10</text>
 <text x="1220.0" y="970" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">day 20</text>
 <text x="1700.0" y="970" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">day 30</text>
-<text x="248" y="606.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="end">100%</text>
 <text x="248" y="946.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="end">0</text>
 <path d="M260.0 600.0 L1700.0 804.0" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <text x="1712.0" y="810.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#00D4AA" text-anchor="start">normal month</text>

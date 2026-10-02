@@ -21,7 +21,7 @@ TOOLS = HERE.parents[3] / "voice-ai-agents-course" / "09-production" / "tools"
 sys.path.insert(0, str(TOOLS))
 
 from diagram_kit import (AMBER, FLOW, GRAY, GRAY_DARK, GRAY_LIGHT, NAVY, NAVY_LIGHT, NAVY_MID,  # noqa: E402
-                         RED, TEAL, TEAL_DIM, WHITE, Diagram)
+                         RED, TEAL, TEAL_DIM, WHITE, Diagram, text_width)
 
 COURSE = "Course 4 · Agent Observability"
 TENANTS = ["ops", "finance", "hr", "eng"]  # fix plan O7
@@ -57,7 +57,7 @@ def d1() -> Diagram:
     for i, (name, sub, icon, kw) in enumerate(cols):
         with d.step(i + 1, name.lower(), [kw]):
             x = x0 + i * (cw + gap)
-            d.rect(x, top, cw, ch, stroke=TEAL if i == 0 else WHITE if i == 1 else TEAL, fill=NAVY_LIGHT)
+            d.rect(x, top, cw, ch, stroke=TEAL, fill=NAVY_LIGHT)
             ic_color = AMBER if icon == "trace" else TEAL
             d.icon(icon, x + cw / 2, top + 90, 84, ic_color)
             if icon == "clipboard":  # judge score with a trend line
@@ -90,7 +90,7 @@ def d2() -> Diagram:
           ["the stack", "capstone-atlas-ops", "observability stack", "architecture"])
     with d.step(1, "the stack"):
         # Atlas process
-        d.rect(96, 250, 500, 420, stroke=TEAL, fill=NAVY_MID)
+        d.rect(96, 250, 500, 450, stroke=TEAL, fill=NAVY_MID)
         d.icon("robot", 140, 296, 44, TEAL)
         d.text(176, 294, "Atlas", 28, 700, WHITE)
         d.text(176, 322, "FastAPI + agent loop", 18, 400, GRAY_LIGHT)
@@ -98,9 +98,9 @@ def d2() -> Diagram:
         d.node(126, 510, 440, 130, "OTel SDK", "spans with gen_ai.* attributes", tone="teal", size=22,
                icon="trace", icon_color=AMBER, align="left")
         # collector
-        d.rect(720, 380, 440, 300, stroke=GRAY, fill=NAVY_LIGHT)
-        d.text(940, 422, "OTel Collector", 26, 700, WHITE, "middle")
-        y = 448
+        d.rect(720, 300, 440, 300, stroke=GRAY, fill=NAVY_LIGHT)
+        d.text(940, 342, "OTel Collector", 26, 700, WHITE, "middle")
+        y = 368
         for lab in ("memory_limiter", "attributes/redact", "tail_sampling", "batch"):
             d.chip(940, y, lab, "teal" if lab in ("attributes/redact", "tail_sampling") else "gray", size=16,
                    anchor="middle")
@@ -114,27 +114,27 @@ def d2() -> Diagram:
                icon="clipboard", icon_color=TEAL, align="left", size=22)
         d.arrow(1520, 394, 1520, 436, color=FLOW)
         d.arrow(1600, 436, 1600, 394, color=TEAL)
-        d.elbow([(1164, 470), (1232, 470), (1232, 320), (1296, 320)], color=FLOW, sw=3)
+        d.arrow(1164, 320, 1296, 320, color=FLOW, sw=3)
         # Prometheus -> Grafana
         d.node(1300, 600, 240, 100, "Prometheus", "metrics", tone="neutral", icon="bars", icon_color=TEAL,
                align="left", size=22)
         d.node(1600, 600, 224, 100, "Grafana", "dashboards, alerts", tone="neutral", size=22)
         d.arrow(1544, 650, 1596, 650)
-        d.elbow([(1164, 620), (1232, 620), (1232, 650), (1296, 650)], color=FLOW)
-        d.text(1180, 606, "spanmetrics", 16, 400, GRAY, mono=True)
-        d.elbow([(596, 300), (660, 300), (660, 230), (1420, 230), (1420, 596)], color=FLOW, dash="6 6")
-        d.text(980, 220, "/metrics scrape", 16, 400, GRAY, "middle", mono=True)
+        d.elbow([(1164, 560), (1232, 560), (1232, 630), (1296, 630)], color=FLOW)
+        d.text(1176, 546, "spanmetrics", 16, 400, GRAY, mono=True)
+        d.arrow(600, 680, 1296, 680, color=FLOW, dash="6 6")
+        d.text(980, 670, "/metrics scrape", 16, 400, GRAY, "middle", mono=True)
         # local store + ops console
         d.cylinder(96, 760, 240, 120, "local store", None, color=GRAY, size=20)
         d.node(400, 760, 300, 120, "Ops Console", "Streamlit · offline mode", tone="white", size=22)
-        d.arrow(220, 674, 220, 756)
+        d.arrow(220, 704, 220, 756)
         d.arrow(340, 820, 396, 820)
     with d.step(2, "alternatives", ["alternatives", "portability", "once more"]):
         y = 820
         x = 800
         for lab in ("LangSmith", "Phoenix", "Datadog"):
             d.node(x, y, 300, 90, lab, tone="gray", dash="8 4", size=22, label_color=GRAY_LIGHT)
-            d.elbow([(940, 684), (940, 760), (x + 150, 760), (x + 150, y - 4)], color=GRAY, dash="6 6")
+            d.elbow([(940, 604), (940, 770), (x + 150, 770), (x + 150, y - 4)], color=GRAY, dash="6 6")
             x += 340
         d.text(800, 990, "any OTLP backend can hang off the Collector", 18, 400, GRAY)
     return d
@@ -196,8 +196,8 @@ def d3() -> Diagram:
             xt = xg + g * (bx1 - bx0)
             d.add(f'<rect x="{xt:.1f}" y="{y + 10}" width="{max(6, tl * (bx1 - bx0)):.1f}" height="26" rx="3" fill="{RED}"/>')
             t += q + g + tl
-        d.fail_dot(dx - 14, top + 70 + 11 * lh + 22, r=13)
-        d.text(dx - 40, top + 70 + 11 * lh + 30, "tool error ×12", 18, 600, RED, "end")
+        d.fail_dot(bx1 - 14, top + 70 + 12 * lh + 26, r=13)
+        d.text(bx1 - 40, top + 70 + 12 * lh + 34, "tool error ×12", 18, 600, RED, "end")
         d.text(bx0, top + 70 + n * lh + 34, "input re-sent every step: generations grow wider", 18, 400, GRAY_LIGHT)
     # build 3: incident ruler
     with d.only(3):
@@ -257,109 +257,111 @@ def d5() -> Diagram:
           ["token streams", "token anatomy", "where the money goes"],
           footnote="Proportions from one baseline Atlas request (6.1); illustrative")
     hatch_defs(d)
-    x0, x1 = 160, 1560
-    by, bh = 360, 110
-    inp = 0.965  # input share of tokens on the baseline request (9,926 in / 324 out)
+    x0, x1 = 300, 1700
+    by, bh = 330, 110
+    inp = 0.965  # input share of tokens on the baseline request
+    wi = inp * (x1 - x0)
     with d.step(1, "one request"):
-        d.text(x0, by - 24, "one request, two model steps", 20, 600, WHITE)
-        wi = inp * (x1 - x0)
+        d.text(x0 - 24, by + 50, "one", 20, 600, WHITE, "end")
+        d.text(x0 - 24, by + 76, "request", 20, 600, WHITE, "end")
         d.add(f'<rect x="{x0}" y="{by}" width="{wi:.1f}" height="{bh}" fill="{GRAY_DARK}"/>')
         d.add(f'<rect x="{x0 + wi:.1f}" y="{by}" width="{(x1 - x0) - wi:.1f}" height="{bh}" fill="{WHITE}"/>')
-        d.text(x0 + 30, by + 66, "input (uncached)", 24, 700, WHITE)
-        d.text(x0 + 30, by + bh + 36, "usage.prompt_tokens", 18, 400, GRAY, mono=True)
-        # tool schemas bracket inside input (system prompt + 5 tool schemas, re-sent per step)
+        d.text(x0 + wi - 30, by + 66, "input (uncached)", 24, 700, WHITE, "end")
+        d.text(x0 + wi, by + bh + 34, "usage.prompt_tokens", 18, 400, GRAY, "end", mono=True)
         d.bracket(x0, x0 + 0.32 * (x1 - x0), by - 4, "system prompt + tool schemas, re-sent each step",
                   color=GRAY, size=18)
         # zoom on the output end
-        zx, zy, zw, zh = 1180, 620, 560, 110
+        zx, zy, zw, zh = 1140, 640, 560, 110
         d.path(f"M{x0 + wi:.1f} {by + bh} L{zx} {zy}", color=GRAY_DARK, sw=1.5, arrow=False, dash="4 4")
         d.path(f"M{x1} {by + bh} L{zx + zw} {zy}", color=GRAY_DARK, sw=1.5, arrow=False, dash="4 4")
         d.add(f'<rect x="{zx}" y="{zy}" width="{zw * 0.62:.1f}" height="{zh}" fill="{WHITE}"/>')
         d.add(f'<rect x="{zx + zw * 0.62:.1f}" y="{zy}" width="{zw * 0.38:.1f}" height="{zh}" fill="url(#hatch-white)"/>')
         d.text(zx + 20, zy + 64, "output", 24, 700, NAVY)
-        d.text(zx, zy + zh + 34, "completion_tokens", 18, 400, GRAY, mono=True)
-        d.text(zx + zw * 0.62 + 10, zy + zh + 34, "reasoning_tokens", 18, 400, GRAY, mono=True)
-        d.text(zx + zw, zy - 16, "reasoning: billed as output", 18, 600, WHITE, "end")
-        d.text(zx - 20, zy + 64, "zoom ×30", 18, 400, GRAY, "end")
+        d.text(zx, zy + zh + 32, "completion_tokens", 18, 400, GRAY, mono=True)
+        d.text(zx + zw, zy + zh + 32, "reasoning_tokens", 18, 400, GRAY, "end", mono=True)
+        d.text(zx + zw, zy + zh + 60, "reasoning: billed as output", 18, 600, WHITE, "end")
+        d.text(zx - 20, zy + 64, "output, zoomed", 18, 400, GRAY, "end")
         # retries and judge
-        d.add(f'<rect x="{x0 + 24}" y="{820}" width="{(x1 - x0) * 0.6:.1f}" height="44" fill="{GRAY_DARK}" opacity="0.45"/>')
-        d.add(f'<rect x="{x0}" y="{834}" width="{(x1 - x0) * 0.6:.1f}" height="44" fill="none" stroke="{GRAY}" '
-              f'stroke-width="2" stroke-dasharray="6 5"/>')
-        d.text(x0, 812, "retry: the whole prompt again", 18, 600, GRAY_LIGHT)
-        d.add(f'<rect x="{x0}" y="{930}" width="{(x1 - x0) * 0.22:.1f}" height="44" fill="{GRAY_DARK}"/>')
-        d.text(x0 + (x1 - x0) * 0.22 + 16, 960, "judge call: a second model reads it all (Section 8)", 18, 400,
-               GRAY_LIGHT)
+        d.text(x0 - 24, 860, "retry", 20, 600, WHITE, "end")
+        d.add(f'<rect x="{x0}" y="{836}" width="{x1 - x0 - 620}" height="40" fill="{GRAY_DARK}" opacity="0.4" '
+              f'stroke="{GRAY}" stroke-width="2" stroke-dasharray="6 5"/>')
+        d.text(x0 + 16, 863, "the whole prompt, paid again", 18, 500, GRAY_LIGHT)
+        d.text(x0 - 24, 950, "judge", 20, 600, WHITE, "end")
+        d.add(f'<rect x="{x0}" y="{926}" width="{(x1 - x0) * 0.22:.1f}" height="40" fill="{GRAY_DARK}"/>')
+        d.text(x0 + (x1 - x0) * 0.22 + 16, 953, "a second model reads it all (Section 8)", 18, 400, GRAY_LIGHT)
     with d.step(2, "caching: the cached share grows", ["caching", "cache"]):
         wc = 0.64 * (x1 - x0)
         d.add(f'<rect x="{x0}" y="{by}" width="{wc:.1f}" height="{bh}" fill="url(#hatch-teal)"/>')
-        d.add(f'<rect x="{x0 + 18}" y="{by + 36}" width="250" height="40" rx="6" fill="{NAVY}"/>')
+        d.add(f'<rect x="{x0 + 18}" y="{by + 36}" width="190" height="40" rx="6" fill="{NAVY}"/>')
         d.text(x0 + 30, by + 64, "cached input", 22, 700, TEAL)
-        d.text(x0 + wc - 10, by + bh + 36, "prompt_tokens_details.cached_tokens", 18, 400, TEAL, "end", mono=True)
+        d.text(x0, by + bh + 34, "cached_tokens", 18, 400, TEAL, mono=True)
     with d.step(3, "context diet: input shrinks", ["context diet", "diet", "bloats"]):
-        d.add(f'<rect x="{x0}" y="{by + bh + 70}" width="{0.7 * (x1 - x0):.1f}" height="30" rx="4" fill="none" '
+        d.text(x0 - 24, by + bh + 98, "after diet", 18, 600, TEAL, "end")
+        d.add(f'<rect x="{x0}" y="{by + bh + 74}" width="{0.7 * (x1 - x0):.1f}" height="36" rx="4" fill="none" '
               f'stroke="{TEAL}" stroke-width="2" stroke-dasharray="8 4"/>')
-        d.text(x0 + 0.7 * (x1 - x0) + 16, by + bh + 92, "after the context diet: less input per step", 18, 600, TEAL)
+        d.text(x0 + 16, by + bh + 99, "less input per step", 18, 600, TEAL)
     return d
 
 
 def d6() -> Diagram:
     d = D("D6", "cost-rollup-tree", "Rolling cost up", ["6.3", "6.9", "14.4", "14.2"],
           ["five dimensions", "rollup", "showback", "cost per resolved session"])
-    W = 1260
-    levels = [  # (y, label)
-        (900, "generation"), (770, "request"), (640, "session"), (510, "user"), (380, "tenant"), (250, "total")]
-    nh = 70
+    nh = 66
+    Y = {"total": 230, "tenant": 360, "user": 490, "session": 620, "request": 750, "generation": 880}
 
-    def nodebox(x, y, w, label, tone="neutral", mono=False, size=20):
-        d.node(x, y, w, nh, label, tone=tone, mono=mono, size=size)
+    def nodebox(x, y, w, label, tone="neutral", mono=False, size=20, dash=None):
+        d.node(x, y, w, nh, label, tone=tone, mono=mono, size=size, dash=dash)
 
-    # generation leaves under request r1 and r2
-    gens = [(150, "r1"), (330, "r1"), (520, "r2"), (700, "r2")]
+    gens = [(150, 0), (330, 0), (520, 1), (700, 1)]
     with d.step(1, "generations", ["generation"]):
-        d.label(96, levels[0][0] - 14, "generation", 16, GRAY)
+        d.label(96, Y["generation"] - 12, "generation", 16, GRAY)
         for x, _ in gens:
-            nodebox(x, 900, 160, "chat", tone="teal", mono=True)
-            d.chip(x + 80, 980, "cost_usd", "white", size=14, anchor="middle")
+            nodebox(x, Y["generation"], 160, "chat", tone="teal", mono=True)
+            d.chip(x + 80, Y["generation"] + nh + 8, "cost_usd", "white", size=14, anchor="middle")
     with d.step(2, "requests"):
-        d.label(96, 770 - 14, "request", 16, GRAY)
-        for k, x in enumerate((240, 610)):
-            nodebox(x - 10, 770, 200, f"trace {k + 1}", mono=True)
+        d.label(96, Y["request"] - 12, "request", 16, GRAY)
+        for k, x in enumerate((230, 600)):
+            nodebox(x, Y["request"], 200, f"trace {k + 1}", mono=True)
         for x, r in gens:
-            px = 330 if r == "r1" else 700
-            d.line(x + 80, 896, px, 844, color=FLOW, sw=1.5, arrow=False)
+            px = 330 if r == 0 else 700
+            d.line(x + 80, Y["generation"] - 4, px, Y["request"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
     with d.step(3, "sessions"):
-        d.label(96, 640 - 14, "session", 16, GRAY)
-        nodebox(330, 640, 360, "session_id", mono=True)
+        d.label(96, Y["session"] - 12, "session", 16, GRAY)
+        nodebox(330, Y["session"], 360, "session_id", mono=True)
         for px in (330, 700):
-            d.line(px, 766, 510, 714, color=FLOW, sw=1.5, arrow=False)
-        nodebox(760, 640, 200, "…", tone="gray")
+            d.line(px, Y["request"] - 4, 510, Y["session"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
+        nodebox(760, Y["session"], 200, "…", tone="gray")
     with d.step(4, "users"):
-        d.label(96, 510 - 14, "user", 16, GRAY)
-        nodebox(380, 510, 260, "user_id (hashed)", mono=True, size=18)
-        nodebox(700, 510, 200, "…", tone="gray")
-        d.line(510, 636, 510, 584, color=FLOW, sw=1.5, arrow=False)
-        d.line(860, 636, 800, 584, color=FLOW, sw=1.5, arrow=False)
+        d.label(96, Y["user"] - 12, "user", 16, GRAY)
+        nodebox(380, Y["user"], 260, "user_id (hashed)", mono=True, size=18)
+        nodebox(700, Y["user"], 200, "…", tone="gray")
+        d.line(510, Y["session"] - 4, 510, Y["user"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
+        d.line(860, Y["session"] - 4, 800, Y["user"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
     with d.step(5, "tenants", ["tenant"]):
-        d.label(96, 380 - 14, "tenant", 16, GRAY)
+        d.label(96, Y["tenant"] - 12, "tenant", 16, GRAY)
         for k, t in enumerate(TENANTS):
-            nodebox(260 + k * 240, 380, 200, t, tone="white", mono=True)
-        d.line(510, 506, 360, 454, color=FLOW, sw=1.5, arrow=False)
-        d.line(800, 506, 360, 454, color=FLOW, sw=1.5, arrow=False)
-        d.node(260 + 4 * 240 - 10, 372, 330, 86, "cost per resolved session", tone="amber", size=20)
+            nodebox(260 + k * 240, Y["tenant"], 200, t, tone="white", mono=True)
+        d.line(510, Y["user"] - 4, 360, Y["tenant"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
+        d.line(800, Y["user"] - 4, 360, Y["tenant"] + nh + 2, color=FLOW, sw=1.5, arrow=False)
+        d.node(1230, Y["tenant"] - 6, 330, 78, "cost per resolved session", tone="amber", size=20)
     with d.step(6, "Northwind total"):
-        d.node(490, 250, 420, 80, "Northwind total", tone="teal", size=24, glow=True)
+        d.node(490, Y["total"], 420, 76, "Northwind total", tone="teal", size=24, glow=True)
         for k in range(4):
-            d.line(360 + k * 240, 376, 700, 334, color=TEAL, sw=2, arrow=False)
+            d.line(360 + k * 240, Y["tenant"] - 4, 700, Y["total"] + 80, color=TEAL, sw=2, arrow=False)
     with d.step(7, "the feature cut", ["feature"]):
-        fx = 1460
-        d.label(fx, 500, "by feature (dashed roll-up)", 16, GRAY)
+        fx, bus_y, bus_x = 1460, 1004, 1340
         feats = ["policy_question", "ticket_lookup", "create_ticket", "password_reset", "shipment_status"]
+        d.label(fx, 560, "by feature: a second roll-up", 16, GRAY)
+        dash = dict(color=GRAY, sw=1.5, dash="6 6", arrow=False)
+        d.line(150 + 80, bus_y, bus_x, bus_y, **dash)
+        for x, _ in gens:
+            d.line(x + 80, Y["generation"] + nh + 36, x + 80, bus_y, **dash)
+        top_f = 590
+        d.line(bus_x, bus_y, bus_x, top_f + 30, **dash)
         for k, f in enumerate(feats):
-            y = 520 + k * 84
-            d.node(fx, y, 364, 64, f, tone="neutral", mono=True, size=18, dash="8 4")
-        for (x, _), k in zip(gens, (0, 1, 0, 2)):
-            d.path(f"M{x + 160} {935} C{x + 500} {935} {fx - 260} {552 + k * 84} {fx - 4} {552 + k * 84}",
-                   color=GRAY, sw=1.5, dash="6 6")
+            y = top_f + k * 82
+            d.node(fx, y, 364, 60, f, tone="neutral", mono=True, size=18, dash="8 4")
+            d.arrow(bus_x, y + 30, fx - 4, y + 30, color=GRAY, sw=1.5, dash="6 6")
     return d
 
 
@@ -367,7 +369,7 @@ def d7() -> Diagram:
     d = D("D7", "latency-budget", "Latency budget of one request", ["7.1", "7.2", "7.4", "7.6", "5.4"],
           ["latency numbers", "latency budget", "three clocks", "ttft", "fallback"])
     x0, scale = 330, 1.0
-    rows_y = [290, 370, 450]
+    rows_y = [300, 380, 460]
     segs = [  # per step: (label, width px, color)
         [("queue", 30, GRAY_DARK), ("TTFT", 230, TEAL), ("TPOT × tokens", 90, TEAL_DIM), ("tool", 80, WHITE)],
         [("queue", 30, GRAY_DARK), ("TTFT", 230, TEAL), ("TPOT × tokens", 60, TEAL_DIM), ("tool", 50, WHITE)],
@@ -381,13 +383,15 @@ def d7() -> Diagram:
             x = start
             for lab, w, c in row:
                 d.add(f'<rect x="{x}" y="{y + 8}" width="{w}" height="44" fill="{c}" stroke="{NAVY}" stroke-width="2"/>')
-                if w >= 80:
+                if text_width(lab, 18, 600) < w - 12:
                     d.text(x + w / 2, y + 37, lab, 18, 600, NAVY if c != GRAY_DARK else WHITE, "middle")
                 x += w
             start = x
-        # legend labels for narrow segments
-        d.text(x0, 270, "queue", 16, 600, GRAY, "middle")
-        d.line(x0 + 15, 276, x0 + 15, 296, color=GRAY_DARK, sw=1.5, arrow=False)
+        lx = x0
+        for lab, c in (("queue", GRAY_DARK), ("TTFT", TEAL), ("TPOT × tokens", TEAL_DIM), ("tool", WHITE)):
+            d.add(f'<rect x="{lx}" y="232" width="28" height="20" rx="3" fill="{c}"/>')
+            d.text(lx + 38, 249, lab, 18, 500, GRAY_LIGHT)
+            lx += 38 + text_width(lab, 18, 500) + 36
         # end-to-end
         y = 560
         d.text(x0 - 24, y + 40, "end to end", 20, 700, WHITE, "end")
@@ -463,7 +467,6 @@ def d8() -> Diagram:
         def yb(v):  # 0..100 %
             return bot - v / 100 * (bot - top)
 
-        d.text(px0 - 12, yb(100) + 6, "100%", 16, 400, GRAY, "end")
         d.text(px0 - 12, yb(0) + 6, "0", 16, 400, GRAY, "end")
         d.path(f"M{xd(0)} {yb(100)} L{xd(30)} {yb(40)}", color=TEAL, sw=3, arrow=False)
         d.text(xd(30) + 12, yb(40) + 6, "normal month", 16, 600, TEAL)
@@ -485,7 +488,7 @@ def d8() -> Diagram:
 def d9() -> Diagram:
     d = D("D9", "incident-timeline", "Reading an incident timeline", ["11.1", "11.2", "11.3", "11.4", "11.5"],
           ["incident timeline", "the four questions", "timeline"])
-    y = 600
+    y = 660
     xs = [190, 470, 720, 960, 1200, 1440, 1700]
     marks = [("T-∞", "change", "prompt v2, top-k raised", GRAY, "above"),
              ("T0", "first symptom", "visible in traces", RED, "below"),
@@ -511,12 +514,12 @@ def d9() -> Diagram:
             w = d.chip(x, y + 40, lab, "teal", size=16, mono=False)
             x += w + 10
     with d.step(2, "blast radius", ["blast radius"]):
-        d.bracket(xs[1], xs[4], 330, "blast radius: tenants affected", color=RED, size=20)
+        d.bracket(xs[1], xs[4], 400, "blast radius: tenants affected", color=RED, size=20)
         x = xs[1] + 120
         for k, t in enumerate(TENANTS):
-            w = d.chip(x, 352, t, "red" if k < 2 else "gray", size=16)
+            w = d.chip(x, 422, t, "red" if k < 2 else "gray", size=16)
             x += w + 14
-        d.text(xs[4] + 10, 384, "example", 16, 400, GRAY)
+        d.text(xs[4] + 10, 454, "example", 16, 400, GRAY)
     return d
 
 

@@ -14,7 +14,7 @@
 <path d="M426.0 664 L426.0 616" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
 </g>
 <g id="build-2">
-<rect x="730.0" y="250" width="460" height="360" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="730.0" y="250" width="460" height="360" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
 <g transform="translate(918.0 298.0) scale(1.750)"><rect x="10" y="9" width="28" height="35" rx="4" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="18" y="5" width="12" height="7" rx="2" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 28 L22 33 L32 21" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
 <polyline points="1020.0,370 1050.0,350 1075.0,358 1105.0,330" fill="none" stroke="#00D4AA" stroke-width="3"/>
 <text x="960.0" y="460" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="middle">Quality in production</text>

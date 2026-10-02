@@ -143,3 +143,46 @@ def test_context_diet_reports_savings():
     out, stats = context_diet(msgs, history_budget=5000, tool_result_budget=100)
     assert stats["saved"] > 0 and stats["tokens_after"] < stats["tokens_before"]
     assert count_tokens(out[3]["content"]) <= 130
+
+
+def test_context_diet_bounds_tokens():
+    """Incident 1 action item: 3 turns x 12 whole articles stay near history_token_budget."""
+    import json
+
+    from app.knowledge import get_kb
+    from northwind.config import Settings
+    from northwind.tokens import context_diet, count_message_tokens
+
+    s = Settings.from_env({})
+    kb = get_kb()
+    article = " ".join(a.body for a in kb.articles)[:20000]
+    msgs = [{"role": "system", "content": "You are Atlas."}]
+    for turn in range(3):
+        msgs.append({"role": "user", "content": f"question {turn}"})
+        msgs.append(
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": f"c{turn}",
+                        "type": "function",
+                        "function": {"name": "search_knowledge_base", "arguments": "{}"},
+                    }
+                ],
+            }
+        )
+        msgs.append(
+            {
+                "role": "tool",
+                "tool_call_id": f"c{turn}",
+                "content": json.dumps({"results": [article] * 12}),
+            }
+        )
+    raw = count_message_tokens(msgs)
+    slim, stats = context_diet(
+        msgs, history_budget=s.history_token_budget, tool_result_budget=s.tool_result_token_budget
+    )
+    assert raw > 10 * s.history_token_budget
+    assert count_message_tokens(slim) <= s.history_token_budget + s.tool_result_token_budget
+    assert stats["saved"] > 0

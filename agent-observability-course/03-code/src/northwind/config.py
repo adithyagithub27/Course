@@ -136,6 +136,7 @@ class Settings:
     # Budgets
     budget_cost_per_session_usd: float = 0.05
     budget_p95_latency_ms: float = 4000.0
+    max_input_tokens_per_generation: int = 24_000  # CI gate: one prompt this big = context bloat
     tenant_soft_cap_usd: float = 25.0
     tenant_hard_cap_usd: float = 40.0
     budget_window_s: int = 86_400
@@ -204,6 +205,10 @@ class Settings:
                 g("BUDGET_COST_PER_SESSION_USD"), cls.budget_cost_per_session_usd
             ),
             budget_p95_latency_ms=_float(g("BUDGET_P95_LATENCY_MS"), cls.budget_p95_latency_ms),
+            max_input_tokens_per_generation=_int(
+                g("BUDGET_MAX_INPUT_TOKENS_PER_GENERATION") or g("MAX_INPUT_TOKENS_PER_GENERATION"),
+                cls.max_input_tokens_per_generation,
+            ),
             tenant_soft_cap_usd=_float(g("TENANT_SOFT_CAP_USD"), cls.tenant_soft_cap_usd),
             tenant_hard_cap_usd=_float(g("TENANT_HARD_CAP_USD"), cls.tenant_hard_cap_usd),
             budget_window_s=_int(g("BUDGET_WINDOW_S"), cls.budget_window_s),

@@ -57,8 +57,8 @@
 <text x="246" y="890" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">chat → execute_tool lookup_ticket</text>
 <rect x="1567.9" y="870" width="125.1" height="26" rx="3" fill="#00A885"/>
 <rect x="1693.0" y="870" width="7.0" height="26" rx="3" fill="#FF4B4B"/>
-<g><circle cx="1810" cy="882" r="19" fill="#FF4B4B33"/><circle cx="1810" cy="882" r="13" fill="#FF4B4B"/><path d="M1804.5 876.5 L1815.5 887.5 M1815.5 876.5 L1804.5 887.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
-<text x="1784" y="890" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FF4B4B" text-anchor="end">tool error ×12</text>
+<g><circle cx="1686" cy="934" r="19" fill="#FF4B4B33"/><circle cx="1686" cy="934" r="13" fill="#FF4B4B"/><path d="M1680.5 928.5 L1691.5 939.5 M1691.5 928.5 L1680.5 939.5" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="1660" y="942" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FF4B4B" text-anchor="end">tool error ×12</text>
 <text x="720" y="942" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">input re-sent every step: generations grow wider</text>
 <path d="M720 230 L1700 230" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M720 216 L720 908" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5"/>

@@ -4,50 +4,50 @@
 <rect width="1920" height="1080" fill="#0A1628"/>
 <g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Reading an incident timeline</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D9</text></g>
 <g id="build-1">
-<path d="M110 600 L1800 600" fill="none" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
-<circle cx="190" cy="600" r="14" fill="#0A1628" stroke="#94A3B8" stroke-width="4"/>
-<text x="190" y="506" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#94A3B8" text-anchor="middle">T-∞</text>
-<text x="190" y="540" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">change</text>
-<text x="190" y="568" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">prompt v2, top-k raised</text>
-<circle cx="470" cy="600" r="14" fill="#0A1628" stroke="#FF4B4B" stroke-width="4"/>
-<text x="470" y="668" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FF4B4B" text-anchor="middle">T0</text>
-<text x="470" y="700" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">first symptom</text>
-<text x="470" y="728" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">visible in traces</text>
-<circle cx="720" cy="600" r="14" fill="#0A1628" stroke="#FFB020" stroke-width="4"/>
-<text x="720" y="506" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FFB020" text-anchor="middle">T+</text>
-<text x="720" y="540" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">alert</text>
-<text x="720" y="568" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">or silent</text>
-<circle cx="960" cy="600" r="14" fill="#0A1628" stroke="#FFFFFF" stroke-width="4"/>
-<text x="960" y="670" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">detection</text>
-<text x="960" y="698" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">someone looks</text>
-<circle cx="1200" cy="600" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
-<text x="1200" y="540" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">mitigation</text>
-<text x="1200" y="568" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">rollback, cap</text>
-<circle cx="1440" cy="600" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
-<text x="1440" y="670" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">root cause</text>
-<text x="1440" y="698" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">from the spans</text>
-<circle cx="1700" cy="600" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
-<text x="1700" y="540" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">postmortem</text>
-<rect x="660.0" y="640" width="94.5" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
-<text x="707.2265625" y="660.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">no alert?</text>
-<rect x="1560.0" y="640" width="82.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
-<text x="1601.09375" y="660.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">budget</text>
-<rect x="1652.2" y="640" width="62.5" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
-<text x="1683.4140625" y="660.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">alert</text>
-<rect x="1724.6" y="640" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
-<text x="1753.03125" y="660.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">test</text>
+<path d="M110 660 L1800 660" fill="none" stroke="#94A3B8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<circle cx="190" cy="660" r="14" fill="#0A1628" stroke="#94A3B8" stroke-width="4"/>
+<text x="190" y="566" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#94A3B8" text-anchor="middle">T-∞</text>
+<text x="190" y="600" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">change</text>
+<text x="190" y="628" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">prompt v2, top-k raised</text>
+<circle cx="470" cy="660" r="14" fill="#0A1628" stroke="#FF4B4B" stroke-width="4"/>
+<text x="470" y="728" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FF4B4B" text-anchor="middle">T0</text>
+<text x="470" y="760" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">first symptom</text>
+<text x="470" y="788" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">visible in traces</text>
+<circle cx="720" cy="660" r="14" fill="#0A1628" stroke="#FFB020" stroke-width="4"/>
+<text x="720" y="566" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FFB020" text-anchor="middle">T+</text>
+<text x="720" y="600" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">alert</text>
+<text x="720" y="628" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">or silent</text>
+<circle cx="960" cy="660" r="14" fill="#0A1628" stroke="#FFFFFF" stroke-width="4"/>
+<text x="960" y="730" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">detection</text>
+<text x="960" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">someone looks</text>
+<circle cx="1200" cy="660" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
+<text x="1200" y="600" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">mitigation</text>
+<text x="1200" y="628" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">rollback, cap</text>
+<circle cx="1440" cy="660" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
+<text x="1440" y="730" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">root cause</text>
+<text x="1440" y="758" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#94A3B8" text-anchor="middle">from the spans</text>
+<circle cx="1700" cy="660" r="14" fill="#0A1628" stroke="#00D4AA" stroke-width="4"/>
+<text x="1700" y="600" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">postmortem</text>
+<rect x="660.0" y="700" width="94.5" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
+<text x="707.2265625" y="720.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">no alert?</text>
+<rect x="1560.0" y="700" width="82.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="1601.09375" y="720.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">budget</text>
+<rect x="1652.2" y="700" width="62.5" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="1683.4140625" y="720.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">alert</text>
+<rect x="1724.6" y="700" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="1753.03125" y="720.16" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">test</text>
 </g>
 <g id="build-2">
-<path d="M470 330 V318 H1200 V330" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-<text x="835.0" y="308" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FF4B4B" text-anchor="middle">blast radius: tenants affected</text>
-<rect x="590.0" y="352" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
-<text x="618.390625" y="372.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">ops</text>
-<rect x="660.8" y="352" width="95.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
-<text x="708.359375" y="372.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">finance</text>
-<rect x="769.9" y="352" width="47.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
-<text x="793.53125" y="372.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">hr</text>
-<rect x="831.1" y="352" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
-<text x="859.515625" y="372.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">eng</text>
-<text x="1210" y="384" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">example</text>
+<path d="M470 400 V388 H1200 V400" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="835.0" y="378" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FF4B4B" text-anchor="middle">blast radius: tenants affected</text>
+<rect x="590.0" y="422" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
+<text x="618.390625" y="442.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">ops</text>
+<rect x="660.8" y="422" width="95.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#FF4B4B" stroke-width="2"/>
+<text x="708.359375" y="442.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#FF4B4B" text-anchor="middle">finance</text>
+<rect x="769.9" y="422" width="47.2" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="793.53125" y="442.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">hr</text>
+<rect x="831.1" y="422" width="56.8" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="859.515625" y="442.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">eng</text>
+<text x="1210" y="454" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">example</text>
 </g>
 </svg>

@@ -4,51 +4,51 @@
 <rect width="1920" height="1080" fill="#0A1628"/>
 <g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Rolling cost up</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D6 · build 4/7: users</text></g>
 <g id="build-1">
-<text x="96" y="886" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">GENERATION</text>
-<rect x="150" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="230.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="182.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="230.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="330" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="410.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="362.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="410.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="520" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="600.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="552.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="600.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="700" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="780.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="732.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="780.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<text x="96" y="868" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">GENERATION</text>
+<rect x="150" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="230.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="182.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="230.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="330" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="410.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="362.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="410.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="520" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="600.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="552.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="600.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="700" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="780.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="732.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="780.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
 </g>
 <g id="build-2">
-<text x="96" y="756" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">REQUEST</text>
-<rect x="230" y="770" width="200" height="70" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
-<text x="330.0" y="812.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">trace 1</text>
-<rect x="600" y="770" width="200" height="70" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
-<text x="700.0" y="812.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">trace 2</text>
-<path d="M230 896 L330 844" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M410 896 L330 844" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M600 896 L700 844" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M780 896 L700 844" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="738" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">REQUEST</text>
+<rect x="230" y="750" width="200" height="66" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="330.0" y="790.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">trace 1</text>
+<rect x="600" y="750" width="200" height="66" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="700.0" y="790.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">trace 2</text>
+<path d="M230 876 L330 818" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M410 876 L330 818" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M600 876 L700 818" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M780 876 L700 818" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 <g id="build-3">
-<text x="96" y="626" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SESSION</text>
-<rect x="330" y="640" width="360" height="70" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
-<text x="510.0" y="682.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">session_id</text>
-<path d="M330 766 L510 714" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M700 766 L510 714" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="760" y="640" width="200" height="70" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
-<text x="860.0" y="682.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">…</text>
+<text x="96" y="608" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SESSION</text>
+<rect x="330" y="620" width="360" height="66" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="510.0" y="660.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">session_id</text>
+<path d="M330 746 L510 688" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M700 746 L510 688" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="760" y="620" width="200" height="66" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
+<text x="860.0" y="660.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">…</text>
 </g>
 <g id="build-4">
-<text x="96" y="496" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">USER</text>
-<rect x="380" y="510" width="260" height="70" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
-<text x="510.0" y="551.3000000000001" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#FFFFFF" text-anchor="middle">user_id (hashed)</text>
-<rect x="700" y="510" width="200" height="70" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
-<text x="800.0" y="552.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">…</text>
-<path d="M510 636 L510 584" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M860 636 L800 584" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="96" y="478" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">USER</text>
+<rect x="380" y="490" width="260" height="66" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="510.0" y="529.3000000000001" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#FFFFFF" text-anchor="middle">user_id (hashed)</text>
+<rect x="700" y="490" width="200" height="66" rx="8" fill="#0F1E35" stroke="#64748B" stroke-width="2"/>
+<text x="800.0" y="530.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">…</text>
+<path d="M510 616 L510 558" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M860 616 L800 558" fill="none" stroke="#FFFFFF99" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 </svg>

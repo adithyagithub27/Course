@@ -7,6 +7,7 @@ exceed the budgets in ``northwind.config.Settings`` (env ``BUDGET_COST_PER_SESSI
     BUDGET_P95_LATENCY_MS=2500 make budget-check            # tighter latency budget
     BUDGET_COST_PER_SESSION_USD=0.001 make budget-check     # tighter cost budget
     BUDGET_GATE_INCIDENTS=latency_regression make budget-check   # replay with an incident
+    BUDGET_GATE_INCIDENTS=cost_spike make budget-check           # tokens test fails (context bloat)
 """
 
 from __future__ import annotations
@@ -94,3 +95,18 @@ def test_task_success_slo_holds(gate):
     )
     quality = snap.slis["quality"]
     assert quality.total == 0 or quality.value >= 0.75, f"judge quality {quality.value:.3f} too low"
+
+
+def test_max_input_tokens_per_generation(gate):
+    """Lecture 13.3: no single prompt above MAX_INPUT_TOKENS_PER_GENERATION (default 24,000)."""
+    settings, store, _ = gate
+    gens = store.cost_records("generation")
+    worst = max(gens, key=lambda g: g.input_tokens)
+    print(
+        f"\nmax input tokens/generation {worst.input_tokens:,} "
+        f"(budget {settings.max_input_tokens_per_generation:,}) trace {worst.trace_id}"
+    )
+    assert worst.input_tokens <= settings.max_input_tokens_per_generation, (
+        f"a generation sent {worst.input_tokens:,} input tokens "
+        f"(> {settings.max_input_tokens_per_generation:,}): trace {worst.trace_id}"
+    )

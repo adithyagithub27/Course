@@ -4,22 +4,22 @@
 <rect width="1920" height="1080" fill="#0A1628"/>
 <g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Rolling cost up</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D6 · build 1/7: generations</text></g>
 <g id="build-1">
-<text x="96" y="886" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">GENERATION</text>
-<rect x="150" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="230.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="182.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="230.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="330" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="410.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="362.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="410.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="520" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="600.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="552.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="600.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
-<rect x="700" y="900" width="160" height="70" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
-<text x="780.0" y="942.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
-<rect x="732.4" y="980" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
-<text x="780.0" y="997.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<text x="96" y="868" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">GENERATION</text>
+<rect x="150" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="230.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="182.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="230.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="330" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="410.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="362.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="410.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="520" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="600.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="552.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="600.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
+<rect x="700" y="880" width="160" height="66" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="780.0" y="920.0" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">chat</text>
+<rect x="732.4" y="954" width="95.2" height="25.2" rx="12.6" fill="#0F1E35" stroke="#FFFFFF" stroke-width="2"/>
+<text x="780.0" y="971.64" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="14" font-weight="500" fill="#FFFFFF" text-anchor="middle">cost_usd</text>
 </g>
 </svg>

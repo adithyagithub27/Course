@@ -4,7 +4,7 @@
 <rect width="1920" height="1080" fill="#0A1628"/>
 <g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The observability stack</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 4 · Agent Observability · D2 · build 1/2: the stack</text></g>
 <g id="build-1">
-<rect x="96" y="250" width="500" height="420" rx="8" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<rect x="96" y="250" width="500" height="450" rx="8" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
 <g transform="translate(118.0 274.0) scale(0.917)"><rect x="9" y="15" width="30" height="24" rx="7" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="27" r="3.2" fill="#00D4AA"/><circle cx="29" cy="27" r="3.2" fill="#00D4AA"/><path d="M24 15 V8" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="6.5" r="2.6" fill="#00D4AA"/><path d="M5 24 V31 M43 24 V31" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
 <text x="176" y="294" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" text-anchor="start">Atlas</text>
 <text x="176" y="322" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">FastAPI + agent loop</text>
@@ -15,16 +15,16 @@
 <g transform="translate(148.0 553.0) scale(0.917)"><rect x="5" y="9" width="22" height="7" rx="2" fill="#FFB020"/><rect x="13" y="20.5" width="24" height="7" rx="2" fill="#FFB020"/><rect x="22" y="32" width="20" height="7" rx="2" fill="#FFB020"/></g>
 <text x="208" y="569.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">OTel SDK</text>
 <text x="208" y="597.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">spans with gen_ai.* attributes</text>
-<rect x="720" y="380" width="440" height="300" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
-<text x="940" y="422" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FFFFFF" text-anchor="middle">OTel Collector</text>
-<rect x="858.8" y="448" width="162.3" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
-<text x="940.0" y="468.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">memory_limiter</text>
-<rect x="844.5" y="500" width="191.1" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
-<text x="940.0" y="520.16" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">attributes/redact</text>
-<rect x="863.6" y="552" width="152.7" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
-<text x="940.0" y="572.16" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">tail_sampling</text>
-<rect x="902.0" y="604" width="76.0" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
-<text x="940.0" y="624.16" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">batch</text>
+<rect x="720" y="300" width="440" height="300" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="940" y="342" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="700" fill="#FFFFFF" text-anchor="middle">OTel Collector</text>
+<rect x="858.8" y="368" width="162.3" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="940.0" y="388.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">memory_limiter</text>
+<rect x="844.5" y="420" width="191.1" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="940.0" y="440.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">attributes/redact</text>
+<rect x="863.6" y="472" width="152.7" height="28.8" rx="14.4" fill="#0F1E35" stroke="#00D4AA" stroke-width="2"/>
+<text x="940.0" y="492.15999999999997" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#00D4AA" text-anchor="middle">tail_sampling</text>
+<rect x="902.0" y="524" width="76.0" height="28.8" rx="14.4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="940.0" y="544.16" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="500" fill="#94A3B8" text-anchor="middle">batch</text>
 <path d="M570 575 L716 575" fill="none" stroke="#FFFFFF99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
 <text x="643" y="560" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="middle">OTLP</text>
 <rect x="1300" y="250" width="524" height="140" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
@@ -37,7 +37,7 @@
 <text x="1382" y="512.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="start">reads traces, writes scores</text>
 <path d="M1520 394 L1520 436" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
 <path d="M1600 436 L1600 394" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
-<path d="M1164 470 L1220.0 470.0 Q1232 470 1232.0 458.0 L1232.0 332.0 Q1232 320 1244.0 320.0 L1296 320" fill="none" stroke="#FFFFFF99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M1164 320 L1296 320" fill="none" stroke="#FFFFFF99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
 <rect x="1300" y="600" width="240" height="100" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
 <g transform="translate(1322.0 628.0) scale(0.917)"><rect x="7" y="27" width="8" height="15" rx="1.5" fill="#00D4AA"/><rect x="20" y="17" width="8" height="25" rx="1.5" fill="#00D4AA"/><rect x="33" y="8" width="8" height="34" rx="1.5" fill="#00D4AA"/></g>
 <text x="1382" y="644.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="start">Prometheus</text>
@@ -46,17 +46,17 @@
 <text x="1712.0" y="643.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Grafana</text>
 <text x="1712.0" y="671.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">dashboards, alerts</text>
 <path d="M1544 650 L1596 650" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
-<path d="M1164 620 L1220.0 620.0 Q1232 620 1232.0 632.0 L1232.0 638.0 Q1232 650 1244.0 650.0 L1296 650" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
-<text x="1180" y="606" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">spanmetrics</text>
-<path d="M596 300 L648.0 300.0 Q660 300 660.0 288.0 L660.0 242.0 Q660 230 672.0 230.0 L1408.0 230.0 Q1420 230 1420.0 242.0 L1420 596" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 6" marker-end="url(#arr-flow)"/>
-<text x="980" y="220" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">/metrics scrape</text>
+<path d="M1164 560 L1220.0 560.0 Q1232 560 1232.0 572.0 L1232.0 618.0 Q1232 630 1244.0 630.0 L1296 630" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<text x="1176" y="546" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="start">spanmetrics</text>
+<path d="M600 680 L1296 680" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 6" marker-end="url(#arr-flow)"/>
+<text x="980" y="670" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="16" font-weight="400" fill="#94A3B8" text-anchor="middle">/metrics scrape</text>
 <path d="M96 774 V866 A120.0 14 0 0 0 336 866 V774" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
 <ellipse cx="216.0" cy="774" rx="120.0" ry="14" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
 <text x="216.0" y="834.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFFFFF" text-anchor="middle">local store</text>
 <rect x="400" y="760" width="300" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
 <text x="550.0" y="813.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="600" fill="#FFFFFF" text-anchor="middle">Ops Console</text>
 <text x="550.0" y="841.1" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">Streamlit · offline mode</text>
-<path d="M220 674 L220 756" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M220 704 L220 756" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
 <path d="M340 820 L396 820" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
 </g>
 </svg>
