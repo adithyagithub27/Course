@@ -329,7 +329,7 @@ Last tip. Whether it's a job interview or a client pitch, lead with a call. Play
 | Files used | `pyproject.toml` and `uv.lock` (shown briefly). Links go in the lecture's resources panel. |
 
 > **Udemy bonus-lecture rules (production notes, check the current Udemy Instructor Help Center before publishing):**
-> - This must be the **last** lecture in the course, and its title should begin with "Bonus Lecture".
+> - This must be the **last** lecture in the course, and its title should begin with "Bonus lecture" (verify the exact wording and capitalisation in the current Udemy rules).
 > - Promotion of other courses belongs **only** here, not in any other lecture, welcome message or quiz.
 > - Keep it informative and low-pressure: say who each course is for, don't pressure or use countdown language.
 > - Only link to the instructor's own Udemy courses (use Udemy's course links or instructor coupon links). No links to off-platform course sales.
