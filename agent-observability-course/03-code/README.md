@@ -12,7 +12,7 @@ Student repository for the Udemy course **"AI Agent Observability & Cost Control
 cd 03-code
 make install                 # uv venv + pip install -e ".[dev]"; copies .env.example -> .env
 source .venv/bin/activate
-make test                    # 329 tests (295 unit, 34 integration + budget gate), all offline, green
+make test                    # 401 tests (356 unit, 40 integration, 5 budget gate), all offline, green
 make replay                  # OFFLINE=1: a full day (≈10k requests / 4k sessions) into .atlas/spans.sqlite in ~20 s
 make console-text            # the Ops Console as text (Streamlit: pip install -e ".[dashboards]" && make console)
 make run                     # Atlas on http://localhost:8000 (mock LLM)
@@ -36,11 +36,14 @@ The default replay day is 4,000 sessions ≈ 10,100 requests. `make replay` star
 
 | Configuration | Flags | Daily cost | Δ |
 |---|---|---:|---:|
-| Baseline (no cache, no diet, no routing) | `make replay` | $56.70 | — |
-| Prompt caching | `CACHE=1` | $37.24 | −34 % |
-| Context diet | `DIET=1` | $42.28 | −25 % |
-| Small-model-first routing | `ROUTER=1` | $47.37 | −17 % |
-| All three | `CACHE=1 DIET=1 ROUTER=1` | $19.21 | −66 % |
+| Baseline (no cache, no diet, no routing) | `make replay` | $56.28 | — |
+| Prompt caching | `CACHE=1` | $37.00 | −34.3 % |
+| Context diet | `DIET=1` | $41.99 | −25.4 % |
+| Small-model-first routing | `ROUTER=1` | $47.07 | −16.4 % |
+| Caching + diet | `CACHE=1 DIET=1` | $22.71 | −59.6 % |
+| All three | `CACHE=1 DIET=1 ROUTER=1` | $19.07 | −66.1 % |
+
+Every figure the scripts quote comes from `01-curriculum/numbers-card.md` (regenerated from real runs).
 
 Prices come from `litellm.model_cost` when available, else the pinned table in `src/northwind/pricing.py`.
 
@@ -48,26 +51,26 @@ Prices come from `litellm.model_cost` when available, else the pinned table in `
 
 | Lecture | Files |
 |---|---|
-| 1.1 The $4,000 weekend | `simulator/scenarios.py` (`loop`), `console/ops_console.py` |
+| 1.1 The $4,000 weekend | `simulator/loop_demo.py` (`make loop-demo`; `ATLAS_MAX_STEPS=0` = unlimited), `console/pages/1_Live_cost.py` |
 | 1.4 Meet Atlas and the swarm | `app/`, `simulator/` |
 | 2.2 Setup | `pyproject.toml`, `Makefile`, `.env.example` |
 | 2.3 One request, one trace | `app/server.py`, `telemetry/langfuse_setup.py` |
-| 2.4 Offline mode | `simulator/replay.py`, `console/ops_console.py` |
+| 2.4 Offline mode | `simulator/replay.py`, `console/ops_console.py` + `console/pages/` (`console/data.py`) |
 | 3.2 Manual OTel instrumentation | `telemetry/otel_setup.py` (`setup_tracing`) |
 | 3.3–3.4 GenAI semantic conventions | `telemetry/genai_attrs.py`, `app/agent.py` |
 | 3.5 Auto-instrumentation | `telemetry/openinference_setup.py` |
-| 3.6 Break it | `tests/integration/test_spans.py` |
-| 4.2 `@observe`, observation types, `propagate_attributes` | `telemetry/langfuse_setup.py`, `app/agent.py` |
+| 3.4, 3.6 Tests | `tests/integration/test_spans.py` (`test_ticket_question_emits_tagged_tool_span`, `test_no_orphan_spans`, `test_tool_spans_are_children_of_agent`, `test_one_generation_per_model_call`) |
+| 4.2–4.7, 5.2 Langfuse-native layer | `app/langfuse_native.py` (`make langfuse-native`); Atlas itself stays on the OTel path |
 | 4.3 Sessions, users, tenants | `app/server.py` (`X-Tenant`, `X-User`, `X-Session`) |
-| 4.4 Prompt management | `app/prompts.py` (`atlas-system`, v1/v2) |
+| 4.4 Prompt management | `app/prompts.py` (`python -m app.prompts register/promote/show`, `register_prompts`) |
 | 4.5 Scores, datasets | `evals/to_dataset.py`, `evals/feedback.py` |
 | 4.6 Masking, sampling | `src/northwind/pii.py`, `src/northwind/sampling.py` |
-| 4.7 Guardrail observation | `app/agent.py` (`guardrail injection_check`) |
+| 4.7 Guardrail observation | `app/guardrails.py` (`injection_check -> GuardrailResult`), `tests/integration/test_guardrail.py`, `test_guardrail_observation` |
 | 5.2 Tool loop step by step | `app/agent.py` (`run` → `_loop` → `_call_model` / `_run_tool`) |
 | 5.3 RAG spans | `app/knowledge.py`, `app/tools.py` |
 | 5.4 Streaming, TTFT | `app/agent.py` (`collect_stream`), `src/northwind/latency.py` |
 | 5.5 Logs vs traces vs metrics | `telemetry/logging_setup.py`, `telemetry/metrics.py` |
-| 5.6 The loop | `ATLAS_MAX_TOOL_RETRIES`, `simulator/scenarios.py` |
+| 5.6 The loop | `ATLAS_MAX_STEPS`, `ATLAS_MAX_TOOL_RETRIES`, `make loop-demo`, `test_loop_scenario_stops_at_step_limit`, `test_loop_scenario_stops_early` |
 | 6.2 Price table | `src/northwind/pricing.py` |
 | 6.3 Cost per request/session/tenant/feature | `src/northwind/cost.py`, `src/northwind/report.py` |
 | 6.4 Prompt caching | `app/agent.py` (`_cache_key`, `prompt_cache_key`) |
@@ -76,28 +79,30 @@ Prices come from `litellm.model_cost` when available, else the pinned table in `
 | 6.7 Budgets and anomalies | `src/northwind/budget.py`, `telemetry/metrics.py` |
 | 7.2 TTFT/TPOT/p95 | `src/northwind/latency.py` |
 | 7.3–7.4 Retries, fallbacks, breakers | `app/agent.py` (`CircuitBreaker`, `FALLBACKS`) |
-| 7.6 Chaos: slow provider | `make replay SCENARIO=slow_provider` |
+| 7.5 Per-tenant slots | `app/server.py` (`TenantLimiter`, `ATLAS_TENANT_MAX_INFLIGHT`), metrics `atlas_inflight`, `atlas_queue_wait_seconds` |
+| 7.6 Chaos: slow provider | `make replay SCENARIO=slow_provider`, `.env.chaos.example` |
 | 8.2 Online judge | `evals/online_judge.py` |
 | 8.3 Feedback | `app/server.py` (`/feedback`), `evals/feedback.py` |
-| 8.5 Drift | `src/northwind/drift.py`, `evals/drift_report.py` |
+| 8.5 Drift | `src/northwind/drift.py`, `evals/drift_report.py` (`--prev 2026-W38 --curr 2026-W39`; `make replay DAY=2026-09-21 KEEP=1`) |
 | 9.1 SLIs/SLOs | `src/northwind/slo.py` |
 | 9.2–9.3 Prometheus, Grafana | `telemetry/metrics.py`, `deploy/prometheus.yml`, `deploy/grafana/dashboards/atlas-ops.json` |
 | 9.5 Alerts | `deploy/alerts.yml` |
-| 10.2 Masking in SDK and collector | `src/northwind/pii.py`, `deploy/otel-collector.yaml` |
+| 10.2 Masking in SDK and collector | `src/northwind/pii.py`, `deploy/otel-collector.yaml` (`attributes/redact`), `test_no_raw_pii_reaches_any_span` |
 | 11.2–11.4, 11.6 Incidents | `incidents/incident-0*/` |
 | 12.2 LangSmith | `telemetry/langsmith_setup.py` |
 | 13.1–13.2 Self-hosting | `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml` |
-| 13.3 CI budget gate | `tests/budget/test_budget_gate.py`, `.github/workflows/ci.yml` |
+| 13.2 Collector fan-out | `deploy/otel-collector.yaml` (Langfuse + Phoenix), `phoenix` service in `deploy/docker-compose.observability.yml` |
+| 13.3 CI budget gate | `tests/budget/test_budget_gate.py` (incl. `test_max_input_tokens_per_generation`), `.github/workflows/ci.yml` |
 | 13.5 Kill the backend | `tests/integration/test_exporter_failure.py` |
 | 14.4 Weekly report | `src/northwind/report.py` (`make report`) |
 
 ## Make targets
 
-`install run swarm replay console console-text test test-unit test-integration judge feedback drift dataset budget-check lint format incidents incident report stack stack-down langfuse-up langfuse-down clean student-repo`. Flags: `SEED= SESSIONS= SCENARIO= CACHE=1 DIET=1 ROUTER=1 LANGFUSE=1 PROM=1 RPS= DURATION= N=`.
+`install run swarm replay console console-text test test-unit test-integration judge feedback drift dataset budget-check lint format incidents incident report stack stack-down langfuse-up langfuse-down clean student-repo loop-demo langfuse-native prompts lock`. Flags: `SEED= SESSIONS= SCENARIO= CACHE=1 DIET=1 ROUTER=1 LANGFUSE=1 PROM=1 RPS= DURATION= N= PACE= MSG= DAY= STORE= KEEP=1`. `SCENARIO` takes a base scenario or an incident preset (`make run` takes base scenarios only); `PROM=1` only affects `make run`.
 
 ## Environment variables
 
-See `.env.example`. The ones the lectures set on screen: `OFFLINE`, `OTEL_EXPORTER` (`console|otlp|file|langfuse|none|memory`), `ATLAS_MODEL`, `ATLAS_ESCALATION_MODEL`, `ATLAS_ROUTING_MODEL`, `ATLAS_PROMPT_VERSION` (`v1|v2`), `ATLAS_PROMPT_LABEL`, `ATLAS_MAX_STEPS`, `ATLAS_MAX_TOOL_RETRIES`, `ATLAS_TOP_K`, `KB_MIN_SCORE`, `ATLAS_PROMPT_CACHE`, `ATLAS_CONTEXT_DIET`, `ATLAS_ROUTER_MODE`, `ATLAS_STREAM`, `ATLAS_SCENARIO`, `TRACE_SAMPLE_RATE`, `JUDGE_SAMPLE_RATE`, `BUDGET_COST_PER_SESSION_USD`, `BUDGET_P95_LATENCY_MS`, `TENANT_SOFT_CAP_USD`, `TENANT_HARD_CAP_USD`, `LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL`, `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_RELEASE`, `LANGFUSE_SAMPLE_RATE`, `LANGSMITH_API_KEY`.
+See `.env.example`. The ones the lectures set on screen: `OFFLINE`, `OTEL_EXPORTER` (`console|otlp|file|langfuse|none|memory`), `ATLAS_MODEL`, `ATLAS_ESCALATION_MODEL`, `ATLAS_ROUTING_MODEL`, `ATLAS_PROMPT_VERSION` (`v1|v2`), `ATLAS_PROMPT_LABEL`, `ATLAS_MAX_STEPS` (0 = unlimited), `ATLAS_REQUEST_DEADLINE_S`, `ATLAS_MOCK_LATENCY_SCALE`, `ATLAS_MAX_TOOL_RETRIES`, `ATLAS_TENANT_MAX_INFLIGHT`, `ATLAS_QUEUE_TIMEOUT_S`, `ATLAS_ROUTER_ALLOWED_FAILS`, `ATLAS_ROUTER_COOLDOWN_S`, `JUDGE_MAX_CALLS`, `BUDGET_MAX_INPUT_TOKENS_PER_GENERATION`, `ATLAS_TOP_K`, `KB_MIN_SCORE`, `ATLAS_PROMPT_CACHE`, `ATLAS_CONTEXT_DIET`, `ATLAS_ROUTER_MODE`, `ATLAS_STREAM`, `ATLAS_SCENARIO`, `TRACE_SAMPLE_RATE`, `JUDGE_SAMPLE_RATE`, `BUDGET_COST_PER_SESSION_USD`, `BUDGET_P95_LATENCY_MS`, `TENANT_SOFT_CAP_USD`, `TENANT_HARD_CAP_USD`, `LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL`, `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_RELEASE`, `LANGFUSE_SAMPLE_RATE`, `LANGSMITH_API_KEY`.
 
 ## Troubleshooting
 

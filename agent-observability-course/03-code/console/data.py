@@ -23,7 +23,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from northwind.budget import EWMAAnomalyDetector
 from northwind.config import TENANTS, Settings
 from northwind.cost import CostRecord, rollup, total_cost
 from northwind.latency import percentile, summarize
@@ -531,43 +530,46 @@ def budget_timeline(
     d: StoreData,
     settings: Settings | None = None,
     *,
-    bin_s: int = 300,
-    min_spend_usd: float = 0.10,
+    bin_s: int = 900,
+    factor: float = 2.0,
+    min_requests: int = 5,
 ) -> list[dict[str, Any]]:
-    """Cumulative spend per tenant per ``bin_s`` with soft/hard caps and EWMA anomaly flags on
-    the per-bin spend (the detector ``BudgetGuard.record`` runs; 6.7). A bin is flagged when the
-    detector fires *and* it spent at least ``min_spend_usd`` and twice the running mean, so the
-    quiet night hours (near-zero variance) do not page anyone."""
+    """Cumulative spend per tenant per ``bin_s`` against the soft and hard caps (6.7).
+
+    ``anomaly`` marks a bin whose *cost per request* is above ``factor`` x the tenant's median
+    bin (bins with fewer than ``min_requests`` requests are never flagged). Spend alone follows
+    the daily traffic curve; cost per request only jumps when requests got more expensive
+    (context bloat, retries), which is what the cost-anomaly alert is for."""
     settings = settings or Settings.from_env({})
-    per: dict[str, dict[float, float]] = defaultdict(lambda: defaultdict(float))
-    for r in d.generations:
-        per[r.tenant][_bin(r.timestamp, bin_s)] += r.cost_usd
+    spend: dict[str, dict[float, float]] = defaultdict(lambda: defaultdict(float))
+    count: dict[str, dict[float, int]] = defaultdict(lambda: defaultdict(int))
+    for r in d.requests:
+        b = _bin(r.timestamp, bin_s)
+        spend[r.tenant][b] += r.cost_usd
+        count[r.tenant][b] += 1
     rows = []
-    for tenant, bins in sorted(per.items()):
-        det = EWMAAnomalyDetector()
+    for tenant, bins in sorted(spend.items()):
+        cpr = sorted(bins[b] / count[tenant][b] for b in bins if count[tenant][b] >= min_requests)
+        median = cpr[len(cpr) // 2] if cpr else 0.0
         cum = 0.0
-        first, last = min(bins), max(bins)
-        b = first
+        b, last = min(bins), max(bins)
         while b <= last:
-            spend = bins.get(b, 0.0)
-            anomaly = (
-                det.is_anomaly(spend)
-                and spend >= min_spend_usd
-                and det.mean is not None
-                and spend >= 2 * det.mean
-            )
-            det.update(spend)
-            cum += spend
+            n = count[tenant].get(b, 0)
+            cost = bins.get(b, 0.0)
+            cum += cost
+            per_req = cost / n if n else 0.0
             rows.append(
                 {
                     "time": d.label(b),
                     "ts": b,
                     "tenant": tenant,
-                    "bin_spend_usd": _r(spend, 6),
+                    "requests": n,
+                    "bin_spend_usd": _r(cost, 6),
+                    "cost_per_request_usd": _r(per_req, 6),
                     "cumulative_usd": _r(cum, 6),
                     "soft_cap_usd": settings.tenant_soft_cap_usd,
                     "hard_cap_usd": settings.tenant_hard_cap_usd,
-                    "anomaly": anomaly,
+                    "anomaly": bool(median and n >= min_requests and per_req > factor * median),
                 }
             )
             b += bin_s
