@@ -25,6 +25,7 @@ version = "2.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "deepeval" },
+    { name = "jsonschema" },
     { name = "langfuse" },
     { name = "mcp" },
     { name = "openai" },
@@ -48,6 +49,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "deepeval", specifier = "~=4.2" },
+    { name = "jsonschema", specifier = ">=4.20" },
     { name = "langfuse", specifier = "~=4.16" },
     { name = "mcp", specifier = "~=2.2" },
     { name = "openai", specifier = "~=2.54" },

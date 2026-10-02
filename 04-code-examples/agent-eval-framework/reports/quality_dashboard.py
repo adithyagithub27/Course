@@ -73,7 +73,7 @@ def render_streamlit() -> None:
     c4.metric("Answer relevancy", f"{r['averages'].get('Answer Relevancy', 0):.2f}")
 
     st.subheader("By category")
-    st.dataframe(pd.DataFrame(category_table(r)), use_container_width=True)
+    st.dataframe(pd.DataFrame(category_table(r)), width="stretch")
 
     hist = runs()
     if hist:
@@ -89,7 +89,7 @@ def render_streamlit() -> None:
 
     st.subheader("Case details")
     st.dataframe(pd.DataFrame([{"id": d["id"], "category": d["category"], "passed": d["passed"], "tools": ", ".join(d["tools"]),
-                                **{k: v["score"] for k, v in d["metrics"].items()}} for d in r["details"]]), use_container_width=True)
+                                **{k: v["score"] for k, v in d["metrics"].items()}} for d in r["details"]]), width="stretch")
     st.caption("Offline runs use the mock LLM and mock judge; live runs use gpt-4.1-mini (agent) and gpt-4.1 (judge).")
 
 

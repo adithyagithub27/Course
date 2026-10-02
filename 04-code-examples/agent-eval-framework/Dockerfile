@@ -1,21 +1,15 @@
-# Agent Evaluation Framework - Containerized Runner
-# Used for reproducible evaluation environments and CI/CD.
-
+# Agent Evaluation Framework - reproducible runner for CI.
+# Installs exactly what uv.lock pins; runs the offline suite by default.
 FROM python:3.11-slim
 
+COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 WORKDIR /app
+ENV UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1 OFFLINE=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy framework code
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --locked --no-install-project
 COPY . .
+RUN uv sync --locked
 
-# Default: run the full evaluation suite
-CMD ["pytest", "tests/", "-v", "--tb=short"]
+# Offline suite by default. For live evals: docker run -e OFFLINE=0 -e OPENAI_API_KEY ... make eval
+CMD ["uv", "run", "pytest", "-q"]

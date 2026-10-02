@@ -1,98 +1,142 @@
-# Agent Evaluation CI/CD Pipeline (Module 12)
-# Runs DeepEval evaluation suite on every push and PR.
-# Fails the build if any quality threshold is violated.
+# Agent quality gate (Module 12, Lab 12.1).
+#
+# push (any branch): offline test suite + 3-case smoke eval            ~1 min, $0
+# pull_request:      golden-dataset eval + quality gate + PR comment   live if the
+#                    OPENAI_API_KEY secret exists (a few cents), offline otherwise
+#                    promptfoo red-team suite against the real agent
+# nightly:           full capstone pipeline (functional + security + performance)
+#
+# The gate fails the job (and blocks the merge when this check is required)
+# if pass rate < 80%, any critical metric average < 0.7, or a metric drops more
+# than 5 points below regression/baselines/support_v1.json.
 
 name: Agent Evaluation
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
 
 env:
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  OPENAI_MODEL: gpt-4o-mini
-  PYTHON_VERSION: "3.11"
+  OPENAI_MODEL: gpt-4.1-mini
+  OPENAI_JUDGE_MODEL: gpt-4.1
 
 jobs:
-  evaluate:
-    name: Run Agent Evaluations
+  tests:
+    name: Offline tests + smoke eval
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
+    env:
+      OFFLINE: "1"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run functional tests
-        run: |
-          pytest tests/functional/ -v --tb=short -m functional \
-            --junitxml=reports/results/functional.xml
-
-      - name: Run LLM quality evaluation
-        run: |
-          pytest tests/evaluation/ -v --tb=short -m evaluation \
-            --junitxml=reports/results/evaluation.xml
-
-      - name: Run RAG evaluation
-        run: |
-          pytest tests/rag/ -v --tb=short -m rag \
-            --junitxml=reports/results/rag.xml
-
-      - name: Run security tests
-        run: |
-          pytest tests/security/ -v --tb=short -m security \
-            --junitxml=reports/results/security.xml
-
-      - name: Run regression tests
-        run: |
-          pytest tests/regression/ -v --tb=short -m regression \
-            --junitxml=reports/results/regression.xml
-
-      - name: Upload test results
+          python-version: "3.11"
+      - run: uv sync --locked
+      - run: uv run pytest -q --junitxml=reports/results/pytest.xml
+      - run: uv run python -m reports.run_eval --smoke --out reports/results/smoke.json
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: eval-results-${{ github.sha }}
+          name: tests-${{ github.sha }}
+          path: reports/results/
+
+  quality-gate:
+    name: Golden-dataset quality gate
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: uv sync --locked
+      - name: Run evaluation (live when the secret is set)
+        run: |
+          if [ -n "$OPENAI_API_KEY" ]; then export OFFLINE=0; else export OFFLINE=1; fi
+          echo "OFFLINE=$OFFLINE"
+          uv run python -m reports.run_eval --out reports/results/eval.json
+      - name: Apply the quality gate
+        id: gate
+        run: |
+          set +e
+          uv run python -m reports.quality_gate reports/results/eval.json \
+            --summary reports/results/summary.md --baseline support_v1
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file reports/results/summary.md --edit-last || gh pr comment ${{ github.event.pull_request.number }} --body-file reports/results/summary.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-${{ github.sha }}
           path: reports/results/
           retention-days: 30
+      - name: Fail if the gate failed
+        if: steps.gate.outputs.exit != '0'
+        run: exit 1
 
-  security-scan:
-    name: Red Team Security Scan
+  redteam:
+    name: promptfoo red-team suite
+    if: github.event_name != 'push'
+    needs: tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: evaluate
-
+    timeout-minutes: 15
+    env:
+      OFFLINE: "1"
+      PROMPTFOO_DISABLE_TELEMETRY: "1"
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install promptfoo
-        run: npm install -g promptfoo
-
-      - name: Run red team scan
-        run: |
-          cd security
-          promptfoo eval --config promptfoo.yaml \
-            --output ../reports/results/security-scan.json
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      - name: Upload security report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
         with:
-          name: security-scan-${{ github.sha }}
-          path: reports/results/security-scan.json
-          retention-days: 30
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv sync --locked
+      - name: Static attack suite against the real agent
+        working-directory: security/promptfoo
+        run: |
+          PROMPTFOO_PYTHON="$GITHUB_WORKSPACE/.venv/bin/python" npx -y promptfoo@0.123.1 eval \
+            -c promptfooconfig.yaml --no-cache --no-progress-bar -o ../../reports/results/promptfoo.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: redteam-${{ github.sha }}
+          path: reports/results/
+
+  nightly:
+    name: Nightly capstone pipeline
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: uv sync --locked
+      - run: |
+          if [ -n "$OPENAI_API_KEY" ]; then export OFFLINE=0; else export OFFLINE=1; fi
+          uv run python -m capstone.run_capstone
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: capstone-${{ github.sha }}
+          path: reports/results/

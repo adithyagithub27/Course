@@ -25,6 +25,7 @@ dependencies = [
   "pydantic>=2.7",
   "streamlit>=1.50",
   "pandas>=2.2",
+  "jsonschema>=4.20",                           # MCP contract tests
 ]
 
 [dependency-groups]
@@ -35,7 +36,7 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["agents", "config", "evaluators", "observability", "performance",
-            "regression", "monitoring", "security", "mcp_server", "capstone", "reports"]
+            "regression", "monitoring", "security", "mcp_server", "capstone", "reports", "demos"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
