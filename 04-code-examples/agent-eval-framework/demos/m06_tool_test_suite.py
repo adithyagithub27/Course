@@ -1,5 +1,5 @@
 """Lecture 6.2 - A 5-case tool-calling test suite: tool names, arguments, order.
-The same checks live in tests/trajectory/test_tool_selection.py.
+The same checks live in tests/trajectory/test_support_trajectories.py.
 
     uv run python demos/m06_tool_test_suite.py
 """
