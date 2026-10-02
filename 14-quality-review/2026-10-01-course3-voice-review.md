@@ -240,3 +240,9 @@ Wrong or unverified:
 9. **Align lab time estimates:** change the spoken estimates in 2.5, 6.5, 10.6 and 12.7 to the lab headers (45 / 75 / 75 / 90 min), or shorten the labs.
 
 10. **Before recording, verify the remaining flagged claims:** 6.1 `max_session_duration` (remove the 20-minute figure), the fallback model strings in `.env.example` against LiveKit Inference's current list, `lk agent` and `lk sip` CLI flags, LiveKit Simulations availability (9.14), and the Agents Playground UI (3.4). Add `pytest-repeat` to the `dev` extra if 9.4's `--count=5` demo stays.
+
+---
+
+## Correction (2026-10-02)
+
+The claim above that 6.1's "recycles every 20 minutes (`max_session_duration`)" is wrong was itself wrong. In livekit-agents 1.8.3, `openai.realtime.RealtimeModel` defaults `max_session_duration` to `DEFAULT_MAX_SESSION_DURATION = 20 * 60` (`livekit/agents/llm/_realtime/openai_utils.py`); only the separate `GPTLiveModel` defaults to `None`. Lecture 6.1 keeps the claim and now shows the constant on screen.

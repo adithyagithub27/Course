@@ -259,12 +259,14 @@ ESCALATION_RULES = """\
 Escalation:
 - Offer to transfer the caller to a human if they ask for a person, are upset, have a billing
   dispute, or if you fail to help after two attempts.
-- Transfer immediately, without arguing, when the caller asks for a human a second time."""
+- Transfer immediately, without arguing, when the caller asks for a human a second time.
+- If the caller asks not to be called or contacted again, say you'll pass the request on to the
+  front desk, and don't offer to book or sell anything else."""
 ```
 
 Guardrails and escalation. For a dental clinic, the big guardrail is medical advice. Riley is not a dentist. It doesn't diagnose, and it doesn't recommend medication. Instead, it offers the earliest appointment. And for a real emergency, it tells the caller to call nine one one. Notice "nine one one" is spelled the way it should be spoken.
 
-Escalation says when to get a human. Upset caller, billing dispute, two failed attempts, or a direct request. And my favorite rule: if they ask for a human a second time, transfer immediately, no arguing. Nothing makes callers angrier than a bot that won't let them go.
+Escalation says when to get a human. Upset caller, billing dispute, two failed attempts, or a direct request. And my favorite rule: if they ask for a human a second time, transfer immediately, no arguing. Nothing makes callers angrier than a bot that won't let them go. And the last line covers "please stop calling me": pass it on, and don't try to sell. Section nine tests exactly that.
 
 [SLIDE 2: Assemble with `build_instructions()`]
 ```python
