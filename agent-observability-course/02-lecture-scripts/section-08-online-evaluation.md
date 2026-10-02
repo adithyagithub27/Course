@@ -375,9 +375,9 @@ Ten thousand one hundred twelve candidates: the day minus the guardrail hits. Tw
 
 Here's the judge's bill on one slide. Mini judge at ten percent, about two dollars a day. Strong judge, eleven. Judge everything on the strong model, a hundred and nine, almost six times what serving costs after Section 6. [PAUSE] So: sample at ten percent, judge with mini day to day, and run the strong model on the same head sample once a week as a calibration check. And cap the run: `JUDGE_MAX_CALLS`, or `--limit`, stops a misconfigured sample rate from becoming a surprise invoice. The judge is an agent too, and its cost belongs on the same showback.
 
-[SCREEN: Langfuse UI (online run): a trace with `judge_resolved`, `judge_grounded`, `judge_safe_escalation` and `judge_overall` scores in the sidebar, each with the comment `deepeval-geval`]
+[SCREEN: Langfuse UI (online run, keys set, live traces from `make run`): a trace with `judge_resolved`, `judge_grounded`, `judge_safe_escalation` and `judge_overall` scores in the sidebar, each with the comment `deepeval-geval`. Verify before recording: the `make judge` process must initialise the Langfuse client (`init_langfuse()`) for `langfuse_writes` to rise above 0.]
 
-And here's what you get in Langfuse with keys: four scores on the trace, with the judge's name as the comment, so you always know which judge said it. G-Eval also produces a reason for each score; storing `metric.reason` as the comment is a two-line change, and it's the change that lets a human check a score in ten seconds.
+And here's what you get in Langfuse with keys: four scores on the trace, with the judge's name as the comment, so you always know which judge said it. Two things to check on your run. The `langfuse_writes` count in the summary line must be above zero; if it isn't, the judge process never set up its Langfuse client. And G-Eval also produces a reason for each score; storing `metric.reason` as the comment is a two-line change, and it's the change that lets a human check a score in ten seconds.
 
 [SLIDE 4: Recap]
 - Head sample for estimates, tail for failures

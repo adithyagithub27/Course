@@ -1859,7 +1859,7 @@ Teach students to benchmark agent performance (latency, token cost, throughput) 
 - **Latency benchmarking:**
   - End-to-end latency (user request to final response)
   - Per-step latency (LLM call vs. tool call vs. retrieval)
-  - Time to First Token (TTFT) for streaming responses
+  - Time to First Token (TTFT) for streaming responses (concept only: the course agent does not stream, so the repo does not measure TTFT)
   - P50, P95, P99 latency distributions
 - **Token cost analysis:**
   - Input tokens vs. output tokens (different pricing; cached input is cheaper)
@@ -1875,7 +1875,7 @@ Teach students to benchmark agent performance (latency, token cost, throughput) 
   - Timeout handling: what happens when an LLM call or tool call times out?
   - Loop detection: runtime detection of infinite loops or circular reasoning
 - **Cost engineering:**
-  - The 80/20 rule: finding which operations dominate cost (in the course agent: the fixed prompt overhead)
+  - The 80/20 rule: finding which operations dominate cost (in the course agent: the fixed prompt overhead, 736 tokens per call = 74% of input tokens in a typical trace, of which the tool schemas are 481 tokens, about 65%)
   - Model routing: use cheaper models for simple tasks, expensive models for complex ones
   - Prompt diet: send only the tool schemas a request can need
   - Semantic caching and prompt caching: avoid paying twice for the same tokens
@@ -1894,7 +1894,7 @@ Teach students to benchmark agent performance (latency, token cost, throughput) 
 
 | Exercise | Description |
 |----------|-------------|
-| **Lab 10.1 — Benchmark, Analyze, Optimize** (`07-labs/lab-09-performance-benchmark.md`) | Students benchmark the customer support agent across the 20 queries in `performance/benchmark.py`. They identify the most expensive operation (the fixed prompt overhead), implement one optimization (model routing or a prompt diet), re-benchmark, and show a measurable cost reduction while maintaining quality (re-run the golden-dataset evaluation to verify). Reference results offline: prompt diet −42.8% on FAQ traffic; routing −29.1% overall. |
+| **Lab 10.1 — Benchmark, Analyze, Optimize** (`07-labs/lab-09-performance-benchmark.md`) | Students benchmark the customer support agent across the 20 queries in `performance/benchmark.py`. They identify the most expensive operation (the fixed prompt overhead), apply cost levers (model routing, a prompt diet, or both combined), re-benchmark, and show a measurable cost reduction while maintaining quality (re-run the golden-dataset evaluation to verify). Reference results offline: routing alone saves 29.1% (8 of 20 queries routed); the prompt diet saves 42.8% on FAQ traffic; a 30%+ overall saving needs the levers combined. |
 
 ## Code in the Student Repo
 
@@ -1927,7 +1927,7 @@ Prices used by the code (per 1M tokens, checked 2026-10-01; verify current prici
 | Visual | Type | Description |
 |--------|------|-------------|
 | Latency Distribution | Histogram | The Lecture 10.1 histogram (0-1 s: 2, 1-2 s: 15, 2-3 s: 1, 3-4 s: 1, 4-5 s: 1) with p50 and p95 marked; footnote "simulated latency" |
-| Cost Hotspots | Stacked bar | Fixed overhead (system prompt 255 + tool schemas 481 tokens) vs. conversation tokens per call |
+| Cost Hotspots | Stacked bar | Fixed overhead (system prompt 255 + tool schemas 481 tokens = 736, of which tool schemas are about 65%) vs. conversation tokens per call; overhead is 74% of input tokens in the Lecture 9.3 trace |
 | Before/After Optimization | Split bar chart | All gpt-4.1 ($4.06 per 1k tasks) vs. routed ($2.88 per 1k tasks), quality re-check 10/10; footnote "offline, verify current pricing" |
 | Reliability Dashboard | Mock dashboard | 4-panel: failure rate trend, retry distribution, timeout occurrences, loop detection events |
 
@@ -2591,13 +2591,13 @@ gates:
 
 ## Quiz Questions
 
-**Q1:** In an enterprise agent quality platform, why should security testing run after functional testing, not before?
-- A) Security tests are less important
-- B) There's no point in security testing an agent that fails basic functional requirements — functional quality is a prerequisite, and running functional tests first saves the cost of security testing on fundamentally broken agents
-- C) Security tests take longer
-- D) DeepEval requires this order
+**Q1:** The capstone platform runs all four stages (functional, security, performance, regression) on every run, and only then applies the gate. Why report every failing rule instead of stopping at the first one?
+- A) Stopping early is impossible in Python
+- B) A release decision needs the full picture: a team that fixes a functional failure and re-runs, only to discover a red-team finding next, loses a cycle. One run that lists every blocking reason (pass rate, red team, p95 latency, cost per task, regression) lets them fix everything at once
+- C) Security tests must always run first
+- D) The gate only checks one rule
 
-**Answer: B** — Pipeline efficiency dictates running the cheapest/fastest checks first. If the agent can't answer basic questions correctly (functional eval fails), it's going back for fixes regardless — there's no point spending additional time and money on security testing. This "fail fast" principle applies to all pipeline stages: functional → security → performance, with gates between each.
+**Answer: B** — `QualityPlatform.run()` collects functional, security, performance and regression results, then `gate()` checks five rules — functional pass rate ≥ 80%, red-team pass rate 100%, p95 latency ≤ 10 s, cost per task ≤ $0.01 (verify current pricing), no regression vs baseline — and returns SHIP or BLOCK with **every** reason that applies. Fail-fast ordering is still useful in CI (Module 12 runs cheap offline tests before the expensive evaluation), but the release report itself should be complete.
 
 **Q2:** What are the minimum components of an enterprise agent quality platform?
 - A) Just unit tests
@@ -2783,6 +2783,8 @@ Students leave this module confident in their ability to interview for AI testin
 ---
 
 # Appendix B: 30-Day Practice Plan
+
+Published to students as a downloadable resource: `11-course-assets/templates/30-day-practice-plan.md` (Lecture 15.2). Keep the two in sync.
 
 | Day | Activity | Module Reference | Time |
 |-----|----------|-----------------|------|

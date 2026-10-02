@@ -99,7 +99,9 @@ print(f"quality re-check: {quality['passed']}/{quality['total']} pass, averages 
 uv run python demos/m10_cost_hotspots.py
 ```
 
-Sending only the knowledge-base tool schema to FAQ traffic cuts its input tokens by about 40%. Which requests can never use a diet like this, and how would you route them?
+Sending only the knowledge-base tool schema to FAQ traffic cuts its cost by about 40%. Which requests can never use a diet like this, and how would you route them?
+
+Routing alone saves 29.1% here, just short of a 30% target. Real cost work combines levers: route FAQ traffic to the mini model **and** send it only the tool it needs. Re-benchmark the combination and re-check quality before you report the total.
 
 ### Step 6 — Reliability check
 
