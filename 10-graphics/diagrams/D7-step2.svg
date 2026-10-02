@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D7">
+<title id="t-D7">D7: Agent quality metrics</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Agent quality metrics</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D7 · build 2/3: llm quality</text></g>
+<g id="build-1">
+<rect x="755.0" y="235.0" width="410" height="100" rx="14" fill="none" stroke="#00D4AA33" stroke-width="10"/>
+<rect x="760" y="240" width="400" height="90" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<text x="960.0" y="294.09999999999997" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="600" fill="#FFFFFF" text-anchor="middle">Agent quality metrics</text>
+</g>
+<g id="build-2">
+<rect x="296" y="420" width="420" height="86" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="506.0" y="471.40000000000003" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">LLM quality</text>
+<path d="M960 334 L960.0 363.0 Q960 375 948.0 375.0 L518.0 375.0 Q506 375 506.0 387.0 L506 416" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<rect x="396" y="560" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="597.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">relevance</text>
+<path d="M336 510 L336.0 578.0 Q336 590 348.0 590.0 L392 590" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="396" y="636" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="673.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">faithfulness</text>
+<path d="M336 510 L336.0 654.0 Q336 666 348.0 666.0 L392 666" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="396" y="712" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="749.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">coherence</text>
+<path d="M336 510 L336.0 730.0 Q336 742 348.0 742.0 L392 742" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="396" y="788" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="825.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">hallucination</text>
+<path d="M336 510 L336.0 806.0 Q336 818 348.0 818.0 L392 818" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="396" y="864" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="901.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">bias</text>
+<path d="M336 510 L336.0 882.0 Q336 894 348.0 894.0 L392 894" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="396" y="940" width="380" height="60" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="586.0" y="977.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF" text-anchor="middle">toxicity</text>
+<path d="M336 510 L336.0 958.0 Q336 970 348.0 970.0 L392 970" fill="none" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D8">
+<title id="t-D8">D8: LLM-as-judge</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">LLM-as-judge</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D8</text></g>
+<g id="build-1">
+<rect x="96" y="300" width="400" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="296.0" y="353.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Agent output</text>
+<text x="296.0" y="381.8" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">actual_output</text>
+<rect x="96" y="480" width="400" height="120" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<text x="296.0" y="533.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Rubric</text>
+<text x="296.0" y="561.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">criteria + evaluation steps</text>
+<rect x="96" y="660" width="400" height="120" rx="8" fill="#1A2742" stroke="#94A3B8" stroke-width="2"/>
+<text x="296.0" y="713.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Context</text>
+<text x="296.0" y="741.8" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">input, retrieval_context</text>
+</g>
+<g id="build-2">
+<rect x="695.0" y="415.0" width="450" height="250" rx="14" fill="none" stroke="#00D4AA33" stroke-width="10"/>
+<rect x="700" y="420" width="440" height="240" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(898.0 479.3) scale(0.917)"><rect x="10" y="9" width="28" height="35" rx="4" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="18" y="5" width="12" height="7" rx="2" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 28 L22 33 L32 21" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="920.0" y="563.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="600" fill="#FFFFFF" text-anchor="middle">Judge LLM</text>
+<text x="920.0" y="591.9" font-family="'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">gpt-4.1</text>
+<path d="M500 360 L588.0 360.0 Q600 360 600.0 372.0 L600.0 528.0 Q600 540 612.0 540.0 L696 540" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M500 540 L588.0 540.0 Q600 540 612.0 540.0 L696 540" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+<path d="M500 720 L588.0 720.0 Q600 720 600.0 708.0 L600.0 552.0 Q600 540 612.0 540.0 L696 540" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-3">
+<rect x="1340" y="330" width="484" height="150" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(1560.0 347.9) scale(0.917)"><rect x="7" y="27" width="8" height="15" rx="1.5" fill="#00D4AA"/><rect x="20" y="17" width="8" height="25" rx="1.5" fill="#00D4AA"/><rect x="33" y="8" width="8" height="34" rx="1.5" fill="#00D4AA"/></g>
+<text x="1582.0" y="426.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Score</text>
+<text x="1582.0" y="454.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">0.0 to 1.0, vs threshold</text>
+<rect x="1340" y="560" width="484" height="150" rx="8" fill="#1A2742" stroke="#FFFFFF" stroke-width="2"/>
+<g transform="translate(1560.0 577.9) scale(0.917)"><path d="M12 5 H29 L37 13 V43 H12 Z" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 21 H31 M18 28 H31 M18 35 H26" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="1582.0" y="656.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Reasoning</text>
+<text x="1582.0" y="684.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">why it scored that</text>
+<path d="M1144 500 L1336 405" fill="none" stroke="#00D4AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-teal)"/>
+<path d="M1144 580 L1336 635" fill="none" stroke="#FFFFFF99" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-flow)"/>
+</g>
+<g id="build-4">
+<path d="M1580 714 L1580.0 868.0 Q1580 880 1568.0 880.0 L932.0 880.0 Q920 880 920.0 868.0 L920 664" fill="none" stroke="#FFB020" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" marker-end="url(#arr-amber)"/>
+<text x="1250" y="920" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#FFB020" text-anchor="middle">calibrate against human labels</text>
+</g>
+</svg>

@@ -38,7 +38,7 @@ def d1() -> Diagram:
              ("Caller", None, "white", "person")]
     w, gap, y, h = 152, 45, 400, 200
     xs = [96 + i * (w + gap) for i in range(9)]
-    with d.step(1, "the components"):
+    with d.step(1, "the components", ["seven components", "the components"]):
         for i, (lab, sub, tone, icon) in enumerate(names):
             d.node(xs[i], y, w, h, lab, sub, tone=tone, icon=icon, icon_size=40)
         for i in range(8):
@@ -266,7 +266,7 @@ def d4() -> Diagram:
 
 def d5() -> Diagram:
     d = D("D5", "livekit-mental-model", "Rooms, participants, tracks, dispatch", ["3.1", "12.1"],
-          ["sfu", "into the room", "livekit mental model", "rooms, participants", "dispatch"])
+          ["sfu", "into the room", "livekit mental model", "rooms, participants"])
     sx, sy, sw_, sh = 720, 240, 520, 740
     lanes = [330, 550, 770]
     with d.step(1, "SFU, room and participants"):
@@ -494,6 +494,7 @@ def d10() -> Diagram:
 def d11() -> Diagram:
     d = D("D11", "trace-anatomy", "One call, as a trace", ["10.3"],
           ["traces for you", "trace anatomy", "as a trace", "waterfall"], footnote="Illustrative timings")
+    d.step_labels.update({1: 'session and turns', 2: 'one turn expanded'})
     nx, bx0, bx1, dx = 96, 560, 1640, 1824
     # seconds from call start; the axis shows the first 15 s of a 2 min 10 s call
     spans = [  # (name, depth, start, end, kind, step)

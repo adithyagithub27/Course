@@ -548,6 +548,16 @@ class Renderer:
         return True
 
 
+def _image_aspect(png: Path) -> float:
+    try:
+        from PIL import Image  # type: ignore
+
+        with Image.open(png) as im:
+            return im.width / im.height
+    except Exception:
+        return 16 / 9
+
+
 def _compress_png(png: Path) -> None:
     """Quantize to a 256-colour palette: diagrams are flat colour, this cuts size ~3x."""
     try:
@@ -717,7 +727,7 @@ class DeckWriter:
         _, tf = self.textbox(slide, 0.5, y, width, 0.95, anchor="top")
         self.runs(tf.paragraphs[0], text, size, WHITE, bold=True, font=HEAD_FONT)
         tf.paragraphs[0].line_spacing = 1.1
-        lines = 1 + (len(text) * size * 0.0075 > width)  # rough two-line estimate
+        lines = 1 + (len(text) * size * 0.0086 > width)  # conservative: fallback fonts run wider than Inter
         bar_y = y + (0.55 if lines == 1 else 1.0) * size / 26
         self.rect(slide, 0.55, bar_y + 0.12, 0.9, 0.06, fill=TEAL, rounded=False)
         return bar_y + 0.45
@@ -871,12 +881,20 @@ class DeckWriter:
             return
 
         has_text = bool(sl.bullets or sl.text)
+        if diagram_full_png is not None and len(sl.bullets) > MAX_BULLETS and not sl.table and not sl.code:
+            # the bullets describe the diagram's boxes: show the diagram, keep the text for the editor
+            sl = Slide(**{**sl.__dict__, "bullets": [], "text": [],
+                          "notes": sl.notes + "\n\nSlide text (drawn on the diagram): " + " · ".join(sl.bullets)})
+            has_text = False
         # Full-bleed K4: a matched diagram with nothing else to say
         if diagram_full_png is not None and not has_text and not sl.table and not sl.code:
             s = self.new_slide("", sl.notes)
             s.shapes.add_picture(str(diagram_full_png), 0, 0, width=self.prs.slide_width)
-            self.footer(s, f"{self.course_label} · Section {self.section.number:02d} · Lecture {sl.lecture_id}"
-                           f" · {sl.title}")
+            # lecture ID top right: the diagram's own footnote sits bottom left
+            _, tf = self.textbox(s, 6.8, 0.12, 6.35, 0.3)
+            tf.paragraphs[0].alignment = self.PP_ALIGN.RIGHT
+            self.runs(tf.paragraphs[0], f"Section {self.section.number:02d} · Lecture {sl.lecture_id} · {sl.title}",
+                      9, GRAY_DARK)
             if sl.footer:
                 self.footnote(s, sl.footer)
             self.stats["diagrams"] += 1
@@ -919,12 +937,14 @@ class DeckWriter:
                     vx, vw = 5.45, 7.4
                 else:
                     vx, vw = 0.9, 11.55
-                vh = vw * 9 / 16
-                vy = top + max(0.0, (bottom - top - vh) / 2)
+                aspect = _image_aspect(diagram_png) if diagram_png is not None else 16 / 9
+                box_w = vw
+                vh = vw / aspect
                 if vh > bottom - top:
                     vh = bottom - top
-                    vw = vh * 16 / 9
-                    vx = vx + (7.4 - vw) / 2 if (items or text_lines) else (13.333 - vw) / 2
+                    vw = vh * aspect
+                    vx = vx + (box_w - vw) / 2
+                vy = top + max(0.0, (bottom - top - vh) / 2)
                 if diagram_png is not None:
                     pic = s.shapes.add_picture(str(diagram_png), self.Inches(vx), self.Inches(vy),
                                                width=self.Inches(vw))
@@ -975,7 +995,7 @@ def build_section(section: Section, course_dir: Path, out_dir: Path, renderer: R
             ref = match_diagram(sl, index, diagram_dir) if sl.kind not in ("recap", "youcannow") else None
             png = full = None
             if ref is not None:
-                has_text = bool(sl.bullets or sl.text)
+                has_text = bool(sl.bullets or sl.text) and len(sl.bullets) <= MAX_BULLETS
                 if has_text or sl.table or sl.code:
                     png = cached_png(renderer, ref.svg, hide_title=True)
                 else:

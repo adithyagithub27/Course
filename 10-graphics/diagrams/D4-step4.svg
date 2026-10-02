@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D4">
+<title id="t-D4">D4: Test pyramid vs agent eval pyramid</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Test pyramid vs agent eval pyramid</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D4 · build 4/6: trajectory evals</text></g>
+<g id="build-1">
+<text x="96" y="300" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">TRADITIONAL SOFTWARE</text>
+<path d="M96.0 960 L156.0 810 L636.0 810 L696.0 960 Z" fill="#1A2742" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/>
+<text x="396.0" y="894.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Unit</text>
+<path d="M800 250 L800 980" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 8"/>
+<text x="900" y="250" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="600" fill="#00D4AA" text-anchor="start" letter-spacing="0.5">AI AGENT (THE COURSE&#x27;S SPECTRUM)</text>
+</g>
+<g id="build-2">
+<path d="M160.0 800 L220.0 650 L572.0 650 L632.0 800 Z" fill="#1A2742" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/>
+<text x="396.0" y="734.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Integration</text>
+<path d="M900.0 990 L954.9 862 L1769.1 862 L1824.0 990 Z" fill="#1A2742" stroke="#00D4AA" stroke-width="2" stroke-linejoin="round"/>
+<text x="1362.0" y="926.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Unit evals</text>
+<text x="1362.0" y="954.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">one prompt, one metric</text>
+</g>
+<g id="build-3">
+<path d="M224.0 640 L284.0 490 L508.0 490 L568.0 640 Z" fill="#1A2742" stroke="#94A3B8" stroke-width="2" stroke-linejoin="round"/>
+<text x="396.0" y="574.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">End-to-end</text>
+<path d="M959.1 852 L1014.0 724 L1710.0 724 L1764.9 852 Z" fill="#1A2742" stroke="#00D4AA" stroke-width="2" stroke-linejoin="round"/>
+<text x="1362.0" y="788.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Component evals</text>
+<text x="1362.0" y="816.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">retriever, tools, judge</text>
+</g>
+<g id="build-4">
+<path d="M1018.3 714 L1073.1 586 L1650.9 586 L1705.7 714 Z" fill="#1A2742" stroke="#00D4AA" stroke-width="2" stroke-linejoin="round"/>
+<text x="1362.0" y="650.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Trajectory evals</text>
+<text x="1362.0" y="678.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="17" font-weight="400" fill="#CBD5E1" text-anchor="middle">the steps it took</text>
+</g>
+</svg>

@@ -143,6 +143,7 @@ def d2() -> Diagram:
 def d3() -> Diagram:
     d = D("D3", "trace-waterfall", "One agent run, as a trace", ["3.1", "5.1", "5.2", "5.6", "11.1", "1.1"],
           ["waterfall", "as a trace", "the trace we're aiming for", "trace waterfall"])
+    d.step_labels.update({1: 'happy path', 2: 'the loop (context bloat)', 3: 'incident ruler'})
     hatch_defs(d)
     nx, bx0, bx1, dx = 96, 720, 1700, 1824
     top, rh = 262, 64
@@ -488,6 +489,7 @@ def d8() -> Diagram:
 def d9() -> Diagram:
     d = D("D9", "incident-timeline", "Reading an incident timeline", ["11.1", "11.2", "11.3", "11.4", "11.5"],
           ["incident timeline", "the four questions", "timeline"])
+    d.step_labels.update({1: 'the timeline'})
     y = 660
     xs = [190, 470, 720, 960, 1200, 1440, 1700]
     marks = [("T-∞", "change", "prompt v2, top-k raised", GRAY, "above"),

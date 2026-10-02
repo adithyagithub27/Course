@@ -289,6 +289,11 @@ class Diagram:
 
     def elbow(self, pts, color=FLOW, sw=2, dash=None, arrow=True, radius=12):
         """Orthogonal polyline with rounded corners."""
+        clean = [pts[0]]
+        for p in pts[1:]:
+            if p != clean[-1]:
+                clean.append(p)
+        pts = clean
         d = f"M{pts[0][0]} {pts[0][1]}"
         for i in range(1, len(pts) - 1):
             (x0, y0), (x1, y1), (x2, y2) = pts[i - 1], pts[i], pts[i + 1]

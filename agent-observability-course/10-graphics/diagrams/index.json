@@ -106,17 +106,17 @@
       "steps": {
         "1": {
           "file": "D3-step1.svg",
-          "label": "",
+          "label": "happy path",
           "keywords": []
         },
         "2": {
           "file": "D3-step2.svg",
-          "label": "",
+          "label": "the loop (context bloat)",
           "keywords": []
         },
         "3": {
           "file": "D3-step3.svg",
-          "label": "",
+          "label": "incident ruler",
           "keywords": []
         }
       }
@@ -361,7 +361,7 @@
       "steps": {
         "1": {
           "file": "D9-step1.svg",
-          "label": "",
+          "label": "the timeline",
           "keywords": []
         },
         "2": {

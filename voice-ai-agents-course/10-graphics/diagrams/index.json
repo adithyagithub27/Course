@@ -21,7 +21,10 @@
         "1": {
           "file": "D1-step1.svg",
           "label": "the components",
-          "keywords": []
+          "keywords": [
+            "seven components",
+            "the components"
+          ]
         },
         "2": {
           "file": "D1-step2.svg",
@@ -217,8 +220,7 @@
         "sfu",
         "into the room",
         "livekit mental model",
-        "rooms, participants",
-        "dispatch"
+        "rooms, participants"
       ],
       "spec": "",
       "steps": {
@@ -522,12 +524,12 @@
       "steps": {
         "1": {
           "file": "D11-step1.svg",
-          "label": "",
+          "label": "session and turns",
           "keywords": []
         },
         "2": {
           "file": "D11-step2.svg",
-          "label": "",
+          "label": "one turn expanded",
           "keywords": []
         },
         "3": {

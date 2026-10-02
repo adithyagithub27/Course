@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D10">
+<title id="t-D10">D10: Tool calling risk</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">Tool calling risk</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D10</text></g>
+<g id="build-1">
+<path d="M96.0 960 L198.8 760 L997.2 760 L1100.0 960 Z" fill="#1A2742" stroke="#94A3B8" stroke-width="3" stroke-linejoin="round"/>
+<text x="598.0" y="870.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" text-anchor="middle">Wrong tool selection</text>
+<text x="1180" y="854.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">LOWER RISK</text>
+<text x="1180" y="886.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#CBD5E1" text-anchor="start">searches the KB instead of looking up the order</text>
+</g>
+<g id="build-2">
+<path d="M206.0 746 L308.8 546 L887.2 546 L990.0 746 Z" fill="#1A2742" stroke="#FFB020" stroke-width="3" stroke-linejoin="round"/>
+<text x="598.0" y="656.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" text-anchor="middle">Wrong arguments</text>
+<text x="1180" y="640.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#FFB020" text-anchor="start" letter-spacing="0.5">HIGHER RISK</text>
+<text x="1180" y="672.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#CBD5E1" text-anchor="start">refund issued to the wrong customer_id</text>
+</g>
+<g id="build-3">
+<path d="M316.0 532 L418.8 332 L777.2 332 L880.0 532 Z" fill="#1A2742" stroke="#FF4B4B" stroke-width="3" stroke-linejoin="round"/>
+<text x="598.0" y="442.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF" text-anchor="middle">Unauthorized actions</text>
+<text x="1180" y="426.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#FF4B4B" text-anchor="start" letter-spacing="0.5">HIGHEST RISK</text>
+<text x="1180" y="458.0" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="20" font-weight="400" fill="#CBD5E1" text-anchor="start">sends an email it was never allowed to send</text>
+<g><circle cx="1150" cy="420.0" r="18" fill="#FF4B4B33"/><circle cx="1150" cy="420.0" r="12" fill="#FF4B4B"/><path d="M1145.0 415.0 L1155.0 425.0 M1155.0 415.0 L1145.0 425.0" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+</g>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D12">
+<title id="t-D12">D12: The AI agent threat model</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The AI agent threat model</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D12 · build 6/7: data exfiltration</text></g>
+<g id="build-1">
+<rect x="785.0" y="515.0" width="350" height="190" rx="14" fill="none" stroke="#00D4AA33" stroke-width="10"/>
+<rect x="790" y="520" width="340" height="180" rx="8" fill="#1A2742" stroke="#00D4AA" stroke-width="2"/>
+<g transform="translate(938.0 552.9) scale(0.917)"><rect x="9" y="15" width="30" height="24" rx="7" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="27" r="3.2" fill="#00D4AA"/><circle cx="29" cy="27" r="3.2" fill="#00D4AA"/><path d="M24 15 V8" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="6.5" r="2.6" fill="#00D4AA"/><path d="M5 24 V31 M43 24 V31" fill="none" stroke="#00D4AA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="960.0" y="631.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">AI agent</text>
+<text x="960.0" y="659.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">TechCorp support</text>
+</g>
+<g id="build-2">
+<rect x="760.0" y="225.0" width="400" height="110" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<text x="960.0" y="273.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Direct injection</text>
+<text x="960.0" y="301.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">“ignore your instructions”</text>
+<path d="M960.0 343.0 L960.0 510.0" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-red)"/>
+</g>
+<g id="build-3">
+<rect x="1314.2562584220407" y="390.0" width="400" height="110" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<text x="1514.2562584220407" y="438.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Indirect injection</text>
+<text x="1514.2562584220407" y="466.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">poisoned KB article</text>
+<path d="M1306.2562584220407 506.9208163705874 L1140.0 556.4146781408379" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-red)"/>
+</g>
+<g id="build-4">
+<rect x="1314.256258422041" y="720.0" width="400" height="110" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<text x="1514.256258422041" y="768.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Jailbreak</text>
+<text x="1514.256258422041" y="796.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">role-play to bypass rules</text>
+<path d="M1306.256258422041 713.0791836294127 L1140.0 663.5853218591621" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-red)"/>
+</g>
+<g id="build-5">
+<rect x="760.0" y="885.0" width="400" height="110" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<text x="960.0" y="933.6999999999999" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">PII leakage</text>
+<text x="960.0" y="961.8" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">reads out another customer</text>
+<path d="M960.0 877.0 L960.0 710.0" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-red)"/>
+</g>
+<g id="build-6">
+<rect x="205.74374157795933" y="720.0000000000001" width="400" height="110" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<text x="405.7437415779593" y="768.7" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="24" font-weight="600" fill="#FFFFFF" text-anchor="middle">Data exfiltration</text>
+<text x="405.7437415779593" y="796.8000000000001" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="400" fill="#CBD5E1" text-anchor="middle">sends data via send_email</text>
+<path d="M613.7437415779593 713.0791836294127 L780.0 663.5853218591621" fill="none" stroke="#FF4B4B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr-red)"/>
+</g>
+</svg>

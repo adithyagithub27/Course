@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" role="img" aria-labelledby="t-D1">
+<title id="t-D1">D1: The six ways agents fail</title>
+<defs><marker id="arr-flow" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF99" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-teal" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#00D4AA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-red" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FF4B4B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-amber" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFB020" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-gray" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="arr-white" viewBox="0 0 16 16" markerWidth="16" markerHeight="16" refX="12" refY="8" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M3 2.5 L12.5 8 L3 13.5" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="1920" height="1080" fill="#0A1628"/>
+<g id="diagram-title"><rect x="96" y="70" width="8" height="52" rx="2" fill="#00D4AA"/><text x="124" y="112" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">The six ways agents fail</text><text x="1824" y="1054" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="500" fill="#64748B" text-anchor="end" letter-spacing="0.5">Course 2 · Agent Testing &amp; Evaluation · D1 · build 5/6: goal drift</text></g>
+<g id="build-1">
+<rect x="96" y="240" width="540" height="330" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<g transform="translate(134.0 288.0) scale(1.333)"><path d="M24 6 L44 41 H4 Z" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M24 19 V29" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="35" r="2.2" fill="#FF4B4B"/></g>
+<g><circle cx="592" cy="284" r="22" fill="#FF4B4B33"/><circle cx="592" cy="284" r="16" fill="#FF4B4B"/><path d="M585.3 277.3 L598.7 290.7 M598.7 277.3 L585.3 290.7" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="136" y="420" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="start">Hallucination</text>
+<text x="136" y="462" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#CBD5E1" text-anchor="start">states facts it never retrieved</text>
+<text x="136" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SEVERITY</text>
+<rect x="236" y="508" width="26" height="20" rx="4" fill="#FFB020" stroke="#FFB020" stroke-width="2"/>
+<rect x="270" y="508" width="26" height="20" rx="4" fill="#FFB020" stroke="#FFB020" stroke-width="2"/>
+<rect x="304" y="508" width="26" height="20" rx="4" fill="#0F1E35" stroke="#FFB020" stroke-width="2"/>
+<text x="356" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FFB020" text-anchor="start">high</text>
+</g>
+<g id="build-2">
+<rect x="690" y="240" width="540" height="330" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<g transform="translate(728.0 288.0) scale(1.333)"><path d="M37.5 9.5 A9 9 0 1 0 38.5 22.5" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/><path d="M26 22 L9 39" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></g>
+<g><circle cx="1186" cy="284" r="22" fill="#FF4B4B33"/><circle cx="1186" cy="284" r="16" fill="#FF4B4B"/><path d="M1179.3 277.3 L1192.7 290.7 M1192.7 277.3 L1179.3 290.7" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="730" y="420" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="start">Wrong tool selection</text>
+<text x="730" y="462" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#CBD5E1" text-anchor="start">calls the wrong tool, or none</text>
+<text x="730" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SEVERITY</text>
+<rect x="830" y="508" width="26" height="20" rx="4" fill="#FFB020" stroke="#FFB020" stroke-width="2"/>
+<rect x="864" y="508" width="26" height="20" rx="4" fill="#FFB020" stroke="#FFB020" stroke-width="2"/>
+<rect x="898" y="508" width="26" height="20" rx="4" fill="#0F1E35" stroke="#FFB020" stroke-width="2"/>
+<text x="950" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FFB020" text-anchor="start">high</text>
+</g>
+<g id="build-3">
+<rect x="1284" y="240" width="540" height="330" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<g transform="translate(1322.0 288.0) scale(1.333)"><path d="M37.5 9.5 A9 9 0 1 0 38.5 22.5" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/><path d="M26 22 L9 39" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/></g>
+<g><circle cx="1780" cy="284" r="22" fill="#FF4B4B33"/><circle cx="1780" cy="284" r="16" fill="#FF4B4B"/><path d="M1773.3 277.3 L1786.7 290.7 M1786.7 277.3 L1773.3 290.7" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="1324" y="420" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="start">Incorrect tool arguments</text>
+<text x="1324" y="462" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#CBD5E1" text-anchor="start">right tool, wrong order ID</text>
+<text x="1324" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SEVERITY</text>
+<rect x="1424" y="508" width="26" height="20" rx="4" fill="#FF4B4B" stroke="#FF4B4B" stroke-width="2"/>
+<rect x="1458" y="508" width="26" height="20" rx="4" fill="#FF4B4B" stroke="#FF4B4B" stroke-width="2"/>
+<rect x="1492" y="508" width="26" height="20" rx="4" fill="#FF4B4B" stroke="#FF4B4B" stroke-width="2"/>
+<text x="1544" y="524" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#FF4B4B" text-anchor="start">critical</text>
+</g>
+<g id="build-4">
+<rect x="96" y="610" width="540" height="330" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<g transform="translate(134.0 658.0) scale(1.333)"><path d="M9 14 L24 8" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M9 14 L24 24" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M9 34 L24 24" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M9 34 L24 40" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M24 8 L39 16" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M24 24 L39 16" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M24 24 L39 32" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M24 40 L39 32" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M9 14 L24 40" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><path d="M24 8 L39 32" fill="none" stroke="#FF4B4B" stroke-width="1.6" stroke-opacity="0.7"/><circle cx="9" cy="14" r="4" fill="#FF4B4B"/><circle cx="9" cy="34" r="4" fill="#FF4B4B"/><circle cx="24" cy="8" r="4" fill="#FF4B4B"/><circle cx="24" cy="24" r="4" fill="#FF4B4B"/><circle cx="24" cy="40" r="4" fill="#FF4B4B"/><circle cx="39" cy="16" r="4" fill="#FF4B4B"/><circle cx="39" cy="32" r="4" fill="#FF4B4B"/></g>
+<g><circle cx="592" cy="654" r="22" fill="#FF4B4B33"/><circle cx="592" cy="654" r="16" fill="#FF4B4B"/><path d="M585.3 647.3 L598.7 660.7 M598.7 647.3 L585.3 660.7" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="136" y="790" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="start">Reasoning errors</text>
+<text x="136" y="832" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#CBD5E1" text-anchor="start">bad plan from good inputs</text>
+<text x="136" y="894" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SEVERITY</text>
+<rect x="236" y="878" width="26" height="20" rx="4" fill="#94A3B8" stroke="#94A3B8" stroke-width="2"/>
+<rect x="270" y="878" width="26" height="20" rx="4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<rect x="304" y="878" width="26" height="20" rx="4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="356" y="894" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start">medium</text>
+</g>
+<g id="build-5">
+<rect x="690" y="610" width="540" height="330" rx="8" fill="#1A2742" stroke="#FF4B4B" stroke-width="2"/>
+<g transform="translate(728.0 658.0) scale(1.333)"><path d="M4 24 C11 13 37 13 44 24 C37 35 11 35 4 24 Z" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="24" r="5" fill="#FF4B4B"/></g>
+<g><circle cx="1186" cy="654" r="22" fill="#FF4B4B33"/><circle cx="1186" cy="654" r="16" fill="#FF4B4B"/><path d="M1179.3 647.3 L1192.7 660.7 M1192.7 647.3 L1179.3 660.7" stroke="#0A1628" stroke-width="3.2" stroke-linecap="round"/></g>
+<text x="730" y="790" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF" text-anchor="start">Goal drift</text>
+<text x="730" y="832" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="22" font-weight="400" fill="#CBD5E1" text-anchor="start">solves a different problem</text>
+<text x="730" y="894" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="16" font-weight="600" fill="#94A3B8" text-anchor="start" letter-spacing="0.5">SEVERITY</text>
+<rect x="830" y="878" width="26" height="20" rx="4" fill="#94A3B8" stroke="#94A3B8" stroke-width="2"/>
+<rect x="864" y="878" width="26" height="20" rx="4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<rect x="898" y="878" width="26" height="20" rx="4" fill="#0F1E35" stroke="#94A3B8" stroke-width="2"/>
+<text x="950" y="894" font-family="Inter, 'Inter var', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="600" fill="#94A3B8" text-anchor="start">medium</text>
+</g>
+</svg>
