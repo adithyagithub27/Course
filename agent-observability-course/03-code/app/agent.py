@@ -157,8 +157,8 @@ def build_router_config(settings: Settings) -> dict[str, Any]:
         "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
         "num_retries": settings.max_retries,
         "timeout": settings.request_timeout_s,
-        "allowed_fails": 3,
-        "cooldown_time": 30,
+        "allowed_fails": settings.router_allowed_fails,
+        "cooldown_time": settings.router_cooldown_s,
     }
 
 

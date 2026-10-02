@@ -107,6 +107,8 @@ class Settings:
     prompt_cache: bool = True
     context_diet: bool = True
     router_mode: bool = False
+    router_allowed_fails: int = 3  # LiteLLM Router: failures per minute before cooldown
+    router_cooldown_s: int = 30  # LiteLLM Router: seconds a failing deployment is skipped
     request_timeout_s: float = 20.0
     max_retries: int = 2
     history_token_budget: int = 8000
@@ -178,6 +180,8 @@ class Settings:
             prompt_cache=_truthy(g("ATLAS_PROMPT_CACHE"), cls.prompt_cache),
             context_diet=_truthy(g("ATLAS_CONTEXT_DIET"), cls.context_diet),
             router_mode=_truthy(g("ATLAS_ROUTER_MODE"), cls.router_mode),
+            router_allowed_fails=_int(g("ATLAS_ROUTER_ALLOWED_FAILS"), cls.router_allowed_fails),
+            router_cooldown_s=_int(g("ATLAS_ROUTER_COOLDOWN_S"), cls.router_cooldown_s),
             request_timeout_s=_float(g("ATLAS_REQUEST_TIMEOUT_S"), cls.request_timeout_s),
             max_retries=_int(g("ATLAS_MAX_RETRIES"), cls.max_retries),
             history_token_budget=_int(g("ATLAS_HISTORY_TOKENS"), cls.history_token_budget),
