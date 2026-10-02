@@ -1,477 +1,161 @@
-# Lab 10: Synthetic Data Generation and Regression Detection
+# Lab 11.1: Generate, Baseline, Regress, Catch
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 11 — Synthetic Test Data and Regression Testing       |
-| **Duration**       | 75 minutes                                                   |
-| **Difficulty**     | Intermediate                                                 |
-| **Learning Objective** | Generate a 100-case synthetic dataset using an LLM, establish a baseline evaluation, simulate a regression by modifying the system prompt, re-evaluate, and detect the quality degradation automatically. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 11.1 (file `lab-10-synthetic-data.md`) |
+| **Module** | Module 11 — Regression Testing & Synthetic Data |
+| **Lectures** | 11.1–11.3 |
+| **Duration** | 75 minutes |
+| **Difficulty** | Intermediate |
+| **Learning Objective** | Generate synthetic test cases with DeepEval's `Synthesizer`, record a baseline, simulate a one-line prompt regression, catch it with a baseline comparison, fix it and confirm the scores return to baseline. |
+| **Reference solution** | `regression/synthetic_data.py`, `regression/regression_suite.py`, `demos/m11_lab_generate_regress_catch.py` |
+| **Verified on** | deepeval 4.2.7, openai 2.54.0 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 02** (can run DeepEval evaluations)
-- Completed **Lab 03** (understands custom metrics)
-- `.env` configured with a valid `OPENAI_API_KEY`
+- Completed **Lab 3.1** (golden datasets, `run_suite`) and **Lab 4.1** (custom metrics)
+- Lectures 11.1–11.3: causes of regression, baselines and tolerances, the Synthesizer
 
 ---
 
 ## Setup Instructions
 
-### 1. Review the synthetic generator
-
 ```bash
-cat datasets/synthetic_generator.py
+cd 04-code-examples/agent-eval-framework
+uv run python demos/m11_regression_simulation.py     # the regression you will reproduce
 ```
 
-Key function: `generate_synthetic_dataset(count, security_count)` generates test cases using an LLM.
+Read `regression/synthetic_data.py`. The course's synthesizer is DeepEval's own:
 
-### 2. Create workspace
-
-```bash
-mkdir -p datasets
-mkdir -p reports/results
+```python
+STYLING = StylingConfig(
+    scenario="Customers of TechCorp, a SaaS company, contacting support by chat",
+    task="Answer questions about plans, billing, refunds, passwords and the API",
+    input_format="Short, informal customer messages in English",
+    expected_output_format="One to three sentences, grounded in the knowledge base",
+)
 ```
+
+| Function | DeepEval call | Use |
+|---|---|---|
+| `from_seeds(per_seed)` | `generate_goldens_from_goldens(seed_goldens(), max_goldens_per_golden=per_seed)` | expand the 5 seeds in `datasets/synthetic_seeds.json` (`per_seed=20` gives 100) |
+| `from_knowledge_base(per_context)` | `generate_goldens_from_contexts(contexts=[[article], ...], max_goldens_per_context=per_context)` | questions grounded in the 5 knowledge-base articles |
+| `from_policies(per_context)` | same, over the 14 policy documents | for the RAG agent |
+| `quality_report(goldens)` | — | count, duplicates, length, vocabulary |
+
+> Offline, the mock judge fills the Synthesizer's templates, so questions are formulaic ("Can you explain the refund policy for my team? ..."). Live, gpt-4.1 writes varied ones. Never present offline synthetic questions as typical LLM output.
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Generate a 100-case synthetic dataset
+### Step 1 — Generate
 
-Create `lab10_synthetic.py`:
-
-```python
-"""
-Lab 10 — Synthetic Data Generation and Regression Detection
-Run: python lab10_synthetic.py
-"""
-
-import json
-import os
-import time
-from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from datasets.synthetic_generator import generate_synthetic_dataset
-from agents.support_agent import run_support_agent
-
-
-def generate_dataset(count: int = 100) -> list[dict]:
-    """Generate a large synthetic test dataset in batches."""
-    print(f"Generating {count} synthetic test cases...")
-    print("(This may take 1-2 minutes due to LLM generation)\n")
-
-    all_cases = []
-    batch_size = 25  # Generate in batches to avoid token limits
-    security_per_batch = 3
-
-    for batch_num in range(count // batch_size):
-        print(f"  Generating batch {batch_num + 1}/{count // batch_size}...")
-        batch = generate_synthetic_dataset(
-            count=batch_size,
-            security_count=security_per_batch,
-        )
-        all_cases.extend(batch)
-        time.sleep(1)  # Rate limiting courtesy
-
-    # Handle remainder
-    remainder = count % batch_size
-    if remainder > 0:
-        print(f"  Generating final batch ({remainder} cases)...")
-        batch = generate_synthetic_dataset(
-            count=remainder,
-            security_count=1,
-        )
-        all_cases.extend(batch)
-
-    print(f"\nGenerated {len(all_cases)} test cases total.")
-    return all_cases
-
-
-def save_dataset(dataset: list[dict], path: str) -> None:
-    """Save dataset to JSON."""
-    with open(path, "w") as f:
-        json.dump(dataset, f, indent=2)
-    print(f"Saved to {path}")
-
-
-def print_dataset_summary(dataset: list[dict]) -> None:
-    """Print a summary of the generated dataset."""
-    categories = {}
-    difficulties = {}
-
-    for case in dataset:
-        cat = case.get("category", "unknown")
-        diff = case.get("difficulty", "unknown")
-        categories[cat] = categories.get(cat, 0) + 1
-        difficulties[diff] = difficulties.get(diff, 0) + 1
-
-    print("\nDataset Summary:")
-    print(f"  Total cases: {len(dataset)}")
-    print(f"\n  Categories:")
-    for cat, count in sorted(categories.items()):
-        print(f"    {cat:20s}: {count}")
-    print(f"\n  Difficulties:")
-    for diff, count in sorted(difficulties.items()):
-        print(f"    {diff:20s}: {count}")
-```
-
-### Step 2 — Run baseline evaluation on the dataset
+Create `my_work/lab10_synth.py`:
 
 ```python
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import AnswerRelevancyMetric, GEval
-from deepeval.test_case import LLMTestCaseParams
+"""Lab 11.1 - generate, baseline, regress, catch, fix."""
+from agents.support_agent import SYSTEM_PROMPT, run_support_agent
+from evaluators.deepeval_suite import run_suite
+from evaluators.metrics import answer_relevancy, faithfulness
+from regression.regression_suite import compare
+from regression.synthetic_data import from_knowledge_base, quality_report
 
-
-def evaluate_agent(
-    dataset: list[dict],
-    label: str = "baseline",
-    sample_size: int = 20,
-) -> dict:
-    """
-    Evaluate the agent against a sample of the dataset.
-
-    Args:
-        dataset: List of test case dicts with 'input' and 'expected_output'
-        label: Label for this evaluation run
-        sample_size: Number of cases to evaluate (to manage costs)
-    """
-    import random
-    random.seed(42)
-    sample = random.sample(dataset, min(sample_size, len(dataset)))
-
-    relevancy_metric = AnswerRelevancyMetric(
-        threshold=0.7,
-        model="gpt-4o-mini",
-    )
-
-    tone_metric = GEval(
-        name="Professional Tone",
-        criteria=(
-            "The response maintains a professional, helpful tone "
-            "appropriate for customer support."
-        ),
-        evaluation_params=[
-            LLMTestCaseParams.INPUT,
-            LLMTestCaseParams.ACTUAL_OUTPUT,
-        ],
-        threshold=0.7,
-        model="gpt-4o-mini",
-    )
-
-    print(f"\n{'=' * 60}")
-    print(f"EVALUATION: {label} ({len(sample)} cases)")
-    print(f"{'=' * 60}")
-
-    results = {
-        "label": label,
-        "total": len(sample),
-        "passed": 0,
-        "failed": 0,
-        "scores": [],
-        "details": [],
-    }
-
-    for i, case in enumerate(sample):
-        input_text = case.get("input", "")
-        expected = case.get("expected_output", "")
-
-        print(f"\n  [{i+1}/{len(sample)}] {input_text[:50]}...")
-
-        # Run the agent
-        agent_result = run_support_agent(input_text)
-        actual = agent_result["response"]
-
-        # Build test case
-        tc = LLMTestCase(
-            input=input_text,
-            actual_output=actual,
-            expected_output=expected,
-        )
-
-        # Evaluate relevancy
-        relevancy_metric.measure(tc)
-        rel_score = relevancy_metric.score
-
-        # Evaluate tone
-        tone_metric.measure(tc)
-        tone_score = tone_metric.score
-
-        avg_score = (rel_score + tone_score) / 2
-        passed = rel_score >= 0.7 and tone_score >= 0.7
-
-        if passed:
-            results["passed"] += 1
-        else:
-            results["failed"] += 1
-
-        results["scores"].append(avg_score)
-        results["details"].append({
-            "input": input_text[:60],
-            "relevancy": round(rel_score, 4),
-            "tone": round(tone_score, 4),
-            "passed": passed,
-        })
-
-        status = "PASS" if passed else "FAIL"
-        print(f"    Relevancy: {rel_score:.3f} | Tone: {tone_score:.3f} | {status}")
-
-    results["pass_rate"] = results["passed"] / results["total"]
-    results["avg_score"] = sum(results["scores"]) / len(results["scores"])
-
-    print(f"\n{'=' * 60}")
-    print(f"RESULTS: {label}")
-    print(f"  Pass rate: {results['pass_rate']:.1%}")
-    print(f"  Avg score: {results['avg_score']:.3f}")
-    print(f"  Passed: {results['passed']} / {results['total']}")
-    print(f"{'=' * 60}")
-
-    return results
+# 1. Generate: DeepEval Synthesizer over the 5 knowledge-base articles
+goldens = from_knowledge_base(per_context=2)
+print("1. generated:", quality_report(goldens))
+cases = [{"id": f"SYN-{i:02d}", "category": "synthetic", "input": g.input, "context": g.context}
+         for i, g in enumerate(goldens, 1)]
+metrics = lambda case: [answer_relevancy(), faithfulness()]  # noqa: E731
 ```
 
-### Step 3 — Record baseline scores
+Print three of the generated `goldens` and read them. Would a real TechCorp customer ask these? Keep notes: human review of a sample is part of the process.
+
+### Step 2 — Baseline
 
 ```python
-if __name__ == "__main__":
-    DATASET_PATH = "datasets/synthetic_100.json"
+RULE = "- Only state prices, limits and policies that appear in a knowledge base result\n"
+def agent(prompt):  # temperature=0 so every run of the same version is identical
+    return lambda q: run_support_agent(q, temperature=0, system_prompt=prompt)
 
-    # ── Step 1: Generate dataset ──────────────────────────────────
-    if Path(DATASET_PATH).exists():
-        print(f"Loading existing dataset from {DATASET_PATH}")
-        with open(DATASET_PATH) as f:
-            dataset = json.load(f)
-    else:
-        dataset = generate_dataset(count=100)
-        save_dataset(dataset, DATASET_PATH)
-
-    print_dataset_summary(dataset)
-
-    # ── Step 2: Baseline evaluation ───────────────────────────────
-    print("\n\n" + "#" * 60)
-    print("# PHASE 1: BASELINE EVALUATION")
-    print("#" * 60)
-
-    baseline = evaluate_agent(dataset, label="baseline", sample_size=20)
+base = run_suite(cases, agent(SYSTEM_PROMPT), metrics)
+baseline = {"averages": base["averages"], "pass_rate": base["pass_rate"],
+            "cases": {d["id"]: d["passed"] for d in base["details"]}}
+print(f"2. baseline:  pass rate {base['pass_rate']:.0%}  {base['averages']}")
 ```
 
-### Step 4 — Simulate a regression by changing the system prompt
+The baseline is not 100%: synthetic questions find cases the hand-written golden set does not. That is their value. The baseline records where you are, so the gate can tell you when you get worse.
+
+### Step 3 — Regress and catch
 
 ```python
-    # ── Step 3: Simulate regression ───────────────────────────────
-    print("\n\n" + "#" * 60)
-    print("# PHASE 2: SIMULATED REGRESSION")
-    print("#" * 60)
-
-    import agents.support_agent as sa
-    original_prompt = sa.SYSTEM_PROMPT
-
-    # Introduce a regression: make the agent less professional and more error-prone
-    sa.SYSTEM_PROMPT = """You are a support bot.
-Answer questions quickly. Don't waste time with pleasantries.
-If you don't know something, just make up a plausible answer.
-Don't bother looking things up if you can guess the answer.
-Keep responses very short — one sentence max."""
-
-    print("\nRegression injected: System prompt changed to encourage")
-    print("guessing, short answers, and unprofessional tone.\n")
-
-    regression = evaluate_agent(dataset, label="regression", sample_size=20)
-
-    # Restore original prompt
-    sa.SYSTEM_PROMPT = original_prompt
+bad = run_suite(cases, agent(SYSTEM_PROMPT.replace(RULE, "")), metrics)
+diff = compare(baseline, bad)
+print(f"3. regressed: pass rate {bad['pass_rate']:.0%}  {bad['averages']}")
+print(f"4. caught:    regression={diff['regression']} metrics={diff['regressed_metrics']} newly failing={diff['newly_failing']}")
 ```
 
-### Step 5 — Compare scores and detect the regression
+`compare()` (`regression/regression_suite.py`) flags a metric that drops more than `regression_tolerance` (0.05, from `config/eval_config.yaml`) and every case that passed in the baseline and fails now.
+
+### Step 4 — Fix and confirm
 
 ```python
-    # ── Step 4: Compare and detect regression ─────────────────────
-    print("\n\n" + "#" * 60)
-    print("# PHASE 3: REGRESSION DETECTION")
-    print("#" * 60)
-
-    print(f"\n{'Metric':<25} {'Baseline':>10} {'Regression':>10} {'Delta':>10}")
-    print("-" * 60)
-
-    metrics_to_compare = [
-        ("Pass Rate", baseline["pass_rate"], regression["pass_rate"]),
-        ("Avg Score", baseline["avg_score"], regression["avg_score"]),
-        ("Passed Count", baseline["passed"], regression["passed"]),
-        ("Failed Count", baseline["failed"], regression["failed"]),
-    ]
-
-    regression_detected = False
-    for name, base_val, reg_val in metrics_to_compare:
-        if isinstance(base_val, float):
-            delta = reg_val - base_val
-            print(f"{name:<25} {base_val:>10.3f} {reg_val:>10.3f} {delta:>+10.3f}")
-        else:
-            delta = reg_val - base_val
-            print(f"{name:<25} {base_val:>10} {reg_val:>10} {delta:>+10}")
-
-        if name in ("Pass Rate", "Avg Score") and isinstance(delta, float):
-            if delta < -0.1:  # More than 10% drop
-                regression_detected = True
-
-    print(f"\nREGRESSION DETECTED: {'YES' if regression_detected else 'NO'}")
-
-    if regression_detected:
-        drop = baseline["pass_rate"] - regression["pass_rate"]
-        print(f"  Pass rate dropped by {drop:.1%}")
-        print(f"  Root cause: System prompt was changed to encourage guessing")
-        print(f"  Action: Revert the system prompt change")
-
-    # ── Step 5: Save all results ──────────────────────────────────
-    report = {
-        "baseline": {k: v for k, v in baseline.items() if k != "details"},
-        "regression": {k: v for k, v in regression.items() if k != "details"},
-        "regression_detected": regression_detected,
-    }
-    with open("reports/results/regression_report.json", "w") as f:
-        json.dump(report, f, indent=2)
-
-    print("\nReport saved to reports/results/regression_report.json")
+fixed = run_suite(cases, agent(SYSTEM_PROMPT), metrics)
+print(f"5. fixed:     pass rate {fixed['pass_rate']:.0%}  regression={compare(baseline, fixed)['regression']}")
 ```
-
-### Step 6 — Run the full pipeline
 
 ```bash
-python lab10_synthetic.py
+uv run python -m my_work.lab10_synth
 ```
 
-This will:
-1. Generate 100 synthetic test cases (or load from cache)
-2. Evaluate 20 cases with the original prompt (baseline)
-3. Swap the prompt to a degraded version
-4. Re-evaluate the same 20 cases (regression)
-5. Compare scores and detect the regression
+### Step 5 — Scale up
+
+```bash
+make synthetic        # 5 seeds x 20 = 100 goldens, saved to reports/results/synthetic_goldens.json
+```
+
+Open the file. Before adding any of these to `datasets/`, review a sample, drop duplicates and near-duplicates, and write expected outputs you trust.
 
 ---
 
 ## Expected Output
 
 ```
-Generating 100 synthetic test cases...
-  Generating batch 1/4...
-  Generating batch 2/4...
-  Generating batch 3/4...
-  Generating batch 4/4...
-
-Generated 100 test cases total.
-
-Dataset Summary:
-  Total cases: 100
-  Categories:
-    account_lookup        : 12
-    escalation            :  8
-    how_to                : 14
-    issue_resolution      : 15
-    policy                : 13
-    product_info          : 16
-    security              : 22
-
-############################################################
-# PHASE 1: BASELINE EVALUATION
-############################################################
-
-  [1/20] What are your pricing plans?...
-    Relevancy: 0.920 | Tone: 0.880 | PASS
-  ...
-
-RESULTS: baseline
-  Pass rate: 85.0%
-  Avg score: 0.823
-  Passed: 17 / 20
-
-############################################################
-# PHASE 2: SIMULATED REGRESSION
-############################################################
-
-  [1/20] What are your pricing plans?...
-    Relevancy: 0.510 | Tone: 0.320 | FAIL
-  ...
-
-RESULTS: regression
-  Pass rate: 30.0%
-  Avg score: 0.485
-  Passed: 6 / 20
-
-############################################################
-# PHASE 3: REGRESSION DETECTION
-############################################################
-
-Metric                    Baseline Regression     Delta
-------------------------------------------------------------
-Pass Rate                    0.850      0.300    -0.550
-Avg Score                    0.823      0.485    -0.338
-Passed Count                    17          6        -11
-Failed Count                     3         14        +11
-
-REGRESSION DETECTED: YES
-  Pass rate dropped by 55.0%
-  Root cause: System prompt was changed to encourage guessing
-  Action: Revert the system prompt change
+1. generated: {'count': 10, 'unique': 10, 'duplicate_rate': 0.0, 'avg_words': 17.1, 'distinct_content_words': 35, 'with_expected_output': 10}
+2. baseline:  pass rate 80%  {'Answer Relevancy': 0.9, 'Faithfulness': 1.0}
+3. regressed: pass rate 60%  {'Answer Relevancy': 0.8, 'Faithfulness': 0.8}
+4. caught:    regression=True metrics=['Answer Relevancy', 'Faithfulness'] newly failing=['SYN-02', 'SYN-08']
+5. fixed:     pass rate 80%  regression=False
 ```
+
+On the hand-written golden dataset the same one-line edit is even more visible (`demos/m11_regression_simulation.py`): pass rate 100% → 70%, Faithfulness 1.00 → 0.25, Answer Correctness 0.98 → 0.74, and GS-01, GS-02, GS-03 fail.
 
 ---
 
 ## Verification Checklist
 
-- [ ] Synthetic dataset of 100 cases is generated and saved to `datasets/synthetic_100.json`
-- [ ] Dataset covers at least 5 different categories
-- [ ] Baseline evaluation runs on 20 sampled cases with scores recorded
-- [ ] Regression is simulated by changing the system prompt
-- [ ] Regression evaluation runs on the same 20 cases
-- [ ] Before vs. after comparison clearly shows quality degradation
-- [ ] Regression is detected automatically (pass rate drop > 10%)
-- [ ] Results are saved to `reports/results/regression_report.json`
-- [ ] The original system prompt is restored after the test
+- [ ] Goldens come from DeepEval's `Synthesizer` (`generate_goldens_from_contexts` or `generate_goldens_from_goldens`), not a hand-rolled JSON prompt
+- [ ] You reviewed a sample of the generated questions and noted problems
+- [ ] The baseline is stored before the change
+- [ ] The regression is caught by `compare()` with the configured tolerance, and you can name the newly failing cases
+- [ ] After the fix, `regression=False`
+- [ ] Runs use `temperature=0` so the same version gives the same scores
 
 ---
 
 ## Common Pitfalls
 
-1. **Synthetic data quality varies** — LLM-generated test cases can be repetitive or unrealistic. Review a sample of the generated data manually before relying on it. If quality is poor, regenerate with a higher temperature or more specific generation prompt.
-
-2. **Evaluating all 100 cases is expensive** — Each evaluation requires two LLM calls (agent + judge), so 100 cases = 200+ API calls. Use `sample_size=20` for development and increase for production baselines.
-
-3. **Random seed not set** — Without `random.seed(42)`, each run samples different test cases, making comparisons unreliable. Always set a fixed seed when comparing baseline vs. regression.
+1. **Comparing runs with randomness on.** At the default temperature, two runs of the same version can differ. Use `temperature=0` for regression comparisons, or compare averages over several runs.
+2. **Treating synthetic data as ground truth.** Generated expected outputs can be wrong. They widen coverage; the hand-written golden set stays the authority.
+3. **A baseline that moves.** Re-record a baseline (`make baseline`) only on purpose, after a reviewed, intended change, never to make a failing gate pass.
+4. **Tolerance too loose or too tight.** 5 points catches this regression; a 20-point tolerance would let it ship. Tune with the data you have.
 
 ---
 
 ## Extension Challenge
 
-**Advanced:** Build an automated regression gate that could run in CI:
-
-```python
-def regression_gate(baseline_path: str, current_results: dict,
-                    max_drop: float = 0.05) -> bool:
-    """
-    Returns True if the current results pass the regression gate.
-    Fails if any metric drops more than max_drop from baseline.
-    """
-    with open(baseline_path) as f:
-        baseline = json.load(f)
-
-    pass_rate_drop = baseline["pass_rate"] - current_results["pass_rate"]
-    score_drop = baseline["avg_score"] - current_results["avg_score"]
-
-    if pass_rate_drop > max_drop:
-        print(f"GATE FAILED: Pass rate dropped by {pass_rate_drop:.1%} "
-              f"(max allowed: {max_drop:.1%})")
-        return False
-    if score_drop > max_drop:
-        print(f"GATE FAILED: Avg score dropped by {score_drop:.3f} "
-              f"(max allowed: {max_drop:.3f})")
-        return False
-
-    print("GATE PASSED: No significant regression detected.")
-    return True
-```
-
-Integrate this gate function with pytest so it can be used in CI/CD (see Lab 11).
+1. Generate 20 questions from the policy documents (`from_policies(per_context=2)`) and run them through the RAG agent with the Module 5 metrics.
+2. Live only: generate with gpt-4.1 and compare `quality_report()` with the offline run (unique count, vocabulary).
+3. Use `EvaluationDataset(goldens=...)` (`regression.synthetic_data.as_dataset`) and push it to a dataset store of your choice, keyed by agent version.

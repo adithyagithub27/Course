@@ -1,427 +1,162 @@
-# Lab 09: Performance Benchmarking and Cost Optimization
+# Lab 10.1: Benchmark, Analyze, Optimize
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 10 — Performance Testing                              |
-| **Duration**       | 60 minutes                                                   |
-| **Difficulty**     | Intermediate                                                 |
-| **Learning Objective** | Benchmark an agent's latency, token cost, and LLM call count, identify the most expensive query type, apply one optimization to achieve a 50%+ cost reduction, and compare before vs. after results. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 10.1 (file `lab-09-performance-benchmark.md`) |
+| **Module** | Module 10 — Performance & Reliability Testing |
+| **Lectures** | 10.1–10.3 |
+| **Duration** | 60 minutes |
+| **Difficulty** | Intermediate |
+| **Learning Objective** | Benchmark the TechCorp support agent on 20 queries (latency percentiles, tokens, cost per task), find the cost hotspot, apply one optimization (model routing or a prompt diet), measure the saving, and re-check quality on the golden dataset before claiming success. |
+| **Reference solution** | `performance/benchmark.py`, `performance/cost.py`, `demos/m10_benchmark.py`, `demos/m10_cost_hotspots.py`, `demos/m10_model_routing.py` |
+| **Verified on** | openai 2.54.0, deepeval 4.2.7 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 01** (can run the support agent)
-- Understanding of OpenAI token pricing
-- `.env` configured with a valid `OPENAI_API_KEY`
+- Completed **Lab 1.1** and **Lab 3.1**
+- Lectures 10.1 and 10.3: percentiles, cost per task, the 80/20 of agent spend, model routing
 
 ---
 
 ## Setup Instructions
 
-### 1. Review the benchmark module
-
 ```bash
-cat performance/benchmark.py
+cd 04-code-examples/agent-eval-framework
+uv run python demos/m10_benchmark.py
 ```
 
-Key functions:
-- `benchmark_latency()` — measures end-to-end response time
-- `benchmark_token_cost()` — estimates cost per task
-- `benchmark_llm_calls()` — counts LLM invocations per task
-- `run_full_benchmark()` — runs all three benchmarks
+Read `performance/benchmark.py`:
 
-### 2. Create workspace
+- `UsageMeter` wraps the OpenAI client and records model, input and output tokens, latency and step type (`tool_call` or `answer`) for every call.
+- `run_benchmark(questions, model=None, router=None)` runs each question once and returns a `BenchmarkReport` with `summary()` (p50, p95, max latency; average tokens and LLM calls; cost per task and per 1,000 tasks) and `cost_by_step()`.
+- `BENCHMARK_QUERIES`: 20 realistic queries (FAQ, account work, escalation, refusals).
 
-```bash
-mkdir -p reports/results
-```
+Prices live in `config/settings.py` (per 1M tokens, checked 2026-10-01): gpt-4.1 $2.00 input / $8.00 output; gpt-4.1-mini $0.40 / $1.60. **Verify current pricing** before you quote a dollar figure.
+
+> **Offline latencies are simulated** (0.30 s plus per-token terms per LLM call) so the numbers are repeatable. Live latencies depend on the network and the provider's load: re-run live before you quote them.
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Define 10 diverse test inputs
+### Step 1 — Baseline on the strong model
 
-Create `lab09_benchmark.py`:
+Create `my_work/lab09_bench.py`:
 
 ```python
-"""
-Lab 09 — Performance Benchmark
-Run: python lab09_benchmark.py
-"""
-
-import json
-import time
-from performance.benchmark import (
-    benchmark_latency,
-    benchmark_token_cost,
-    benchmark_llm_calls,
-    BenchmarkResult,
-)
+"""Lab 10.1 - benchmark, find the hotspot, optimise, re-check quality."""
 from agents.support_agent import run_support_agent
+from performance.benchmark import BENCHMARK_QUERIES, run_benchmark
+from performance.cost import STRONG_MODEL, prompt_overhead, route_model, savings
+from regression.regression_suite import evaluate_version
 
-
-# ── 10 Test Inputs Across Different Categories ───────────────────
-TEST_INPUTS = [
-    # Simple KB lookups (low cost expected)
-    "What are your pricing plans?",
-    "What is your refund policy?",
-    "How do I reset my password?",
-
-    # Account operations (tool calling = more LLM rounds)
-    "Look up my account. My email is alice@example.com",
-    "Look up customer CUST-001",
-
-    # Complex multi-step tasks (highest cost expected)
-    "I'm CUST-001. Create a high priority ticket for double billing.",
-    "I'm CUST-001. I was charged twice. Create a ticket and email me.",
-
-    # Escalation scenarios
-    "I'm furious. Your product destroyed my data. I need a manager.",
-
-    # Edge cases
-    "Can your product integrate with SAP?",
-    "Tell me everything about your enterprise features.",
-]
+base = run_benchmark(BENCHMARK_QUERIES, model=STRONG_MODEL)
+print("baseline (all gpt-4.1):", base.summary())
+print("cost by step:", base.cost_by_step())
+print("fixed overhead per call:", prompt_overhead())
 ```
-
-### Step 2 — Run the baseline benchmark
-
-Add the benchmarking code:
-
-```python
-def run_baseline_benchmark() -> dict:
-    """Run the complete baseline benchmark."""
-    print("=" * 60)
-    print("BASELINE BENCHMARK — 10 Test Inputs")
-    print("=" * 60)
-
-    # Latency benchmark (1 run per input for speed)
-    print("\nBenchmarking latency...")
-    latency = benchmark_latency(run_support_agent, TEST_INPUTS, runs_per_input=1)
-
-    # Token cost benchmark
-    print("Benchmarking token cost...")
-    cost = benchmark_token_cost(run_support_agent, TEST_INPUTS)
-
-    # LLM calls benchmark
-    print("Benchmarking LLM call count...")
-    llm_calls = benchmark_llm_calls(run_support_agent, TEST_INPUTS)
-
-    results = {
-        "latency": latency.summary(),
-        "cost": cost.summary(),
-        "llm_calls": llm_calls.summary(),
-    }
-
-    # Print summary
-    print("\n" + "-" * 60)
-    print("LATENCY (seconds per task)")
-    print(f"  Mean:    {results['latency']['mean']:.3f}s")
-    print(f"  Median:  {results['latency']['median']:.3f}s")
-    print(f"  P95:     {results['latency']['p95']:.3f}s")
-    print(f"  Min:     {results['latency']['min']:.3f}s")
-    print(f"  Max:     {results['latency']['max']:.3f}s")
-
-    print("\nTOKEN COST (USD per task)")
-    print(f"  Mean:    ${results['cost']['mean']:.6f}")
-    print(f"  Median:  ${results['cost']['median']:.6f}")
-    print(f"  Max:     ${results['cost']['max']:.6f}")
-    print(f"  Total:   ${sum(cost.values):.6f}")
-
-    print("\nLLM CALLS (per task)")
-    print(f"  Mean:    {results['llm_calls']['mean']:.1f}")
-    print(f"  Max:     {results['llm_calls']['max']:.0f}")
-
-    return results
-```
-
-### Step 3 — Identify the most expensive query type
-
-Add per-query analysis:
-
-```python
-def analyze_per_query_cost() -> list[dict]:
-    """Run each query individually and rank by cost."""
-    print("\n" + "=" * 60)
-    print("PER-QUERY COST ANALYSIS")
-    print("=" * 60)
-
-    query_costs = []
-    for i, query in enumerate(TEST_INPUTS):
-        start = time.perf_counter()
-        result = run_support_agent(query)
-        elapsed = time.perf_counter() - start
-
-        query_costs.append({
-            "index": i + 1,
-            "query": query[:50],
-            "tokens": result["total_tokens"],
-            "llm_calls": result["llm_calls"],
-            "tools": [tc["tool"] for tc in result["tool_calls"]],
-            "latency_s": round(elapsed, 3),
-            "est_cost_usd": round(result["total_tokens"] * 0.4 * 0.15e-6
-                                  + result["total_tokens"] * 0.6 * 0.60e-6, 6),
-        })
-
-    # Sort by cost (descending)
-    query_costs.sort(key=lambda x: x["est_cost_usd"], reverse=True)
-
-    print(f"\n{'#':>3} {'Tokens':>7} {'LLM':>4} {'Cost':>10} {'Latency':>8} Query")
-    print("-" * 75)
-    for qc in query_costs:
-        print(f"{qc['index']:>3} {qc['tokens']:>7} {qc['llm_calls']:>4} "
-              f"${qc['est_cost_usd']:>9.6f} {qc['latency_s']:>7.3f}s "
-              f"{qc['query']}")
-
-    most_expensive = query_costs[0]
-    print(f"\nMOST EXPENSIVE: Query {most_expensive['index']}")
-    print(f"  \"{most_expensive['query']}\"")
-    print(f"  Tokens: {most_expensive['tokens']}, "
-          f"LLM calls: {most_expensive['llm_calls']}, "
-          f"Cost: ${most_expensive['est_cost_usd']:.6f}")
-
-    return query_costs
-```
-
-### Step 4 — Apply an optimization
-
-Choose one optimization strategy. Here are three options:
-
-**Option A: Reduce system prompt length**
-
-```python
-OPTIMIZED_SYSTEM_PROMPT = """You are TechCorp's support agent.
-Answer using the knowledge base. Look up accounts when asked.
-Create tickets for unresolved issues. Escalate complex cases.
-Never share one customer's data with another. Be concise."""
-```
-
-**Option B: Use response caching for repeated queries**
-
-```python
-from functools import lru_cache
-import hashlib
-
-_cache = {}
-
-def run_support_agent_cached(user_message: str) -> dict:
-    """Cached version — returns stored result for identical queries."""
-    cache_key = hashlib.md5(user_message.encode()).hexdigest()
-    if cache_key in _cache:
-        return _cache[cache_key]
-    result = run_support_agent(user_message)
-    _cache[cache_key] = result
-    return result
-```
-
-**Option C: Reduce max_tokens to limit output length**
-
-```python
-import os
-from agents.support_agent import run_support_agent as _original_run
-
-def run_support_agent_lean(user_message: str) -> dict:
-    """Run with reduced max_tokens and shorter system prompt."""
-    # Temporarily set a shorter system prompt
-    import agents.support_agent as sa
-    original_prompt = sa.SYSTEM_PROMPT
-    sa.SYSTEM_PROMPT = (
-        "You are TechCorp's support agent. Be concise. "
-        "Use tools when needed. Never share customer data."
-    )
-    result = _original_run(user_message)
-    sa.SYSTEM_PROMPT = original_prompt
-    return result
-```
-
-### Step 5 — Re-benchmark with the optimization
-
-```python
-def run_optimized_benchmark(optimized_fn) -> dict:
-    """Run the benchmark with the optimized agent."""
-    print("\n" + "=" * 60)
-    print("OPTIMIZED BENCHMARK")
-    print("=" * 60)
-
-    latency = benchmark_latency(optimized_fn, TEST_INPUTS, runs_per_input=1)
-    cost = benchmark_token_cost(optimized_fn, TEST_INPUTS)
-    llm_calls = benchmark_llm_calls(optimized_fn, TEST_INPUTS)
-
-    return {
-        "latency": latency.summary(),
-        "cost": cost.summary(),
-        "llm_calls": llm_calls.summary(),
-    }
-```
-
-### Step 6 — Compare before vs. after
-
-```python
-def compare_results(baseline: dict, optimized: dict) -> None:
-    """Print a before vs. after comparison."""
-    print("\n" + "=" * 60)
-    print("BEFORE vs. AFTER COMPARISON")
-    print("=" * 60)
-
-    metrics = [
-        ("Latency (mean)", "latency", "mean", "s"),
-        ("Latency (p95)", "latency", "p95", "s"),
-        ("Cost (mean)", "cost", "mean", "USD"),
-        ("Cost (max)", "cost", "max", "USD"),
-        ("LLM calls (mean)", "llm_calls", "mean", ""),
-    ]
-
-    print(f"\n{'Metric':<25} {'Before':>12} {'After':>12} {'Change':>12}")
-    print("-" * 65)
-
-    for label, category, stat, unit in metrics:
-        before = baseline[category][stat]
-        after = optimized[category][stat]
-        if before > 0:
-            change_pct = ((after - before) / before) * 100
-        else:
-            change_pct = 0
-        direction = "better" if change_pct < 0 else "worse"
-        print(f"{label:<25} {before:>12.4f} {after:>12.4f} "
-              f"{change_pct:>+10.1f}% ({direction})")
-
-    # Cost reduction summary
-    before_cost = baseline["cost"]["mean"]
-    after_cost = optimized["cost"]["mean"]
-    if before_cost > 0:
-        reduction = ((before_cost - after_cost) / before_cost) * 100
-        target_met = "YES" if reduction >= 50 else "NO"
-        print(f"\nCost reduction: {reduction:.1f}%")
-        print(f"50% target met: {target_met}")
-
-
-# ── Main Execution ────────────────────────────────────────────────
-if __name__ == "__main__":
-    # Step 1: Baseline
-    baseline = run_baseline_benchmark()
-
-    # Step 2: Per-query analysis
-    query_costs = analyze_per_query_cost()
-
-    # Step 3: Optimized run (using Option A: shorter prompt)
-    import agents.support_agent as sa
-    original_prompt = sa.SYSTEM_PROMPT
-    sa.SYSTEM_PROMPT = (
-        "You are TechCorp's support agent. Be concise. "
-        "Use the knowledge base for product questions. "
-        "Look up accounts when asked. Create tickets for issues. "
-        "Escalate complex cases. Never share customer data."
-    )
-    optimized = run_optimized_benchmark(run_support_agent)
-    sa.SYSTEM_PROMPT = original_prompt
-
-    # Step 4: Compare
-    compare_results(baseline, optimized)
-
-    # Step 5: Save results
-    report = {
-        "baseline": baseline,
-        "optimized": optimized,
-        "query_costs": query_costs,
-    }
-    with open("reports/results/benchmark_results.json", "w") as f:
-        json.dump(report, f, indent=2)
-    print("\nResults saved to reports/results/benchmark_results.json")
-```
-
-### Step 7 — Run the complete benchmark
 
 ```bash
-python lab09_benchmark.py
+uv run python -m my_work.lab09_bench
 ```
+
+Record p50, p95, average LLM calls and cost per 1,000 tasks.
+
+### Step 2 — Find the hotspot
+
+`prompt_overhead()` shows what is re-sent on **every** LLM call before the customer says anything: the system prompt (255 tokens) and the five tool schemas (481 tokens). With about two LLM calls per task, that fixed overhead dominates input cost. Confirm with the trace-level view from Module 9:
+
+```bash
+uv run python demos/m09_cost_analysis.py     # fixed overhead = 74% of input tokens in one trace
+```
+
+### Step 3 — Optimize: route FAQ traffic to the mini model
+
+`performance/cost.py` has a rule-based router: questions that touch accounts, tickets, billing, legal threats or injections go to `gpt-4.1`; FAQ-style questions go to `gpt-4.1-mini`. Add to your script:
+
+```python
+routed = run_benchmark(BENCHMARK_QUERIES, router=route_model)
+b, a = base.summary()["avg_cost_usd"], routed.summary()["avg_cost_usd"]
+print(f"routed: ${a:.6f}/task vs ${b:.6f}/task -> saving {savings(b, a)}%")
+```
+
+### Step 4 — Re-check quality before claiming the saving
+
+A cheaper agent that answers worse is not an optimization. Run the golden dataset with the router in place:
+
+```python
+quality = evaluate_version(lambda q: run_support_agent(q, model=route_model(q)), version="routed")
+print(f"quality re-check: {quality['passed']}/{quality['total']} pass, averages {quality['averages']}")
+```
+
+**Important:** offline, the mock LLM answers the same way whatever the model name, so quality is equal by construction. The re-check is only meaningful **live** (`OFFLINE=0` with a key; a few cents, verify current pricing). Write that caveat into your results.
+
+### Step 5 — Try the second lever: a prompt diet
+
+```bash
+uv run python demos/m10_cost_hotspots.py
+```
+
+Sending only the knowledge-base tool schema to FAQ traffic cuts its input tokens by about 40%. Which requests can never use a diet like this, and how would you route them?
+
+### Step 6 — Reliability check
+
+```bash
+uv run python demos/m10_reliability.py
+```
+
+Failure rate, tool-sequence consistency over 25 runs, a retry, a timeout and a loop detection. Which of the five quality dimensions do these numbers belong to? (Reliability: latency and cost sit there too.)
 
 ---
 
 ## Expected Output
 
+Step 1–4 (offline):
+
 ```
-============================================================
-BASELINE BENCHMARK — 10 Test Inputs
-============================================================
-
-Benchmarking latency...
-Benchmarking token cost...
-Benchmarking LLM call count...
-
-------------------------------------------------------------
-LATENCY (seconds per task)
-  Mean:    2.341s
-  Median:  2.150s
-  P95:     3.890s
-
-TOKEN COST (USD per task)
-  Mean:    $0.000185
-  Max:     $0.000312
-
-LLM CALLS (per task)
-  Mean:    1.8
-  Max:     3
-
-============================================================
-PER-QUERY COST ANALYSIS
-============================================================
-
-  # Tokens  LLM  Cost       Latency  Query
----------------------------------------------------------------------------
-  7     823    3  $0.000312   3.890s  I'm CUST-001. I was charged twice...
-  6     645    2  $0.000245   2.650s  I'm CUST-001. Create a high prior...
-  ...
-
-============================================================
-BEFORE vs. AFTER COMPARISON
-============================================================
-
-Metric                      Before       After       Change
------------------------------------------------------------------
-Latency (mean)              2.3410       1.8520      -20.9% (better)
-Cost (mean)                 0.0002       0.0001      -52.3% (better)
-LLM calls (mean)            1.8000       1.6000      -11.1% (better)
-
-Cost reduction: 52.3%
-50% target met: YES
+baseline (all gpt-4.1): {'model': 'gpt-4.1', 'tasks': 20, 'latency_p50_s': 1.75, 'latency_p95_s': 3.34, 'latency_max_s': 4.5, 'avg_tokens': 1785.2, 'avg_llm_calls': 2, 'avg_cost_usd': 0.004057, 'total_cost_usd': 0.081134, 'cost_per_1k_tasks_usd': 4.06}
+cost by step: {'tool_call': 0.039504, 'answer': 0.04163}
+fixed overhead per call: {'system_prompt_tokens': 255, 'tool_schema_tokens': 481}
+routed: $0.002878/task vs $0.004057/task -> saving 29.1%
+quality re-check: 10/10 pass, averages {'Answer Correctness': 0.97, 'Answer Relevancy': 1.0, 'Faithfulness': 1.0}
 ```
+
+Step 5:
+
+```
+Fixed overhead re-sent on every call: {'system_prompt_tokens': 255, 'tool_schema_tokens': 481}
+FAQ traffic, all 5 tool schemas : 6596 input tokens, $0.003107
+FAQ traffic, only the KB tool    : 3285 input tokens, $0.001776
+Prompt diet saves 42.8% on FAQ traffic (verify current pricing).
+```
+
+Token counts depend on the tokenizer: on a machine where tiktoken's `o200k_base` file is available they come from the real tokenizer; otherwise the course falls back to `len(text) / 4` and says so. Re-run on your machine and use your numbers.
 
 ---
 
 ## Verification Checklist
 
-- [ ] 10 diverse test inputs cover all query categories
-- [ ] Baseline benchmark completed with latency, cost, and LLM call metrics
-- [ ] Per-query cost analysis identifies the most expensive query type
-- [ ] At least one optimization strategy was implemented
-- [ ] Optimized benchmark shows measurable improvement
-- [ ] Before vs. after comparison table is generated
-- [ ] Results are saved to `reports/results/benchmark_results.json`
-- [ ] You can explain **why** the most expensive query costs more (more tool calls, more LLM rounds, longer context)
+- [ ] Baseline recorded: p50, p95, LLM calls per task, cost per 1,000 tasks
+- [ ] Hotspot identified with a number (fixed overhead tokens per call)
+- [ ] One optimization applied and the saving measured with the same benchmark
+- [ ] Quality re-checked on the golden dataset, with the offline caveat written down
+- [ ] Every dollar figure in your notes says "verify current pricing"
 
 ---
 
 ## Common Pitfalls
 
-1. **Benchmarking with `runs_per_input=3` takes too long** — The default benchmark runs each input 3 times for latency measurement. For this lab, use `runs_per_input=1` to save time and API costs. In production, use 3+ runs for statistical significance.
-
-2. **Token cost estimates are approximate** — The benchmark uses a 40/60 input/output split estimate. Actual costs depend on exact prompt and completion lengths. For precise cost tracking, use the Langfuse integration from Lab 08.
-
-3. **Optimizing the wrong thing** — If latency is dominated by network round-trips (not token generation), reducing prompt length won't help. Check the per-query breakdown to find the real bottleneck before optimizing.
+1. **Comparing different query sets.** Before and after must run the same 20 queries, or the saving is meaningless.
+2. **Averages hide tails.** Report p95, not just the mean. One 4-call trajectory is the slowest task in this benchmark.
+3. **Claiming quality is unchanged from offline runs.** The mock ignores the model name. Only a live re-check proves the mini model is good enough for the routed traffic.
+4. **Hard-coding prices.** Read them from `config/settings.py` and update them in one place.
 
 ---
 
 ## Extension Challenge
 
-**Advanced:** Implement and benchmark **all three** optimization strategies (shorter prompt, caching, reduced output), then combine the best two. Create a comparison table:
-
-| Strategy              | Cost Reduction | Latency Reduction | Quality Impact |
-| --------------------- | -------------- | ----------------- | -------------- |
-| Shorter prompt        | [X]%           | [X]%              | [assess]       |
-| Response caching      | [X]%           | [X]%              | [assess]       |
-| Reduced max_tokens    | [X]%           | [X]%              | [assess]       |
-| Best two combined     | [X]%           | [X]%              | [assess]       |
-
-For each strategy, also run the DeepEval `AnswerRelevancyMetric` to verify that quality has not regressed. A 50% cost reduction is worthless if quality drops below the threshold.
+1. Write a performance gate: fail if p95 > 10 s or cost per task > $0.01 (the Reliability limits in `config/eval_config.yaml`). The capstone gate (`capstone/platform.py`) does exactly this.
+2. Improve the router: send "What is the API rate limit on Basic?" to the mini model but keep "Check my account please, CUST-002" on the strong one. Measure the new saving.
+3. Live only: enable prompt caching for the fixed prefix and compare `cached_tokens` in the usage data (cached input is cheaper; verify current pricing).

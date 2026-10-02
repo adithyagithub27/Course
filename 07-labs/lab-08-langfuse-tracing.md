@@ -1,408 +1,228 @@
-# Lab 08: Langfuse Tracing and Root Cause Diagnosis
+# Lab 9.1: Trace, Find, Fix with Langfuse v4
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 09 — Observability with Langfuse                      |
-| **Duration**       | 75 minutes                                                   |
-| **Difficulty**     | Intermediate                                                 |
-| **Learning Objective** | Instrument a multi-step agent with Langfuse tracing, run five queries, navigate the dashboard to find the longest/most expensive/failing spans, and diagnose a root cause from the trace data. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 9.1 (file `lab-08-langfuse-tracing.md`) |
+| **Module** | Module 09 — Agent Observability & Tracing |
+| **Lectures** | 9.1–9.3 |
+| **Duration** | 75 minutes |
+| **Difficulty** | Intermediate |
+| **Learning Objective** | Trace the TechCorp support agent with the Langfuse v4 SDK (`observe`, `get_client`, `propagate_attributes`), run five queries of which two fail, find the failing span in each trace, attach scores, fix the tool layer and prove the fix by re-running the traces. |
+| **Reference solution** | `observability/langfuse_tracing.py`, `demos/m09_lab_trace_find_fix.py` |
+| **Verified on** | langfuse 4.16.0, opentelemetry-sdk 1.45.0 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 01** (can run the support agent)
-- A free Langfuse cloud account at [cloud.langfuse.com](https://cloud.langfuse.com)
-- `.env` configured with `OPENAI_API_KEY`
+- Completed **Lab 1.1**
+- Lectures 9.1 and 9.2: why traces, observation types, trace attributes, scores
+- **Optional:** a free Langfuse Cloud project (or self-hosted Langfuse) for the UI. Without keys, the course captures the same spans in memory and prints the trace tree, so every step works offline.
 
 ---
 
 ## Setup Instructions
 
-### 1. Create a Langfuse account
+### 1. (Optional) connect Langfuse
 
-1. Go to [cloud.langfuse.com](https://cloud.langfuse.com)
-2. Sign up for a free account
-3. Create a new project called `agent-eval-lab`
-4. Navigate to **Settings > API Keys** and create a new key pair
-
-### 2. Add Langfuse credentials to `.env`
+In `.env`:
 
 ```dotenv
-# .env (append these lines)
-LANGFUSE_PUBLIC_KEY=pk-lf-xxxxxxxxxxxxxxxx
-LANGFUSE_SECRET_KEY=sk-lf-xxxxxxxxxxxxxxxx
-LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
 ```
 
-> **Never commit Langfuse keys to version control.**
+(The code also accepts the older `LANGFUSE_HOST` name.) Langfuse's UI steps and free-tier limits change; verify them in the Langfuse docs before recording.
 
-### 3. Verify Langfuse installation
+### 2. The v4 API in one table
 
-```bash
-pip show langfuse
-```
+Langfuse's Python SDK v4 is built on OpenTelemetry. If a tutorial shows `from langfuse.decorators import observe, langfuse_context`, it is v2 and will not run on 4.16.
 
-You should see version `2.50.x` or higher. If not:
-
-```bash
-pip install "langfuse>=2.50.0,<3.0"
-```
-
-### 4. Test the connection
-
-```python
-python -c "
-from langfuse import Langfuse
-from dotenv import load_dotenv
-load_dotenv()
-lf = Langfuse()
-print('Langfuse connection OK' if lf.auth_check() else 'Connection FAILED')
-"
-```
+| Need | v4 API |
+|---|---|
+| A span per function call | `@observe(name="...", as_type="agent" \| "tool" \| "generation" \| "span" \| ...)` |
+| Trace attributes (user, session, tags, version, metadata) | `with propagate_attributes(user_id=..., session_id=..., tags=[...], version=...):` |
+| The current client / trace ID | `get_client()`, `get_client().get_current_trace_id()` |
+| Update the current span | `get_client().update_current_span(name=..., input=..., output=..., level=...)` |
+| Attach an evaluation score | `get_client().create_score(trace_id=..., name=..., value=...)` or `score_current_trace(...)` |
+| Send everything before exit | `get_client().flush()` |
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Review the existing tracing setup
+### Step 1 — Trace one run and read it
 
 ```bash
-cat observability/langfuse_setup.py
+uv run python -m observability.langfuse_tracing "What is your refund policy?"     # same as: make trace
 ```
 
-Key components:
-- `init_langfuse()` — initializes the Langfuse client from env vars
-- `traced_agent_call()` — wraps the support agent with `@observe` decorator
-- `log_eval_score()` — logs evaluation scores to a trace
-- `get_trace_summary()` — retrieves trace data for analysis
+You get one trace: an `agent` observation (`support-agent`) containing `generation` observations (`chat gpt-4.1-mini`, with token usage and cost) and `tool` observations (`tool search_knowledge_base`, with input and output). With keys set, open the trace in the Langfuse UI.
 
-### Step 2 — Create the instrumented lab script
+### Step 2 — Use the decorator yourself
 
-Create `lab08_tracing.py`:
+Create `my_work/lab08_observe.py`:
 
 ```python
-"""
-Lab 08 — Langfuse Tracing Lab
-Run: python lab08_tracing.py
-"""
+"""Lab 9.1 step 2 - the v4 decorator API on your own function."""
+from langfuse import get_client, observe, propagate_attributes
 
-import os
-import time
-from dotenv import load_dotenv
-from langfuse import Langfuse
-from langfuse.decorators import observe, langfuse_context
+from observability.langfuse_tracing import init_langfuse, offline_spans
 
-load_dotenv()
-
-from agents.support_agent import (
-    run_support_agent,
-    execute_tool,
-    SYSTEM_PROMPT,
-    TOOLS,
-)
-from openai import OpenAI
-
-client = OpenAI()
-langfuse = Langfuse()
+init_langfuse()   # live with LANGFUSE_* keys; in-memory exporter offline
 
 
-@observe(name="tool-execution")
-def traced_tool_call(tool_name: str, arguments: dict) -> str:
-    """Execute a tool with tracing — each tool call becomes a span."""
-    langfuse_context.update_current_observation(
-        input={"tool": tool_name, "arguments": arguments},
-    )
-    result = execute_tool(tool_name, arguments)
-    langfuse_context.update_current_observation(
-        output=result,
-    )
+@observe(name="lookup-policy", as_type="tool")
+def lookup_policy(topic: str) -> str:
+    return {"refunds": "30-day money-back guarantee"}.get(topic, "unknown")
+
+
+@observe(name="policy-bot", as_type="agent")
+def policy_bot(topic: str) -> str:
+    with propagate_attributes(user_id="CUST-001", session_id="lab-9", tags=["lab"]):
+        answer = lookup_policy(topic)
+        trace_id = get_client().get_current_trace_id()
+    return trace_id, answer
+
+
+trace_id, answer = policy_bot("refunds")
+for s in offline_spans(trace_id):
+    print(s["type"], s["name"], "user:", s["user_id"], "session:", s["session_id"])
+```
+
+```bash
+uv run python -m my_work.lab08_observe
+```
+
+Both observations carry the user and session: `propagate_attributes` pushes them onto every span created inside the `with` block.
+
+### Step 3 — Five queries, two failures
+
+The scenario: production reports that some customers get "I couldn't find that" answers. You suspect the tool layer. Create `my_work/lab08_trace.py`, which traces the agent with your own tool executor. The executor reproduces the two production bugs: lookups are case-sensitive, and the API article (KB-104) is missing from the search index.
+
+```python
+"""Lab 9.1 - Langfuse v4: trace the agent, find the failing spans, fix, re-run."""
+from langfuse import get_client, observe
+
+from agents.support_agent import execute_tool
+from observability.langfuse_tracing import offline_spans, print_trace, score_trace, traced_support_agent
+
+FIXED = {"on": False}
+
+
+@observe(name="tool", as_type="tool")
+def lab_tools(name: str, arguments: dict) -> str:
+    args = dict(arguments)
+    if FIXED["on"] and name == "lookup_customer" and "@" in args["identifier"]:
+        args["identifier"] = args["identifier"].strip().lower()          # FIX 1: normalise emails
+    if not FIXED["on"] and name == "search_knowledge_base" and "api" in args["query"].lower():
+        result = "No relevant articles found in the knowledge base."     # the broken index (KB-104 missing)
+    else:
+        result = execute_tool(name, args)
+    level = "WARNING" if result.startswith(("No relevant", "Customer not found")) else "DEFAULT"
+    get_client().update_current_span(name=f"tool {name}", input=args, output=result, level=level)
     return result
 
 
-@observe(name="llm-call")
-def traced_llm_call(messages: list, call_number: int) -> dict:
-    """Make an LLM call with tracing — each call becomes a span."""
-    langfuse_context.update_current_observation(
-        input={"call_number": call_number, "message_count": len(messages)},
-    )
+QUERIES = ["What are your pricing plans?", "How do I reset my password?", "What is your refund policy?",
+           "Can you check my account? My email is Alice@Example.com",
+           "What are the API rate limits for the Pro plan?"]
 
-    response = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        messages=messages,
-        tools=TOOLS,
-        tool_choice="auto",
-    )
-
-    langfuse_context.update_current_observation(
-        output=response.choices[0].message.content or "(tool call)",
-        metadata={
-            "tokens": response.usage.total_tokens if response.usage else 0,
-            "finish_reason": response.choices[0].finish_reason,
-        },
-    )
-    return response
-
-
-@observe(name="support-agent-traced")
-def run_agent_with_full_tracing(user_message: str) -> dict:
-    """
-    Run the support agent with full span-level tracing.
-    Each LLM call and tool execution is a separate span.
-    """
-    import json
-
-    langfuse_context.update_current_trace(
-        user_id="lab-student",
-        metadata={"lab": "lab-08", "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini")},
-        tags=["lab-08"],
-    )
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.append({"role": "user", "content": user_message})
-
-    tool_calls_log = []
-    llm_calls = 0
-    total_tokens = 0
-
-    for iteration in range(5):
-        response = traced_llm_call(messages, call_number=iteration + 1)
-
-        llm_calls += 1
-        total_tokens += response.usage.total_tokens if response.usage else 0
-        choice = response.choices[0]
-
-        if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-            messages.append(choice.message)
-
-            for tool_call in choice.message.tool_calls:
-                args = json.loads(tool_call.function.arguments)
-                result = traced_tool_call(tool_call.function.name, args)
-
-                tool_calls_log.append({
-                    "tool": tool_call.function.name,
-                    "arguments": args,
-                    "result": result,
-                })
-
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result,
-                })
-        else:
-            final_response = choice.message.content or ""
-            langfuse_context.update_current_observation(
-                output=final_response,
-                metadata={
-                    "total_tokens": total_tokens,
-                    "llm_calls": llm_calls,
-                    "tool_calls_count": len(tool_calls_log),
-                },
-            )
-            return {
-                "response": final_response,
-                "tool_calls": tool_calls_log,
-                "total_tokens": total_tokens,
-                "llm_calls": llm_calls,
-            }
-
-    return {
-        "response": "Max iterations reached.",
-        "tool_calls": tool_calls_log,
-        "total_tokens": total_tokens,
-        "llm_calls": llm_calls,
-    }
-
-
-# ── Run 5 Diverse Queries ─────────────────────────────────────────
-QUERIES = [
-    "What are your pricing plans?",
-    "Can you look up my account? My email is alice@example.com",
-    "I've been charged twice. My ID is CUST-001. Please create a ticket.",
-    "I'm furious — your product lost all my data. I need a manager NOW.",
-    "Can your product integrate with SAP and support SAML SSO?",
-]
-
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("Lab 08: Running 5 traced queries")
-    print("=" * 60)
-
-    for i, query in enumerate(QUERIES, 1):
-        print(f"\n--- Query {i}: {query[:50]}...")
-        start = time.perf_counter()
-        result = run_agent_with_full_tracing(query)
-        elapsed = time.perf_counter() - start
-
-        print(f"    Response: {result['response'][:80]}...")
-        print(f"    Tools: {[tc['tool'] for tc in result['tool_calls']]}")
-        print(f"    Tokens: {result['total_tokens']}")
-        print(f"    LLM calls: {result['llm_calls']}")
-        print(f"    Latency: {elapsed:.2f}s")
-
-    # Flush traces to Langfuse
-    langfuse.flush()
-
-    print("\n" + "=" * 60)
-    print("All traces sent to Langfuse.")
-    print("Open your Langfuse dashboard to explore the traces.")
-    print(f"Dashboard: {os.getenv('LANGFUSE_HOST', 'https://cloud.langfuse.com')}")
-    print("=" * 60)
+for phase in ("BEFORE", "AFTER"):
+    FIXED["on"] = phase == "AFTER"
+    print(f"--- {phase} FIX ---")
+    for q in QUERIES:
+        r = traced_support_agent(q, user_id="lab-9", session_id=phase, tool_executor=lab_tools)
+        warnings = [s for s in offline_spans(r["trace_id"]) if s["level"] == "WARNING"]
+        print(f"{q[:52]:<54} {'FAILING span: ' + warnings[0]['name'] if warnings else 'ok'}")
+        score_trace(r["trace_id"], "tool_ok", 0.0 if warnings else 1.0)
+        if phase == "BEFORE" and warnings and "API" in q:
+            print_trace(r["trace_id"])
 ```
-
-### Step 3 — Run the traced queries
 
 ```bash
-python lab08_tracing.py
+uv run python -m my_work.lab08_trace
 ```
 
-Wait for the script to complete. All five queries will be traced.
+With Langfuse keys set, filter the UI by session `BEFORE` and level `WARNING`, and look at the `tool_ok` score on each trace (`score_trace` calls `create_score`).
 
-### Step 4 — Navigate the Langfuse dashboard
+### Step 4 — Root cause analysis
 
-Open your Langfuse dashboard in a browser:
+For each failing trace, write in `my_work/lab08_rca.md`:
 
-1. **Traces tab** — You should see 5 traces tagged with `lab-08`
-2. Click on any trace to see the **span waterfall** — each LLM call and tool execution is a separate span
+1. **Symptom** (what the customer saw)
+2. **Failing span** (name, input, output)
+3. **Why the model is not at fault** (it reported the empty result honestly)
+4. **Fix** and **how you verified it** (the AFTER run)
 
-### Step 5 — Find the longest span
+The first bug is real in the shipped agent: `lookup_customer` matches emails exactly, so `Alice@Example.com` is "not found". The fix belongs in the tool, not the prompt.
 
-In the Langfuse dashboard:
+### Step 5 — The same run as OpenTelemetry GenAI spans
 
-1. Go to the **Traces** tab
-2. Sort by **Latency** (descending)
-3. Click the slowest trace
-4. In the span waterfall, identify which span took the longest
-
-**Record in your notes:**
-
-```markdown
-### Longest Span
-- **Trace:** [trace name / query]
-- **Span:** [span name, e.g., "llm-call #2"]
-- **Duration:** [X.XX seconds]
-- **Reason:** [why this span was slow — model inference, network, etc.]
+```bash
+uv run python demos/m09_otel_genai.py      # same as: make otel
 ```
 
-### Step 6 — Find the most expensive span
-
-1. In the trace detail view, look at the **Tokens** column
-2. Or sort traces by token count if the dashboard supports it
-3. Identify which query consumed the most tokens
-
-**Record:**
-
-```markdown
-### Most Expensive Span
-- **Trace:** [trace name / query]
-- **Total tokens:** [X,XXX]
-- **Estimated cost:** $[X.XXXX]
-- **Reason:** [multi-turn tool calling, long system prompt, etc.]
-```
-
-### Step 7 — Find and diagnose a failing span
-
-The "SAP integration" query (Query 5) likely produces a lower-quality response because the knowledge base doesn't cover it.
-
-1. Open the trace for Query 5
-2. Look at the `search_knowledge_base` tool span — what did it return?
-3. Look at the final LLM call — did the model hallucinate despite getting "No relevant articles found"?
-
-**Root Cause Diagnosis:**
-
-```markdown
-### Failing Span Diagnosis
-- **Trace:** Query 5 — SAP integration question
-- **Failing span:** [which span]
-- **Root cause:** The knowledge base returned no results for the query.
-  The LLM then [hallucinated features / correctly admitted uncertainty].
-- **Impact:** [Customer gets wrong information / appropriate response]
-- **Fix:** [Add SAP integration docs to KB / improve fallback behavior]
-```
+Compare the attribute names (`gen_ai.operation.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`, `gen_ai.tool.name`) with what Langfuse shows. They come from the official `opentelemetry-semantic-conventions` package (`gen_ai_attributes`, still marked incubating), not from the third-party `opentelemetry.semconv.ai` module.
 
 ---
 
 ## Expected Output
 
-### Console output:
+Step 2:
 
 ```
-============================================================
-Lab 08: Running 5 traced queries
-============================================================
-
---- Query 1: What are your pricing plans?...
-    Response: TechCorp offers three plans: Basic at $9.99...
-    Tools: ['search_knowledge_base']
-    Tokens: 385
-    LLM calls: 2
-    Latency: 2.14s
-
---- Query 2: Can you look up my account? My email is alic...
-    Response: I found your account! You are Alice Johnson...
-    Tools: ['lookup_customer']
-    Tokens: 412
-    LLM calls: 2
-    Latency: 1.87s
-
-...
-
-============================================================
-All traces sent to Langfuse.
-Open your Langfuse dashboard to explore the traces.
-Dashboard: https://cloud.langfuse.com
-============================================================
+agent policy-bot user: CUST-001 session: lab-9
+tool lookup-policy user: CUST-001 session: lab-9
 ```
 
-### Langfuse dashboard:
+Step 3 (offline; trace IDs and timestamps change on every run):
 
-You should see 5 traces, each containing nested spans for LLM calls and tool executions.
+```
+--- BEFORE FIX ---
+What are your pricing plans?                           ok
+How do I reset my password?                            ok
+What is your refund policy?                            ok
+Can you check my account? My email is Alice@Example.   FAILING span: tool lookup_customer
+What are the API rate limits for the Pro plan?         FAILING span: tool search_knowledge_base
+agent      support-agent                   
+  generation chat gpt-4.1-mini                usage={"input": 772, "output": 36}
+  tool       tool search_knowledge_base       <-- WARNING
+             output: No relevant articles found in the knowledge base.
+  generation chat gpt-4.1-mini                usage={"input": 848, "output": 29}
+--- AFTER FIX ---
+What are your pricing plans?                           ok
+How do I reset my password?                            ok
+What is your refund policy?                            ok
+Can you check my account? My email is Alice@Example.   ok
+What are the API rate limits for the Pro plan?         ok
+```
 
 ---
 
 ## Verification Checklist
 
-- [ ] Langfuse cloud account is created and API keys are in `.env`
-- [ ] `langfuse.auth_check()` returns `True`
-- [ ] All 5 queries ran and produced traces
-- [ ] Traces appear in the Langfuse dashboard with `lab-08` tag
-- [ ] You can see the span waterfall for each trace
-- [ ] You identified the **longest** span and recorded the duration
-- [ ] You identified the **most expensive** span and recorded the token count
-- [ ] You diagnosed the root cause of the failing/low-quality span
-- [ ] All three findings are documented in structured notes
+- [ ] No `langfuse.decorators` or `langfuse_context` anywhere in your code
+- [ ] Your own function produces an `agent` and a `tool` observation with user and session set
+- [ ] You found both failing spans from the trace, not from the code
+- [ ] Each trace carries a `tool_ok` score
+- [ ] The RCA names the span, the cause and the verified fix
+- [ ] You can map three Langfuse fields to their `gen_ai.*` OpenTelemetry names
 
 ---
 
 ## Common Pitfalls
 
-1. **Traces don't appear in the dashboard** — Langfuse batches trace uploads. Call `langfuse.flush()` at the end of your script (already included above) and wait 10–30 seconds before checking the dashboard.
-
-2. **`LANGFUSE_PUBLIC_KEY` vs. `LANGFUSE_SECRET_KEY` swapped** — The public key starts with `pk-lf-` and the secret key starts with `sk-lf-`. If swapped, `auth_check()` will fail.
-
-3. **Nested `@observe` decorators not creating child spans** — Langfuse uses Python's context variables to track the current trace. If you run traced functions in threads or async without proper context propagation, child spans may appear as separate traces.
+1. **No traces in the UI.** Check the three `LANGFUSE_*` variables and that the process calls `get_client().flush()` (or lives long enough to export). Offline mode never contacts a server.
+2. **Trace attributes missing on child spans.** Set them with `propagate_attributes(...)` around the work, not after it.
+3. **Blaming the model.** In both failures the model behaved correctly with what the tool returned. The trace shows that in one look; the final output alone does not.
+4. **Logging secrets.** Tool inputs and outputs are stored in the trace. Mask PII before sending traces to a shared backend (Langfuse supports a `mask=` function on the client).
 
 ---
 
 ## Extension Challenge
 
-**Advanced:** Add evaluation scores to the traces using `log_eval_score()`. After running each query:
-
-1. Evaluate the response with `AnswerRelevancyMetric` from DeepEval
-2. Log the score to the Langfuse trace using `langfuse_context.score_current_trace()`
-3. In the Langfuse dashboard, filter traces by score to find the lowest-quality responses
-
-```python
-from langfuse.decorators import langfuse_context
-
-# After getting the result, score the trace
-langfuse_context.score_current_trace(
-    name="answer_relevancy",
-    value=0.85,  # Replace with actual metric score
-    comment="Evaluated by AnswerRelevancyMetric",
-)
-```
-
-This connects evaluation results directly to agent traces — the foundation of production monitoring.
+1. Run `uv run python demos/m09_langfuse_tracing.py`: four traced conversations for three customers, with cost per trace. Which trace is the most expensive and why?
+2. Run `uv run python demos/m09_cost_analysis.py` and find what share of input tokens is fixed overhead (system prompt + tool schemas). This is the hotspot Module 10 attacks.
+3. Fix the case-sensitivity bug properly in `agents/support_agent.py` (`execute_tool`), add a unit test for `Alice@Example.com`, and run `make test`.
