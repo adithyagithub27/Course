@@ -161,7 +161,7 @@ Next, the code: aggregate TTFT, TPOT and total time from the span store, expose 
 | ID | 7.2 |
 | Title | Code-along: measure TTFT, TPOT and p95 from spans |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
+| Target duration | 8:00 (about 730 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Derive first-token, per-token and total timings from the span attributes you already emit, compute percentiles without numpy, and expose them as Prometheus histograms with low-cardinality labels. |
 | Prerequisites | 7.1; Section 5.4 (`completion_start_time`, `gen_ai.response.time_to_first_chunk`) |
 | Files used | `src/northwind/latency.py`, `telemetry/metrics.py`, `telemetry/local_store.py`, `app/agent.py` (`_finish`), Ops Console Latency page, `tests/unit/test_latency.py` |
@@ -372,7 +372,7 @@ Now you can see where the time goes. Next, the controls that hold it: timeouts, 
 | ID | 7.3 |
 | Title | Timeouts, retries and backoff done right |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
+| Target duration | 8:00 (about 740 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
 | One idea | Give every call a timeout derived from the budget, bound retries with jittered backoff, keep tool writes safe to repeat, and count every retry as the cost event it is. |
 | Prerequisites | 7.2; 6.7 (budget guard) |
 | Files used | `app/agent.py`, `src/northwind/config.py`, `telemetry/metrics.py`, `simulator/scenarios.py` (`retry_storm`), Ops Console Reliability page |
@@ -565,7 +565,7 @@ Retries help when the failure is brief. When a whole model goes bad for an hour,
 | ID | 7.4 |
 | Title | Fallbacks and circuit breakers with the Router |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 650 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
+| Target duration | 8:00 (about 660 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
 | One idea | Give every model a fallback, put a circuit breaker in front of it so a failing deployment is bypassed automatically, and log every fallback with the served model so you can see what it cost. |
 | Prerequisites | 7.3; 6.6 (Router setup) |
 | Files used | `app/agent.py` (`FALLBACKS`, `build_router_config`, `CircuitBreaker`, `_call_model`), `src/northwind/config.py`, `telemetry/metrics.py`, `tests/unit/test_agent.py` |
@@ -748,7 +748,7 @@ Fallbacks handle a failing model. Next, the provider and your own traffic say "t
 | ID | 7.5 |
 | Title | Rate limits, queues and graceful degradation |
 | Type | SL (slides + avatar, with a short code and terminal beat) |
-| Target duration | 6:00 (about 640 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 6:00 (about 620 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | Treat 429s and queues as a capacity problem: back off and count, cap concurrency per tenant, shed the least valuable traffic first, and tell users the truth in degraded mode. |
 | Prerequisites | 7.4; 6.7 (economy mode) |
 | Files used | `app/server.py` (`TenantLimiter`), `src/northwind/config.py` (`ATLAS_TENANT_MAX_INFLIGHT`, `ATLAS_QUEUE_TIMEOUT_S`), `telemetry/metrics.py`; diagram "request path with per-tenant semaphores" |
@@ -908,7 +908,7 @@ Time for chaos. In the next lecture we inject a slow provider in the busy aftern
 | ID | 7.6 |
 | Title | Chaos demo: slow provider during peak |
 | Type | DM (live demo) |
-| Target duration | 7:00 (about 760 spoken words at ~140 wpm; remaining time is dashboards and runs) |
+| Target duration | 7:00 (about 770 spoken words at ~140 wpm; remaining time is dashboards and runs) |
 | One idea | Inject a slow provider in the busy afternoon, read the silent incident from three charts (p95 up, retries and cost flat), and see which fixes buy seconds and which buy milliseconds. |
 | Prerequisites | 7.1 to 7.5 |
 | Files used | `simulator/scenarios.py` (`slow_provider` preset), Ops Console Latency, Reliability and Cost pages, `.env.chaos.example`, `tests/unit/test_agent.py` |
@@ -1043,7 +1043,7 @@ Your turn. Lab 4 hands you the same scenario and asks you to bring p95 back towa
 | ID | 7.7 |
 | Title | Lab 4: Hold p95 under 4 seconds during chaos |
 | Type | LAB (guided lab; short video intro, work off-video) |
-| Target duration | Video 3:00 (about 290 spoken words at ~140 wpm, plus slide time); lab work about 75 minutes |
+| Target duration | Video 3:00 (about 220 spoken words at ~140 wpm, plus slide time); lab work about 75 minutes |
 | One idea | Reproduce the slow-provider day, tune timeouts, retries, fallbacks and concurrency with every change justified from the worksheet, and prove the result with the budget gate and a before/after table. |
 | Prerequisites | 7.1 to 7.6 |
 | Files used | `04-labs/lab-04-latency-chaos.md`, `.env.chaos.example`, `src/northwind/config.py`, `tests/budget/test_budget_gate.py`, `simulator/scenarios.py` |
@@ -1104,7 +1104,7 @@ Before the lab, the Section 7 quiz.
 | ID | 7.8 |
 | Title | Quiz: Latency and reliability |
 | Type | QZ (quiz; short video intro) |
-| Target duration | Video 1:00 (about 120 spoken words at ~140 wpm, plus slide time) |
+| Target duration | Video 1:00 (about 140 spoken words at ~140 wpm, plus slide time) |
 | One idea | Check you can pick the right percentile, the right timeout and the right control for each failure shape. |
 | Prerequisites | 7.1 to 7.6 |
 | Files used | `06-assessments/quizzes/section-07.md` (6 questions) |

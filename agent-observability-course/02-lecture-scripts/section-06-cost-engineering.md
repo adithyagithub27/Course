@@ -38,7 +38,7 @@
 | ID | 6.1 |
 | Title | Where the money goes: token anatomy |
 | Type | SL (slides + avatar, with one terminal beat) |
-| Target duration | 7:00 (about 850 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 7:00 (about 800 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | An agent's bill is made of six token streams, and the biggest one is the input you re-send on every step. |
 | Prerequisites | Sections 2 to 5 (you can read a trace with usage on it) |
 | Files used | Diagram D5 "token anatomy of one Atlas request"; `app/agent.py` (`AgentResult.generations`) |
@@ -185,7 +185,7 @@ Next, the price table. If the prices are wrong, every number after this is wrong
 | ID | 6.2 |
 | Title | Code-along: a price table you can trust |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 770 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
+| Target duration | 8:00 (about 720 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Take prices from `litellm.model_cost`, pin a fallback table with a date, and put the per-token math in one tested function. |
 | Prerequisites | 6.1; `uv sync` done |
 | Files used | `src/northwind/pricing.py`, `tests/unit/test_pricing.py` |
@@ -452,7 +452,7 @@ Now that every generation can have a price, let's put a tenant, a user and a fea
 | ID | 6.3 |
 | Title | Cost per request, session, user, tenant and feature |
 | Type | SC (screencast code-along; upload as Part A "attribution" and Part B "the showback report") |
-| Target duration | 9:00 (about 960 spoken words at ~140 wpm; remaining time is on-screen code, runs and the report) |
+| Target duration | 9:00 (about 860 spoken words at ~140 wpm; remaining time is on-screen code, runs and the report) |
 | One idea | Attach cost to every generation together with tenant, user, session and feature, then roll up, so the same fifty-six dollars can be sliced any way finance asks. |
 | Prerequisites | 6.2; Section 4 (sessions, users, tags) |
 | Files used | `src/northwind/cost.py`, `src/northwind/report.py`, `src/northwind/slo.py`, `app/agent.py`, `telemetry/genai_attrs.py`, `telemetry/metrics.py`, Ops Console Cost page (`console/pages/2_Cost.py`) |
@@ -746,7 +746,7 @@ Attribution tells you where the money goes. Next, the first lever that brings it
 | ID | 6.4 |
 | Title | Prompt caching: the cheapest win |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 650 spoken words at ~140 wpm; remaining time is on-screen code, runs and the before/after) |
+| Target duration | 8:00 (about 680 spoken words at ~140 wpm; remaining time is on-screen code, runs and the before/after) |
 | One idea | Put everything stable at the front of the prompt, set a `prompt_cache_key`, and the same day of traffic costs 34% less with identical answers. |
 | Prerequisites | 6.3 |
 | Files used | `app/agent.py`, `app/prompts.py`, Ops Console Cost page |
@@ -926,7 +926,7 @@ Caching makes re-sent tokens cheaper. The next lever makes them fewer: the conte
 | ID | 6.5 |
 | Title | The context diet |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 690 spoken words at ~140 wpm; remaining time is on-screen code and the before/after) |
+| Target duration | 8:00 (about 930 spoken words at ~140 wpm; remaining time is on-screen code and the before/after) |
 | One idea | Truncate tool results and trim history, measure tokens per step before and after, and cut the input bill by a quarter without hurting answers. |
 | Prerequisites | 6.4 |
 | Files used | `src/northwind/tokens.py`, `app/agent.py`, `src/northwind/config.py`, `tests/unit/test_tokens.py` |
@@ -1163,7 +1163,7 @@ Every one of those tokens still goes to gpt-4.1-mini, even when the answer is a 
 | ID | 6.6 |
 | Title | Small-model-first routing with LiteLLM Router |
 | Type | SC (screencast code-along; upload as Part A "the Router" and Part B "the escalation rule and cost impact") |
-| Target duration | 9:00 (about 750 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
+| Target duration | 9:00 (about 660 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Send the simple intents to gpt-4.1-nano, keep gpt-4.1-mini as the default and gpt-4.1 for escalation, and cut the day by 16% with the same answers. |
 | Prerequisites | 6.5; `litellm` installed |
 | Files used | `app/agent.py` (router mode), `src/northwind/config.py`, `telemetry/metrics.py` |
@@ -1375,7 +1375,7 @@ Three levers, each measured. Now the guard rail: per-tenant budgets that degrade
 | ID | 6.7 |
 | Title | Budgets and anomaly alerts per tenant |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 630 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
+| Target duration | 8:00 (about 950 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
 | One idea | Give every tenant a daily budget with a soft cap that degrades and a hard cap that refuses politely, and flag an abnormal request cost before the day's total gets there. |
 | Prerequisites | 6.6 |
 | Files used | `src/northwind/budget.py`, `app/agent.py`, `app/server.py` (`GET /budget`), `telemetry/metrics.py`, `tests/unit/test_budget.py`, Ops Console Budgets page |
@@ -1412,7 +1412,7 @@ Two caps over a rolling twenty-four hours. At the soft cap, twenty-five dollars 
 
 [AVATAR]
 
-LiteLLM ships a `BudgetManager`: create a budget per user with a duration, update cost after each call, read the current and projected cost. If you run a LiteLLM gateway, use it. Atlas needs the tenant dimension, two levels, a degraded mode and a detector, so we write our own, about two hundred fifty lines with the same shape, and test them offline.
+LiteLLM ships a `BudgetManager`: a budget per user with a duration, updated after each call. If you run a LiteLLM gateway, use it. Atlas needs tenants, two levels, a degraded mode and a detector, so it has its own, with the same shape, tested offline.
 
 [SCREEN: VS Code, `src/northwind/budget.py`]
 
@@ -1628,7 +1628,7 @@ The console's rule is simple: a fifteen-minute bin whose cost per request is mor
 
 [AVATAR]
 
-So there are three detectors at three speeds: per request inside the guard, per fifteen minutes on the console, per hour in Prometheus. They answer "is this abnormal?" The caps answer a different question: "have we spent the money?" Keep both. And the unit tests pin the guard's behavior without any of the theatre: `uv run pytest tests/unit/test_budget.py` runs fourteen tests in a few hundredths of a second, including allow, degrade and refuse in one test and an hourly spike flagged by `hourly_anomalies`.
+Three detectors at three speeds: per request inside the guard, per fifteen minutes on the console, per hour in Prometheus. They answer "is this abnormal?" The caps answer "have we spent the money?" Keep both. And `uv run pytest tests/unit/test_budget.py` pins the guard without the theatre: fourteen tests in a few hundredths of a second.
 
 [SLIDE 5: Recap]
 - Soft cap degrades to the nano model
@@ -1663,7 +1663,7 @@ You now have four measured tools: caching, the diet, routing and budgets. Time t
 | ID | 6.8 |
 | Title | Challenge: cut Atlas's daily cost by 40% |
 | Type | CH (pause-then-solution challenge) |
-| Target duration | 7:00 (about 580 spoken words at ~140 wpm; the student pause is off-video, 30 to 60 minutes) |
+| Target duration | 7:00 (about 640 spoken words at ~140 wpm; the student pause is off-video, 30 to 60 minutes) |
 | One idea | Take the $56.28 replayed day below $33.77 using the levers from this section, prove it in the Ops Console, and prove quality held. |
 | Prerequisites | 6.1 to 6.7 |
 | Files used | `simulator/replay.py`, `src/northwind/config.py`, Ops Console Compare replays page, `05-projects/challenges.md` |
@@ -1794,7 +1794,7 @@ You've done the engineering. Now turn it into the document that gets you the bud
 | ID | 6.9 |
 | Title | Project 1: The showback report |
 | Type | AS (assignment; text lecture with a short video intro) |
-| Target duration | Video 3:00 (about 330 spoken words at ~140 wpm, plus slide time); project work 2 to 3 hours off-video |
+| Target duration | Video 3:00 (about 270 spoken words at ~140 wpm, plus slide time); project work 2 to 3 hours off-video |
 | One idea | Produce the weekly cost report by tenant and feature, with cost per resolved session and three recommendations, in a form finance would accept. |
 | Prerequisites | 6.1 to 6.8 |
 | Files used | `05-projects/project-1-showback-report.md`, `src/northwind/report.py`, `simulator/replay.py` |

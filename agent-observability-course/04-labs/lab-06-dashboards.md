@@ -5,83 +5,74 @@
 | **Section / lecture** | Section 9, lecture 9.6 |
 | **Time estimate** | 60 minutes |
 | **Difficulty** | Intermediate |
-| **Goal** | Bring up Prometheus and Grafana with Docker Compose, scrape Atlas's `/metrics`, import the Atlas Ops dashboard, then write one alert rule (tool error spike) and make it fire during a replayed `retry_storm`, with a runbook link on the alert. |
-| **You will produce** | A running compose stack, `deploy/prometheus/alerts.yml` with your rule, a screenshot of the alert in `FIRING`, and `notes/lab-06.md` |
+| **Goal** | Bring up the observability stack with Docker Compose, read Atlas's `/metrics`, open the provisioned Atlas Ops dashboard, then write one alert rule the repo doesn't ship yet (a step-limit spike: the runaway loop from Lecture 5.6) and make it fire, with a runbook link on the alert. |
+| **You will produce** | A running stack, a new rule in `deploy/alerts.yml`, `10-resources/runbooks/step-limit-spike.md`, a screenshot of the alert firing, and `notes/lab-06.md` |
 
 ---
 
 ## Prerequisites
 
-- Labs 1 to 5 complete (Lab 4 for the `retry_storm` intuition).
+- Labs 1 to 5 complete.
 - Lectures 9.1 to 9.5 watched.
 - Docker Desktop or Docker Engine with Compose v2 (`docker compose version`).
-- Ports 8000 (Atlas), 9090 (Prometheus) and 3001 (Grafana) free. Grafana is on 3001 in this course because Langfuse takes 3000 in Lab 7.
+- Free ports: 8000 (Atlas), 9091 (Prometheus), 3001 (Grafana), 4317/4318/8888 (Collector), 6006 (Phoenix). Grafana is on 3001 and Prometheus on 9091 so they don't collide with Langfuse (3000) and a local Prometheus (9090).
 
 ## Offline note
 
-This lab is entirely offline. Metrics come from Atlas's own `/metrics` endpoint, and the swarm drives Atlas with the mock LLM. No keys, no cost.
+This lab is entirely offline: the Atlas container runs with `OFFLINE=1`, the swarm drives it, and the mock LLM answers. No keys, no cost. Prometheus and alert behaviour need the live stack; the offline replay never reaches Prometheus.
 
 ---
 
 ## Step 1: Look at the raw metrics
 
+Before Docker, look at what Atlas exposes. Terminal 1:
+
 ```bash
 OFFLINE=1 make run
 ```
 
+Terminal 2: send one request (the Lab 1 curl), then:
+
 ```bash
-curl -s http://localhost:8000/metrics | grep -E '^atlas_' | head -30
+curl -sL http://localhost:8000/metrics | grep -E '^atlas_' | grep -v _created | head -40
 ```
 
-Expected (after at least one request; send a curl from Lab 1 if the list is empty):
+(`-L` matters: `/metrics` answers with a redirect to `/metrics/`.) Expected, abridged:
 
 ```text
-atlas_requests_total{tenant="hr",model="gpt-4.1-mini",outcome="resolved"} 1.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="0.5"} 0.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="1.0"} 1.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="2.0"} 1.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="4.0"} 1.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="8.0"} 1.0
-atlas_request_latency_seconds_bucket{tenant="hr",le="+Inf"} 1.0
-atlas_request_latency_seconds_count{tenant="hr"} 1.0
-atlas_request_latency_seconds_sum{tenant="hr"} 0.812
-atlas_tokens_total{tenant="hr",model="gpt-4.1-mini",kind="input"} 1184.0
-atlas_tokens_total{tenant="hr",model="gpt-4.1-mini",kind="output"} 58.0
-atlas_cost_usd_total{tenant="hr",model="gpt-4.1-mini",feature="policy_question"} 0.000566
-atlas_tool_calls_total{tool="search_knowledge_base",outcome="ok"} 1.0
-atlas_tool_calls_total{tool="lookup_ticket",outcome="error"} 0.0
-atlas_budget_decisions_total{tenant="hr",decision="allow"} 1.0
-atlas_budget_spent_usd{tenant="hr"} 0.000566
-atlas_model_fallbacks_total{from_model="gpt-4.1-mini",to_model="gpt-4.1-nano"} 0.0
+atlas_requests_total{feature="policy_question",model="gpt-4.1-mini",outcome="resolved",tenant="hr"} 1.0
+atlas_tokens_total{kind="input",model="gpt-4.1-mini",tenant="hr"} 9940.0
+atlas_tokens_total{kind="output",model="gpt-4.1-mini",tenant="hr"} 315.0
+atlas_cost_usd_total{feature="policy_question",model="gpt-4.1-mini",tenant="hr"} 0.00448
+atlas_request_latency_seconds_bucket{feature="policy_question",le="3.0",tenant="hr"} 0.0
+atlas_request_latency_seconds_bucket{feature="policy_question",le="4.0",tenant="hr"} 1.0
+...
+atlas_request_latency_seconds_count{feature="policy_question",tenant="hr"} 1.0
+atlas_request_latency_seconds_sum{feature="policy_question",tenant="hr"} 3.3331
+atlas_ttft_seconds_bucket{le="0.5",model="gpt-4.1-mini"} 1.0
+atlas_agent_steps_bucket{le="2.0",tenant="hr"} 1.0
 ```
 
-Look at the label sets. `tenant` has 4 values, `model` 3 to 4, `tool` 5, `outcome` 3, `decision` 3. There is **no** `user_id`, `session_id` or `trace_id` label anywhere. That is the cardinality rule from lecture 5.5: each unique label combination is a separate time series in Prometheus memory, and a user id label on a histogram with 7 buckets across 4 tenants and 2,000 employees would be 56,000 series for one metric.
+Look at the label sets: `tenant`, `model`, `outcome`, `feature`, `tool`, `kind`, `decision`. There is **no** `user_id`, `session_id` or `trace_id` label anywhere; `tests/integration/test_server.py` asserts it. That's the cardinality rule from Lecture 5.5: each unique label combination is a separate series in Prometheus memory.
 
-Questions for your notes: how many time series does `atlas_request_latency_seconds` produce at most? (Answer in the solution notes.)
+Question for your notes: how many series can `atlas_request_latency_seconds` produce at most across the four tenants? (Answer in the solution notes.)
 
-> **Checkpoint 1:** you can read a counter, a histogram bucket and explain why no per-user labels exist.
+Stop the server (Ctrl+C) before Step 2: the stack runs its own Atlas container on port 8000.
+
+> **Checkpoint 1:** you can read a counter and a histogram bucket and explain why no per-user labels exist.
 
 ---
 
-## Step 2: Bring up Prometheus and Grafana
+## Step 2: Bring up the stack
 
 ```bash
-docker compose -f deploy/docker-compose.observability.yml up -d
+make stack
 docker compose -f deploy/docker-compose.observability.yml ps
 ```
 
-Expected:
+`make stack` builds Atlas from `deploy/Dockerfile` and starts five services: `atlas` (port 8000, `OFFLINE=1`, exporting OTLP to the Collector), `otel-collector`, `phoenix`, `prometheus` (port 9091) and `grafana` (port 3001). The Atlas container reads `../.env`; leave the Langfuse keys out of it for this lab.
 
-```text
-NAME                 IMAGE                             STATUS         PORTS
-atlas-otel-collector otel/opentelemetry-collector-contrib   Up 10 seconds  0.0.0.0:4317-4318->4317-4318/tcp
-atlas-prometheus     prom/prometheus                   Up 10 seconds  0.0.0.0:9090->9090/tcp
-atlas-grafana        grafana/grafana                   Up 10 seconds  0.0.0.0:3001->3000/tcp
-```
-
-`deploy/prometheus/prometheus.yml` scrapes `host.docker.internal:8000/metrics` every 15 s (on Linux the compose file adds `extra_hosts: host.docker.internal:host-gateway`). Check the target is up: open `http://localhost:9090/targets`; `atlas` should be `UP`.
-
-If it says `DOWN` with a connection refused, Atlas is not running or is bound to `127.0.0.1` only; start it with `make run` (uvicorn binds 0.0.0.0).
+`deploy/prometheus.yml` scrapes `atlas:8000/metrics` (the compose service name) every 15 s, plus the Collector's own metrics, and loads `deploy/alerts.yml`. Open `http://localhost:9091/targets`: the `atlas` job should be `UP`.
 
 > **Checkpoint 2:** Prometheus target `atlas` is UP.
 
@@ -89,13 +80,11 @@ If it says `DOWN` with a connection refused, Atlas is not running or is bound to
 
 ## Step 3: Generate traffic and query it
 
-Terminal 3:
-
 ```bash
-OFFLINE=1 make swarm            # 2 RPS for 5 minutes, all tenants, seed 42
+make swarm RPS=2 DURATION=300
 ```
 
-In Prometheus (`http://localhost:9090/graph`) run these, one at a time:
+The swarm drives the containerised Atlas on `localhost:8000` with the seeded traffic plan. In Prometheus (`http://localhost:9091/graph`), run these one at a time:
 
 ```promql
 sum(rate(atlas_requests_total[1m])) by (tenant)
@@ -113,77 +102,69 @@ sum(increase(atlas_cost_usd_total[1h])) by (tenant)
 sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)
 ```
 
-Expected after two minutes of swarm: requests ≈ 0.5/s per tenant, p95 ≈ 2.1 s, cost accumulating, tool error ratio ≈ 0.01 to 0.02 for `lookup_ticket` (the mock has a 1.5% base error rate) and 0 for the rest.
+```promql
+sum(rate(atlas_requests_total{outcome="step_limit"}[5m])) / sum(rate(atlas_requests_total[5m]))
+```
 
-Note about `histogram_quantile`: it interpolates inside the bucket that contains the 95th percentile, so with buckets `2.0` and `4.0` a true p95 of 2.14 s shows as something between 2.0 and 4.0 depending on the distribution. If you need p95 to the millisecond, that is what the spans and Lab 4's report are for. Dashboards need trends and thresholds; buckets are chosen so the budget (4 s) is a bucket boundary.
+Expect requests split across the four tenants (ops the busiest), a p95 under four seconds (the latency histogram records the mock's simulated latency), cost climbing, and zero tool errors and zero step-limit outcomes on a normal day. Record what you see; numbers vary with how long the swarm has run.
 
-> **Checkpoint 3:** the four queries return data and you can explain the bucket-resolution caveat.
+About `histogram_quantile`: it interpolates inside the bucket that holds the 95th percentile. The latency buckets are 3.0 and 4.0 around the budget, so a p95 near the budget is accurate to within that bucket. Buckets are chosen so the 4 s budget is a boundary.
 
----
-
-## Step 4: Import the Atlas Ops dashboard
-
-Grafana: `http://localhost:3001` (admin / admin, then skip the password change for the lab). The Prometheus datasource and the dashboard are provisioned from `deploy/grafana/provisioning/`, so **Dashboards → Atlas Ops** should already exist. If you prefer to import by hand: **Dashboards → New → Import → Upload JSON** → `deploy/grafana/dashboards/atlas-ops.json`.
-
-Panels, one per SLI from lecture 9.1:
-
-| Panel | Query (simplified) | SLI |
-|---|---|---|
-| Requests / s by tenant | `sum(rate(atlas_requests_total[1m])) by (tenant)` | traffic |
-| Task success rate | `sum(rate(atlas_requests_total{outcome="resolved"}[5m])) / sum(rate(atlas_requests_total[5m]))` | task success |
-| p95 latency | `histogram_quantile(0.95, sum(rate(atlas_request_latency_seconds_bucket[5m])) by (le))` with a 4 s threshold line | latency |
-| Tool error rate | errors / calls by tool | tool reliability |
-| Cost per hour by tenant | `sum(increase(atlas_cost_usd_total[1h])) by (tenant)` | cost |
-| Cost per resolved session | `sum(increase(atlas_cost_usd_total[1h])) / sum(increase(atlas_requests_total{outcome="resolved"}[1h]))` (per resolved request; per resolved *session* comes from the span store) | the number leadership asks for |
-| Budget decisions | `sum(increase(atlas_budget_decisions_total[1h])) by (decision)` | budget health |
-| Fallbacks and circuit state | `atlas_model_fallbacks_total`, `atlas_llm_retries_total` | reliability |
-
-Use the **tenant** variable at the top to filter to `finance`. Add an annotation: **Dashboard settings → Annotations → New**, query `changes(atlas_build_info[1m]) > 0`, so a redeploy (which changes the `release` label on `atlas_build_info`) draws a vertical line. That is how you will see "the regression started at the release" in Section 11.
-
-> **Checkpoint 4:** dashboard loads with live data; tenant filter works; the p95 panel shows the 4 s threshold line.
+> **Checkpoint 3:** the queries return data and you can explain the bucket-resolution caveat.
 
 ---
 
-## Step 5: Write the alert rule
+## Step 4: Open the Atlas Ops dashboard
 
-Open `deploy/prometheus/alerts.yml`. It has one example rule (cost anomaly). Add a tool error spike rule:
+Grafana: `http://localhost:3001` (admin / admin). The Prometheus datasource (`http://prometheus:9090` inside the network) and the dashboard are provisioned from `deploy/grafana/provisioning/`, so **Dashboards → Atlas Ops** already exists. To import by hand instead: **Dashboards → New → Import → Upload JSON** → `deploy/grafana/dashboards/atlas-ops.json`.
+
+It has 21 panels in four rows:
+
+| Row | Panels |
+|---|---|
+| SLIs | task success, containment, p95 latency, cost per resolved session (1 h) |
+| Traffic and latency | requests/s by tenant, latency p50/p95/p99, TTFT p95 by model, outcomes/s, agent steps p95, tool error rate by tool |
+| Cost | cost/hour by tenant, by feature, tokens/s by kind, cache hit ratio, LLM retries and fallbacks/s, budget decisions/s |
+| Quality and safety | judge score mean, feedback/h, guardrail events/h, telemetry export failures |
+
+Plus a build-info table. Use the `tenant` and `feature` variables at the top to filter. The "Releases" annotation draws a line when `atlas_build_info` changes, so a redeploy is visible. Note the judge panel stays empty: the judge runs as a batch job and never writes `atlas_judge_score`.
+
+> **Checkpoint 4:** the dashboard loads with live data and the tenant filter works.
+
+---
+
+## Step 5: Write a rule the repo doesn't have
+
+Open `deploy/alerts.yml`. It already ships ten rules, including `AtlasToolErrorRate` (a tool above 5% errors for 10 minutes) and the task-success burn-rate pair. Nothing pages specifically when the agent starts hitting its step limit, which is the runaway loop from Lecture 5.6. The burn-rate rules count `step_limit` among bad outcomes, but they need the whole SLO to burn. Add a dedicated rule to the `atlas-slo` group:
 
 ```yaml
-groups:
-  - name: atlas
-    rules:
-      - alert: AtlasToolErrorRate
+      - alert: AtlasStepLimitSpike
         expr: |
           (
-            sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool)
-            /
-            sum(rate(atlas_tool_calls_total[5m])) by (tool)
-          ) > 0.10
-          and
-          sum(rate(atlas_tool_calls_total[5m])) by (tool) > 0.1
-        for: 2m
-        labels:
-          severity: page
-          team: atlas-oncall
+            sum(rate(atlas_requests_total{outcome="step_limit"}[10m]))
+            / sum(rate(atlas_requests_total[10m]))
+          ) > 0.02
+          and sum(rate(atlas_requests_total[10m])) > 0.05
+        for: 5m
+        labels: { severity: ticket, team: atlas-oncall }
         annotations:
-          summary: "Tool {{ $labels.tool }} error rate {{ $value | humanizePercentage }} over 5m"
-          description: "More than 10% of calls to {{ $labels.tool }} are failing. Retries are multiplying cost; check the provider, the ticket API and the retry storm runbook."
-          runbook_url: "https://github.com/<you>/agent-observability-course/blob/main/10-resources/runbooks/tool-error-spike.md"
+          summary: "More than 2% of Atlas requests are hitting the step limit"
+          runbook: "10-resources/runbooks/step-limit-spike.md"
 ```
 
-Three deliberate choices, all from lecture 9.5:
+Three deliberate choices, all from Lecture 9.5:
 
-- **Ratio, not count.** `> 0.10` of calls, so the rule behaves the same at 2 RPS in the lab and 200 RPS in production.
-- **Minimum traffic guard.** `and ... > 0.1` calls/s stops a single failed call at 3 a.m. from paging anyone (1 error out of 1 call is a 100% error rate).
-- **`for: 2m`.** Two consecutive minutes over threshold, so a 30-second blip does not page.
+- **A ratio, not a count.** `> 0.02` of requests, so the rule means the same at 2 requests a second and at 200.
+- **A minimum-traffic guard.** `and ... > 0.05` requests/s stops one stuck conversation at 3 a.m. from raising a ticket.
+- **`for: 5m`.** A short burst doesn't page; five minutes of it does.
 
-Reload Prometheus:
+Reload Prometheus (the compose file enables the lifecycle API) and check the rule loaded:
 
 ```bash
-curl -X POST http://localhost:9090/-/reload
+curl -X POST http://localhost:9091/-/reload
 ```
 
-Open `http://localhost:9090/alerts`. `AtlasToolErrorRate` should show as **Inactive** (green).
+Open `http://localhost:9091/alerts`: `AtlasStepLimitSpike` shows as inactive.
 
 > **Checkpoint 5:** the rule is loaded and inactive.
 
@@ -191,70 +172,58 @@ Open `http://localhost:9090/alerts`. `AtlasToolErrorRate` should show as **Inact
 
 ## Step 6: Make it fire
 
-Stop the swarm and Atlas, restart Atlas with the retry storm scenario (the mock makes `lookup_ticket` fail 40% of the time and the agent retries), then swarm again:
+Put the stack's Atlas into the `loop` scenario: add `ATLAS_SCENARIO=loop` to `.env` (the Atlas container reads it), recreate the container, and drive traffic:
 
 ```bash
-OFFLINE=1 ATLAS_SCENARIO=retry_storm make run
+docker compose -f deploy/docker-compose.observability.yml up -d atlas
+make swarm RPS=2 DURATION=900
 ```
 
-```bash
-OFFLINE=1 make swarm
-```
+With `loop`, every ticket lookup fails and the model keeps retrying it until the default step limit (6) stops the request with outcome `step_limit`. Ticket lookups are about a tenth of the traffic, well over the 2% threshold. Watch `http://localhost:9091/alerts`: inactive, then **pending** once the ratio crosses 0.02, then **firing** after five minutes. In Grafana, "Outcomes / s" shows the `step_limit` series and "Agent steps p95" climbs to 6. Take one screenshot with the firing alert and those two panels.
 
-Watch `http://localhost:9090/alerts`. Timeline you should see:
+Then remove `ATLAS_SCENARIO=loop` from `.env`, recreate the container the same way, keep the swarm running, and watch the alert resolve.
 
-| Time | State | Why |
-|---|---|---|
-| 0:00-1:00 | Inactive | Rate window filling |
-| ~1:00 | **Pending** (yellow) | Ratio crossed 0.10; the `for: 2m` clock starts |
-| ~3:00 | **Firing** (red) | Sustained for 2 minutes |
-
-In Grafana, **Alerting → Alert rules** shows the same rule (Grafana reads Prometheus rules through the datasource) and the **Tool error rate** panel shows `lookup_ticket` climbing to ~0.4. Take the screenshot with both the alert state and the panel visible.
-
-Then stop the scenario (`Ctrl+C`, restart with `OFFLINE=1 make run`, run the swarm again) and watch the alert resolve after the error rate falls under 0.10 for the `for` window.
-
-> **Checkpoint 6:** screenshot of `AtlasToolErrorRate` in FIRING with the `lookup_ticket` label, and evidence it resolved.
+> **Checkpoint 6:** a screenshot of `AtlasStepLimitSpike` firing, and evidence it resolved.
 
 ---
 
 ## Step 7: The runbook
 
-Create `10-resources/runbooks/tool-error-spike.md` from `10-resources/runbook-template.md`. Minimum content:
+Create `10-resources/runbooks/step-limit-spike.md` from `10-resources/runbook-template.md`. Minimum content:
 
 ```markdown
-# Runbook: AtlasToolErrorRate
+# Runbook: AtlasStepLimitSpike
 
-**Alert:** tool error ratio > 10% for 2 minutes on one tool.
-**Impact:** users get "I couldn't look that up" answers; retries multiply cost (see Incident 1).
+**Alert:** more than 2% of requests end at the step limit for 5 minutes.
+**Impact:** users get "I wasn't able to complete this automatically"; each looping request costs up to six model calls.
 
 ## First 5 minutes
-1. Which tool? (`{{ $labels.tool }}`). Open Grafana → Tool error rate → filter by tool.
-2. Is it one tenant? Open the Ops Console → Trace explorer → filter status=ERROR, tool=<tool>, last 15 min.
-3. Read three failing tool spans. Exception type tells you: upstream 5xx (their outage), 4xx (our bad arguments = prompt/model change), timeout (their latency).
+1. Which tool? Grafana → "Tool error rate by tool"; or the Ops Console Reliability page.
+2. Is it one tenant? Filter the dashboard by `tenant`.
+3. Open one looping trace (Ops Console → Traces, or Langfuse filtered on outcome `step_limit`): six `step n` spans, the same failing `execute_tool` span in each.
 
 ## Mitigation
-- Upstream outage: enable degraded mode for that tool (`ATLAS_TOOL_DISABLED=lookup_ticket`), Atlas will hand off with a ticket instead of retrying.
-- Retry storm: lower `ATLAS_MAX_RETRIES` to 0 for that tool; the alert clears when retries stop.
-- Bad arguments after a release: check the release annotation; roll back the prompt label in Langfuse (lecture 4.4).
+- A failing tool: set `ATLAS_MAX_TOOL_RETRIES=2` so Atlas stops retrying it and says so (Lecture 5.6).
+- A prompt or model change: check the release annotation; roll the prompt label back (`python -m app.prompts promote --version <n>`).
 
 ## Escalation
-- After 15 minutes with no cause: page the platform team that owns the ticket API.
+- After 15 minutes with no cause: the team that owns the failing tool.
 
 ## After
-- Postmortem within 48 h (template: 10-resources/postmortem-template.md).
+- Postmortem within 48 h (10-resources/postmortem-template.md).
 ```
 
-Link it from the alert's `runbook_url`.
+The rule's `runbook` annotation points at this file.
 
 > **Checkpoint 7:** the alert carries a runbook link and the runbook answers "what do I do in the first five minutes".
 
 ---
 
-## Stretch goal
+## Stretch goals
 
-1. Add a **multi-window burn-rate alert** for the task-success SLO (99% resolved): fire when the 1 h burn rate > 14.4 **and** the 5 m burn rate > 14.4 (fast burn), and a second rule for 6 h / 30 m > 6 (slow burn). `src/northwind/slo.py::burn_rate` has the maths; lecture 9.1 has the reasoning.
-2. Load the `AtlasTenantCostAnomaly` rule from `deploy/alerts.yml` (hourly `increase(atlas_cost_usd_total[1h])` per tenant against the daily average) and make it fire with `make run PROM=1 SCENARIO=context_bloat` in one terminal and `make swarm RPS=5 DURATION=1200 SCENARIO=context_bloat` in another.
-3. Route alerts to a webhook with Alertmanager (`deploy/alertmanager.yml`) and confirm the JSON payload includes the runbook URL.
+1. Read the two shipped burn-rate rules (`AtlasTaskSuccessBurnRateFast`: 14.4x over 1 h for 5 m; `AtlasTaskSuccessBurnRateSlow`: 6x over 6 h for 30 m) next to `src/northwind/slo.py::burn_rate`. Did your loop run move either of them? Why not, at this traffic level?
+2. Make `AtlasToolErrorRate` fire: `ATLAS_SCENARIO=ticket_flaky` (the ticket service fails twice, then succeeds) in `.env`, recreate the container, swarm for 15 minutes.
+3. Add a `runbook` annotation and an owner label to two more shipped rules. Only `AtlasLatencyP95High` has a runbook link today.
 
 ---
 
@@ -262,27 +231,27 @@ Link it from the alert's `runbook_url`.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Prometheus target DOWN, "connection refused" | Atlas bound to 127.0.0.1 or not running | `make run` (uvicorn binds 0.0.0.0); on Linux confirm `extra_hosts` is in the compose file |
-| Target UP but `atlas_*` metrics missing | No requests yet | Counters appear after the first observation; run the swarm |
-| `histogram_quantile` returns NaN | No samples in the window | Wait for the swarm; check the `[5m]` window has data |
-| Grafana shows "No data" but Prometheus has data | Datasource URL wrong inside Docker | Datasource must be `http://atlas-prometheus:9090`, not `localhost` |
-| Alert stuck in Pending | Ratio hovering around 0.10 | The mock's 40% rate should be well over; check `ATLAS_SCENARIO=retry_storm` was set on the Atlas process, not the swarm |
-| Alert fires immediately with no traffic | Missing the minimum-traffic guard | Add the `and sum(rate(...)) > 0.1` clause |
-| `curl -X POST /-/reload` returns 403 | Lifecycle API not enabled | Compose passes `--web.enable-lifecycle`; otherwise `docker compose restart atlas-prometheus` |
-| Grafana on 3001 not reachable | Port already used | Change the host port in the compose file; the container port stays 3000 |
+| `make stack` fails: port 8000 in use | Your own `make run` is still up | Stop it; the stack runs its own Atlas |
+| Prometheus target DOWN | The `atlas` container is still building or crashed | `docker compose -f deploy/docker-compose.observability.yml logs atlas` |
+| Target UP but no `atlas_*` series | No requests yet | Counters appear after the first observation; run the swarm |
+| `histogram_quantile` returns NaN | No samples in the window | Wait for the swarm to fill `[5m]` |
+| Grafana "No data" but Prometheus has data | Datasource URL changed | It must be `http://prometheus:9090` (inside the network), not `localhost:9091` |
+| `ATLAS_SCENARIO` change has no effect | Container not recreated | `docker compose -f deploy/docker-compose.observability.yml up -d atlas` |
+| Alert stuck in pending | Ratio hovering near 0.02, or the guard not met | Raise `RPS`; check the `step_limit` series in "Outcomes / s" |
+| `curl /metrics` prints nothing | Redirect not followed | `curl -sL` |
 
 ---
 
 ## Solution notes
 
-Reference files: `03-code/deploy/docker-compose.observability.yml`, `03-code/deploy/prometheus/prometheus.yml`, `03-code/deploy/prometheus/alerts.yml`, `03-code/deploy/grafana/dashboards/atlas-ops.json`, `03-code/telemetry/metrics.py`.
+Reference files: `03-code/deploy/docker-compose.observability.yml`, `03-code/deploy/prometheus.yml`, `03-code/deploy/alerts.yml`, `03-code/deploy/grafana/dashboards/atlas-ops.json`, `03-code/telemetry/metrics.py`. `AtlasStepLimitSpike` is the student's rule; it is not in the shipped `alerts.yml`.
 
-Answer to the cardinality question: `atlas_request_latency_seconds` has one `tenant` label with 4 values and 7 buckets (6 boundaries plus `+Inf`), plus `_count` and `_sum`, so at most 4 × (7 + 2) = **36 series**. Add a `user_id` label for 2,000 employees and it becomes 72,000. Add `session_id` and it is unbounded. Identity belongs in spans (Langfuse `user_id`, `session_id`), never in metric labels.
+Answer to the cardinality question: `atlas_request_latency_seconds` has two labels, `tenant` (4 values) and `feature` (7 values), and 13 bucket boundaries plus `+Inf`, plus `_count` and `_sum`: at most 4 × 7 × 16 = **448 series**. That's already a lot for one metric; add `user_id` for 4,800 employees and it becomes over two million. Identity belongs in spans (`user.id`, `session.id`), never in metric labels.
 
-A good alert rule in this lab has all four properties: a ratio, a minimum-traffic guard, a `for` duration, and a runbook URL. Missing any one loses points in the peer review. The most common weak submission alerts on `rate(atlas_tool_calls_total{outcome="error"}[5m]) > 0.5` (a count that means different things at different traffic levels and has no guard).
+A good rule has all four properties: a ratio, a minimum-traffic guard, a `for` duration and a runbook link. The most common weak submission alerts on `rate(atlas_requests_total{outcome="step_limit"}[5m]) > 0.1`: a count that means different things at different traffic levels.
 
 Key takeaways:
 
-1. Metrics answer "how much, how often, how fast" per low-cardinality group; traces answer "why" for one request. Both are needed; neither replaces the other.
-2. Histograms give you percentiles at bucket resolution. Choose bucket boundaries at your budgets.
+1. Metrics answer "how much, how often, how fast" per low-cardinality group; traces answer "why" for one request.
+2. Histograms give percentiles at bucket resolution; put a bucket boundary at the budget.
 3. An alert without a runbook is a notification. An alert with a runbook is an operation.

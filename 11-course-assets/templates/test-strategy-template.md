@@ -1,99 +1,106 @@
 # AI Agent Test Strategy Template
 
-## Agent Under Test
+> AI Agent Testing & Evaluation — the one test-strategy template (decision T4), taught in Lecture 2.3 and reused in Projects 1–5.
+>
+> **How to use it:** (1) describe the agent; (2) cross its components with the five quality dimensions to decide **what** to test (the coverage matrix, diagram D6); (3) place every test on one of the five layers of the agent eval pyramid (diagram D4) to decide **when** it runs and **who** owns it. Rows are the pyramid layers. An empty row is a decision; a missing row is a gap.
+>
+> Vocabulary: six failure modes (T2) — hallucination, wrong tool selection, incorrect tool arguments, reasoning errors, goal drift, infinite loops. Five quality dimensions (T3) — correctness, faithfulness, relevance, safety, reliability. Default thresholds come from `04-code-examples/agent-eval-framework/config/eval_config.yaml`.
+
+---
+
+## 1. Agent Under Test
 
 | Field | Value |
 |-------|-------|
-| Agent Name | |
-| Purpose | |
-| LLM Model | |
-| Tools/APIs | |
-| Deployment Target | |
-| Risk Level | Low / Medium / High / Critical |
+| Agent name and version | |
+| Purpose (one sentence) | |
+| Agent model / judge model | e.g. `gpt-4.1-mini` / `gpt-4.1` |
+| Tools (and which ones act on the world) | |
+| Data it can see (PII? other customers?) | |
+| Users and channel | |
+| Risk level | Low / Medium / High / Critical |
+| Highest-risk failure modes (T2), ranked | 1. 2. 3. |
 
-## Testing Layers
+---
 
-### Layer 1 — Prompt Tests (Unit)
-**What:** Test individual prompts for correctness and robustness
-**When:** Every code change
-**Tools:** DeepEval, pytest
+## 2. Coverage Matrix: What to Test (components × dimensions)
 
-| Test | Metric | Threshold | Priority |
-|------|--------|-----------|----------|
-| Answer relevancy | AnswerRelevancyMetric | 0.7 | P0 |
-| Faithfulness | FaithfulnessMetric | 0.8 | P0 |
-| Hallucination | HallucinationMetric | 0.3 | P0 |
-| Custom: _________ | GEval | _____ | P1 |
+Fill each cell with a test type, or "n/a" with a reason. Each cell you fill becomes one or more tests in Section 3.
 
-### Layer 2 — Component Tests
-**What:** Test individual components (tools, retrieval, generation)
-**When:** Every PR
-**Tools:** DeepEval, RAGAS
+| Component ↓ / Dimension → | Correctness | Faithfulness | Relevance | Safety | Reliability |
+|---|---|---|---|---|---|
+| **LLM** (reasoning, wording) | | | | | |
+| **Tools** (selection, arguments, results) | | | | | |
+| **Memory** (conversation, retrieval) | | | | | |
+| **Planning** (steps, loops, hand-offs) | | | | | |
 
-| Component | Tests | Metric | Threshold |
-|-----------|-------|--------|-----------|
-| Tool calling | Selection accuracy | ToolCorrectnessMetric | 0.85 |
-| Tool calling | Argument correctness | Custom assertion | 100% |
-| RAG retrieval | Context precision | ContextualPrecisionMetric | 0.7 |
-| RAG retrieval | Context recall | ContextualRecallMetric | 0.7 |
-| RAG generation | Faithfulness to docs | FaithfulnessMetric | 0.8 |
+Examples from the TechCorp support agent: Tools × Correctness = tool correctness (expected tools per golden case); LLM × Faithfulness = Faithfulness metric against the tool results; Planning × Reliability = loop detection and the 5-iteration cap; Tools × Safety = no `lookup_customer` for another customer's data; Memory × Safety = identity re-checked on every turn (the multi-turn gap from Lecture 8.2).
 
-### Layer 3 — Agent-Level Evals (Integration)
-**What:** End-to-end agent behavior on realistic scenarios
-**When:** Every PR, full suite weekly
-**Tools:** DeepEval, golden datasets
+---
 
-| Scenario Category | Test Cases | Metric | Threshold |
-|-------------------|-----------|--------|-----------|
-| Happy path | _____ cases | Task completion | 0.8 |
-| Edge cases | _____ cases | Correctness (GEval) | 0.7 |
-| Error handling | _____ cases | Recovery behavior | 0.7 |
+## 3. Test Strategy: Where and When (one row per pyramid layer)
 
-### Layer 4 — Security (Overlay)
-**What:** Adversarial testing for injection, jailbreak, data leakage
-**When:** Every PR (fast scan), weekly (full scan)
-**Tools:** promptfoo, DeepEval
+| Layer | What you test (from Section 2) | Failure modes (T2) | Dimensions (T3) | Metrics and thresholds | When it runs | Cost | Owner |
+|---|---|---|---|---|---|---|---|
+| **1. Unit evals** — deterministic checks on tools, parsers, guards | | | | | every commit | ~free | |
+| **2. Component evals** — retriever, generator, judge, MCP contract, one piece at a time | | | | | every commit | cents | |
+| **3. Trajectory evals** — tool choice, arguments, order, loops across the agent's steps | | | | | every PR | | |
+| **4. End-to-end evals** — golden datasets scored by LLM-judge metrics; red team | | | | | every PR / nightly | | |
+| **5. Production monitoring** — drift, scorecards, audit trail, tracing on live traffic | | | | | continuous | | |
 
-| Attack Vector | Test Count | Threshold | Priority |
-|---------------|-----------|-----------|----------|
-| Prompt injection | _____ | 0.9 resistance | P0 |
-| Jailbreak | _____ | 0.9 resistance | P0 |
-| PII leakage | _____ | <0.05 rate | P0 |
-| Unauthorized actions | _____ | <0.02 rate | P0 |
-| Data exfiltration | _____ | 0.95 resistance | P1 |
+Placement rule (Lecture 2.3): does the test need a judge model? Layer 4 or above. Does it need the whole agent loop? Layer 3 or above. Neither? Push it down to layer 1 or 2, where it is fast and free.
 
-## Performance Baselines
+### Worked row (TechCorp support agent)
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| P95 Latency | _____ s | _____ s |
-| Avg Cost/Task | $_____ | $_____ |
-| LLM Calls/Task | _____ | _____ |
-| Failure Rate | <_____% | _____% |
+| Layer | What you test | Failure modes | Dimensions | Metrics and thresholds | When | Cost | Owner |
+|---|---|---|---|---|---|---|---|
+| 3. Trajectory evals | Tool selection and order on the double-charge (GS-05) and cancellation (GS-06) cases | wrong tool selection, incorrect tool arguments | correctness | `ToolCorrectnessMetric` 0.85; `check_sequence` lookup → ticket | every PR | offline: free | agent team |
 
-## Quality Gate
+---
 
-| Gate | Criteria | Blocks Deploy? |
-|------|----------|---------------|
-| Functional | >80% pass rate on golden dataset | Yes |
-| Security | >90% resistance on all attack vectors | Yes |
-| Performance | P95 latency < target | No (warning) |
-| Regression | No score drop >10% from baseline | Yes |
+## 4. Golden Data
 
-## Monitoring (Post-Deploy)
+| Dataset | Cases | Categories | Owner | Last reviewed |
+|---|---|---|---|---|
+| | | | | |
 
-| Signal | Check | Alert Threshold |
-|--------|-------|----------------|
-| Quality drift | Weekly eval run | >15% score drop |
-| Cost trend | Daily cost tracking | >20% increase |
-| Error rate | Real-time monitoring | >5% error rate |
-| User feedback | Feedback collection | <3.5/5 avg rating |
+At least one hard case per category; expected outputs written or approved by a domain expert; every fixed bug becomes a new case.
 
-## Sign-Off
+---
+
+## 5. Quality Gate (CI)
+
+Defaults from `config/eval_config.yaml` → `gates`; change them here only with a reason.
+
+| Gate | Rule | Blocks merge? |
+|---|---|---|
+| Smoke (every push) | 100% of the smoke cases pass | Yes |
+| Pass rate (PR) | ≥ 80% of golden cases pass | Yes |
+| Critical metrics (PR) | Faithfulness, Answer Correctness, Answer Relevancy averages ≥ 0.7 | Yes |
+| Regression (PR) | No metric more than 5 points below the stored baseline; no newly failing case | Yes |
+| Red team | 100% of red-team cases blocked | Yes |
+| Reliability | p95 latency ≤ ____ s; cost per task ≤ $____ (verify current pricing); ≤ ____ LLM calls per task | Yes / warn |
+
+---
+
+## 6. Production Monitoring
+
+| Signal | How | Alert when |
+|---|---|---|
+| Quality drift | 7-day rolling average of judge scores on sampled traffic | below the dimension threshold, or more than 5 points below the launch baseline |
+| Cost | cost per task from traces | above the reliability limit |
+| Failures and loops | trace levels, LLM calls per task | above baseline |
+| Safety | PII scanner on sampled replies, red-team re-runs on model changes | any finding |
+
+---
+
+## 7. Sign-Off
+
+Approvals are recorded in the audit trail (`monitoring/governance.py`), not only here.
 
 | Role | Name | Date | Approved |
 |------|------|------|----------|
-| QA Lead | | | [ ] |
-| Engineering Manager | | | [ ] |
+| QA lead | | | [ ] |
+| Product owner | | | [ ] |
 | Security | | | [ ] |
-| Product Owner | | | [ ] |
+| Engineering manager | | | [ ] |

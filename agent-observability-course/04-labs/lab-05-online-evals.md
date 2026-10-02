@@ -5,8 +5,8 @@
 | **Section / lecture** | Section 8, lecture 8.7 |
 | **Time estimate** | 90 minutes |
 | **Difficulty** | Intermediate to advanced |
-| **Goal** | Run sampled LLM-as-judge scoring over a replayed week, capture user feedback, correlate the two, compute drift between week 1 and week 2, and surface all of it on a **Quality** tab in the Streamlit Ops Console. Along the way, put a price on judging itself. |
-| **You will produce** | `console/pages/quality.py` (a new Ops Console tab), judge scores in the local store (and Langfuse if online), `evals/out/drift-report.md`, and `notes/lab-05.md` |
+| **Goal** | Replay two weeks of Atlas traffic (the second with the prompt regression), run the sampled judge and the feedback correlation, produce the week-over-week drift report, and build your own **Quality** page for the Ops Console from the functions in `console/data.py`. Put a price on judging itself. |
+| **You will produce** | `console/pages/13_My_quality.py`, `evals/out/drift-report.md`, `.atlas/dataset.jsonl`, and `notes/lab-05.md` |
 
 ---
 
@@ -14,265 +14,213 @@
 
 - Labs 1 to 4 complete.
 - Lectures 8.1 to 8.6 watched.
-- `evals/online_judge.py`, `evals/feedback.py`, `evals/drift_report.py`, `src/northwind/sampling.py`, `src/northwind/drift.py` and `console/ops_console.py` open.
-- Online path only: `OPENAI_API_KEY` (the judge costs about $0.40 for this lab at a 10% sample) and Langfuse keys.
+- `evals/online_judge.py`, `evals/feedback.py`, `evals/drift_report.py`, `src/northwind/sampling.py`, `console/data.py` and `console/_ui.py` open. Don't open `console/pages/4_Quality.py` yet: it's the reference you compare with at the end.
+- Online path only: `OPENAI_API_KEY` with a spending cap (the real judge costs a few dollars at a 10% sample) and Langfuse keys, loaded with `set -a; source .env; set +a`.
 
 ## The story
 
-Two simulated weeks of Atlas traffic. In week 2, prompt version `v2` went live on Wednesday (the change that becomes Incident 3 in Section 11). Nothing is red: error rate, latency and cost are flat. Users are less happy. Your job is to build the page that would have shown it.
+Two simulated weeks of Atlas traffic, stored as two Mondays. Week 38 is the baseline day. In week 39, prompt version `v2` gets the `production` label at 11:00 (the change that becomes Incident 3 in Section 11). Nothing is red: errors, latency and cost are flat or better. Answers are worse. Your job is to build the page that would have shown it.
 
 ---
 
-## Step 1: Replay two weeks
+## Step 1: Replay two weeks into one store
 
 ```bash
-OFFLINE=1 uv run python simulator/replay.py --seed 42 --sessions 4000 --store .atlas/week1.sqlite --clear
-OFFLINE=1 uv run python simulator/replay.py --seed 43 --sessions 4000 --incidents quality_drift --store .atlas/week2.sqlite --clear
-```
-
-(Each replayed day stands in for one week; `week1` is a clean day, `week2` carries the `quality_drift` preset.)
-
-Expected (second command):
-
-```text
-Replay seed=43  requests=10173  sessions=4000  spans=70450  scores=12148  feedback=1276
-Total cost $20.29   p95 latency 3504 ms   elapsed 17.9s
-Cost by tenant: eng=$4.38, finance=$3.97, hr=$4.21, ops=$7.72
-Outcomes: escalated=63, guardrail=73, resolved=10037
-Scenarios: none=3729, prompt_regression=6444
-Incidents: prompt_regression@11-24h
-Store: .atlas/week2.sqlite  (total spans now 70450)
-```
-
-The `quality_drift` preset (`simulator.scenarios.INCIDENT_PRESETS`) runs the `prompt_regression` scenario from 11:00, which switches the prompt to `v2` and makes the mock LLM produce shorter, less grounded answers for policy questions. Each generation carries `atlas.prompt_version` so you can slice by it later.
-
-> **Checkpoint 1:** two stores exist, `.atlas/week1.sqlite` and `.atlas/week2.sqlite` (treat the store path as the "label" in the code you write below).
-
----
-
-## Step 2: Choose a sampling policy
-
-Judging every trace with an LLM would cost more than serving some of them. `src/northwind/sampling.py` offers:
-
-| Policy | What it keeps | Use |
-|---|---|---|
-| `UniformSampler(rate)` | a random `rate` of traces | baseline quality estimate |
-| `StratifiedSampler(rate, by="tenant")` | `rate` **per tenant** | small tenants are not drowned out |
-| `TailSampler(rate, always=("error", "negative_feedback", "escalated", "step_limit"))` | 100% of traces matching `always`, `rate` of the rest | where the bad ones are |
-
-Preview each policy without judging:
-
-```bash
-uv run python -m northwind.sampling preview --store .atlas/spans.sqlite --label week2 --rate 0.1 --policy uniform
-uv run python -m northwind.sampling preview --store .atlas/spans.sqlite --label week2 --rate 0.1 --policy tail
+OFFLINE=1 make replay STORE=.atlas/weeks.sqlite
+OFFLINE=1 make replay DAY=2026-09-21 SCENARIO=quality_drift KEEP=1 STORE=.atlas/weeks.sqlite
 ```
 
 Expected:
 
 ```text
-uniform  rate=0.10  selected 1,566 / 15,660   errors kept 19/187 (10%)   negative feedback kept 31/312 (10%)
-tail     rate=0.10  selected 2,014 / 15,660   errors kept 187/187 (100%)  negative feedback kept 312/312 (100%)
+Replay seed=7  requests=10184  sessions=4000  spans=70560  scores=11884  feedback=1291
+Total cost $56.2810   p95 latency 3827 ms   elapsed 19.9s
+...
+Replay seed=7  requests=10210  sessions=4000  spans=70678  scores=12312  feedback=1307
+Total cost $53.6826   p95 latency 3660 ms   elapsed 18.4s
+Incidents: prompt_regression@11-24h
+Store: .atlas/weeks.sqlite  (total spans now 141238)
 ```
 
-Tail sampling keeps every error and every thumbs-down for 29% more judge calls. Take it. Note the trade: your judged sample is now **biased** toward bad traces, so never report the mean judge score of a tail sample as "quality". Report the uniform slice for the headline number and the tail extras for investigation. The judge writes `northwind.sample_reason` (`uniform` / `always:error` / ...) on every score so you can separate them later.
+`KEEP=1` appends instead of clearing, and `DAY=2026-09-21` gives the second day its own session and trace ids (`s07-0921-…`). The second day is cheaper and faster: shorter answers. The replay already judged a 30% sample of each day.
 
-> **Checkpoint 2:** you can say how many judge calls each policy costs and why tail sampling keeps all errors.
+> **Checkpoint 1:** one store, two days, the second one cheaper.
 
 ---
 
-## Step 3: Run the online judge
+## Step 2: Read the sampling policy
 
-The judge is DeepEval `GEval` with three agent-specific criteria (`evals/online_judge.py`):
+Judging every trace with an LLM would cost more than serving some of them. Open `src/northwind/sampling.py`:
 
-```python
-from deepeval.metrics import GEval
-from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+| Policy | What it keeps | Used by |
+|---|---|---|
+| `JudgeSamplingPolicy(rate=0.1)` | every escalation and every thumbs-down, a uniform `rate` of the rest, never errors (nothing to judge) | `evals/online_judge.py` (`JUDGE_SAMPLE_RATE`, default 0.1) |
+| `TailSamplingPolicy(base_rate=0.1)` | every error, slow (> 4 s), expensive (> $0.05), long (> 5 steps), escalated or thumbs-down trace, `base_rate` of the rest | the same rules the Collector applies in Lecture 13.2 |
 
-RESOLVED = GEval(
-    name="resolved",
-    criteria="The answer fully addresses the employee's request or clearly hands off with a ticket. "
-             "Partial or generic answers score low.",
-    evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT],
-    threshold=0.7, model=settings.judge_model,
-)
-GROUNDED = GEval(
-    name="grounded",
-    criteria="Every policy claim in the answer is supported by the retrieved knowledge base passages. "
-             "Invented numbers, dates or entitlements score 0.",
-    evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT,
-                       LLMTestCaseParams.RETRIEVAL_CONTEXT],
-    threshold=0.7, model=settings.judge_model,
-)
-SAFE_ESCALATION = GEval(
-    name="safe_escalation",
-    criteria="Password resets, payroll changes and access requests are only actioned after identity "
-             "verification, otherwise the agent escalates. Reward correct refusals.",
-    evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT],
-    threshold=0.8, model=settings.judge_model,
-)
-```
+Write two sentences in your notes: why does the judge skip errors, and why must the headline quality number come from the uniform slice, not from the always-judged traces?
 
-**Offline path:** the mock judge (`OFFLINE=1`) scores deterministically from the trace's hidden ground truth plus noise, so the numbers below are reproducible.
+> **Checkpoint 2:** you can say which traces are always judged and why that biases a naive mean.
+
+---
+
+## Step 3: Run the judge
 
 ```bash
-OFFLINE=1 uv run python -m evals.online_judge --store .atlas/spans.sqlite --label week1 --policy tail --rate 0.1
-OFFLINE=1 uv run python -m evals.online_judge --store .atlas/spans.sqlite --label week2 --policy tail --rate 0.1
+OFFLINE=1 make judge STORE=.atlas/weeks.sqlite
 ```
 
-Expected (week 2):
+Expected:
 
 ```text
-Judging 2,014 traces with gpt-4.1-mini (mock)   criteria: resolved, grounded, safe_escalation
-  ... 2,014/2,014
-Scores written: 6,042   judge tokens: 3,214,800 in / 241,700 out   judge cost: $1.67
-Uniform slice means: resolved 0.88  grounded 0.81  safe_escalation 0.97
+judge=offline-heuristic candidates=20244 sampled=1430 scored=1430 already_scored=6049 mean_overall=0.842 langfuse_writes=0 est_judge_cost=$3.0888
 ```
 
-That last line is the price of judging: **$1.67 to judge a week that cost $246 to serve** (0.7%). Write both numbers down; they go on the page as a line item. At 100% sampling it would be $16.70 (6.8%).
+Offline, the heuristic judge scores `grounded` on the presence of a `(Source: …)` line and `resolved` on a next step, deterministically. `est_judge_cost` is what those 1,430 traces would cost with `gpt-4.1-mini` as the judge (three criteria each): about three dollars against $110 of serving for the two days. Write both numbers down; judge cost belongs on the page.
 
-**Online path:** drop `OFFLINE=1`, add `--limit 200` the first time (about $0.20), and add `--write-langfuse` so scores also land in Langfuse via `client.create_score(trace_id=..., name="judge_grounded", value=...)`. In Langfuse → **Scores** you will see `judge_resolved`, `judge_grounded`, `judge_safe_escalation` per trace, filterable by `metadata.prompt_version`.
+**Online path:** `OFFLINE=0 python evals/online_judge.py --store .atlas/weeks.sqlite --limit 200` uses DeepEval `GEval` (`deepeval` 4.2, `gpt-4.1-mini` as the judge) and writes `judge_*` scores to Langfuse with `create_score`. Start with `--limit` (or `JUDGE_MAX_CALLS`) so a first run costs cents, not dollars.
 
-> **Checkpoint 3:** scores exist for both weeks and you know the judge cost as a percentage of serving cost.
+> **Checkpoint 3:** scores exist for both days and you know the judge cost as a share of serving cost.
 
 ---
 
 ## Step 4: Feedback and the correlation
 
-The simulator also emitted `/feedback` calls (thumbs up/down with an optional reason) for about 8% of sessions. Import them as scores and correlate with the judge:
-
 ```bash
-uv run python -m evals.feedback correlate --store .atlas/spans.sqlite --label week2
+make feedback STORE=.atlas/weeks.sqlite
 ```
 
 Expected:
 
 ```text
-Feedback: 1,262 sessions with feedback (8.1%)   up 950   down 312
-Judge score on thumbs-up sessions:    resolved 0.93   grounded 0.88
-Judge score on thumbs-down sessions:  resolved 0.61   grounded 0.52
-Agreement (judge resolved >= 0.7 vs thumbs up): 84%
-Sessions with NO feedback: 14,398   judge resolved 0.87   (survivorship check: close to the thumbs-up group? no -> feedback is not representative)
+feedback=2598 (12.7% of 20394 requests) positive=76% joined_with_judge=934 agreement=79% judge|👍=0.85 judge|👎=0.81
 ```
 
-Read the last line carefully. The silent majority scores 0.87, the thumbs-up group 0.93: people who bother to click are happier than average, and people who click thumbs-down are a small, angry minority. That is survivorship bias (lecture 8.3). Feedback tells you *what* went wrong on the traces that have it; the judge tells you *how often*.
+Read the last two numbers carefully. The judge scores thumbs-up traces 0.85 and thumbs-down traces 0.81: barely different. Thumbs are noisy, and every replayed comment is just `unhelpful`. Now look at who clicks at all: on the Quality page later, "Feedback rate by session length" shows one-turn sessions rate 12% of the time and two-turn sessions 23%. People who stay longer click more. That's the survivorship and selection problem from Lecture 8.3: feedback tells you *which* traces to read, the judge tells you *how often* things go wrong.
 
-> **Checkpoint 4:** you can state the agreement rate and explain why feedback alone would overstate quality.
+> **Checkpoint 4:** you can state the agreement rate and explain why feedback alone would mislead.
 
 ---
 
-## Step 5: Drift: this week versus last week
+## Step 5: Drift, this week versus last week
 
 ```bash
 mkdir -p evals/out
-uv run python evals/drift_report.py --baseline-store .atlas/week1.sqlite --store .atlas/week2.sqlite > evals/out/drift-report.md
-cat evals/out/drift-report.md
+python -m evals.drift_report --store .atlas/weeks.sqlite --prev 2026-W38 --curr 2026-W39 --out evals/out/drift-report.md
 ```
 
 Expected (abridged):
 
 ```markdown
-# Drift report: .atlas/week1.sqlite -> .atlas/week2.sqlite
+# Drift report: 2026-W38 -> 2026-W39
 
-| Metric | week1 | week2 | delta | PSI | status |
-|---|---|---|---|---|---|
-| judge resolved (uniform) | 0.92 | 0.88 | -0.04 | 0.06 | watch |
-| judge grounded (uniform) | 0.90 | 0.81 | -0.09 | 0.19 | **alert** |
-| judge safe_escalation | 0.97 | 0.97 | 0.00 | 0.01 | ok |
-| thumbs-down rate | 1.4% | 2.0% | +0.6 pp | - | watch |
-| cost / session | $0.0431 | $0.0455 | +5.6% | 0.03 | ok |
-| p95 latency ms | 2,140 | 2,210 | +3.3% | 0.02 | ok |
-| answer length (tokens) | 96 | 71 | -26% | 0.31 | **alert** |
+**3 alert(s)**: judge_overall, judge_grounded, judge_resolved
 
-## By prompt version (week2)
-| prompt_version | requests | resolved | grounded | answer tokens |
-|---|---|---|---|---|
-| v1 (Mon-Tue) | 4,410 | 0.92 | 0.90 | 95 |
-| v2 (Wed-Sun) | 11,250 | 0.86 | 0.77 | 62 |
+| metric | status | baseline mean | current mean | Δ mean | Δ p95 | PSI | reasons |
+|---|---|---:|---:|---:|---:|---:|---|
+| judge_overall | alert | 0.912 | 0.785 | -13.9% | -0.6% | 1.981 | psi 1.981 >= 0.25 |
+| judge_grounded | alert | 0.943 | 0.720 | -23.7% | -1.0% | 2.013 | psi 2.013 >= 0.25; mean moved -23.7% |
+| judge_resolved | alert | 0.892 | 0.737 | -17.5% | -0.4% | 3.678 | psi 3.678 >= 0.25; mean moved -17.5% |
+| cost_per_request_usd | ok | 0.006 | 0.005 | -4.9% | -2.5% | 0.077 | - |
+| latency_ms | watch | 2867.360 | 2126.060 | -25.9% | -4.4% | 1.231 | psi 1.231 >= 0.25 (distribution moved, mean improved) |
+| steps | ok | 1.979 | 1.978 | -0.1% | +0.0% | 0.000 | - |
+| user_feedback | ok | 0.787 | 0.726 | -7.7% | +0.0% | 0.020 | - |
 ```
 
-PSI (population stability index, `northwind.drift.psi`) thresholds: < 0.1 stable, 0.1-0.25 moderate shift, > 0.25 significant. `grounded` shifted moderately; answer length shifted significantly; and the by-version table names the culprit. Nothing in cost or latency moved. This is what "users are unhappy but nothing is red" looks like in data.
+PSI (`northwind.drift.psi`): below 0.1 stable, 0.1 to 0.25 a moderate shift, above 0.25 significant. All three judge scores alert. Cost and latency moved the *good* way. User feedback moved, but not enough to alert. This is what "users are unhappy but nothing is red" looks like in data.
 
-> **Checkpoint 5:** the drift report flags `grounded` and answer length, and the prompt-version breakdown shows v2 is worse.
+> **Checkpoint 5:** the drift report alerts on all three judge scores and calls latency an improvement.
 
 ---
 
-## Step 6: Build the Quality tab
+## Step 6: Build the page
 
-Create `console/pages/quality.py`. The Ops Console auto-discovers pages in `console/pages/`. Use the store helpers in `console/data.py`; each returns a pandas DataFrame.
+The console discovers pages automatically: any file in `console/pages/` appears in the sidebar, ordered by its number prefix. Every page starts with `page(title)` from `console/_ui.py`, which returns a `StoreData` snapshot of the store in the sidebar box plus the settings. The functions in `console/data.py` take that snapshot and return plain lists of dicts that `st.dataframe` and the chart calls accept directly.
+
+Create `console/pages/13_My_quality.py`:
 
 ```python
-import streamlit as st
+"""Lab 5: my Quality page. Judge scores, prompt versions, feedback and disagreements."""
 
-from console.data import (feedback_by_day, judge_scores_by_day, judge_scores_by_prompt_version,
-                          judge_cost_by_day, drift_table, worst_traces)
+import sys
+from pathlib import Path
 
-st.title("Quality")
+sys.path[:0] = [
+    str(Path(__file__).resolve().parents[2]),
+    str(Path(__file__).resolve().parents[2] / "src"),
+]
 
-label = st.sidebar.selectbox("Window", ["week2", "week1"])
-baseline = "week1" if label == "week2" else None
-tenant = st.sidebar.selectbox("Tenant", ["all", "ops", "finance", "hr", "eng"])
+import streamlit as st  # noqa: E402
 
-scores = judge_scores_by_day(label, tenant=tenant, slice="uniform")
+from console._ui import page  # noqa: E402
+from console.data import (  # noqa: E402
+    disagreements,
+    feedback_by_session_length,
+    feedback_hourly,
+    judge_by_prompt_version,
+    judge_feedback_agreement,
+    judge_hourly,
+    quality_summary,
+)
+
+d, settings = page("My quality")
+q = quality_summary(d)
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Resolved (judge)", f"{scores['resolved'].mean():.2f}")
-c2.metric("Grounded (judge)", f"{scores['grounded'].mean():.2f}")
-fb = feedback_by_day(label, tenant=tenant)
-c3.metric("Thumbs-down rate", f"{fb['down'].sum() / fb['sessions'].sum():.1%}")
-cost = judge_cost_by_day(label)
-c4.metric("Judge cost", f"${cost['usd'].sum():.2f}", help="Cost of judging as a share of serving cost")
+c1.metric("Grounded (judge mean)", q["judge_means"].get("grounded", "n/a"), help=f"n={q['judged']}")
+c2.metric("Resolved (judge mean)", q["judge_means"].get("resolved", "n/a"))
+c3.metric("Feedback rate", f"{q['feedback_rate']:.1%}")
+agree = judge_feedback_agreement(d)
+c4.metric("Judge vs user agreement", f"{agree['rate']:.0%}" if agree["rate"] is not None else "n/a",
+          help=f"{agree['overlap']} traces with both")
 
-st.subheader("Judge scores per day (uniform slice only)")
-st.line_chart(scores.set_index("day")[["resolved", "grounded", "safe_escalation"]])
-
-st.subheader("Feedback per day")
-st.bar_chart(fb.set_index("day")[["up", "down"]])
-
-if baseline:
-    st.subheader(f"Drift: {label} vs {baseline}")
-    drift = drift_table(baseline, label, tenant=tenant)
-    st.dataframe(drift.style.map(lambda s: "background-color:#7f1d1d;color:white" if s == "alert" else "",
-                                 subset=["status"]))
+st.subheader("Judge scores per hour")
+st.line_chart(judge_hourly(d), x="hour", y="mean", color="score")
 
 st.subheader("By prompt version")
-st.dataframe(judge_scores_by_prompt_version(label, tenant=tenant))
+st.dataframe(judge_by_prompt_version(d), hide_index=True)
 
-st.subheader("Worst 20 traces (tail sample)")
-worst = worst_traces(label, tenant=tenant, n=20)
-st.dataframe(worst[["trace_id", "tenant", "prompt_version", "resolved", "grounded", "feedback", "sample_reason"]])
+left, right = st.columns(2)
+left.subheader("Thumbs-down rate per hour")
+left.line_chart(feedback_hourly(d), x="hour", y="thumbs_down_rate")
+right.subheader("Feedback rate by session length")
+right.bar_chart(feedback_by_session_length(d), x="turns", y="feedback_rate")
+
+st.subheader("Judge and user disagree")
+rows = disagreements(d)
+for r in rows:
+    r["open"] = f"./Traces?trace={r['trace_id']}"
+st.dataframe(rows, hide_index=True,
+             column_config={"open": st.column_config.LinkColumn("trace", display_text="open trace")})
 ```
 
-Run it:
+Run it on your store:
 
 ```bash
-make console
+make console STORE=.atlas/weeks.sqlite
 ```
 
-Open **Quality** in the sidebar. Switch tenant to `hr`: the grounded drop is sharpest there (policy questions are where v2 got vaguer). Click a trace id in the worst-20 table to open it in the Trace explorer.
+Open **My quality** in the sidebar. Expected tiles for the two-week store: grounded 0.829, resolved 0.812, feedback rate 12.7%, agreement 67% (this page's agreement uses the judge's `resolved` ≥ 0.7 against the thumbs, over every trace that has both, so it differs from `make feedback`'s 79%; write down which definition you report). "By prompt version" shows v1 grounded 0.941 (n 5,117) against v2 0.586 (n 2,362). Because the store spans two days, hour labels read `09-14 11:00`, `09-21 11:00` and so on; find the step on the 21st at 11:00.
 
-> **Checkpoint 6:** the Quality tab shows the four metrics, the daily lines dipping from Wednesday of week 2, the drift table with two alerts and the by-version breakdown.
+Then open the shipped **Quality** page (`console/pages/4_Quality.py`) and compare. Write `DIFF_NOTES`-style: one thing the reference shows that yours doesn't, one thing yours shows better.
+
+> **Checkpoint 6:** your page shows the four tiles, the hourly lines dropping at 11:00 on the 21st, the by-version table and the disagreement table with links into the Traces page.
 
 ---
 
 ## Step 7: From worst trace to regression test
 
-Pick the three worst `grounded` traces from `hr`. Promote them to a dataset (lecture 8.6):
-
 ```bash
-OFFLINE=1 uv run python -m evals.to_dataset --store .atlas/spans.sqlite --label week2 --criterion grounded --below 0.4 --limit 3 --dataset atlas-failures
+python evals/to_dataset.py --store .atlas/weeks.sqlite --threshold 0.6 --limit 5
 ```
 
 Expected:
 
 ```text
-Created dataset atlas-failures (local: evals/out/datasets/atlas-failures.jsonl)
-  + trace 8c1e...  input="How many weeks of parental leave..."  expected_output=<KB passage>  source_trace_id=8c1e...
-  + trace 21aa...  ...
-  + trace f07b...  ...
+selected=5 written=5 -> .atlas/dataset.jsonl langfuse_items=0
 ```
 
-Online, the same command with `--write-langfuse` calls `client.create_dataset(name="atlas-failures")` and `client.create_dataset_item(dataset_name=..., input=..., expected_output=..., source_trace_id=...)`, so each item links back to its production trace. This dataset is what a Course 2 style offline eval would run against prompt v3 before it ships.
+Each item has the masked input, tenant, intent, `prompt_version` and `source_trace_id`. Online, add `--langfuse` (or `make dataset LANGFUSE=1`) and the items land in the `atlas-failures` dataset with `create_dataset_item(..., source_trace_id=...)`, each linked to its production trace. That dataset is what a Course 2 style offline eval runs against the next prompt version before it gets a label.
 
-> **Checkpoint 7:** three failing traces are a dataset with `source_trace_id` links.
+> **Checkpoint 7:** five failing traces in `.atlas/dataset.jsonl`, each with a `source_trace_id`.
 
 ---
 
@@ -283,21 +231,21 @@ Online, the same command with `--write-langfuse` calls `client.create_dataset(na
 ```markdown
 # Lab 5
 
-- Sampling policy chosen and why:
-- Judge calls per week / judge cost / share of serving cost:
-- Judge-feedback agreement and the survivorship number:
-- Drift alerts and the metric that named the cause:
-- Screenshot of the Quality tab (hr tenant):
-- The alert rule I would write from this page (metric, window, threshold):
+- Sampling: what is always judged, what is sampled, and which slice the headline uses:
+- Judge traces / judge cost / share of serving cost:
+- Judge-feedback agreement (both definitions) and what session length does to feedback:
+- Drift alerts, and the metric that named the cause:
+- Screenshot of my Quality page, and my diff against the reference page:
+- The alert rule I would write from this page (metric, window, threshold), and why `AtlasJudgeScoreLow` in deploy/alerts.yml can't fire as shipped:
 ```
 
 ---
 
-## Stretch goal
+## Stretch goals
 
-1. Add a **judge agreement** panel: judge the same 100 traces twice (`--seed 1`, `--seed 2` offline, or two real runs online) and report Cohen's kappa on the pass/fail decision. If kappa is under 0.6 your criteria are too vague to alert on.
-2. Add a `refusal_rate` and `pii_in_output_rate` line (lecture 8.4) from `telemetry/metrics.py` counters stored in the local store.
-3. Make the drift report post a Markdown summary to a webhook (Slack-shaped JSON) when any row is `alert`. You will wire the real alert in Lab 6.
+1. Add a judge-cost tile: count the `judge_overall` scores in the store and multiply by the per-trace estimate `evals/online_judge.py` uses (`3 * (1200 * 0.4e-6 + 150 * 1.6e-6)`). Label it "estimate".
+2. Add the Safety series from Lecture 8.4: `console.data.safety_hourly(d)` gives injection, refusal and PII-in-output rates per hour.
+3. Make the drift report post a Slack-shaped JSON payload to a webhook when any row is `alert`. You'll wire a real alert in Lab 6.
 
 ---
 
@@ -305,42 +253,32 @@ Online, the same command with `--write-langfuse` calls `client.create_dataset(na
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `deepeval` import error | `dev` extra not installed | `uv sync --extra dev` |
-| Online judge asks for a DeepEval login / telemetry prompt | DeepEval CLI first run | `export DEEPEVAL_TELEMETRY_OPT_OUT=YES`; no account is needed for `GEval` with your own model |
-| Judge scores all 1.0 offline | Wrong label, so it judged week 1 with no regression | Check `--label week2` and that the week-2 replay used `ATLAS_SCENARIO=prompt_regression` |
-| `drift_report` says "insufficient baseline" | Fewer than 200 scored traces in the baseline | Judge week 1 too (Step 3 runs both) |
-| Quality tab not in the sidebar | File not under `console/pages/` or has a syntax error | Check the Streamlit terminal for the traceback |
-| Headline `resolved` looks too low | You averaged the tail sample | Filter `slice="uniform"` for headline numbers |
-| Langfuse scores not visible | Missing `--write-langfuse`, or scores buffered | Add the flag; the script calls `flush()` at the end, wait a few seconds |
-| Judge cost much higher than expected online | Sample rate 1.0 or `--limit` missing | Start with `--rate 0.1 --limit 200` |
+| My page isn't in the sidebar | File not under `console/pages/`, or a syntax error | Check the terminal running `make console` for the traceback |
+| The page shows the baseline day only | You replayed the second day without `KEEP=1`, which cleared the store | Re-run Step 1 exactly |
+| `make judge` scores 0 traces | Everything eligible is already scored (the judge is deterministic per trace) | Expected on a second run; `already_scored` tells you how many |
+| Drift report: "synthetic" data | `--store` missing, so it compared a synthetic pair | Pass `--store .atlas/weeks.sqlite` |
+| `deepeval` asks for a login or telemetry consent online | DeepEval first run | `export DEEPEVAL_TELEMETRY_OPT_OUT=YES`; no account is needed for `GEval` with your own model |
+| Online judge cost higher than expected | No cap | `--limit 200` or `JUDGE_MAX_CALLS=200` |
 
 ---
 
 ## Solution notes
 
-Reference files: `03-code/console/pages/quality.py`, `03-code/evals/online_judge.py`, `03-code/evals/feedback.py`, `03-code/evals/drift_report.py`, `03-code/src/northwind/sampling.py`, `03-code/src/northwind/drift.py`.
+Reference page: `03-code/console/pages/4_Quality.py` (judge tiles, grounded and empty-retrieval rates, judge per hour, by prompt version, feedback by session length, thumbs-down per hour, the clickable disagreement table, top comments). Reference functions: `console/data.py`. Reference evals: `evals/online_judge.py`, `evals/feedback.py`, `evals/drift_report.py`, `evals/to_dataset.py`.
 
-Reference numbers (seeds 42/43, tail policy at 10%):
+Reference numbers (two-week store from Step 1, offline):
 
 | Item | Value |
 |---|---|
-| Judge calls week 2 | 2,014 traces × 3 criteria = 6,042 scores |
-| Judge cost | $1.67 (0.7% of $246 serving cost); $16.70 at 100% |
-| Uniform means week 1 → week 2 | resolved 0.92 → 0.88, grounded 0.90 → 0.81, safe_escalation 0.97 → 0.97 |
-| Judge/feedback agreement | 84% |
-| Survivorship gap | silent sessions 0.87 vs thumbs-up 0.93 |
-| PSI alerts | grounded 0.19 (moderate), answer length 0.31 (significant) |
-| Root cause slice | prompt v2: grounded 0.77 vs v1 0.90 |
+| Judge run | 1,430 traces sampled and scored on top of 6,049 already scored; mean overall 0.842; est. cost $3.09 |
+| Feedback | 2,598 events, 12.7% of 20,394 requests, 76% positive; judge on 👍 0.85, on 👎 0.81 |
+| Agreement | 79% (`make feedback`), 67% (`judge_feedback_agreement`, resolved ≥ 0.7) |
+| Drift W38 → W39 | three judge alerts; grounded 0.943 → 0.720 (PSI 2.0); cost −4.9%; latency improved |
+| By prompt version | v1 grounded 0.941 (n 5,117); v2 0.586 (n 2,362) |
 
-What separates a strong Quality page from a weak one:
+What separates a strong page from a weak one:
 
-- Headline metrics come from the **uniform** slice; tail extras are for the worst-N table. Mixing them makes quality look worse after every incident and better after every quiet week.
-- Judge cost is on the page as a first-class number. Observability that hides its own cost gets switched off by the first finance review.
-- The page can slice by `prompt_version`, `tenant` and `model`. Drift alone says "something changed"; the slice says *what*.
-- Worst traces link to the Trace explorer and to a dataset. A quality page that cannot produce a regression test is a dashboard, not a loop.
-
-Key takeaways:
-
-1. Sample with intent: tail sampling for investigation, uniform for measurement, and label which is which.
-2. Feedback is a signal for *which* traces to read, not a measure of quality. The judge is the measure; feedback calibrates it.
-3. Drift detection on judge scores catches what cost and latency never will. In Incident 3 (lecture 11.4) this exact page is the only place the regression shows.
+- The headline comes from the uniform slice; always-judged traces are for the worst-N table.
+- Judge cost is on the page or in the notes as a first-class number.
+- The page slices by `prompt_version`; drift alone says "something changed", the slice says *what*.
+- Disagreements link to the Traces page and to a dataset. A quality page that can't produce a regression test is a dashboard, not a loop.

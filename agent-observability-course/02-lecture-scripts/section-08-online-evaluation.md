@@ -36,7 +36,7 @@
 | ID | 8.1 |
 | Title | Offline evals are not enough |
 | Type | SL (slides + avatar, with one terminal beat) |
-| Target duration | 6:00 (about 650 spoken words at ~140 wpm, plus slide and pause time) |
+| Target duration | 6:00 (about 590 spoken words at ~140 wpm, plus slide and pause time) |
 | One idea | A passing test suite tells you about yesterday's questions; production quality needs a judge, real feedback and a drift check on today's traffic. |
 | Prerequisites | Sections 4 to 7 |
 | Files used | Diagram "the quality loop"; `make test`; `make replay SCENARIO=quality_drift`; `make console-text` |
@@ -158,7 +158,7 @@ Next, the judge: sampling policies, three criteria written for a helpdesk agent,
 | ID | 8.2 |
 | Title | Code-along: sampled LLM-as-judge on live traces |
 | Type | SC (screencast code-along) |
-| Target duration | 9:00 (about 820 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
+| Target duration | 9:00 (about 880 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Sample traces deterministically, grade each with three criteria written for Atlas, write the scores to the store and to Langfuse, and count the judge's cost as its own line item with a hard cap. |
 | Prerequisites | 8.1; `deepeval` installed; Langfuse keys or `OFFLINE=1` |
 | Files used | `src/northwind/sampling.py`, `evals/online_judge.py`, `telemetry/langfuse_setup.py` (`create_score`) |
@@ -409,7 +409,7 @@ The judge is one opinion. Next, the people who actually asked the questions: a f
 | ID | 8.3 |
 | Title | Capturing user feedback that means something |
 | Type | SC (screencast code-along) |
-| Target duration | 7:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
+| Target duration | 7:00 (about 680 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Collect a thumb and a reason per trace, write them as scores on the trace, put them next to the judge, and report the rate with the score so nobody mistakes the survivors for everyone. |
 | Prerequisites | 8.2 |
 | Files used | `app/server.py` (`POST /feedback`, `FeedbackRequest`), `evals/feedback.py`, Ops Console Quality page |
@@ -560,7 +560,7 @@ Judge and feedback tell you whether answers are good. Next, whether they're safe
 | ID | 8.4 |
 | Title | Guardrail and safety metrics |
 | Type | SC (screencast code-along) |
-| Target duration | 6:00 (about 560 spoken words at ~140 wpm; remaining time is on-screen code and the dashboard) |
+| Target duration | 6:00 (about 550 spoken words at ~140 wpm; remaining time is on-screen code and the dashboard) |
 | One idea | Turn the guardrail observation from 4.7 and the PII detector into rates over time, injection attempts, refusals and PII in output, so a safety regression shows up as a line, not a complaint. |
 | Prerequisites | 8.3; 4.7 (guardrail observation) |
 | Files used | `app/agent.py` (`run`), `app/guardrails.py` (`injection_check`), `src/northwind/pii.py` (`contains_pii`), `telemetry/metrics.py` (`GUARDRAIL`), Ops Console Safety page |
@@ -693,7 +693,7 @@ Every signal so far is a point in time. Next, drift: comparing one window's scor
 | ID | 8.5 |
 | Title | Drift detection: compare this week to last week |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 720 spoken words at ~140 wpm; remaining time is on-screen code and the report) |
+| Target duration | 8:00 (about 610 spoken words at ~140 wpm; remaining time is on-screen code and the report) |
 | One idea | Compare judge scores, feedback, cost and latency between two windows with a mean shift and a PSI on the distribution, and turn the result into a drift report with thresholds that CI can fail on. |
 | Prerequisites | 8.2, 8.3; 6.3 (cost rollups); 7.2 (latency) |
 | Files used | `src/northwind/drift.py`, `evals/drift_report.py`, `tests/unit/test_drift.py`, Ops Console Quality page |
@@ -855,7 +855,7 @@ The drift points at prompt v2's failures. Next, the last arrow of the loop: prom
 | ID | 8.6 |
 | Title | From bad trace to regression test |
 | Type | SC (screencast code-along) |
-| Target duration | 6:00 (about 560 spoken words at ~140 wpm; remaining time is on-screen code and the Langfuse UI) |
+| Target duration | 6:00 (about 490 spoken words at ~140 wpm; remaining time is on-screen code and the Langfuse UI) |
 | One idea | Promote traces that failed the judge or the user to a dataset with `source_trace_id`, so the next prompt version is tested against real failures before it ships. |
 | Prerequisites | 8.5; 4.5 (datasets) |
 | Files used | `evals/to_dataset.py`, `app/prompts.py`, `evals/online_judge.py` (`OfflineJudge`) |

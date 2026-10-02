@@ -5,60 +5,49 @@
 | **Section / lecture** | Section 13, lecture 13.6 |
 | **Time estimate** | 90 minutes (plus image pull time) |
 | **Difficulty** | Advanced |
-| **Goal** | Run the complete observability stack locally: self-hosted Langfuse, the OpenTelemetry Collector fanning traces out to Langfuse and to a file, Prometheus and Grafana from Lab 6, Atlas pointed at the collector, PII masked in the collector as well as the SDK, and the CI budget gate green in GitHub Actions. Then kill Langfuse and prove Atlas keeps serving. |
-| **You will produce** | A running `deploy/` stack, a trace visible in your own Langfuse, a masked attribute proven in the collector's file export, a green CI run, and `notes/lab-07.md` |
+| **Goal** | Run the complete stack locally: self-hosted Langfuse; the OpenTelemetry Collector redacting and tail-sampling, then fanning traces out to Langfuse and Phoenix; Prometheus and Grafana from Lab 6; Atlas exporting only to the Collector. Prove redaction and sampling from the data, get the CI budget gate green (and red on purpose), and stop the Collector under load to show Atlas keeps serving. |
+| **You will produce** | A running `deploy/` stack, a trace in your own Langfuse and in Phoenix, a redacted tool span, a red and a green CI run, and `notes/lab-07.md` |
 
 ---
 
 ## Prerequisites
 
-- Labs 1 to 6 complete (Lab 6's compose stack in particular).
+- Labs 1 to 6 complete (Lab 6's stack in particular).
 - Lectures 13.1 to 13.5 watched.
-- Docker with at least 4 GB RAM allocated (Langfuse v3 runs Postgres, ClickHouse, Redis and MinIO alongside its web and worker containers).
-- A GitHub fork of the course repo for the CI step (or skip Step 6 and run the gate locally).
-- Ports free: 3000 (Langfuse), 3001 (Grafana), 4317/4318 (collector), 9090 (Prometheus), 8000 (Atlas).
+- Docker with at least 6 GB RAM allocated (Langfuse v3 runs Postgres, ClickHouse, Redis and MinIO next to its web and worker containers).
+- A GitHub fork of the course repo for Step 6 (or run the gate locally only).
+- Free ports: 3000 (Langfuse), 9090 (Langfuse's MinIO), 3001 (Grafana), 9091 (Prometheus), 4317/4318/8888 (Collector), 6006 (Phoenix), 8000 (Atlas).
 
 ## Offline note
 
-Everything here runs with `OFFLINE=1`; the mock LLM produces the traffic, and self-hosted Langfuse receives real OTLP spans. No API keys needed. Only Step 6 needs a GitHub account.
+Everything runs with `OFFLINE=1`: the mock LLM produces the traffic, and your own Langfuse and Phoenix receive real OTLP spans. No API keys. Only Step 6 needs GitHub. Use the swarm, not the replay, for traffic in this lab: `make replay` writes straight to the local store and never passes through the Collector or Prometheus.
 
 ---
 
 ## Step 1: Start self-hosted Langfuse
 
 ```bash
-docker compose -f deploy/docker-compose.langfuse.yml up -d
+cp -n .env.example .env          # then fill the Langfuse self-host secrets the compose file asks for
+make langfuse-up                 # docker compose -f deploy/docker-compose.langfuse.yml up -d
 docker compose -f deploy/docker-compose.langfuse.yml ps
 ```
 
-Expected after one to two minutes (first run pulls about 2 GB of images):
+After one to three minutes (the first run pulls a few GB) six services are up: `langfuse-web` (port 3000), `langfuse-worker`, `postgres`, `clickhouse`, `redis` and `minio`. If `clickhouse` restarts in a loop, raise Docker's memory before anything else.
 
-```text
-NAME                       STATUS                    PORTS
-langfuse-web               Up (healthy)              0.0.0.0:3000->3000/tcp
-langfuse-worker            Up (healthy)
-langfuse-postgres          Up (healthy)
-langfuse-clickhouse        Up (healthy)
-langfuse-redis             Up (healthy)
-langfuse-minio             Up (healthy)
-```
+The compose file is a pinned copy of the upstream Langfuse self-host compose. If `up` fails on an unknown variable or service, compare with the current upstream file and the self-host docs (verify on the day you run this).
 
-The compose file in `deploy/` is a pinned copy of the upstream Langfuse compose. **Version drift warning (lecture 13.1):** if `docker compose up` fails on an unknown environment variable or a missing service, compare with the current upstream file at `https://github.com/langfuse/langfuse/blob/main/docker-compose.yml` and update ours; Langfuse adds required secrets from time to time (`ENCRYPTION_KEY`, `SALT`, `NEXTAUTH_SECRET`, ClickHouse and MinIO credentials are all set in our file).
+Open `http://localhost:3000`, create the first account (it becomes admin), an organisation and a project called `atlas-local`. **Settings → API keys → Create**: note the `pk-lf-...` and `sk-lf-...` values.
 
-Open `http://localhost:3000`, create the first account, then a project called `atlas-local`. **Settings → API keys → Create**: note `pk-lf-...` and `sk-lf-...`.
-
-> **Checkpoint 1:** six healthy containers and a Langfuse project with keys.
+> **Checkpoint 1:** six healthy services and a Langfuse project with keys.
 
 ---
 
 ## Step 2: Point Atlas straight at it (sanity check)
 
-Before adding the collector, confirm the SDK path works against your instance:
+Before adding the Collector, confirm the SDK path works against your instance. In `.env`:
 
 ```dotenv
-# .env
 OFFLINE=1
-OTEL_EXPORTER=langfuse
 LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_BASE_URL=http://localhost:3000
@@ -66,164 +55,84 @@ LANGFUSE_TRACING_ENVIRONMENT=local
 LANGFUSE_RELEASE=lab7
 ```
 
+Atlas doesn't load `.env` by itself, so export it into your shell, then run:
+
 ```bash
+set -a; source .env; set +a
 make run
 ```
 
-Send the Lab 1 curl. Within a few seconds the trace appears in **your** Langfuse at `http://localhost:3000` → Tracing, with environment `local` and release `lab7`.
+Send the Lab 1 curl from another terminal. Within a few seconds the trace appears in **your** Langfuse (Tracing), with environment `local` and release `lab7`. Stop `make run` afterwards.
 
-> **Checkpoint 2:** a trace in self-hosted Langfuse via the SDK exporter.
+> **Checkpoint 2:** a trace in self-hosted Langfuse via the SDK.
 
 ---
 
-## Step 3: Put the OTel Collector in the middle
+## Step 3: Put the Collector in the middle
 
-Now switch Atlas to plain OTLP and let the collector decide where spans go. Open `deploy/otel-collector.yaml`:
+Read `deploy/otel-collector.yaml` (Lecture 13.2). In order: `memory_limiter`; `attributes/redact`, which **deletes** `gen_ai.tool.call.result`, the input and output message attributes, `gen_ai.system_instructions` and Langfuse's input and output fields, and **hashes** `gen_ai.tool.call.arguments`, `user.id` and `enduser.id`; `tail_sampling` (keep errors, slow > 4 s, expensive > $0.05, ≥ 5 steps, escalated, and 20% of the rest); then `batch`. Exporters: `otlphttp/langfuse` (`${LANGFUSE_BASE_URL}/api/public/otel` with Basic auth), `otlphttp/phoenix` (the `phoenix` service), `debug`, and the `spanmetrics` connector.
 
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http: { endpoint: 0.0.0.0:4318 }
-      grpc: { endpoint: 0.0.0.0:4317 }
-
-processors:
-  memory_limiter: { check_interval: 1s, limit_mib: 400 }
-  batch: { timeout: 2s, send_batch_size: 512 }
-  attributes/redact:
-    actions:
-      - key: user.email
-        action: delete
-      - key: atlas.user_id_raw
-        action: hash            # SHA-256; keeps joins, drops identity
-      - key: gen_ai.tool.call.result
-        action: update
-        # collector-side regex redaction (defence in depth; SDK masks first)
-        # pattern replaces NW-123456 style ids
-        from_attribute: gen_ai.tool.call.result
-  transform/redact:
-    trace_statements:
-      - context: span
-        statements:
-          - replace_pattern(attributes["gen_ai.tool.call.result"], "NW-\\d{5}", "[EMPLOYEE_ID]")
-          - replace_pattern(attributes["gen_ai.tool.call.arguments"], "NW-\\d{5}", "[EMPLOYEE_ID]")
-  tail_sampling:
-    decision_wait: 10s
-    policies:
-      - name: keep-errors
-        type: status_code
-        status_code: { status_codes: [ERROR] }
-      - name: keep-slow
-        type: latency
-        latency: { threshold_ms: 4000 }
-      - name: keep-some
-        type: probabilistic
-        probabilistic: { sampling_percentage: 20 }
-
-exporters:
-  otlphttp/langfuse:
-    endpoint: http://langfuse-web:3000/api/public/otel
-    headers:
-      Authorization: "Basic ${env:LANGFUSE_BASIC_AUTH}"    # base64(pk-lf-...:sk-lf-...)
-  file/debug:
-    path: /var/otel/spans.jsonl
-  debug:
-    verbosity: basic
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [memory_limiter, attributes/redact, transform/redact, tail_sampling, batch]
-      exporters: [otlphttp/langfuse, file/debug]
-```
-
-Note that the Langfuse OTLP endpoint is `/api/public/otel` (the collector appends `/v1/traces`), and it authenticates with HTTP Basic auth built from the public and secret key. Create the header value and restart the collector:
+Now move the Langfuse credentials from Atlas to the Collector. Edit `.env`: **blank** `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` (the stack's Atlas container reads `.env`, and with keys it would also export to Langfuse directly, doubling every trace). Then, in the shell that runs `make stack`:
 
 ```bash
-export LANGFUSE_BASIC_AUTH=$(printf 'pk-lf-...:sk-lf-...' | base64 -w0)
-docker compose -f deploy/docker-compose.observability.yml up -d --force-recreate atlas-otel-collector
-docker compose -f deploy/docker-compose.observability.yml logs -f atlas-otel-collector | head -20
+export LANGFUSE_BASIC_AUTH=$(printf 'pk-lf-...:sk-lf-...' | base64 | tr -d '\n')
+export LANGFUSE_BASE_URL=http://host.docker.internal:3000   # Langfuse runs in another compose project; verify this host name on your Docker
+make stack
+docker compose -f deploy/docker-compose.observability.yml logs otel-collector | tail -20
 ```
 
-Expected log lines: `Everything is ready. Begin running and processing data.` and no `authentication failed`.
+No `401` and no `connection refused` in the Collector log means it can reach Langfuse. The stack's Atlas container already exports OTLP to `http://otel-collector:4318/v1/traces`.
 
-Then switch Atlas:
-
-```dotenv
-OTEL_EXPORTER=otlp
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
-```
-
-Restart `make run`, send the shipment question from Lab 2 (it has a consignee email in the tool result), and confirm:
-
-1. The trace appears in Langfuse (via the collector this time; the `service.name=atlas` resource attribute is preserved).
-2. The file export has it too:
+Drive some traffic and look at a tool span in both backends:
 
 ```bash
-docker compose -f deploy/docker-compose.observability.yml exec atlas-otel-collector \
-  sh -c 'tail -c 20000 /var/otel/spans.jsonl' | grep -o '"gen_ai.tool.call.result"[^}]*' | head -1
+make swarm RPS=2 DURATION=120
 ```
 
-Expected: the result string contains `[EMAIL]` (masked by the SDK in `northwind.pii` before export) and `[EMPLOYEE_ID]` if any id was present (masked by the SDK **and** the collector). To prove the collector's layer works on its own, temporarily set `ATLAS_MASK=0` (SDK masking off), send the request again, and check the file: `NW-` ids must still be gone, emails will now be raw. Turn `ATLAS_MASK=1` back on. Write down what each layer caught.
+1. Langfuse (`localhost:3000`) and Phoenix (`localhost:6006`) both show traces. Not every request: the tail sampler drops most healthy ones.
+2. Open an `execute_tool lookup_ticket` span in Phoenix: there is **no** `gen_ai.tool.call.result` attribute, and `gen_ai.tool.call.arguments` is a hash string. That's the Collector's layer. Atlas's own SDK-side mask (`northwind.pii`) already replaced emails and `NW-` ids in the values before they left the process; the Collector deletes the content attributes outright as defence in depth.
 
-> **Checkpoint 3:** traces flow Atlas → collector → Langfuse and file; the collector redacts employee ids even with SDK masking off.
+> **Checkpoint 3:** traces flow Atlas → Collector → Langfuse and Phoenix; a tool span shows the Collector's deletions and hashes.
 
 ---
 
 ## Step 4: Tail sampling: keep the errors, drop the boring
 
-Run the swarm with the retry storm for two minutes:
+Put the stack's Atlas into the `retry_storm` scenario (add `ATLAS_SCENARIO=retry_storm` to `.env`, then `docker compose -f deploy/docker-compose.observability.yml up -d atlas`) and run the swarm for two minutes:
 
 ```bash
-OFFLINE=1 ATLAS_SCENARIO=retry_storm make run
-OFFLINE=1 uv run python -m simulator.swarm --rps 2 --minutes 2 --seed 42
+make swarm RPS=2 DURATION=120
+curl -sL localhost:8000/metrics | grep '^atlas_requests_total' | awk '{s+=$2} END {print "served", s}'
 ```
 
-Count what the collector kept:
+Then count what reached Phoenix: in the Phoenix UI, filter the project's traces to the last few minutes, and separately to status error. Every trace with a timed-out (ERROR) generation is kept by the `errors` policy; healthy traces are kept at about 20%. Write down served, exported, and errors exported. Compare with head sampling at 20% (`TRACE_SAMPLE_RATE=0.2` in Atlas's own SDK), which keeps about a fifth of the errors too, because it decides before the trace finishes. That's why sampling moves to the Collector once you self-host.
 
-```bash
-docker compose -f deploy/docker-compose.observability.yml exec atlas-otel-collector \
-  sh -c 'grep -c "\"name\":\"atlas.chat\"" /var/otel/spans.jsonl'
-```
+Remove `ATLAS_SCENARIO` from `.env` and recreate the container when you're done.
 
-And what Atlas sent:
-
-```bash
-curl -s http://localhost:8000/metrics | grep 'atlas_requests_total' | awk -F' ' '{s+=$2} END {print s}'
-```
-
-Expected: Atlas served about 240 requests; the collector exported roughly 110 to 130 `atlas.chat` root spans: **all** of the ~70 error traces (retry storm), all of the slow ones, and 20% of the healthy rest. Compare with head sampling at 20% (`TRACE_SAMPLE_RATE=0.2` in Atlas's own SDK): you would keep ~48 traces and, on average, only 14 of the 70 errors. That is why sampling moves to the collector once you self-host (lecture 13.2): the collector sees the whole trace before deciding.
-
-> **Checkpoint 4:** you can show that error traces were kept at 100% while healthy traffic was sampled.
+> **Checkpoint 4:** you can show that error traces were kept while healthy traffic was sampled.
 
 ---
 
-## Step 5: Kill the backend (chaos, lecture 13.5)
+## Step 5: Kill the Collector (chaos, Lecture 13.5)
 
-With Atlas serving traffic through the collector:
-
-```bash
-docker compose -f deploy/docker-compose.langfuse.yml stop langfuse-web langfuse-worker
-```
-
-Keep the swarm running. Check three things:
-
-1. Atlas still answers: `curl` the Lab 1 request; you get a normal response in normal time.
-2. Atlas's p95 did not move: Grafana p95 panel flat. The SDK's `BatchSpanProcessor` exports asynchronously with a bounded queue (`max_queue_size=2048`, `export_timeout_millis=30000` in `telemetry/otel_setup.py`), so a dead backend costs the request path nothing; when the queue is full, spans are **dropped**, not requests.
-3. The collector is buffering and retrying: its logs show `Exporting failed. Will retry the request after interval.` with the `sending_queue`/`retry_on_failure` settings from the exporter block. Once the queue (default 1,000 batches) fills, the collector also drops.
-
-Bring Langfuse back:
+With the swarm running (`make swarm RPS=2 DURATION=600`), in a third terminal:
 
 ```bash
-docker compose -f deploy/docker-compose.langfuse.yml start langfuse-web langfuse-worker
+watch -n 2 "curl -sL localhost:8000/metrics | grep -E '^atlas_requests_total|^atlas_telemetry_export_failures_total'"
+docker compose -f deploy/docker-compose.observability.yml stop otel-collector
 ```
 
-Traces from the outage window reappear in Langfuse after a minute (the collector's queue drains); traces beyond the queue capacity are gone for good. Record how many minutes of outage your queue covered at 2 RPS (about 8 minutes with defaults). In production you size the queue for your longest tolerable backend outage and alert on `otelcol_exporter_send_failed_spans`.
+Check three things:
 
-Now the wrong way: set `OTEL_EXPORTER=otlp` with `OTEL_BSP_EXPORT_TIMEOUT=60000` and `OTEL_BSP_MAX_QUEUE_SIZE=64` in Atlas, use a `SimpleSpanProcessor` (there is a flag `ATLAS_SYNC_EXPORT=1` for this demo), stop the collector, and send a request. It takes a minute to answer. That is what "telemetry in the request path" looks like, and it is the reason the production checklist (lecture 13.4) has "exporter back-pressure" as its own line.
+1. The swarm still gets 200s, and `atlas_requests_total` keeps climbing at the same rate.
+2. `atlas_telemetry_export_failures_total{name="otlp"}` rises, and `docker compose -f deploy/docker-compose.observability.yml logs atlas` shows `telemetry exporter otlp failed (...); dropping spans`.
+3. `curl -s localhost:8000/healthz` lists the `otlp` exporter with a growing `failures` count. Prometheus (`localhost:9091` → Alerts) fires `AtlasTelemetryExportFailures` (more than 20 failures in 10 minutes, a ticket, not a page).
 
-> **Checkpoint 5:** Atlas served normally with Langfuse down; you know how long the queue lasted; you saw the synchronous anti-pattern once.
+Bring it back with `docker compose -f deploy/docker-compose.observability.yml start otel-collector`. New traces arrive within a minute; the ones dropped during the outage are gone, a visible gap in Phoenix's timeline.
+
+Then see the anti-pattern once, offline and in seconds: `tests/integration/test_exporter_failure.py` pins the safe behaviour (`python -m pytest -q tests/integration/test_exporter_failure.py`, `3 passed`), and the ten-line script from Lecture 13.5 shows twenty spans taking 0.00 s with the batch processor and about four seconds with `batch=False` against a 200 ms exporter. There is no environment switch for the synchronous processor; `configure_tracing(batch=False)` is the only way in, which is the point.
+
+> **Checkpoint 5:** Atlas served normally with the Collector down; you saw the failure counter, the log line and the health field.
 
 ---
 
@@ -233,42 +142,49 @@ Now the wrong way: set `OTEL_EXPORTER=otlp` with `OTEL_BSP_EXPORT_TIMEOUT=60000`
 
 | Job | Runs when | What it does |
 |---|---|---|
-| `unit-integration` | always | `make test` offline |
-| `budget-gate` | always | `OFFLINE=1 make replay && make budget-check`: replays the day and fails if cost per session > `$0.05` or p95 > 4,000 ms or error rate > 2% |
-| `live-evals` | only when `OPENAI_API_KEY` and Langfuse secrets exist | 50 real requests, judge sample, `create_score`s tagged with the commit SHA as `release` |
+| `test` (unit + integration, offline) | every push and PR | lint, `pytest tests/unit`, `pytest tests/integration`, and a check that `incidents/generate.py` reproduces the datasets byte for byte |
+| `budget-gate` | every push and PR, after `test` | `pytest tests/budget` with `BUDGET_COST_PER_SESSION_USD=0.05` and `BUDGET_P95_LATENCY_MS=4000`; the text console goes to the job summary |
+| `live-evals` | pushes to `main` only, and only with secrets | the judge against live traffic, `LANGFUSE_RELEASE` set to the commit SHA |
 
-Push your fork and open a pull request that changes something harmless (a README line). Expected checks:
-
-```text
-✓ unit-integration    2m 10s
-✓ budget-gate         1m 42s   cost/session $0.0421 (budget 0.05)  p95 2,140 ms (budget 4,000)
-○ live-evals          skipped (no secrets)
-```
-
-Now make it fail on purpose. In the PR, set `ATLAS_TOP_K=12` in `.env.example` (the retrieval change from Incident 2; more chunks per prompt). Push. Expected:
+Push your fork and open a pull request that changes something harmless. Both offline jobs go green. Locally the gate prints:
 
 ```text
-✗ budget-gate   FAILED tests/budget/test_budget_gate.py::test_cost_per_session_within_budget
-    AssertionError: cost per session 0.0587 exceeds budget 0.05 (+17.4%)
+cost/session $0.01454 (budget $0.05) total $4.36 over 300 sessions
+p95 3822 ms (budget 4000 ms) over 781 requests
+max input tokens/generation 17,992 (budget 24,000)
+5 passed
 ```
 
-The gate wrote a comment on the PR with the before/after table (via `tests/budget/report.py`). Revert the change, push, gate green again. Screenshot both runs.
+Now make it fail on purpose, the way Incident 1's retrieval change would have. In the PR, add `ATLAS_TOP_K: "12"` to the `budget-gate` job's `env` block and push. Expected:
 
-Locally the same thing is:
+```text
+FAILED tests/budget/test_budget_gate.py::test_p95_latency_within_budget - AssertionError: p95 4088 ms exceeds budget 4000 ms
+FAILED tests/budget/test_budget_gate.py::test_max_input_tokens_per_generation - AssertionError: a generation sent 34,990 input tokens (> 24,000) ...
+```
+
+Cost per session rises to $0.0202 but stays under its $0.05 budget; p95 and the tokens test are what catch it. Revert, push, green again. Screenshot both runs. Locally:
 
 ```bash
-OFFLINE=1 ATLAS_TOP_K=12 make replay && make budget-check
+ATLAS_TOP_K=12 make budget-check
 ```
 
-> **Checkpoint 6:** a PR that regresses cost is blocked; the revert passes.
+> **Checkpoint 6:** a PR that regresses latency and prompt size is red; the revert is green.
 
 ---
 
 ## Step 7: Release tags in Langfuse
 
-The CI `live-evals` job (and, offline, the replay) sets `LANGFUSE_RELEASE=$GITHUB_SHA`. In your local Langfuse, filter **Traces → release = lab7**, then run one replay with `LANGFUSE_RELEASE=lab7-topk12 ATLAS_TOP_K=12` and compare the two releases' mean cost in the Langfuse dashboard (**Dashboards → Cost by release**). The Grafana annotation from Lab 6 does the same on the metrics side. Both together mean every regression has a release boundary to point at.
+`LANGFUSE_RELEASE` becomes the release on every trace (and `service.version` on the OTel resource). Replay a small day to your Langfuse twice, with two releases (the replay writes through the Langfuse SDK, so put the keys back in your shell for this step):
 
-> **Checkpoint 7:** two releases visible side by side in Langfuse with different cost.
+```bash
+set -a; source .env; set +a      # with LANGFUSE_PUBLIC_KEY / SECRET_KEY / BASE_URL=http://localhost:3000
+LANGFUSE_RELEASE=lab7 make replay LANGFUSE=1 SESSIONS=200 STORE=.atlas/lab7-a.sqlite
+LANGFUSE_RELEASE=lab7-topk12 ATLAS_TOP_K=12 make replay LANGFUSE=1 SESSIONS=200 STORE=.atlas/lab7-b.sqlite
+```
+
+In Langfuse, filter traces by release and compare cost per trace between the two (verify where your Langfuse version shows a release filter and cost aggregation). Offline, the Ops Console's **Compare replays** page shows the same comparison from the two stores.
+
+> **Checkpoint 7:** two releases comparable side by side.
 
 ---
 
@@ -279,22 +195,22 @@ The CI `live-evals` job (and, offline, the replay) sets `LANGFUSE_RELEASE=$GITHU
 ```markdown
 # Lab 7
 
-- Langfuse compose version used / any drift fixes needed:
-- Screenshot: trace via collector in self-hosted Langfuse
-- Redaction: what the SDK caught / what the collector caught (ATLAS_MASK=0 experiment)
-- Tail sampling: served ___ requests, exported ___ traces, errors kept ___/___ 
-- Backend outage: minutes covered by the queue at 2 RPS: ___; p95 during outage: ___
+- Langfuse compose: anything I had to change to match upstream:
+- Screenshot: one trace in self-hosted Langfuse and in Phoenix, via the Collector
+- Redaction: what the SDK mask changed, what the Collector deleted or hashed
+- Tail sampling: served ___ requests, exported ___ traces, errors exported ___ of ___
+- Collector outage: requests failed ___ (should be 0); export failures counted ___
 - CI: link to the red run and the green run
-- One thing from the production checklist (13.4) my stack still lacks:
+- One item from the production checklist (13.4) my stack still lacks:
 ```
 
 ---
 
-## Stretch goal
+## Stretch goals
 
-1. Add a second exporter to the collector pipeline (`otlphttp/phoenix` pointed at Arize Phoenix on `http://localhost:6006/v1/traces`, from the `phoenix` extra) and confirm the same trace appears in Langfuse and Phoenix. That is lecture 12.3 in practice.
-2. Enable the collector's own metrics (`service.telemetry.metrics`) and scrape them with Prometheus; add a panel for `otelcol_exporter_send_failed_spans` and an alert when it increases.
-3. Move the SDK's `mask` function out of the code path and rely on the collector alone, then write the argument for and against in one paragraph (hint: the debug exporter, local files and any exporter that bypasses the collector will see raw data).
+1. Scrape the Collector's own metrics (`otel-collector:8888`, already a Prometheus target) and add a Grafana panel for the exporter's failed spans; alert when it increases.
+2. Write one paragraph for and against relying on the Collector alone for redaction (hint: the console and file exporters, and anything that bypasses the Collector, see whatever the SDK sends).
+3. Add a `file` exporter to the Collector pipeline and diff one span before and after redaction.
 
 ---
 
@@ -302,39 +218,38 @@ The CI `live-evals` job (and, offline, the replay) sets `LANGFUSE_RELEASE=$GITHU
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `langfuse-web` restarts in a loop | Missing required secret or ClickHouse not ready | `docker compose logs langfuse-web`; compare env with the upstream compose; wait for `clickhouse` healthy |
-| Langfuse UI loads but traces never appear via collector | Wrong endpoint path or auth | Endpoint is `/api/public/otel` (no `/v1/traces` suffix in `otlphttp` `endpoint`); header is `Basic base64(pk:sk)` |
-| Collector logs `401` | Keys from a different project | Regenerate `LANGFUSE_BASIC_AUTH` from the `atlas-local` project's keys |
-| Collector logs `connection refused` to `langfuse-web` | Collector and Langfuse on different Docker networks | Both compose files join the `atlas-net` external network; `docker network create atlas-net` if missing |
-| `replace_pattern` errors on startup | Older collector-contrib without the transform processor syntax | Use image tag `>= 0.100.0`; or fall back to the `redaction` processor |
-| Tail sampling keeps everything | `decision_wait` shorter than trace duration | Raise to 10 s; a trace that is still open when the decision is made is treated as complete with what has arrived |
-| Atlas hangs when the collector is down | Synchronous export or huge timeout | Use `BatchSpanProcessor`, default timeouts; `ATLAS_SYNC_EXPORT` must be `0` |
-| CI budget gate flaky | Non-deterministic seed | The gate replays with `--seed 42`; check nothing overrides `ATLAS_SCENARIO` in the CI env |
-| PR comment missing | Workflow lacks `pull-requests: write` permission | Add it under `permissions:` in `ci.yml` |
+| `clickhouse` restarts in a loop | Low Docker memory | Raise to 6 GB or more |
+| `langfuse-web` restarts | Missing secret | `docker compose -f deploy/docker-compose.langfuse.yml logs langfuse-web`; compare with the upstream self-host docs |
+| Collector logs `401` | Keys from another project, or `LANGFUSE_BASIC_AUTH` not exported in the shell that ran `make stack` | Regenerate it from `atlas-local`'s keys and rerun `make stack` |
+| Collector logs `connection refused` to Langfuse | Langfuse is in a different compose project; `localhost` inside a container is the container | Use a host-reachable URL for `LANGFUSE_BASE_URL` (Docker Desktop: `host.docker.internal`); verify on Linux |
+| Every trace appears twice in Langfuse | Atlas still has Langfuse keys in `.env` and exports directly too | Blank them in `.env` and recreate the `atlas` container |
+| Nothing in Phoenix or Langfuse after `make replay` | Expected: the replay doesn't use the Collector | Use `make swarm` against the stack |
+| `make budget-check` passes with `ATLAS_TOP_K` set in `.env` | The gate doesn't read `.env` | Set it on the command line or in the CI job's `env` |
+| `curl /metrics` prints nothing | Redirect not followed | `curl -sL` |
 
 ---
 
 ## Solution notes
 
-Reference files: `03-code/deploy/docker-compose.langfuse.yml`, `03-code/deploy/docker-compose.observability.yml`, `03-code/deploy/otel-collector.yaml`, `03-code/telemetry/otel_setup.py`, `03-code/tests/budget/test_budget_gate.py`, `03-code/.github/workflows/ci.yml`.
+Reference files: `03-code/deploy/docker-compose.langfuse.yml`, `03-code/deploy/docker-compose.observability.yml`, `03-code/deploy/otel-collector.yaml`, `03-code/deploy/prometheus.yml`, `03-code/deploy/alerts.yml`, `03-code/telemetry/otel_setup.py`, `03-code/tests/integration/test_exporter_failure.py`, `03-code/tests/budget/test_budget_gate.py`, `03-code/.github/workflows/ci.yml`.
 
-Reference numbers (seed 42, 2 RPS for 2 minutes with `retry_storm`): 240 served, 118 root spans exported, 71/71 error traces kept, 34/169 healthy kept (20%); head sampling at 20% would have kept ~14 errors. Backend outage coverage with default queues at 2 RPS: about 8 minutes before the collector drops; Atlas p95 unchanged (2,150 ms vs 2,140 ms baseline). CI red run: cost per session $0.0587 with `ATLAS_TOP_K=12` (+17%).
+Reference gate numbers (offline, deterministic): baseline `5 passed` (cost/session $0.01454, p95 3,822 ms, worst prompt 17,992 tokens); `ATLAS_TOP_K=12` 2 failed (p95 4,088 ms; 34,990 tokens; cost/session $0.0202, under budget). Swarm, sampling and outage counts depend on run length; grade the reasoning, not the exact numbers.
 
 What a complete Lab 7 shows:
 
 | Element | Evidence |
 |---|---|
-| Self-hosted Langfuse | Trace visible with environment `local`, release `lab7` |
-| Collector in the path | Same trace via OTLP, `service.name` preserved, file export has it |
-| Defence-in-depth masking | `ATLAS_MASK=0` experiment: collector still removed employee ids; SDK is the primary control because it also covers exporters that bypass the collector |
-| Tail sampling | Errors kept at 100%, healthy at 20%, and the head-sampling comparison |
-| Backend chaos | Atlas served, p95 flat, queue coverage measured, sync anti-pattern seen once |
-| CI gate | Red run on `ATLAS_TOP_K=12`, green on revert, PR comment with the table |
-| Releases | Two releases comparable in Langfuse and annotated in Grafana |
+| Self-hosted Langfuse | trace with environment `local` and release `lab7` |
+| Collector in the path | the same traces in Langfuse and Phoenix; no Langfuse keys in Atlas's env |
+| Defence-in-depth masking | SDK-masked values in the local store, deleted and hashed attributes after the Collector |
+| Tail sampling | errors kept, healthy traffic sampled, the head-sampling comparison |
+| Backend chaos | every request served, failure counter and health field, the gap in the timeline |
+| CI gate | red run on `ATLAS_TOP_K=12` with two named failures, green on revert |
+| Releases | two releases comparable in Langfuse or on the Compare replays page |
 
 Key takeaways:
 
-1. Self-hosting buys control over data and retention; it costs you the operations of six containers. The decision matrix in lecture 12.5 is not academic.
-2. The collector is where portability, sampling and redaction policy live once you have more than one backend, or one you do not fully trust.
-3. Telemetry must never be in the request path. Drop spans, never requests, and alert on the dropping.
-4. A budget gate in CI turns "we should watch cost" into "this PR cannot merge". It is the cheapest incident prevention in the course.
+1. Self-hosting buys control over data and retention; it costs you the operation of six containers. The decision matrix in Lecture 12.5 is not academic.
+2. The Collector is where sampling and redaction policy live once you have more than one backend.
+3. Telemetry must never be in the request path: drop spans, never requests, and alert on the dropping.
+4. A budget gate turns "we should watch cost" into "this PR can't merge", and it catches latency and prompt size as well as cost.

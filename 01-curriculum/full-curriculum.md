@@ -452,7 +452,7 @@ Establish why conventional software testing (unit tests, integration tests, exac
   3. **Trajectory evals** — tool choice, arguments, order and loops across the agent's steps; every PR (`tests/trajectory`)
   4. **End-to-end evals** — golden datasets scored by LLM-judge metrics, plus the red team; every PR or nightly (`tests/e2e`)
   5. **Production monitoring** — drift, scorecards, audit trail and tracing on live traffic; continuous (`tests/production` + `monitoring/`)
-- **Test Strategy Template:** one template (`11-course-assets/templates/test-strategy-template.md`). Rows are the five pyramid layers; for each layer it records what is tested, which failure modes (T2) and quality dimensions (T3) it covers, the metrics and thresholds, when it runs and what it costs. A risk ranking of the agent's components (LLM, tools, memory, planning) decides which rows get the most cases.
+- **Test Strategy Template:** one template (`11-course-assets/templates/test-strategy-template.md`). First a coverage matrix crosses the agent's components (LLM, tools, memory, planning) with the five quality dimensions to decide **what** to test (diagram D6); then the strategy table, whose rows are the five pyramid layers, records for each layer what is tested, which failure modes (T2) and dimensions (T3) it covers, the metrics and thresholds, when it runs, what it costs and who owns it.
 
 ## Demonstrations Planned
 
@@ -495,7 +495,7 @@ assert '5-7 business days' in : 10/10 passed
 | Deterministic vs. Non-Deterministic | Split diagram | **D2**: Left: Input → f(x) → Always Same Output. Right: Input → LLM Agent → Output A / Output B / Output C (all potentially correct) |
 | Traditional Test Pyramid vs. Agent Eval Pyramid | Side-by-side pyramids | **D4**: Traditional: Unit → Integration → E2E. Agent: Unit Evals → Component Evals → Trajectory Evals → E2E Evals → Production Monitoring |
 | 5 Dimensions Pentagon | Radar/spider chart | **D5**: Pentagon with 5 axes (Correctness, Faithfulness, Relevance, Safety, Reliability), showing two overlaid agent profiles for comparison |
-| Test Strategy Template | Template slide | The template's rows are the five pyramid layers (columns: what it tests, failure modes, dimensions, metrics and thresholds, when it runs, cost). **D6** (components × dimensions) is used as a coverage check before filling the rows |
+| Test Strategy Template | Template slide | **D6** (components × dimensions, each cell a test type) decides what to test; the template's strategy table has the five pyramid layers as rows (columns: what it tests, failure modes, dimensions, metrics and thresholds, when it runs, cost, owner) |
 
 ## Quiz Questions
 
@@ -521,7 +521,7 @@ assert '5-7 business days' in : 10/10 passed
 - C) Team members
 - D) API endpoints
 
-**Answer: B** — Each row is one pyramid layer. For each layer the template records what it tests, which of the six failure modes and five quality dimensions it covers, the metrics and thresholds, when it runs and what it costs. Cheap deterministic layers run on every commit; expensive judge-based layers run on PRs, nightly or in production.
+**Answer: B** — Each row is one pyramid layer. The rows are filled by crossing the agent's components (LLM, tools, memory, planning) with the five quality dimensions, and for each layer the template records what it tests, which failure modes and dimensions it covers, the metrics and thresholds, when it runs, what it costs and who owns it. Cheap deterministic layers run on every commit; expensive judge-based layers run on PRs, nightly or in production.
 
 ## Assignment
 
@@ -535,7 +535,7 @@ _No formal graded assignment. Thought Exercise 2.1 (scoring agent responses on 5
 
 **IQ2: "Explain the 5 Dimensions of Agent Quality. Give an example where an agent scores well on 4 dimensions but critically fails on 1."**
 
-**Model Answer:** The 5 dimensions are Correctness (is the answer and the action right?), Faithfulness (is every claim supported by the context or tool results?), Relevance (does it address what was asked?), Safety (does it resist attacks and protect data?), and Reliability (same behaviour, fast and cheap enough, every time?). Example of 4/5 with a critical failure: A RAG agent answering HR policy questions produces a response that is relevant (answers the question asked), faithful (every statement is from the HR document), reliable (gives consistent answers), and safe (no bias or harmful content) — but it's incorrect because it retrieved an outdated version of the policy document. The old policy says 15 vacation days, but the current one says 20. The agent faithfully quoted the wrong document. This illustrates why all 5 dimensions matter — faithfulness without correctness can be worse than obvious errors, because stakeholders trust the answer more.
+**Model Answer:** The 5 dimensions are Correctness (is the answer and the action right?), Faithfulness (is every claim supported by the context or tool results?), Relevance (does it address what was asked?), Safety (does it resist attacks and protect data?), and Reliability (same behaviour, fast and cheap enough, every time?). Example of 4/5 with a critical failure: A RAG agent answering HR policy questions produces a response that is relevant (answers the question asked), faithful (every statement is from the HR document), reliable (gives consistent answers), and safe (no bias or harmful content) — but it's incorrect because it retrieved an outdated version of the policy document. The outdated copy in the index says 10 vacation days; the current policy says 15. The agent faithfully quoted the wrong document. This illustrates why all 5 dimensions matter — faithfulness without correctness can be worse than obvious errors, because stakeholders trust the answer more.
 
 ## Enterprise Scenario
 
@@ -591,7 +591,7 @@ Get students writing real agent evaluations with DeepEval — from creating test
 
 | Demo | Description |
 |------|-------------|
-| **DeepEval Quickstart** (`demos/m03_first_eval.py`) | A one-test evaluation of the real agent: `uv run deepeval test run demos/m03_first_eval.py`. AnswerRelevancy 1.00 (threshold 0.7) → PASS. Raise the threshold or break the answer to see FAIL and the metric's reason. Confident AI's hosted dashboard (`deepeval login`) is optional and not required by any lab. |
+| **DeepEval Quickstart** (`demos/m03_first_eval.py`) | A one-test evaluation of the real agent: `uv run deepeval test run demos/m03_first_eval.py`. AnswerRelevancy 1.00 (threshold 0.7) → PASS. Raise the threshold or break the answer to see FAIL and the metric's reason, then read DeepEval's local results table in the terminal. (Confident AI's hosted dashboard is optional and not used by any lab.) |
 | **Golden Dataset Construction** (`demos/m03_golden_dataset.py`) | Load `datasets/golden_support.json` (10 cases, 4 categories: faq 3, account 3, escalation 2, security 2), show the table, pick a 5-case starter set (GS-01, GS-04, GS-07, GS-09, GS-05) and turn it into DeepEval Goldens |
 | **Evaluation Run** (`demos/m03_eval_support_agent.py`) | Full 10-case run with Answer Relevancy, Faithfulness (where a case has context) and Answer Correctness: 10/10 passed offline; averages Answer Correctness 0.98, Answer Relevancy 1.00, Faithfulness 1.00 |
 
@@ -745,7 +745,7 @@ Master the full landscape of evaluation metrics — from standard LLM quality me
 - **LLM Quality Metrics (DeepEval):**
   - Answer Relevancy (`AnswerRelevancyMetric`) — does the response address the query?
   - Faithfulness (`FaithfulnessMetric`) — is the response grounded in the provided context? In DeepEval 4.2 only claims that **contradict** the context fail; unknown claims pass unless `penalize_ambiguous_claims=True`
-  - Coherence — is the response well-structured and logically consistent? (a GEval criterion; DeepEval has no separate coherence class)
+  - Coherence — is the response well-structured and logically consistent? (taught as a GEval criterion: DeepEval 4.2.7 has no `CoherenceMetric`)
   - Hallucination (`HallucinationMetric`) — in DeepEval 4.2 the score is the share of `context` items the answer agrees with: **higher is better**, and the test passes when score ≥ threshold (older docs describe it the other way round)
   - Bias (`BiasMetric`) — does the response exhibit unfair bias?
   - Toxicity (`ToxicityMetric`) — does the response contain harmful language?
@@ -753,7 +753,7 @@ Master the full landscape of evaluation metrics — from standard LLM quality me
   - Task Completion (`TaskCompletionMetric`) — did the agent achieve the user's goal?
   - Tool Correctness (`ToolCorrectnessMetric`) — compares `tools_called` with `expected_tools` by name (DeepEval 4.2 still needs a `model=` argument)
   - Tool Argument Correctness — were the tool parameters correct? (deterministic checks in `evaluators/tool_metrics.py`, Module 6)
-  - Goal Accuracy — did the final answer or action match the intended outcome? (the course's Answer Correctness GEval against `expected_output`)
+  - Goal Accuracy — did the final answer or action match the intended outcome? (measured with the expected tools per golden case plus the course's Answer Correctness GEval against `expected_output`)
   - Trajectory Efficiency — did the agent take a reasonable number of steps? (LLM-call count against the Reliability limit of 6)
 - **LLM-as-Judge:**
   - Using gpt-4.1 (judge) to evaluate gpt-4.1-mini (agent) outputs (decision A8)
@@ -1238,7 +1238,7 @@ def validate_call(schemas: dict[str, dict], tool: str, args: dict) -> list[str]:
 - At least 10 test cases covering: tool selection, argument correctness, multi-tool sequences, error handling, unauthorized use prevention
 - Deterministic checks for tool selection accuracy and argument correctness (`evaluators/tool_metrics.py`)
 - Security tests: the agent never calls `delete_record` without explicit confirmation, never emails all employees, and refuses cross-department queries for role `user`
-- **Deliverable:** `project3_tool_tests.py` + test results + brief security report
+- **Deliverable:** `my_work/test_project3.py` (≥ 10 tests; the reference suite `tests/trajectory/test_ops_agent.py` has 14) + test results + `my_work/project3_report.md` with a brief security section
 
 ## Interview Questions
 
@@ -1297,7 +1297,7 @@ Teach students to test multi-agent systems where multiple AI agents communicate,
 - **Delegation testing:** Does the supervisor assign tasks to the right worker? Does it handle "I can't do this" responses correctly?
 - **Coordination testing:** When agents share state, does state remain consistent? Do agents respect each other's locks/reservations?
 - **Infinite loop detection:** Agent A delegates to Agent B, which delegates back to Agent A. Or Agent A retries the same action indefinitely.
-- **State corruption:** Agent A reads a value, Agent B modifies it, Agent A acts on the stale value
+- **State corruption:** Agent A reads a value, Agent B modifies it, Agent A acts on the stale value (concept). The course models it concretely as a hand-off message altered in transit, caught by the message checksum and retried
 - **Failure propagation:** Agent C fails → Agent B receives an error → Agent B passes garbage to Agent A → User gets a wrong answer
 - **Graceful degradation:** Testing that when one agent fails, the system degrades gracefully rather than cascading
 
