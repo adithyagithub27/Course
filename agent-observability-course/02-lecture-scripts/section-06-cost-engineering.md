@@ -926,7 +926,7 @@ Caching makes re-sent tokens cheaper. The next lever makes them fewer: the conte
 | ID | 6.5 |
 | Title | The context diet |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 930 spoken words at ~140 wpm; remaining time is on-screen code and the before/after) |
+| Target duration | 8:00 (about 890 spoken words at ~140 wpm; remaining time is on-screen code and the before/after) |
 | One idea | Truncate tool results and trim history, measure tokens per step before and after, and cut the input bill by a quarter without hurting answers. |
 | Prerequisites | 6.4 |
 | Files used | `src/northwind/tokens.py`, `app/agent.py`, `src/northwind/config.py`, `tests/unit/test_tokens.py` |
@@ -1077,7 +1077,7 @@ One option the code leaves on a placeholder: the `summariser` callback. The defa
 
 [AVATAR]
 
-The other cut for bigger agents is tool schemas. Atlas has five tools, well under a thousand tokens. If you have forty, send the model only the tools relevant to the routed intent, and you'll save more than the diet did. [PAUSE] And retrieval top-k. It is deliberately not part of the diet flag: `ATLAS_TOP_K` stays at four, because in the replay's ground truth four passages answer the question, and the judge's grounded score in Section 8 is the number that tells you whether a lower k is safe. Incident 1 shows what twelve looks like. We'll check the quality side in a moment.
+The other cut for bigger agents is tool schemas. Atlas's five are about seven hundred fifty tokens; with forty, send only the routed intent's tools. [PAUSE] And retrieval top-k stays out of the diet flag on purpose: `ATLAS_TOP_K` is four, and the judge's grounded score from Section 8 is what tells you whether a lower k is safe. Incident 1 shows what twelve looks like.
 
 [SCREEN: terminal]
 
@@ -1375,7 +1375,7 @@ Three levers, each measured. Now the guard rail: per-tenant budgets that degrade
 | ID | 6.7 |
 | Title | Budgets and anomaly alerts per tenant |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 950 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
+| Target duration | 8:00 (about 910 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
 | One idea | Give every tenant a daily budget with a soft cap that degrades and a hard cap that refuses politely, and flag an abnormal request cost before the day's total gets there. |
 | Prerequisites | 6.6 |
 | Files used | `src/northwind/budget.py`, `app/agent.py`, `app/server.py` (`GET /budget`), `telemetry/metrics.py`, `tests/unit/test_budget.py`, Ops Console Budgets page |
