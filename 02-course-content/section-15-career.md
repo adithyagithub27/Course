@@ -9,8 +9,8 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 15.1 | AI Testing Interview Questions & Career Roadmap | Teach | 5:00 | 700 |
-| 15.2 | What Changes Next & Your 30-Day Practice Plan | Outro | 3:00 | 420 |
+| 15.1 | AI Testing Interview Questions & Career Roadmap | Teach | 5:00 | 605 |
+| 15.2 | What Changes Next & Your 30-Day Practice Plan | Outro | 3:00 | 383 |
 
 Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 
@@ -23,7 +23,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 | ID | 15.1 |
 | Title | AI Testing Interview Questions & Career Roadmap |
 | Type | Teach (careers talk) |
-| Target duration | 5:00 (700 spoken words) |
+| Target duration | 5:00 (605 spoken words) |
 | Learning objectives | 1. Choose between four career paths and know which project to lead with for each. 2. Answer five common AI-testing interview questions with structured, evidence-backed answers. 3. Describe your portfolio honestly, including which numbers were produced offline. |
 | Prerequisites | Module 14 (Project 5 recommended) |
 | Files used | `demos/m15_portfolio_summary.py`, `08-projects/` (Projects 1–5), `01-curriculum/full-curriculum.md` Appendix A (interview question bank) |
@@ -52,7 +52,7 @@ In five minutes: four paths, five questions, and one way to describe your projec
 | AI Platform Engineer | eval infrastructure, tracing, cost | Modules 9–12 and the capstone pipeline |
 | AI Governance Specialist | policies, audit trails, red teaming, reporting | Project 4 and Module 13 |
 
-Four paths. An AI QA engineer builds datasets, metrics and gates; lead with Projects 1 and 5. A test lead owns strategy and standards; lead with the eval pyramid and your evaluation policy. A platform engineer builds the infrastructure: tracing, cost, pipelines. And a governance specialist owns policy, audit and red teaming; lead with SecureBank and the audit trail. Titles vary a lot between companies, so read the job description, not the title. Which of the four sounds like your next year?
+Four paths. An AI QA engineer builds datasets, metrics and gates; lead with Projects 1 and 5. A test lead owns strategy and standards; lead with the eval pyramid and your evaluation policy. A platform engineer builds the infrastructure: tracing, cost, pipelines. And a governance specialist owns policy, audit and red teaming; lead with SecureBank and the audit trail. Titles vary a lot between companies, so read the job description, not the title. Coming from manual QA? The QA engineer path uses the most of what you already know. Coming from ML or backend work? The platform path is the shorter step. Which of the four sounds like your next year?
 
 [SCREEN: Terminal in `04-code-examples/agent-eval-framework`.]
 
@@ -98,7 +98,21 @@ Four: tool-calling agents. Test tool choice, arguments and order as a trajectory
 [AVATAR]
 And be precise about where numbers came from. Say "in my course project, in offline mode", when that's true. Interviewers don't mind a course project. They mind finding out later that a number wasn't what it sounded like. Precision is a testing skill. Show it.
 
-[SLIDE 7: Recap]
+[SLIDE 7: Three CV lines, each with a number and a source]
+- Built a CI quality gate for a tool-calling support agent: golden set, 3 metrics, PR comments (course project)
+- Red-teamed a banking agent: 2 of 16 attacks succeeded on v1, 0 of 16 on the fixed v2 (offline)
+- Cut agent cost 29% with model routing, quality re-checked on the golden set (offline benchmark)
+
+Here's how that looks on a CV. Each line has a verb, a number and a source. "Built a CI quality gate for a tool-calling agent, course project." "Red-teamed a banking agent: two of sixteen attacks succeeded on version one, none on the fixed version, offline." "Cut cost twenty-nine percent with routing, quality re-checked." Which line would you want to be asked about? Put that one first.
+
+[SLIDE 8: Your next seven days]
+- Push Project 5 with a README a stranger can follow
+- Record a 60-second demo: the gate blocking a bad prompt
+- Rehearse the five answers out loud, once each
+
+And this week: push Project 5 with a clear README. Record a sixty-second clip of the gate blocking a bad prompt. And say the five answers out loud, once each. Saying them is very different from reading them.
+
+[SLIDE 9: Recap]
 - Pick a path; lead with the matching project
 - Answer with structure and your own numbers
 - Always say where a number came from
@@ -130,7 +144,7 @@ One lecture left. In Lecture 15.2, you'll see what's likely to change in this fi
 | ID | 15.2 |
 | Title | What Changes Next & Your 30-Day Practice Plan |
 | Type | Outro |
-| Target duration | 3:00 (420 spoken words) |
+| Target duration | 3:00 (383 spoken words) |
 | Learning objectives | 1. Name three things in this field that will change, and the habit that keeps your work current. 2. Follow a 30-day, 30-minutes-a-day practice plan mapped to the course modules. 3. Choose a next course or project. |
 | Prerequisites | 15.1 |
 | Files used | `01-curriculum/full-curriculum.md` Appendix B (30-day plan), `04-code-examples/agent-eval-framework/Makefile` (`make test`, `make demos`) |
@@ -146,7 +160,7 @@ Every tool version in this course will be out of date within a year. [PAUSE] Tha
 - Changing: models, prices and regulation (verify current pricing and rules)
 - Not changing: golden sets, metrics, baselines, gates, red teams, monitoring
 
-Three things will change. Library APIs: in this course alone, Langfuse, RAGAS and the MCP SDK all changed their APIs between major versions. Standards: the OpenTelemetry GenAI names are still marked incubating. And models, prices and regulation move every quarter. What doesn't change is the method. Golden sets, metrics, baselines, gates, red teams and monitoring. The habit that protects you is simple: when a library updates, run `make test` before anything else.
+Three things will change. Library APIs: in this course alone, Langfuse, RAGAS and the MCP SDK all changed their APIs between major versions. Standards: the OpenTelemetry GenAI names are still marked incubating. And models, prices and regulation move every quarter. What doesn't change is the method. Golden sets, metrics, baselines, gates, red teams and monitoring. The habit that protects you is simple: when a library updates, run `make test` before anything else. If it breaks, pin the old version in `pyproject.toml`, then read the changelog. Twenty minutes of reading beats two days of guessing.
 
 [SLIDE 2: Your 30-day plan, 30 minutes a day]
 | Week | Days | Focus | Modules |

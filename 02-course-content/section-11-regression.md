@@ -9,9 +9,9 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 11.1 | Why Agents Regress: Model Updates, Prompt Drift, Tool Changes | Teach | 8:00 | 1,045 |
-| 11.2 | Building Regression Test Suites with Golden Datasets | Build-along | 8:00 | 905 |
-| 11.3 | Generating Synthetic Test Data at Scale | Build-along | 8:00 | 905 |
+| 11.1 | Why Agents Regress: Model Updates, Prompt Drift, Tool Changes | Teach | 8:00 | 982 |
+| 11.2 | Building Regression Test Suites with Golden Datasets | Build-along | 8:00 | 762 |
+| 11.3 | Generating Synthetic Test Data at Scale | Build-along | 8:00 | 793 |
 
 Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 
@@ -24,7 +24,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 | ID | 11.1 |
 | Title | Why Agents Regress: Model Updates, Prompt Drift, Tool Changes |
 | Type | Teach (with one demo) |
-| Target duration | 8:00 (1,045 spoken words) |
+| Target duration | 8:00 (982 spoken words) |
 | Learning objectives | 1. Name the four causes of agent regression: model updates, prompt drift, tool changes and context changes. 2. Explain why a one-line prompt edit can pass a manual check and still break faithfulness. 3. Read a regression report: metric deltas, pass rate and newly failing cases. |
 | Prerequisites | 10.3; 3.2 (golden datasets); 4.1 (faithfulness and relevancy) |
 | Files used | `regression/regression_suite.py` (`PROMPT_V2_REGRESSED`, `regressed_agent`, `compare`), `regression/baselines/support_v1.json`, `agents/support_agent.py` (system prompt, knowledge base), `demos/m11_regression_simulation.py` |
@@ -151,7 +151,7 @@ Would a manual review have caught it? Picture the reviewer. They read the diff, 
 - Newly failing cases: exactly which answers to read
 
 [AVATAR]
-So a regression report gives you three things. Metric deltas tell you which dimension moved. The pass rate tells you how much broke. And the list of newly failing cases tells you exactly which three answers to open first. That last part turns a red build into a ten-minute fix: put the rule back, re-run, done.
+So a regression report gives you three things. Metric deltas tell you which dimension moved. The pass rate tells you how much broke. And the list of newly failing cases tells you exactly which three answers to open first. That last part turns a red build into a ten-minute fix: put the rule back, re-run, done. Without the case list, someone spends an afternoon reading a hundred answers to find the three that changed.
 
 [SLIDE 11: Recap]
 - Models, prompts, tools and context all cause regressions
@@ -185,7 +185,7 @@ You just used a stored baseline. In Lecture 11.2, you'll build one: record it, v
 | ID | 11.2 |
 | Title | Building Regression Test Suites with Golden Datasets |
 | Type | Build-along |
-| Target duration | 8:00 (905 spoken words; the rest is typing and output) |
+| Target duration | 8:00 (762 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Evaluate an agent version on a golden dataset and store a slim, versioned baseline. 2. Compare a candidate against the baseline with a tolerance and a newly-failing-cases rule. 3. Decide when to re-record a baseline and when to add a case. |
 | Prerequisites | 11.1; 3.2 (`datasets/golden_support.json`) |
 | Files used | `regression/regression_suite.py` (`evaluate_version`, `save_baseline`, `load_baseline`, `compare`), `regression/baselines/support_v1.json`, `config/eval_config.yaml` (`gates.regression_tolerance`), `demos/m11_baseline_comparison.py`, `Makefile` (`make baseline`) |
@@ -341,7 +341,7 @@ Ten golden cases catch a lot, but not everything. In Lecture 11.3, you'll use th
 | ID | 11.3 |
 | Title | Generating Synthetic Test Data at Scale |
 | Type | Build-along |
-| Target duration | 8:00 (905 spoken words; the rest is typing and output) |
+| Target duration | 8:00 (793 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Configure the DeepEval `Synthesizer` with a `StylingConfig` for a real domain. 2. Expand seed goldens with `generate_goldens_from_goldens` and generate from documents with `generate_goldens_from_contexts`. 3. Quality-check synthetic data for duplicates, diversity and grounding before it enters a regression suite. |
 | Prerequisites | 11.2 |
 | Files used | `regression/synthetic_data.py` (`STYLING`, `make_synthesizer`, `from_seeds`, `from_knowledge_base`, `from_policies`, `quality_report`), `datasets/synthetic_seeds.json`, `demos/m11_synthetic_data.py`, `demos/m11_lab_generate_regress_catch.py`, `Makefile` (`make synthetic`) |

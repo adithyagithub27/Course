@@ -9,11 +9,11 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 14.1 | Capstone Architecture & Requirements | Teach + diagram | 8:00 | 1,000 |
-| 14.2 | Building the Test Harness & Evaluation Pipeline | Build-along | 8:00 | 775 |
-| 14.3 | Adding Security Testing & Observability | Build-along | 8:00 | 775 |
-| 14.4 | CI/CD Integration & Quality Dashboard | Build-along | 8:00 | 760 |
-| 14.5 | [PROJECT 5 — CAPSTONE] Ship the Platform | Build-along | 8:00 | 760 |
+| 14.1 | Capstone Architecture & Requirements | Teach + diagram | 8:00 | 982 |
+| 14.2 | Building the Test Harness & Evaluation Pipeline | Build-along | 8:00 | 753 |
+| 14.3 | Adding Security Testing & Observability | Build-along | 8:00 | 695 |
+| 14.4 | CI/CD Integration & Quality Dashboard | Build-along | 8:00 | 700 |
+| 14.5 | [PROJECT 5 — CAPSTONE] Ship the Platform | Build-along | 8:00 | 727 |
 
 Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 
@@ -26,7 +26,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 | ID | 14.1 |
 | Title | Capstone Architecture & Requirements |
 | Type | Teach + diagram |
-| Target duration | 8:00 (1,000 spoken words) |
+| Target duration | 8:00 (982 spoken words) |
 | Learning objectives | 1. State the capstone's one question and the evidence each stage contributes to the answer. 2. Draw the platform: agent under test, harness, four stages, results store, dashboard, CI gate. 3. List the ship rules and the Project 5 deliverables. |
 | Prerequisites | Modules 3 to 13 (Projects 1 to 4 recommended) |
 | Files used | `capstone/platform.py` (`QualityPlatform`, `AgentConfig`, `gate`), `config/eval_config.yaml`, `demos/m14_architecture.py`, `08-projects/project-5-capstone/README.md`; diagrams D16 and D6 |
@@ -149,7 +149,7 @@ Here's the architecture as the code sees it. Two registered agents. The support 
 Here's what you'll hand in for Project 5. The repo, with the platform running from one command. An architecture diagram like this one, and a one-page evaluation policy: your metrics, thresholds and owners. A quality report for the support agent, plus the leadership scorecard from Lecture 13.3. The CI workflow. And a README that a stranger can follow. This is the project you'll show in interviews, so write it for a reader who's never seen the course.
 
 [AVATAR]
-If you'd like a stretch goal, register your own agent from Projects 1 to 4, or a brand-new one. If it honours the contract, the platform tests it without changes. That's the real test of your architecture.
+If you'd like a stretch goal, register your own agent from Projects 1 to 4, or a brand-new one. If it honours the contract, the platform tests it without changes. That's the real test of your architecture. And keep a log of every design decision you make along the way, like why eighty percent and not ninety. Those decisions are what interviewers ask about.
 
 [SLIDE 12: Recap]
 - One question, four kinds of evidence
@@ -190,7 +190,7 @@ Blueprint done. In Lecture 14.2, you'll build the harness and the functional eva
 | ID | 14.2 |
 | Title | Building the Test Harness & Evaluation Pipeline |
 | Type | Build-along |
-| Target duration | 8:00 (775 spoken words; the rest is typing and output) |
+| Target duration | 8:00 (753 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Register agents in a harness with an `AgentConfig` (data files, forbidden tools, baseline). 2. Build the functional stage with four metrics, adding faithfulness only when a case has context. 3. Read the functional section of the quality report against the five-layer pyramid. |
 | Prerequisites | 14.1 |
 | Files used | `capstone/platform.py` (`AgentConfig`, `QualityPlatform.__init__`, `register`, `functional`, `capstone_metrics`), `datasets/golden_capstone.json` (20 cases), `evaluators/metrics.py`, `evaluators/deepeval_suite.py` (`run_suite`), `demos/m14_full_pipeline.py`; diagram D4 |
@@ -308,7 +308,7 @@ Here's stage one on all twenty cases. Twenty out of twenty pass. Answer correctn
 
 [SCREEN: Same output. Zoom on "Answer Correctness 0.97".]
 
-Why is correctness the only metric below one? Because correctness compares the answer with an expected answer, word against word, and phrasings differ even when the facts match. That's normal. If correctness ever drops while faithfulness stays at one, the agent is grounded but answering a slightly different question. Which metric would you check next?
+Why is correctness the only metric below one? Because correctness compares the answer with an expected answer, and offline the mock judge does that by word overlap, so a different phrasing costs a point or two even when the facts match. A live judge is kinder to wording, but it has its own noise. That's normal. If correctness ever drops while faithfulness stays at one, the agent is grounded but answering a slightly different question. Which metric would you check next?
 
 [AVATAR]
 For your project, add one case of your own to each category, and note why you chose it. Interviewers love asking "why these test cases?", and "this one reproduces a bug I found" is the best answer there is.
@@ -344,7 +344,7 @@ Functional quality is one question. In Lecture 14.3, you'll add the security sta
 | ID | 14.3 |
 | Title | Adding Security Testing & Observability |
 | Type | Build-along |
-| Target duration | 8:00 (775 spoken words; the rest is typing and output) |
+| Target duration | 8:00 (695 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Add a security stage that grades attacks deterministically (PII, other customers' data, forbidden tools, prompt leaks). 2. Read severity-ranked findings and connect them to the gate. 3. Attach a Langfuse v4 trace to every capstone run. |
 | Prerequisites | 14.2; Project 4 (SecureBank); 9.2 (Langfuse v4) |
 | Files used | `capstone/platform.py` (`security`), `security/redteam.py` (`grade`, `run_redteam`), `datasets/redteam_support.json` (10), `datasets/redteam_banking.json` (16), `observability/langfuse_tracing.py` (`traced_support_agent`), `capstone/run_capstone.py`, `demos/m08_project4_banking_redteam.py`, `demos/m14_full_pipeline.py` |
@@ -495,7 +495,7 @@ The platform now gathers functional and security evidence. In Lecture 14.4, you'
 | ID | 14.4 |
 | Title | CI/CD Integration & Quality Dashboard |
 | Type | Build-along |
-| Target duration | 8:00 (760 spoken words; the rest is typing and output) |
+| Target duration | 8:00 (700 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Add the performance and regression stages and record the capstone baseline. 2. Run the full pipeline nightly in GitHub Actions and fail the job on BLOCK. 3. Connect the pipeline's result files to the Streamlit dashboard. |
 | Prerequisites | 14.3; Module 12 |
 | Files used | `capstone/platform.py` (`performance`, `regression`, `run`), `capstone/run_capstone.py`, `.github/workflows/agent-eval.yml` (`nightly` job), `reports/quality_dashboard.py`, `regression/baselines/support_capstone_v1.json`, `demos/m14_dashboard_reveal.py`; diagrams D14 and D16 |
@@ -586,7 +586,7 @@ Here are both stages. On the twenty golden inputs: p50 one point seven four seco
           path: reports/results/
 ```
 
-Now CI. You met this job in Lecture 12.2. It only runs on the schedule, at three seventeen every morning. Same pattern as the PR gate: live with the secret, offline without it. `run_capstone` returns exit code zero for SHIP and one for BLOCK, so a blocked night turns the job red. And the whole results folder is uploaded as an artifact, so you can download last night's reports even if the job failed. What would you add so a red night actually reaches someone? A notification step. That's a good extension.
+Now CI. You met this job in Lecture 12.2. It only runs on the schedule, at three seventeen every morning, UTC. Same pattern as the PR gate: live with the secret, offline without it. `run_capstone` returns exit code zero for SHIP and one for BLOCK, so a blocked night turns the job red. And the whole results folder is uploaded as an artifact, so you can download last night's reports even if the job failed. What would you add so a red night actually reaches someone? A notification step. That's a good extension.
 
 [SLIDE 4: The full tier map, now complete]
 | Trigger | Job | What runs | Cost |
@@ -667,7 +667,7 @@ Everything's built. In Lecture 14.5, you'll run the full platform end to end, re
 | ID | 14.5 |
 | Title | [PROJECT 5 — CAPSTONE] Ship the Platform |
 | Type | Build-along (project) |
-| Target duration | 8:00 (760 spoken words; the rest is the run and the dashboard) |
+| Target duration | 8:00 (727 spoken words; the rest is the run and the dashboard) |
 | Learning objectives | 1. Run the complete platform with one command and read both quality reports. 2. Prove the gate works by breaking the agent on purpose and watching it block. 3. Package the Project 5 deliverables for a reviewer or a hiring manager. |
 | Prerequisites | 14.1 to 14.4 |
 | Files used | `demos/m14_full_pipeline.py` (same as `make capstone`), `capstone/run_capstone.py`, `capstone/platform.py`, `regression/regression_suite.py` (`PROMPT_V2_REGRESSED`), `reports/quality_dashboard.py`, `08-projects/project-5-capstone/README.md` |

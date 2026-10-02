@@ -9,11 +9,11 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 10.1 | Latency, Token Cost & Throughput Benchmarking | Teach + demo | 7:00 | 951 |
-| 10.2 | Reliability: Failure Rate, Retry, Timeout & Loop Detection | Build-along | 7:00 | 845 |
-| 10.3 | Cost Engineering: Finding the 80/20 of Agent Spend | Build-along | 7:00 | 870 |
+| 10.1 | Latency, Token Cost & Throughput Benchmarking | Teach + demo | 7:00 | 895 |
+| 10.2 | Reliability: Failure Rate, Retry, Timeout & Loop Detection | Build-along | 7:00 | 660 |
+| 10.3 | Cost Engineering: Finding the 80/20 of Agent Spend | Build-along | 7:00 | 727 |
 
-Cue legend: `[AVATAR]` HeyGen avatar on camera (only these blocks go to HeyGen); `[SLIDE n: title]` full-screen slide, bullets are the exact slide text, `Diagram:` lines are designer instructions; `[SCREEN: ...]` OBS recording of the editor or browser; `[CODE: ...]` code revealed on screen, the fenced block is the exact text; `[DEMO: ...]` a terminal run, the fenced block is real output (trimmed); `[B-ROLL: ...]` cutaway; `[PAUSE]` one beat of silence. Word counts are spoken words only.
+Cue legend (word counts below are spoken narration in `### Script`, `### Recap` and `### Transition`, excluding cue lines, slide text, tables, code and command output): `[AVATAR]` HeyGen avatar on camera (only these blocks go to HeyGen); `[SLIDE n: title]` full-screen slide, bullets are the exact slide text, `Diagram:` lines are designer instructions; `[SCREEN: ...]` OBS recording of the editor or browser; `[CODE: ...]` code revealed on screen, the fenced block is the exact text; `[DEMO: ...]` a terminal run, the fenced block is real output (trimmed); `[B-ROLL: ...]` cutaway; `[PAUSE]` one beat of silence. Word counts are spoken words only.
 
 ---
 
@@ -24,7 +24,7 @@ Cue legend: `[AVATAR]` HeyGen avatar on camera (only these blocks go to HeyGen);
 | ID | 10.1 |
 | Title | Latency, Token Cost & Throughput Benchmarking |
 | Type | Teach + demo |
-| Target duration | 7:00 (951 spoken words; the rest is terminal dwell) |
+| Target duration | 7:00 (895 spoken words; the rest is terminal dwell) |
 | Learning objectives | 1. Measure end-to-end latency as a distribution (p50, p95, max) instead of an average. 2. Attribute token cost per call and per step (tool-call step vs answer step) with a client wrapper. 3. Turn a benchmark into throughput and cost-per-1,000-tasks numbers a manager can budget with. |
 | Prerequisites | 9.3 (cost per trace, OpenTelemetry GenAI spans) |
 | Files used | `performance/benchmark.py` (`UsageMeter`, `percentile`, `run_benchmark`, `BENCHMARK_QUERIES`), `config/settings.py` (prices), `demos/m10_benchmark.py` |
@@ -138,10 +138,10 @@ The histogram tells the story. Fifteen of twenty tasks finish in one to two seco
 
 Now cost by step. Tool-call steps cost seventy-nine ten-thousandths of a dollar in total. Answer steps cost eighty-three. Roughly half and half. So the money isn't hiding in one step. In Lecture 10.3, you'll find where it really goes.
 
-And throughput: thirty-two point four tasks per minute for one worker running sequentially. Need a thousand tasks an hour? That's about seventeen a minute, so one worker covers it on paper. In production, rate limits usually decide before your code does.
+And throughput: thirty-two point four tasks per minute for one worker running sequentially. That's just sixty seconds divided by the average task time, so it moves whenever latency moves. Need a thousand tasks an hour? That's about seventeen a minute, so one worker covers it on paper. In production, rate limits usually decide before your code does.
 
 [AVATAR]
-One honest note about these numbers. Offline, latency comes from a simulated clock, so it's repeatable but it's not a real API latency. Run the same command with your API key, and you'll get real times and real costs. The shape usually holds: long trajectories form the tail. Which of your own agent's tasks do you think would land there?
+One honest note about these numbers. Offline, latency comes from a simulated clock, so it's repeatable but it's not a real API latency. Run the same command with your API key, and you'll get real times and real costs. Run it three times, too, because live latency varies from run to run, and one run is a sample, not a measurement. The shape usually holds: long trajectories form the tail. Which of your own agent's tasks do you think would land there?
 
 [SLIDE 8: Recap]
 - Report p50, p95 and max, never the average
@@ -175,7 +175,7 @@ A fast agent that fails one time in ten is still broken. Next, in Lecture 10.2, 
 | ID | 10.2 |
 | Title | Reliability: Failure Rate, Retry, Timeout & Loop Detection |
 | Type | Build-along |
-| Target duration | 7:00 (845 spoken words; the rest is typing and output) |
+| Target duration | 7:00 (660 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Measure failure rate and tool-sequence consistency by running the same inputs several times. 2. Wrap agent calls in a retry and a timeout, and explain when a retry is dangerous. 3. Detect infinite loops at runtime with a repeat counter and a step budget. |
 | Prerequisites | 10.1; 7.3 (loop detector in multi-agent systems) |
 | Files used | `performance/reliability.py` (`measure_reliability`, `with_retry`, `call_with_timeout`, `LoopDetector`, `detect_tool_loop`), `agents/support_agent.py` (`max_iterations=5`), `config/eval_config.yaml` (reliability thresholds), `demos/m10_reliability.py` |
@@ -320,7 +320,7 @@ Your agent is reliable now. Is it affordable? In Lecture 10.3 you'll find the 80
 | ID | 10.3 |
 | Title | Cost Engineering: Finding the 80/20 of Agent Spend |
 | Type | Build-along |
-| Target duration | 7:00 (870 spoken words; the rest is typing and output) |
+| Target duration | 7:00 (727 spoken words; the rest is typing and output) |
 | Learning objectives | 1. Find the fixed prompt overhead that is re-sent on every LLM call. 2. Cut it with a "prompt diet" and measure the saving. 3. Route simple questions to a cheaper model, measure the saving, and re-check quality on the golden dataset. |
 | Prerequisites | 10.1; 9.3 (cost analysis of one trace) |
 | Files used | `performance/cost.py` (`route_model`, `prompt_overhead`, `savings`), `performance/benchmark.py`, `demos/m09_cost_analysis.py`, `demos/m10_cost_hotspots.py`, `demos/m10_model_routing.py` |

@@ -9,9 +9,9 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 12.1 | The Agent Quality Gate: Evals That Block Bad Deploys | Teach + diagram | 7:00 | 905 |
-| 12.2 | GitHub Actions Pipeline: Eval on Every PR | Build-along | 7:00 | 760 |
-| 12.3 | Experiment Tracking & Quality Dashboards | Build-along | 7:00 | 735 |
+| 12.1 | The Agent Quality Gate: Evals That Block Bad Deploys | Teach + diagram | 7:00 | 898 |
+| 12.2 | GitHub Actions Pipeline: Eval on Every PR | Build-along | 7:00 | 688 |
+| 12.3 | Experiment Tracking & Quality Dashboards | Build-along | 7:00 | 643 |
 
 Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 
@@ -24,7 +24,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 | ID | 12.1 |
 | Title | The Agent Quality Gate: Evals That Block Bad Deploys |
 | Type | Teach + diagram |
-| Target duration | 7:00 (905 spoken words) |
+| Target duration | 7:00 (898 spoken words) |
 | Learning objectives | 1. Define a quality gate: which dataset, which metrics, which thresholds, and what happens on failure. 2. Choose between hard, soft and advisory gates. 3. Design a tiered evaluation strategy (every push, every PR, nightly) that balances cost, speed and coverage. |
 | Prerequisites | 11.2 (baselines and `compare`) |
 | Files used | `reports/quality_gate.py` (`evaluate_gate`), `config/eval_config.yaml` (`gates`), `reports/run_eval.py` (`SMOKE_IDS`), `.github/workflows/agent-eval.yml` (job list), `demos/m12_quality_gate.py`; diagrams D14 and D4 |
@@ -184,7 +184,7 @@ So far the gate ran in your terminal. In Lecture 12.2, you'll put it in GitHub A
 | ID | 12.2 |
 | Title | GitHub Actions Pipeline: Eval on Every PR |
 | Type | Build-along |
-| Target duration | 7:00 (760 spoken words; the rest is reading YAML and output) |
+| Target duration | 7:00 (688 spoken words; the rest is reading YAML and output) |
 | Learning objectives | 1. Read and adapt the course workflow: jobs, triggers, permissions and the offline fallback. 2. Keep the API key in a repository secret and make forks safe. 3. Post the gate's Markdown summary as a single, updating PR comment and fail the job only after the comment is posted. |
 | Prerequisites | 12.1 |
 | Files used | `.github/workflows/agent-eval.yml`, `reports/run_eval.py`, `reports/quality_gate.py`, `demos/m12_quality_gate.py` |
@@ -221,7 +221,7 @@ permissions:
   pull-requests: write
 ```
 
-Four triggers: every push, pull requests into main, a nightly schedule at three seventeen in the morning, and a manual button. And look at permissions. Read the code, write pull-request comments. Nothing more. Always give a workflow the smallest permissions it needs. Why seventeen minutes past? Because lots of scheduled jobs start on the hour, and runners are busiest then.
+Four triggers: every push, pull requests into main, a nightly schedule at three seventeen in the morning, UTC, and a manual button. And look at permissions. Read the code, write pull-request comments. Nothing more. Always give a workflow the smallest permissions it needs. Why seventeen minutes past? Because lots of scheduled jobs start on the hour, and runners are busiest then.
 
 [SLIDE 3: Four jobs]
 | Job | Trigger | What it does |
@@ -371,7 +371,7 @@ Every PR now leaves a result behind. In Lecture 12.3, you'll collect those resul
 | ID | 12.3 |
 | Title | Experiment Tracking & Quality Dashboards |
 | Type | Build-along |
-| Target duration | 7:00 (735 spoken words; the rest is the dashboard walk-through) |
+| Target duration | 7:00 (643 spoken words; the rest is the dashboard walk-through) |
 | Learning objectives | 1. Log every evaluation run as a versioned experiment and compare two runs metric by metric. 2. Read a quality dashboard: gate status, pass rate, category breakdown, trend and case details. 3. Decide what a team view and a leadership view each need. |
 | Prerequisites | 12.2 |
 | Files used | `reports/experiments.py` (`log_run`, `runs`, `compare_runs`), `reports/quality_dashboard.py`, `demos/m12_experiment_comparison.py`, `demos/m12_quality_dashboard.py`, `Makefile` (`make dashboard`) |

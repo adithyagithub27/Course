@@ -9,9 +9,9 @@
 
 | ID | Title | Type | Target | Spoken words |
 |---|---|---|---|---|
-| 13.1 | Monitoring Agents in Production: Drift, Degradation & Alerts | Teach + demo | 7:00 | 900 |
-| 13.2 | Enterprise AI Governance: Policies, Audit Trails & Compliance | Teach | 7:00 | 895 |
-| 13.3 | Building an Agent Quality Scorecard for Leadership | Build-along | 7:00 | 690 |
+| 13.1 | Monitoring Agents in Production: Drift, Degradation & Alerts | Teach + demo | 7:00 | 868 |
+| 13.2 | Enterprise AI Governance: Policies, Audit Trails & Compliance | Teach | 7:00 | 883 |
+| 13.3 | Building an Agent Quality Scorecard for Leadership | Build-along | 7:00 | 617 |
 
 Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 
@@ -24,7 +24,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 | ID | 13.1 |
 | Title | Monitoring Agents in Production: Drift, Degradation & Alerts |
 | Type | Teach + demo |
-| Target duration | 7:00 (900 spoken words) |
+| Target duration | 7:00 (868 spoken words) |
 | Learning objectives | 1. Name the four production signals: quality drift, cost anomalies, behaviour changes and user feedback. 2. Choose between online scoring of sampled traffic and a nightly batch evaluation. 3. Detect drift with a rolling average and two alert rules: an absolute threshold and a drop from the launch baseline. |
 | Prerequisites | 12.3; 9.2 (Langfuse scores) |
 | Files used | `monitoring/drift_monitor.py` (`DriftMonitor.check`, `rolling`, `simulate_weeks`, `monitor_from_rows`), `config/eval_config.yaml` (faithfulness threshold 0.8), `observability/langfuse_tracing.py` (scores via `create_score`), `demos/m13_drift_detection.py`; diagram D15 |
@@ -36,7 +36,7 @@ Cue legend: see `section-10-performance.md`. Word counts are spoken words only.
 - Python 3.11+ | drift data in this demo is simulated
 
 [AVATAR]
-Your agent passed every gate. It shipped clean. And four weeks later, its faithfulness is twelve points lower, and no test ever failed. [PAUSE] Nobody changed the code. So what happened? And how would you know before your customers do?
+Your agent passed every gate. It shipped clean. And four weeks later, its faithfulness is about eleven points lower, and no test ever failed. [PAUSE] Nobody changed the code. So what happened? And how would you know before your customers do?
 
 [SLIDE 2: By the end of this lecture]
 - Name the four production signals to watch
@@ -172,7 +172,7 @@ When an alert fires, someone will ask: which version was live, who approved it, 
 ### Speaker notes: common student mistakes / Q&A
 
 - **Simulated data, said on screen.** `simulate_weeks()` generates four weeks of daily scores with seed 7 (bible §12 fact 8). Never present it as real production data.
-- **Hook number:** "twelve points" is 0.912 → 0.798 (11.4 points, rounded); say "about eleven points" if you prefer exactness.
+- **Hook number:** "about eleven points" is 0.912 → 0.798 (11.4 points) in the simulated run.
 - **Max drop** is 0.05 in the demo (0.912 − 0.05 = 0.862 limit). The task-completion baseline is not printed; its limit is 0.828.
 - **Feeding real scores:** read scores from Langfuse (Lecture 9.2 attaches them with `create_score`) or from your nightly batch reports; the monitor takes rows of `(day, metric, value)`-style data via `monitor_from_rows`.
 - **Sample rate:** "a few percent" is a starting point, not a rule; set it from your traffic and budget (verify current pricing for judge calls).
@@ -186,7 +186,7 @@ When an alert fires, someone will ask: which version was live, who approved it, 
 | ID | 13.2 |
 | Title | Enterprise AI Governance: Policies, Audit Trails & Compliance |
 | Type | Teach (with one demo) |
-| Target duration | 7:00 (895 spoken words) |
+| Target duration | 7:00 (883 spoken words) |
 | Learning objectives | 1. Write an evaluation policy as code: metrics, thresholds, frequency and owner. 2. Explain how a hash-chained audit trail makes tampering visible, and gate a release on required approvals. 3. List what a model card and a compliance mapping must contain for an agent. |
 | Prerequisites | 13.1; 12.1 (gates) |
 | Files used | `config/eval_config.yaml`, `monitoring/governance.py` (`AuditTrail.log`, `verify`, `release_allowed`), `demos/m13_governance_audit.py`, `agents/support_agent.py` (system prompt, known multi-turn identity gap from Lecture 8.2) |
@@ -339,7 +339,7 @@ Leadership won't read an audit trail. They want one page. In Lecture 13.3, you'l
 | ID | 13.3 |
 | Title | Building an Agent Quality Scorecard for Leadership |
 | Type | Build-along |
-| Target duration | 7:00 (690 spoken words; the rest is reading the scorecard) |
+| Target duration | 7:00 (617 spoken words; the rest is reading the scorecard) |
 | Learning objectives | 1. Answer leadership's three questions (is it working, which way is it going, what does it cost) on one page. 2. Build a traffic-light scorecard over the five quality dimensions for several agents. 3. Present a red cell as a decision, not a data dump. |
 | Prerequisites | 13.2; 2.2 (five dimensions) |
 | Files used | `monitoring/scorecard.py` (`EXAMPLE_AGENTS`, `build_scorecard`, `render_markdown`), `demos/m13_quality_scorecard.py`, `reports/results/scorecard.md` (generated); diagram D5 |
