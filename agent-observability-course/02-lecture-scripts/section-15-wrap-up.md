@@ -21,10 +21,10 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
-| 15.1 | What you can now do | TH | 4:00 | ~499 |
-| 15.2 | Careers: LLMOps, AI platform and AI SRE roles | TH | 8:00 | ~1,169 |
-| 15.3 | Final practice test | QZ | 0 min in curriculum (1:00 video intro) | ~121 |
-| 15.4 | Bonus Lecture: keep operating | TH | 5:00 | ~578 |
+| 15.1 | What you can now do | TH | 4:00 | ~485 |
+| 15.2 | Careers: LLMOps, AI platform and AI SRE roles | TH | 8:00 | ~1,010 |
+| 15.3 | Final practice test | QZ | 0:00 in curriculum (1:00 video) | ~120 |
+| 15.4 | Bonus Lecture: keep operating | TH | 5:00 | ~575 |
 
 ---
 
@@ -34,38 +34,39 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 |---|---|
 | ID | 15.1 |
 | Type | TH (talking head / avatar with slides) |
-| Target duration | 4:00 (~500 spoken words) |
+| Target duration | 4:00 (~485 spoken words) |
 | Learning objectives | 1. Recap the course by pillar: traces, cost, reliability, quality in production, operations. 2. Place this course on the Build → Test → Deploy → Operate path. 3. Choose one concrete next step for the coming week. |
 | Prerequisites | Sections 1 to 14 (capstone recommended) |
 | Files used | `03-code/README.md`, `reports/` (your weekly report) |
 
 ### Script
 
-[B-ROLL: Fast montage, two seconds each: the cost meter climbing in Lecture 1.1, the first trace in Lecture 2.3, the console exporter output in Section 3, the Langfuse session view in Section 4, the compare-replays bar in Section 6, the fallback firing in Section 7, the drift report in Section 8, the Grafana dashboard in Section 9, the 10:09 counterfactual row from the Incident 1 postmortem, the red pull request in Section 13, the one-page report in Section 14.]
+[B-ROLL: Fast montage, two seconds each: the Live cost meter climbing in Lecture 1.1, the first trace in Lecture 2.3, the console exporter output in Section 3, the Langfuse session view in Section 4, the Compare replays bar chart in Section 6, the slow-provider latency chart in Section 7, the drift report in Section 8, the Grafana dashboard in Section 9, the "would have fired at 10:10" row from the Incident 1 postmortem, the red pull request in Section 13, the one-page report in Section 14.]
 
 [AVATAR]
-Think back to Lecture 1.1. An agent hit a tool error, retried in a loop, and a cost meter climbed while you watched. You couldn't see why. You couldn't stop it. You could only watch the number.
+Think back to Lecture 1.1. An agent hit a tool error, retried in a loop, and a cost meter climbed while you watched. Five hundred and forty-nine steps, four dollars ninety, for one question. You couldn't see why. You couldn't stop it. You could only watch the number.
 
 [PAUSE]
 
-Now you can see it, in a trace, with the tokens per step written on every span. You can explain it, with a timeline and a hypothesis table. You can stop it, with a budget, a retry bound and a trimmed context. And you can make sure it never ships again, with a test that goes red in ninety seconds. That was the promise in Section 1. You kept it.
+Now you can see it, in a trace, with the tokens per step written on every span. You can explain it, with a timeline and a hypothesis table. You can stop it, with a step limit, a retry bound and a trimmed context. And you can make sure it never ships again, with a test that goes red in seconds. That was the promise in Section 1. You kept it.
 
 [SLIDE 1: What you can now do, by pillar]
-- Traces: OpenTelemetry spans with GenAI semantic conventions for every model, tool, retriever and agent; sessions, users, tenants, releases; masked
-- Cost: true cost per request, session, user, tenant and feature; a showback report finance accepts; 40%+ saved with caching, a context diet and routing; budgets per tenant
-- Reliability: TTFT and p95 measured; timeouts, bounded retries, fallbacks that fire on slowness; p95 held under chaos
-- Quality in production: sampled judge, feedback, drift detection, failures promoted to a regression suite
-- Operations: SLIs and SLOs, dashboards and alerts as code with owners, incidents investigated from traces, postmortems, a self-hosted stack, a CI budget gate, a weekly report
+- Traces: GenAI-convention spans for every model, tool, retriever and agent; sessions, tenants, releases; masked
+- Cost: cost per request, session, tenant and feature; showback; 66% cut on a replayed day
+- Reliability: TTFT and p95 measured; timeouts, bounded retries, fallbacks, breakers
+- Quality in production: sampled judge, feedback, drift, failures promoted to a dataset
+- Operations: SLOs, dashboards and alerts as code, incidents from traces, a CI gate, a weekly report
 
 Let's name it, because you'll want these words for your CV and your next interview.
 
 Traces. You instrument any LLM agent with OpenTelemetry and the GenAI conventions, so any backend understands it. You attach sessions, users, tenants and releases, and you mask before anything leaves the process.
 
-Cost. You compute the true cost of every request and roll it up to the number finance asks for. You cut it by more than forty percent and proved the saving by technique. You cap it per tenant and detect anomalies before the cap.
+Cost. You compute the true cost of every request and roll it up to the number finance asks for. On a replayed day you cut it from fifty-six dollars to nineteen, and proved each lever separately.
 
-Reliability. You measure time to first token and p95, you time out, retry with bounds, fall back on slowness, and you held p95 under four seconds while the provider was failing.
+[AVATAR]
+Reliability. You measure time to first token and p95, you time out, retry with bounds and fall back. And you know why a slow provider never trips a breaker that only counts errors.
 
-Quality in production. You judge a sample of live traffic, correlate it with feedback, detect drift week over week, and turn failures into regression tests.
+Quality in production. You judge a sample of live traffic, correlate it with feedback, detect drift, and turn failures into regression tests.
 
 And operations. SLIs a manager understands, dashboards and alerts as code, three incidents investigated from traces alone, postmortems with verifiable action items, a self-hosted stack, a gate that stops bad changes with a number, and a one-page report.
 
@@ -76,18 +77,23 @@ And operations. SLIs a manager understands, dashboards and alerts as code, three
 - Operate: this course
 - All four stand alone; together they cover the lifecycle
 
-This course is the fourth in a path: build, test, deploy, operate. You didn't need the other three to take this one. But if a part of this course felt thin, the offline eval theory in Section 8, or the agent internals in Section 5, that's where the deeper material lives. More in the bonus lecture at the very end.
+This course is the fourth in a path: build, test, deploy, operate. You didn't need the other three to take this one. If a part of this course felt thin, the offline eval theory in Section 8, or the agent internals in Section 5, that's where the deeper material lives. More in the bonus lecture at the very end.
 
 [SLIDE 3: Your next 7 days]
-1. Finish the capstone; get `ACCEPTANCE.md` to 14 of 20 or better
+1. Finish the capstone; get `ACCEPTANCE.md` to 15 of 24 or better
 2. Send the weekly report to one real person and ask them one question about it
 3. Pick one agent you or your team already run and add `genai_attrs` to its model call
 
-Here's my challenge for the next seven days. Finish the capstone and get the acceptance report to fourteen or better. Send the weekly report to one real person, a manager, a colleague, a friend who runs a team, and ask them which number they'd want explained. Their answer will change your report. And pick one agent you or your team already run, and add GenAI attributes to its model call. One span. That's how it starts in a real company: one span, then a dashboard, then someone asks for the report.
+Here's my challenge for the next seven days. Finish the capstone and get the acceptance report to fifteen or better. Send the weekly report to one real person and ask them which number they'd want explained. Their answer will change your report. And pick one agent you already run and add GenAI attributes to its model call. One span. That's how it starts in a real company: one span, then a dashboard, then someone asks for the report.
 
 [PAUSE]
 
 Thank you for operating this with me. Atlas is running. Go make yours visible.
+
+[SLIDE 4: Recap]
+- See, explain, stop and prevent: all four
+- Five pillars of agent operations
+- Next seven days: capstone, report, one span
 
 **Recap:** You can instrument, cost, harden, evaluate and operate an LLM agent in production, and the same method carries to any agent you're handed next.
 
@@ -107,7 +113,7 @@ Thank you for operating this with me. Atlas is running. Go make yours visible.
 |---|---|
 | ID | 15.2 |
 | Type | TH (talking head / avatar with slides) |
-| Target duration | 8:00 (~1,060 spoken words) |
+| Target duration | 8:00 (~1,010 spoken words) |
 | Learning objectives | 1. Name the role titles that hire for agent observability and cost skills and what each emphasises. 2. Answer twelve common interview questions with a mechanism and a number. 3. Pitch observability to management as an ROI story with three numbers. |
 | Prerequisites | Section 14 capstone (recommended) |
 | Files used | `10-resources/interview-questions.md`, `reports/` (your weekly report), `ACCEPTANCE.md` |
@@ -116,10 +122,10 @@ Thank you for operating this with me. Atlas is running. Go make yours visible.
 
 ### Script
 
-[B-ROLL: Four job postings side by side, titles highlighted: "LLMOps Engineer", "AI Platform Engineer", "AI Reliability Engineer", "Forward Deployed Engineer, AI". Cut to a highlighted line in one of them: "own cost per task and quality metrics for agents in production."]
+[B-ROLL: Four job postings side by side, titles highlighted: "LLMOps Engineer", "AI Platform Engineer", "AI Reliability Engineer", "Forward Deployed Engineer, AI". Cut to a highlighted line in one of them: "own cost per task and quality metrics for agents in production." Illustrative postings, not real companies.]
 
 [AVATAR]
-You can now instrument, cost, harden and operate an AI agent in production. That combination is rare, and it's on job postings this year under four or five different names. This lecture: who hires for it, what they'll ask, and how to pitch it to a manager who controls a budget.
+You can now instrument, cost, harden and operate an AI agent in production. That combination is rare, and it appears on job postings under four or five different names. This lecture: who hires for it, what they'll ask, and how to pitch it to a manager who controls a budget.
 
 [SLIDE 1: Roles that hire for this]
 - LLMOps engineer / MLOps engineer (LLM): tracing, evals in production, cost, prompt and model lifecycle
@@ -128,9 +134,9 @@ You can now instrument, cost, harden and operate an AI agent in production. That
 - AI product engineer / forward deployed engineer: ships agents and owns their metrics
 - Also: FinOps analyst (AI spend), staff engineer (AI), developer productivity (AI tooling)
 
-Job titles are messy, so search for several. "LLMOps" and "MLOps, LLM" roles focus on tracing, production evals, cost and the prompt and model lifecycle: Sections 3, 4, 6 and 8. "AI platform engineer" roles build the shared stack: the gateway, the observability pipeline, budgets and routing for many teams: Sections 6, 7, 12 and 13. "AI reliability engineer" or "SRE, AI systems" roles own SLOs, incidents, capacity and provider risk: Sections 7, 9 and 11. "AI product engineer" and "forward deployed" roles ship agents and are increasingly asked to own the metrics: Section 14. And FinOps teams now hire for AI spend specifically: Section 6.
+Job titles are messy, so search for several. "LLMOps" roles focus on tracing, production evals, cost and the prompt lifecycle: Sections 3, 4, 6 and 8. "AI platform engineer" roles build the shared stack, the gateway, the observability pipeline, budgets and routing for many teams: Sections 6, 7, 12 and 13. "AI reliability engineer" roles own SLOs, incidents and provider risk: Sections 7, 9 and 11. "AI product engineer" and "forward deployed" roles ship agents and increasingly own the metrics: Section 14. And FinOps teams now hire for AI spend: Section 6.
 
-Read the description, not the title. Look for: cost per task, evals in production, OpenTelemetry, SLOs, prompt versioning, incident.
+Read the description, not the title. Look for cost per task, evals in production, OpenTelemetry, SLOs, prompt versioning, incident.
 
 [SLIDE 2: Your evidence]
 - The capstone repo: three numbers in the README
@@ -139,76 +145,85 @@ Read the description, not the title. Look for: cost per task, evals in productio
 - The weekly report
 - The domain-swap project, which proves you can do it twice
 
-Whatever the title, your evidence is the same. The capstone with three numbers up front. Postmortems. A red pull request. The weekly report. And the domain swap, which proves you can do it twice. Numbers beat adjectives: "cut cost per resolved session forty-three percent and held p95 under four seconds under a provider slowdown" is a stronger line than "experienced with LLM observability."
+Whatever the title, your evidence is the same. The capstone with three numbers up front. Postmortems. A red pull request. The weekly report. And the domain swap. Numbers beat adjectives: "cut a replayed day's cost by sixty-six percent with quality scores unchanged" is a stronger line than "experienced with LLM observability."
 
-[SLIDE 3: Interview questions 1-4: tracing and attribution]
+[SLIDE 3: Interview questions 1-2: tracing]
 1. How do you trace a multi-step agent so the trace explains the tool calls?
 2. What are the GenAI semantic conventions and why use them?
-3. How do you attribute cost to a tenant or feature?
-4. What do you never put in a trace, and how do you enforce that?
 
 Twelve questions, with short model answers. Longer versions are in `interview-questions.md`.
 
 One. Tracing a multi-step agent. "One agent span per request, a child span per step, a generation span per model call with token usage, and a tool span per call with arguments and a redacted result. Session and tenant as attributes. Then the trace answers why it called that tool, what came back, and where the tokens went."
 
-Two. GenAI semantic conventions. "A standard vocabulary from OpenTelemetry for model, token usage, tool and agent attributes. Using them means any backend understands my spans, so I'm not locked in. They're still incubating, so I keep them behind one helper module."
+Two. GenAI semantic conventions. "A standard OpenTelemetry vocabulary for model, token, tool and agent attributes. Any backend understands my spans, so I'm not locked in. They're still incubating, so I keep them behind one helper module."
 
-Three. Cost attribution. "Compute cost once per generation from a price table I control, write it as a span attribute and a low-cardinality metric labelled by tenant and model, then roll up by session, user, tenant and feature. The report uses the same aggregation as the dashboard so they can't disagree."
+[SLIDE 4: Interview questions 3-4: cost and privacy]
+3. How do you attribute cost to a tenant or feature?
+4. What do you never put in a trace, and how do you enforce that?
 
-Four. What never goes in a trace. "Raw PII and full tool payloads. I mask in the SDK with a mask function and again in the Collector, keep hashes for joins, and I have a test that sends a fake email through and asserts it comes out hashed."
+Three. Cost attribution. "Compute cost once per generation from a price table I control, write it as a span attribute and a low-cardinality metric, then roll up by session, tenant and feature. The report uses the same aggregation as the dashboard so they can't disagree."
 
-[SLIDE 4: Interview questions 5-8: cost and reliability]
-5. An agent's cost tripled overnight. Walk me through your investigation.
+Four. What never goes in a trace. "Raw PII and full tool payloads. I mask in the SDK and again in the Collector, keep hashes for joins, and a test asserts no raw email or employee ID reaches any span."
+
+[SLIDE 5: Interview questions 5-6: cost incidents and savings]
+5. An agent's cost spiked overnight. Walk me through your investigation.
 6. Name three ways to cut LLM spend and how you'd prove each saving.
+
+Five. A cost spike. "Timeline first, then blast radius, then two hypotheses with predictions: more requests, or bigger requests. Requests per minute versus tokens per generation tells me which. Then one trace. In the incident I worked, a config change switched off context trimming for one tenant, and a provider timeout storm billed every oversized prompt up to three times."
+
+Six. Three ways to cut spend. "Prompt caching with a stable prefix, measured by cached token share. A context diet, measured by tokens per step. And small-model-first routing, measured by model mix. I prove each by replaying the same day with and without it."
+
+[SLIDE 6: Interview questions 7-8: budgets and fallbacks]
 7. How do you stop one tenant from burning the whole budget?
 8. What does a fallback need in order to protect a latency SLO?
 
-Five. Cost tripled overnight. "Timeline first: when, and what changed. Then blast radius: which tenant, which tool. Then two hypotheses with predictions: more requests, or bigger requests. Requests per minute versus tokens per generation tells me which. Then one trace. In the incident I worked, it was a config override that switched off context trimming, multiplied by a provider timeout storm that sent every oversized prompt three times."
+Seven. One tenant burning the budget. "A per-tenant budget with a soft cap that degrades, a hard cap that refuses before any model call, and an anomaly alert on spend so I'm paged before the cap."
 
-Six. Three ways to cut spend. "Prompt caching with a stable prefix, measured by cached token share. A context diet: trimming history, truncating tool results, tuning retrieval k, measured by tokens per step. And small-model-first routing with escalation, measured by model mix. I prove each by replaying the same day with and without it."
+Eight. What a fallback needs. "A timeout derived from the step budget, not a default, and a breaker that counts slow calls, not only errors. A slow provider produces no errors, so nothing fails over unless you define slowness as failure. And a fallback-rate metric, because a fallback nobody has seen fire is one you don't have."
 
-Seven. One tenant burning the budget. "A per-tenant budget with a soft cap that degrades, a hard cap that refuses politely, and an anomaly detector on the spend rate so I'm paged before the cap. The cap saved the money; the anomaly alert saves the morning."
-
-Eight. What a fallback needs. "A timeout derived from the step budget, not a default, and a circuit breaker that counts slow calls and timeouts, not only exhausted retries. Fallbacks trigger on failures; a slow provider produces none unless you define slowness as failure. And a metric for the fallback rate, because a fallback nobody has seen fire is one you don't have."
-
-[SLIDE 5: Interview questions 9-12: quality and operations]
+[SLIDE 7: Interview questions 9-10: quality]
 9. How do you know an agent got worse when latency, errors and cost all look fine?
 10. How do you prevent a prompt change from regressing production?
+
+Nine. Worse while everything looks fine. "A sampled LLM judge on live traffic, user feedback and drift checks, all sliced by prompt version. In my incident, grounded fell from point nine four to point five six the hour a prompt label moved, while cost and latency improved."
+
+Ten. Preventing a prompt regression. "Treat the production label as a deploy. Promotion runs in CI against a dataset of past failures and refuses below a threshold. Rollback is moving the label back, which takes a minute."
+
+[SLIDE 8: Interview questions 11-12: operations]
 11. What SLIs would you put on a dashboard for an AI agent, and who owns each alert?
 12. How do you keep telemetry from taking down the service it observes?
 
-Nine. Getting worse while everything looks fine. "Quality signals: a sampled LLM judge on live traffic, user feedback, and a weekly drift comparison, all sliced by prompt version. In my incident, grounded dropped from point nine one to point seven two the hour a prompt label moved, cost actually went down, and no latency or cost SLO noticed."
+Eleven. SLIs and owners. "Task success, containment, tool error rate, p95 latency, cost per resolved session and a judge score. Each with an SLO and an error budget. Every alert has an owner and a runbook, or it gets deleted."
 
-Ten. Preventing a prompt regression. "Treat the production label as a deploy. Promotion goes through code: run offline evals against a dataset of past failures, refuse to move the label below a threshold, and restrict UI label changes. Rollback is moving the label back, which takes a minute."
+Twelve. Telemetry safety. "Export on a background thread with a bounded queue, five-second exporter timeouts, credentials in the Collector, and a counter for export failures. I test it by killing the backend under load and checking every request still succeeds."
 
-Eleven. SLIs and owners. "Task success or resolved rate, containment, tool error rate, p95 latency, cost per resolved session and a judge score. Each SLI gets an SLO and an error budget. Every alert has a named owner and a runbook, or it gets deleted."
+Notice the pattern. Every answer names a mechanism and a number.
 
-Twelve. Telemetry safety. "Export on a background thread with a bounded queue that drops on overflow, five-second exporter timeouts, credentials in the Collector not the app, and a counter for dropped spans. I test it by killing the backend under load and asserting p95 doesn't move."
-
-Notice the pattern. Every answer names a mechanism and a number. That's what interviewers are listening for.
-
-[SLIDE 6: Pitching observability to management: the ROI story]
-- Cost avoided: "the incident we caught at minute 20 instead of minute 112" in dollars
-- Cost saved: the replay comparison, by technique, per month
-- Risk reduced: the pull request that failed; the quality drift caught in an hour instead of a day
+[SLIDE 9: Pitching observability to management: the ROI story]
+- Cost avoided: the incident caught at 10:10 instead of 11:40, in dollars
+- Cost saved: the replay comparison, by lever, per month
+- Risk reduced: the pull request that failed; drift caught in an hour
 - Ask: the tool cost, the platform time, the owner, in one sentence
 
-Now the pitch. You'll need budget for the backend, for Collector infrastructure, for time. Here's the story that gets it. Three numbers.
+Now the pitch. You'll need budget for the backend, the Collector, and time. Three numbers get it. Cost avoided: the incident a routed alert would have caught at ten past ten instead of eleven forty, in dollars, from the postmortem timeline. Cost saved: the replay comparison, by lever, multiplied out to a month. Risk reduced: the pull request that failed before it shipped, and the drift caught in an hour instead of a day.
 
-Cost avoided. The incident you caught at minute twenty instead of minute one hundred and twelve, in dollars, from the postmortem timeline. Cost saved. The replay comparison, by technique, multiplied out to a month. Risk reduced. The pull request that failed before it shipped, and the quality drift caught in an hour instead of a day, with the ticket volume it would have generated.
+Then the ask, in one sentence: what the tool costs, how much platform time, and who owns it. Managers say yes to three numbers and one sentence.
 
-Then the ask, in one sentence: what the tool costs, how much platform time, and who owns it. Managers say yes to three numbers and one sentence. They say "let's revisit next quarter" to a twelve-slide deck.
-
-[SLIDE 7: What not to say]
+[SLIDE 10: What not to say]
 - Don't claim the incidents were real; say "simulated on a replayed dataset, method is real"
 - Don't compare vendors by feature list; compare by control, cost, compliance, lock-in
 - Don't quote a cost saving without the baseline and the method
 - Don't promise 100% trace retention; talk about sampling policy
 
-Four things not to say. Don't claim the course incidents were real production events; say they were simulated on a replayed dataset and the method is real. Interviewers respect that. Don't compare vendors by feature list; use the five criteria from Lecture 12.5. Don't quote a saving without a baseline and a method. And don't promise a hundred percent trace retention; talk about your sampling policy instead. Anyone who's run this at scale will nod.
+Four things not to say. Don't claim the course incidents were real production events; say they were simulated and the method is real. Don't compare vendors by feature list; use the five criteria from Lecture 12.5. Don't quote a saving without a baseline and a method. And don't promise a hundred percent trace retention; talk about your sampling policy instead.
 
 [AVATAR]
 Last tip. Whether it's an interview or a budget meeting, open with a screenshot. The red pull request, or the one-page report. Then talk. Most candidates have a story. You have the artefact the story is about.
+
+[SLIDE 11: Recap]
+- Read descriptions, not job titles
+- Answer with a mechanism and a number
+- Pitch: three numbers and one sentence
 
 **Recap:** Target LLMOps, AI platform, AI reliability and AI product roles, answer with a mechanism and a number, and pitch observability as three numbers and a one-sentence ask.
 
@@ -219,6 +234,7 @@ Last tip. Whether it's an interview or a budget meeting, open with a screenshot.
 - "What should I expect to earn?" Don't give numbers in Q&A. Point to the structure of the roles and suggest they research local postings.
 - Mistake: answering interview questions with tool names instead of mechanisms. "I'd use Langfuse" is not an answer to question five; the investigation order is.
 - Mistake: portfolio READMEs with no numbers. Point back to Lecture 14.5, Slide 2.
+- Interview answers 5 and 9 cite the course's own incidents (11.2, 11.4) with the dataset figures; the ROI slide's 10:10 vs 11:40 is the Incident 1 postmortem's counterfactual row.
 - Keep `interview-questions.md` in sync with these twelve; if a question changes here, change it there.
 
 ---
@@ -229,7 +245,7 @@ Last tip. Whether it's an interview or a budget meeting, open with a screenshot.
 |---|---|
 | ID | 15.3 |
 | Type | QZ (40-question practice test with short video intro) |
-| Target duration | 0 min in the curriculum runtime (1:00 video intro, ~90 spoken words; students take the test at their own pace) |
+| Target duration | 0:00 in the curriculum runtime (1:00 video, ~120 spoken words; students take the test at their own pace) |
 | Learning objectives | 1. Check end-to-end understanding across all fifteen sections. 2. Identify the two or three sections to revisit before a real project. |
 | Prerequisites | Sections 1 to 14 |
 | Files used | `06-assessments/practice-test.md` |
@@ -299,6 +315,8 @@ First, updates. This field moves fast. Langfuse ships often, the OpenTelemetry G
 
 When something changes, I update the repo README first, with the tested versions and any code changes. Big changes also go out as a course announcement.
 
+[SCREEN: Terminal in `03-code/`: `make test` → `401 passed`; `make budget-check` → `5 passed`. The monthly upgrade check, in two commands.]
+
 For your own project, pin your versions, as we did in `pyproject.toml`. Upgrade on a branch, with the budget gate running, and read the deprecation warnings. Here's a routine that works: once a month, read the changelogs for Langfuse, the OTel SDK and the semantic conventions. Upgrade on a branch. Run `make test` and `make budget-check`. If the numbers hold, merge, and keep the rollback ready. Twenty minutes a month keeps you off the "it broke on Friday" list, which after Section 11 you know is a real list.
 
 [SLIDE 2: Getting help]
@@ -320,6 +338,7 @@ Third, and only if it's useful to you: this course is part of a set.
 
 *Generative AI & AI Agents: Zero to Production* is the building course. It's for you if Section 5, the agent internals, felt fast. It covers prompting, tools, retrieval and agent design from first principles.
 
+[AVATAR]
 *AI Agent Testing & Evaluation* is the testing course. It's for you if Section 8 was your favourite, or if you own quality on your team. It goes much deeper on evaluation design, LLM judges, datasets and test strategy than we had room for here, and the dataset you built in Lecture 8.6 is exactly what it consumes.
 
 *Production Voice AI Agents with Python* is the real-time course. It's for you if the latency budgets in Section 7 interested you, or if the domain swap in Lecture 14.6 made you want to build the voice agent you instrumented.
@@ -336,7 +355,17 @@ That's it. Thank you for taking this course, and for sticking with it all the wa
 
 I'll see you in the Q&A.
 
+[SLIDE 5: Recap]
+- Upgrade monthly on a branch, gate running
+- Ask with command, error and versions
+- Related courses are optional
+
 **Recap:** Keep your project current through the repo README and a monthly upgrade routine, get help in the Q&A with command, error and versions, and, optionally, go deeper with the Build, Test and Deploy courses.
+
+[SLIDE 6: You can now]
+- Operate an AI agent with traces, budgets and SLOs
+- Investigate and write up agent incidents
+- Keep the stack current without breaking it
 
 **Transition:** This is the final lecture of the course. Thank you for learning with me.
 

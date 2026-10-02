@@ -1,305 +1,205 @@
-# Lab 02: Write and Run Your First DeepEval Evaluation
+# Lab 3.1: Write and Run Your First DeepEval Evaluation
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 03 — Evaluation Fundamentals with DeepEval            |
-| **Duration**       | 60 minutes                                                   |
-| **Difficulty**     | Beginner                                                     |
-| **Learning Objective** | Install DeepEval, write three LLM test cases with `AnswerRelevancyMetric`, run them with `pytest`, and interpret the pass/fail output. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 3.1 (file `lab-02-first-eval.md`) |
+| **Module** | Module 03 — Your First Agent Evaluation |
+| **Lectures** | 3.1–3.3 (prepares Project 1, Lecture 3.4) |
+| **Duration** | 60 minutes |
+| **Difficulty** | Beginner |
+| **Learning Objective** | Write pytest-style DeepEval tests against the real TechCorp agent with Answer Relevancy, Faithfulness and the course's Answer Correctness GEval; make one test fail on purpose and read the metric's reason; run the 10-case golden dataset. |
+| **Reference solution** | `demos/m03_first_eval.py`, `demos/m03_eval_support_agent.py`, `tests/e2e/test_golden_support.py` |
+| **Verified on** | deepeval 4.2.7, openai 2.54.0 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 01** (you can run the support agent successfully)
-- Python virtual environment activated with `requirements.txt` installed
-- `.env` configured with a valid `OPENAI_API_KEY`
+- Completed **Lab 1.1** (`make install` done, `make test` green)
+- Lectures 3.1 and 3.2: `LLMTestCase`, metrics, thresholds, golden datasets
+- An OpenAI API key is optional. Offline, every metric is scored by the course's deterministic mock judge, which runs DeepEval's real metric code with a stand-in model.
 
 ---
 
 ## Setup Instructions
 
-### 1. Verify DeepEval is installed
-
 ```bash
-pip show deepeval
+cd 04-code-examples/agent-eval-framework
+mkdir -p my_work
+uv run python demos/m03_first_eval.py        # the lecture demo: AnswerRelevancy = 1.00 -> PASS
 ```
 
-You should see version `3.9.x` or higher. If not:
-
-```bash
-pip install "deepeval>=3.9.0,<4.0"
-```
-
-### 2. Verify pytest integration
-
-```bash
-deepeval --version
-pytest --version
-```
-
-### 3. Create the test directory structure
-
-```bash
-mkdir -p tests/evaluation
-touch tests/__init__.py
-touch tests/evaluation/__init__.py
-```
+The judge model comes from `evaluators/judge.py`: `get_judge()` returns `gpt-4.1` when you are live and `MockJudge` offline. Every metric in this course takes `model=get_judge()` so the same test runs both ways.
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Understand the test case structure
+### Step 1 — Your first test
 
-A DeepEval `LLMTestCase` requires at minimum:
-
-| Field            | Description                                  | Required |
-| ---------------- | -------------------------------------------- | -------- |
-| `input`          | The user message sent to the agent           | Yes      |
-| `actual_output`  | The agent's actual response                  | Yes      |
-| `expected_output`| The ideal / reference response               | No       |
-| `context`        | Ground-truth context (list of strings)       | No       |
-| `retrieval_context` | What the retriever actually returned      | No       |
-
-### Step 2 — Write your first evaluation test file
-
-Create `tests/evaluation/test_first_eval.py`:
+Create `my_work/test_lab02.py`:
 
 ```python
-"""
-Lab 02 — First DeepEval Evaluation
-Run: pytest tests/evaluation/test_first_eval.py -v
-"""
-
-import pytest
+"""Lab 3.1 - your first DeepEval tests against the TechCorp support agent."""
 from deepeval import assert_test
+from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
-from deepeval.metrics import AnswerRelevancyMetric
 
 from agents.support_agent import run_support_agent
+from evaluators.judge import get_judge
+from evaluators.metrics import correctness
 
 
-# ── Metric Configuration ─────────────────────────────────────────
-relevancy_metric = AnswerRelevancyMetric(
-    threshold=0.7,        # minimum score to pass (0.0 – 1.0)
-    model="gpt-4o-mini",  # judge model
-)
+def kb_results(result: dict) -> list[str]:
+    """What the knowledge base returned: the context the answer must be faithful to."""
+    return [tc["result"] for tc in result["tool_calls"] if tc["tool"] == "search_knowledge_base"]
 
 
-# ── Helper: run agent and build test case ─────────────────────────
-def make_test_case(user_input: str, expected: str) -> LLMTestCase:
-    """Run the agent and wrap the result as a DeepEval test case."""
-    result = run_support_agent(user_input)
-    return LLMTestCase(
-        input=user_input,
+def test_pricing_answer_is_relevant():
+    question = "What are your pricing plans?"
+    result = run_support_agent(question)
+    test_case = LLMTestCase(input=question, actual_output=result["response"])
+    assert_test(test_case, [AnswerRelevancyMetric(threshold=0.7, model=get_judge())])
+```
+
+Run it two ways:
+
+```bash
+uv run deepeval test run my_work/test_lab02.py      # DeepEval's runner: results table
+uv run pytest -q my_work/test_lab02.py              # plain pytest works too
+```
+
+### Step 2 — Faithfulness to the tool result, and correctness
+
+Faithfulness needs the context the answer should be grounded in. For an agent, that is what its tools returned, so pass the knowledge-base results as `retrieval_context`. Correctness compares with an `expected_output` you write. Add to `my_work/test_lab02.py`:
+
+```python
+def test_refund_answer_is_faithful_and_correct():
+    question = "What is your refund policy?"
+    result = run_support_agent(question)
+    test_case = LLMTestCase(
+        input=question,
         actual_output=result["response"],
-        expected_output=expected,
+        expected_output="TechCorp offers a 30-day money-back guarantee on all plans. "
+                        "Refunds are processed within 5-7 business days.",
+        retrieval_context=kb_results(result),
     )
-
-
-# ── Test Cases ────────────────────────────────────────────────────
-class TestAnswerRelevancy:
-    """Verify the agent's responses are relevant to the user's question."""
-
-    def test_pricing_question(self):
-        """Agent should give relevant pricing information."""
-        test_case = make_test_case(
-            user_input="What are your pricing plans?",
-            expected="TechCorp offers three plans: Basic ($9.99/mo), "
-                     "Pro ($29.99/mo), and Enterprise (custom pricing).",
-        )
-        assert_test(test_case, [relevancy_metric])
-
-    def test_refund_policy(self):
-        """Agent should give relevant refund policy information."""
-        test_case = make_test_case(
-            user_input="What is your refund policy?",
-            expected="TechCorp offers a 30-day money-back guarantee. "
-                     "Refunds are processed within 5-7 business days.",
-        )
-        assert_test(test_case, [relevancy_metric])
-
-    def test_password_reset(self):
-        """Agent should give relevant password reset instructions."""
-        test_case = make_test_case(
-            user_input="How do I reset my password?",
-            expected="Go to Settings > Security > Reset Password. "
-                     "You will receive a verification email.",
-        )
-        assert_test(test_case, [relevancy_metric])
+    assert_test(test_case, [FaithfulnessMetric(threshold=0.8, model=get_judge()), correctness()])
 ```
 
-### Step 3 — Run the evaluation with pytest
+`correctness()` is the course's custom GEval metric ("Answer Correctness", threshold 0.7 from `config/eval_config.yaml`). Open `evaluators/metrics.py` and read its criteria: it penalises wrong prices, limits, dates and policies, but not different wording.
 
-```bash
-pytest tests/evaluation/test_first_eval.py -v
-```
+### Step 3 — Make a test fail on purpose
 
-This will:
-
-1. Execute the support agent for each test input
-2. Send the input + output to the judge model (`gpt-4o-mini`)
-3. Score the answer relevancy on a 0.0 – 1.0 scale
-4. Pass if the score meets or exceeds the threshold (0.7)
-
-### Step 4 — Interpret the output
-
-You will see output similar to:
-
-```
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_pricing_question PASSED
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_refund_policy PASSED
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_password_reset PASSED
-
-========================= 3 passed in 12.34s =========================
-```
-
-If a test **fails**, DeepEval prints detailed diagnostics:
-
-```
-FAILED tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_password_reset
-  Metric: AnswerRelevancyMetric
-  Score: 0.45 (threshold: 0.7)
-  Reason: The response included irrelevant information about ...
-```
-
-**Key things to look for:**
-
-- **Score** — how well the agent's response matched the query intent
-- **Reason** — the judge model's explanation for the score
-- **Threshold** — whether the score met your configured minimum
-
-### Step 5 — Experiment with thresholds
-
-Modify the threshold to see how it affects pass/fail:
+A test you have never seen fail is a test you can't trust. Create `my_work/test_lab02_fail.py`:
 
 ```python
-# Strict threshold — harder to pass
-strict_metric = AnswerRelevancyMetric(threshold=0.9, model="gpt-4o-mini")
+"""Lab 3.1 step 3 - a hallucinated answer must FAIL. Run it and read the reason."""
+from deepeval import assert_test
+from deepeval.metrics import FaithfulnessMetric
+from deepeval.test_case import LLMTestCase
 
-# Lenient threshold — easier to pass
-lenient_metric = AnswerRelevancyMetric(threshold=0.5, model="gpt-4o-mini")
+from agents.support_agent import execute_tool
+from evaluators.judge import get_judge
+
+
+def test_hallucinated_refund_answer_fails():
+    kb = execute_tool("search_knowledge_base", {"query": "refund policy"})
+    test_case = LLMTestCase(
+        input="What is your refund policy?",
+        actual_output="We offer a 14-day money-back guarantee, and refunds take about 10 business days.",
+        retrieval_context=[kb],
+    )
+    assert_test(test_case, [FaithfulnessMetric(threshold=0.8, model=get_judge())])
 ```
-
-Add two more tests to your file:
-
-```python
-    def test_pricing_strict(self):
-        """Same question, higher bar."""
-        strict = AnswerRelevancyMetric(threshold=0.9, model="gpt-4o-mini")
-        test_case = make_test_case(
-            user_input="What are your pricing plans?",
-            expected="TechCorp offers three plans: Basic ($9.99/mo), "
-                     "Pro ($29.99/mo), and Enterprise (custom pricing).",
-        )
-        assert_test(test_case, [strict])
-
-    def test_edge_case_ambiguous(self):
-        """Ambiguous question — likely to score lower."""
-        test_case = make_test_case(
-            user_input="Tell me everything",
-            expected="I'd be happy to help! Could you clarify what "
-                     "you'd like to know about?",
-        )
-        assert_test(test_case, [relevancy_metric])
-```
-
-Re-run:
 
 ```bash
-pytest tests/evaluation/test_first_eval.py -v
+uv run pytest -q my_work/test_lab02_fail.py
 ```
 
-### Step 6 — Review the DeepEval summary report
+It fails with Faithfulness 0.0: both claims contradict KB-102. That is exactly the output the agent produces when someone deletes its grounding rule (Lab 1.1, Step 4).
 
-Run with the DeepEval report flag:
+### Step 4 — Run the golden dataset
+
+Open `datasets/golden_support.json`: 10 cases in four categories (`faq` 3, `account` 3, `escalation` 2, `security` 2), each with `input`, `expected_output`, `context` and `expected_tools`. Then run the whole set:
 
 ```bash
-deepeval test run tests/evaluation/test_first_eval.py
+uv run python demos/m03_eval_support_agent.py
+uv run pytest -q tests/e2e/test_golden_support.py
 ```
 
-This produces a richer summary table with all metrics and scores in one view. Review the console output and note the per-test-case scores.
+Read `tests/e2e/test_golden_support.py`: it is three lines of logic — run the agent, convert the result with `to_test_case()` (`evaluators/deepeval_suite.py`), and `assert_test` with the Project 1 metrics.
+
+### Step 5 — Explain one score
+
+Pick one row of the Step 4 table and write two sentences in `my_work/lab02_notes.md`: what the metric measured on that case and why the score is what it is. Why is Faithfulness "-" for GS-04, GS-05, GS-07 to GS-10? (Hint: `default_metrics_for()` only adds Faithfulness when the case has grounding context.)
 
 ---
 
 ## Expected Output
 
-A successful run produces:
+Step 1 and 2 with `deepeval test run` (offline; the tail of DeepEval's report):
 
 ```
-================== test session starts ==================
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_pricing_question PASSED
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_refund_policy PASSED
-tests/evaluation/test_first_eval.py::TestAnswerRelevancy::test_password_reset PASSED
-
-================== 3 passed in ~15s ==================
+✓ Evaluation completed 🎉! (time taken: 1.13s | token cost: None)
+» Test Results (2 total tests):
+   » Pass Rate: 100.0% | Passed: 2 | Failed: 0
 ```
 
-Each test takes 3–8 seconds because the judge model must evaluate the response.
+Step 3:
+
+```
+E   AssertionError: Metrics: Faithfulness (score: 0.0, threshold: 0.8, strict: False, error: None, reason: Scored offline by the deterministic mock judge (word overlap and number matching).) failed.
+FAILED my_work/test_lab02_fail.py::test_hallucinated_refund_answer_fails
+1 failed
+```
+
+Live, the reason is written by gpt-4.1 and names the contradicting claims.
+
+Step 4:
+
+```
+id     category    relevancy  faithful  correct  tools_ok  result
+-----  ----------  ---------  --------  -------  --------  ------
+GS-01  faq         1.0        1.0       1.0      True      PASS  
+GS-02  faq         1.0        1.0       1.0      True      PASS  
+GS-03  faq         1.0        1.0       1.0      True      PASS  
+GS-04  account     1.0        -         1.0      True      PASS  
+GS-05  account     1.0        -         1.0      True      PASS  
+GS-06  account     1.0        1.0       1.0      True      PASS  
+GS-07  escalation  1.0        -         1.0      True      PASS  
+GS-08  escalation  1.0        -         1.0      True      PASS  
+GS-09  security    1.0        -         0.9      True      PASS  
+GS-10  security    1.0        -         0.9      True      PASS  
+10/10 passed (100%). Averages: {'Answer Correctness': 0.98, 'Answer Relevancy': 1.0, 'Faithfulness': 1.0}
+```
+
+These are offline teaching numbers. Live scores from gpt-4.1 will differ a little; re-run live before quoting them.
 
 ---
 
 ## Verification Checklist
 
-- [ ] `deepeval` is installed and `deepeval --version` prints the version
-- [ ] `test_first_eval.py` is created in `tests/evaluation/`
-- [ ] All three core tests pass with `pytest -v`
-- [ ] You can read the score and reason from a failing test
-- [ ] You experimented with at least one different threshold value
-- [ ] You understand that the **judge model** (gpt-4o-mini) scores the **agent model's** output
-- [ ] No API keys are hardcoded anywhere in your test files
+- [ ] `my_work/test_lab02.py` passes under both `deepeval test run` and `pytest`
+- [ ] Every metric uses `model=get_judge()` (no model name hard-coded in the test)
+- [ ] Faithfulness gets the knowledge-base result as `retrieval_context`
+- [ ] `my_work/test_lab02_fail.py` fails with Faithfulness 0.0, and you can explain why
+- [ ] The golden run shows 10/10 and you can name the four categories
+- [ ] Your notes explain one score and the "-" cells
 
 ---
 
 ## Common Pitfalls
 
-1. **`ModuleNotFoundError: No module named 'agents'`** — You are running pytest from the wrong directory. Always run from the `agent-eval-framework/` root. Alternatively, install the project in editable mode: `pip install -e .`
-
-2. **Tests take too long / time out** — Each test makes two API calls (one to the agent, one to the judge). On a slow connection, set `pytest --timeout=60` or run fewer tests at first.
-
-3. **All tests pass even with obviously bad responses** — The threshold might be too low. Start with `0.7` and raise it to `0.8` or `0.9`. A threshold of `0.5` will pass almost anything.
+1. **Faithfulness without context.** `FaithfulnessMetric` needs `retrieval_context`; without it DeepEval raises a missing-parameter error. For an agent, the context is the tool output.
+2. **Thresholds that never fail.** If you have not seen a test fail, you don't know it can. Step 3 is not optional.
+3. **`LLMTestCaseParams` deprecation warning.** DeepEval 4.2 renamed it `SingleTurnParams`. The old name still works but warns; the course uses the new one.
+4. **Live costs.** Each judged metric is one or more `gpt-4.1` calls. Keep live runs to the 10-case set while you learn (verify current pricing).
 
 ---
 
 ## Extension Challenge
 
-**Intermediate:** Add a `FaithfulnessMetric` alongside the relevancy metric. This requires a `retrieval_context` field — the documents the agent actually retrieved.
-
-Modify `make_test_case` to capture the knowledge base results from the tool calls:
-
-```python
-def make_test_case_with_context(user_input: str, expected: str) -> LLMTestCase:
-    result = run_support_agent(user_input)
-
-    # Extract retrieval context from tool calls
-    retrieval_context = [
-        tc["result"]
-        for tc in result["tool_calls"]
-        if tc["tool"] == "search_knowledge_base"
-    ]
-
-    return LLMTestCase(
-        input=user_input,
-        actual_output=result["response"],
-        expected_output=expected,
-        retrieval_context=retrieval_context if retrieval_context else ["No context retrieved."],
-    )
-```
-
-Then test with both metrics:
-
-```python
-from deepeval.metrics import FaithfulnessMetric
-
-faithfulness_metric = FaithfulnessMetric(threshold=0.8, model="gpt-4o-mini")
-
-def test_pricing_faithfulness(self):
-    test_case = make_test_case_with_context(
-        user_input="What are your pricing plans?",
-        expected="...",
-    )
-    assert_test(test_case, [relevancy_metric, faithfulness_metric])
-```
-
-Does the faithfulness score differ from relevancy? Why might that happen?
+1. Add `GS-06` (cancel and refund after 3 weeks) as its own test with the `ToolCorrectnessMetric` from `evaluators.metrics.tool_correctness()` and `expected_tools=[ToolCall(name="lookup_customer"), ToolCall(name="search_knowledge_base"), ToolCall(name="create_ticket")]`. Use `to_test_case()` to build the test case.
+2. Write a security test for GS-09 that passes only if **no** tool was called. Which quality dimension is that?
+3. Start Project 1 (`08-projects/project-1-customer-support/README.md`): the same 10 cases, a report by category.

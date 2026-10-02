@@ -1,398 +1,184 @@
-# Lab 04: RAG Pipeline Evaluation
+# Lab 5.1: RAG Pipeline Evaluation with RAGAS 0.4
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 05 — RAG Evaluation with RAGAS                        |
-| **Duration**       | 75 minutes                                                   |
-| **Difficulty**     | Intermediate                                                 |
-| **Learning Objective** | Use RAGAS to evaluate a RAG pipeline's retrieval and generation quality separately, identify which component is the bottleneck, and produce a diagnostic report. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 5.1 (file `lab-04-rag-evaluation.md`) |
+| **Module** | Module 05 — RAG Agent Evaluation |
+| **Lectures** | 5.1–5.3 (prepares Project 2, Lecture 5.4) |
+| **Duration** | 75 minutes |
+| **Difficulty** | Intermediate |
+| **Learning Objective** | Score the TechCorp Policy Assistant with the four RAGAS 0.4 metrics, tell a retrieval failure from a generation failure, and fix the retrieval failure in the retriever. |
+| **Reference solution** | `demos/m05_ragas_metrics.py`, `demos/m05_rag_failure_dissection.py`, `demos/m05_component_isolation.py` |
+| **Verified on** | ragas 0.4.3, deepeval 4.2.7 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 02** (comfortable running evaluations)
-- Understanding of RAG architecture (retriever + generator)
-- `.env` configured with a valid `OPENAI_API_KEY`
+- Completed **Lab 3.1**
+- Lectures 5.1–5.3: retrieval vs generation, the four RAGAS metrics, component isolation
 
 ---
 
 ## Setup Instructions
 
-### 1. Verify RAGAS is installed
-
 ```bash
-pip show ragas
+cd 04-code-examples/agent-eval-framework
+uv run python -c "import ragas; print(ragas.__version__)"     # 0.4.3
 ```
 
-You should see version `0.4.x`. If not:
+Two files to read before you start:
 
-```bash
-pip install "ragas>=0.4.3,<0.5"
-```
+- `agents/rag_agent.py` — the **Policy Assistant**: 14 TechCorp policy documents in three domains (HR, IT security, travel & expense), a keyword retriever (`retrieve_context`) standing in for vector search, and a generator that answers from the retrieved text and cites its source.
+- `evaluators/ragas_suite.py` — the RAGAS 0.4 helpers: `to_sample()`, `build_dataset()`, `make_metrics()`, `evaluate_dataset()`, `aggregate()`, `diagnose()`.
 
-### 2. Review the RAGAS evaluation suite
+### RAGAS 0.4 in one minute
 
-```bash
-cat evaluators/ragas_suite.py
-```
+| Old (0.1-era, removed) | Current (0.4.3) |
+|---|---|
+| `from ragas.metrics import faithfulness` (lowercase instances) | `from ragas.metrics.collections import Faithfulness, ContextPrecision, ContextRecall, AnswerRelevancy` (classes) |
+| `evaluate(Dataset.from_dict({...}), metrics=[...])` | `EvaluationDataset(samples=[SingleTurnSample(...)])`, then `await metric.ascore(...)` per metric |
+| columns `question`, `answer`, `contexts`, `ground_truth` | fields `user_input`, `response`, `retrieved_contexts`, `reference` |
 
-This file defines the four core RAGAS metrics and helper functions.
-
-### 3. Review the support agent's knowledge base
-
-The agent's built-in knowledge base is defined in `agents/support_agent.py` in the `MOCK_KNOWLEDGE_BASE` dictionary. It covers: pricing, refund, password, and API topics.
+Live, each metric gets an LLM from `ragas.llms.llm_factory("gpt-4.1", client=AsyncOpenAI())` (and AnswerRelevancy an embedding model, `text-embedding-3-small`). Offline, `MockRagasLLM` and `MockEmbeddings` implement RAGAS's own base classes, so the metric code you run is the real RAGAS code.
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Understand the four RAGAS metrics
+### Step 1 — Score five questions
 
-| Metric               | Evaluates        | What it measures                                     |
-| -------------------- | ---------------- | ---------------------------------------------------- |
-| `context_precision`  | **Retrieval**    | Are the retrieved documents relevant to the question? |
-| `context_recall`     | **Retrieval**    | Did the retriever find all the information needed?    |
-| `faithfulness`       | **Generation**   | Is the answer grounded in the retrieved context?      |
-| `answer_relevancy`   | **Generation**   | Is the answer relevant to the original question?      |
-
-**Retrieval metrics** tell you if the right documents were found.
-**Generation metrics** tell you if the LLM used those documents correctly.
-
-### Step 2 — Create the RAG evaluation test data
-
-Create `tests/rag/test_rag_eval.py`:
+Create `my_work/lab04_rag.py`:
 
 ```python
-"""
-Lab 04 — RAG Pipeline Evaluation with RAGAS
-Run: pytest tests/rag/test_rag_eval.py -v -s
-"""
+"""Lab 5.1 - score the Policy Assistant with RAGAS 0.4 and diagnose failures."""
+from agents.rag_agent import run_rag_agent
+from evaluators.golden import load
+from evaluators.ragas_suite import aggregate, build_dataset, diagnose, evaluate_dataset, to_sample
 
-import json
-from agents.support_agent import run_support_agent, MOCK_KNOWLEDGE_BASE
+IDS = ["RAG-HR-01", "RAG-HR-04", "RAG-IT-03", "RAG-TE-02", "RAG-TE-05"]
+cases = [c for c in load("golden_rag") if c["id"] in IDS]
 
+samples = []
+for case in cases:
+    result = run_rag_agent(case["question"])
+    samples.append(to_sample(case["question"], result, reference=case["reference"]))
 
-def get_rag_samples() -> list[dict]:
-    """
-    Run the agent on questions and capture retrieval + generation results.
-    Returns samples in RAGAS-compatible format.
-    """
-    test_queries = [
-        {
-            "question": "What are your pricing plans?",
-            "ground_truth": (
-                "TechCorp offers three plans: Basic ($9.99/mo), "
-                "Pro ($29.99/mo), and Enterprise (custom pricing). "
-                "All plans include core features. Pro adds priority "
-                "support and advanced analytics."
-            ),
-        },
-        {
-            "question": "What is your refund policy?",
-            "ground_truth": (
-                "TechCorp offers a 30-day money-back guarantee on all "
-                "plans. Refunds are processed within 5-7 business days. "
-                "Annual subscriptions are prorated."
-            ),
-        },
-        {
-            "question": "How do I reset my password?",
-            "ground_truth": (
-                "Go to Settings > Security > Reset Password. You'll "
-                "receive a verification email. Password must be 8+ "
-                "characters with at least one number."
-            ),
-        },
-        {
-            "question": "What are the API rate limits for each plan?",
-            "ground_truth": (
-                "Basic: 100 requests/hour, Pro: 1000 requests/hour, "
-                "Enterprise: unlimited. API keys can be generated in "
-                "Settings > Developer > API Keys."
-            ),
-        },
-        {
-            "question": "Do you offer a free trial?",
-            "ground_truth": (
-                "The knowledge base does not mention a free trial. "
-                "The agent should indicate it does not have this information."
-            ),
-        },
-        {
-            "question": "Can I upgrade from Basic to Pro mid-billing cycle?",
-            "ground_truth": (
-                "The knowledge base does not cover mid-cycle upgrades. "
-                "The agent should escalate or indicate uncertainty."
-            ),
-        },
-    ]
-
-    samples = []
-    for query in test_queries:
-        result = run_support_agent(query["question"])
-
-        # Extract what the retriever actually returned
-        retrieved_contexts = [
-            tc["result"]
-            for tc in result["tool_calls"]
-            if tc["tool"] == "search_knowledge_base"
-        ]
-
-        # If no KB search was performed, record an empty retrieval
-        if not retrieved_contexts:
-            retrieved_contexts = ["No knowledge base search was performed."]
-
-        samples.append({
-            "question": query["question"],
-            "answer": result["response"],
-            "contexts": retrieved_contexts,
-            "ground_truth": query["ground_truth"],
-        })
-
-    return samples
+dataset = build_dataset(samples)              # ragas EvaluationDataset of SingleTurnSamples
+rows = evaluate_dataset(dataset)              # four RAGAS 0.4 metrics per sample
+for case, scores in zip(cases, rows):
+    print(f"{case['id']:<10} {scores}  -> {diagnose(scores)}")
+print("Aggregate:", aggregate(rows))
 ```
-
-### Step 3 — Evaluate with RAGAS metrics
-
-Add the evaluation logic to the same file:
-
-```python
-from datasets import Dataset
-from ragas import evaluate
-from ragas.metrics import (
-    faithfulness,
-    answer_relevancy,
-    context_precision,
-    context_recall,
-)
-
-
-def run_ragas_evaluation(samples: list[dict]) -> dict:
-    """Run RAGAS evaluation and return scores."""
-    dataset = Dataset.from_dict({
-        "question": [s["question"] for s in samples],
-        "answer": [s["answer"] for s in samples],
-        "contexts": [s["contexts"] for s in samples],
-        "ground_truth": [s["ground_truth"] for s in samples],
-    })
-
-    result = evaluate(
-        dataset,
-        metrics=[
-            faithfulness,
-            answer_relevancy,
-            context_precision,
-            context_recall,
-        ],
-    )
-
-    return result
-
-
-def test_rag_pipeline():
-    """Run the full RAG evaluation pipeline."""
-    print("\n" + "=" * 60)
-    print("Running RAG Evaluation with RAGAS")
-    print("=" * 60)
-
-    # Step 1: Collect samples
-    print("\nCollecting agent responses...")
-    samples = get_rag_samples()
-
-    for i, s in enumerate(samples):
-        print(f"\n--- Sample {i+1}: {s['question'][:50]}...")
-        print(f"    Answer: {s['answer'][:80]}...")
-        print(f"    Contexts retrieved: {len(s['contexts'])}")
-
-    # Step 2: Run RAGAS evaluation
-    print("\nRunning RAGAS metrics (this may take 1-2 minutes)...")
-    results = run_ragas_evaluation(samples)
-
-    # Step 3: Print results
-    print("\n" + "=" * 60)
-    print("RAGAS EVALUATION RESULTS")
-    print("=" * 60)
-
-    for metric_name, score in results.items():
-        if isinstance(score, (int, float)):
-            status = "PASS" if score >= 0.7 else "FAIL"
-            print(f"  {metric_name:25s}: {score:.4f}  [{status}]")
-
-    # Step 4: Diagnose bottleneck
-    print("\n" + "=" * 60)
-    print("BOTTLENECK DIAGNOSIS")
-    print("=" * 60)
-    diagnose_bottleneck(results)
-
-    assert True  # Test always passes; review the output manually
-```
-
-### Step 4 — Build the bottleneck diagnosis function
-
-Add this function above the test:
-
-```python
-def diagnose_bottleneck(results: dict) -> None:
-    """Identify whether retrieval or generation is the bottleneck."""
-    retrieval_metrics = {}
-    generation_metrics = {}
-
-    for key, value in results.items():
-        if not isinstance(value, (int, float)):
-            continue
-        if key in ("context_precision", "context_recall"):
-            retrieval_metrics[key] = value
-        elif key in ("faithfulness", "answer_relevancy"):
-            generation_metrics[key] = value
-
-    avg_retrieval = (
-        sum(retrieval_metrics.values()) / len(retrieval_metrics)
-        if retrieval_metrics else 0
-    )
-    avg_generation = (
-        sum(generation_metrics.values()) / len(generation_metrics)
-        if generation_metrics else 0
-    )
-
-    print(f"  Average Retrieval Score:  {avg_retrieval:.4f}")
-    print(f"  Average Generation Score: {avg_generation:.4f}")
-    print()
-
-    if avg_retrieval < avg_generation:
-        print("  DIAGNOSIS: Retrieval is the bottleneck.")
-        print("  RECOMMENDATIONS:")
-        print("    - Improve search query formulation")
-        print("    - Add more documents to the knowledge base")
-        print("    - Use semantic search instead of keyword matching")
-        print("    - Increase the number of retrieved chunks")
-    elif avg_generation < avg_retrieval:
-        print("  DIAGNOSIS: Generation is the bottleneck.")
-        print("  RECOMMENDATIONS:")
-        print("    - Improve the system prompt to encourage grounded answers")
-        print("    - Use a more capable model for generation")
-        print("    - Add explicit instructions to cite retrieved context")
-        print("    - Reduce hallucination with lower temperature")
-    else:
-        print("  DIAGNOSIS: Both components perform similarly.")
-        print("  RECOMMENDATIONS:")
-        print("    - Improve both retrieval and generation")
-        print("    - Focus on the lowest individual metric first")
-```
-
-### Step 5 — Run the evaluation
 
 ```bash
-pytest tests/rag/test_rag_eval.py -v -s
+uv run python -m my_work.lab04_rag
 ```
 
-The `-s` flag ensures `print()` output is visible.
+Open `evaluators/ragas_suite.py` and read `to_sample()` (how an agent result becomes a `SingleTurnSample`) and `ascore_sample()` (which fields each metric needs).
 
-### Step 6 — Create a diagnostic report
+### Step 2 — Diagnose RAG-TE-05
 
-After reviewing the output, create `reports/rag_diagnostic.md`:
+RAG-TE-05 asks "What is the mileage reimbursement rate for using my own car?". Context precision and recall are 1.0: the right document was retrieved at rank 1. Faithfulness and answer relevancy are 0.0: the generator said the documents don't cover it. `diagnose()` says **generation**. Confirm it with component isolation:
 
-```markdown
-# RAG Pipeline Diagnostic Report
-
-## Date: [today's date]
-## Agent: TechCorp Customer Support Agent
-
-### Metric Scores
-
-| Metric             | Score  | Threshold | Status |
-| ------------------ | ------ | --------- | ------ |
-| context_precision  | [X.XX] | 0.70      | [P/F]  |
-| context_recall     | [X.XX] | 0.70      | [P/F]  |
-| faithfulness       | [X.XX] | 0.80      | [P/F]  |
-| answer_relevancy   | [X.XX] | 0.70      | [P/F]  |
-
-### Bottleneck Analysis
-
-- **Retrieval average:** [X.XX]
-- **Generation average:** [X.XX]
-- **Primary bottleneck:** [Retrieval / Generation]
-
-### Observations
-
-1. [What you noticed about the results]
-2. [Which queries performed worst and why]
-3. [The "free trial" query — did the agent hallucinate?]
-
-### Recommendations
-
-1. [Specific improvement suggestion]
-2. [Specific improvement suggestion]
+```bash
+uv run python demos/m05_component_isolation.py
 ```
 
-Fill in the values from your evaluation run.
+The retriever hits 5/5 travel questions at rank 1, but the generator given the perfect context still fails RAG-TE-05. Fixing chunking would waste a week; the fix belongs in the prompt or the model.
+
+### Step 3 — A retrieval failure
+
+Ask a question whose answer lives in `travel-001` (Travel Booking, Section 7.2). Create `my_work/lab04_retriever.py`:
+
+```python
+"""Lab 5.1 step 3 - the retrieval failure, and the one-line retriever fix."""
+from agents.rag_agent import retrieve_context
+
+question = "What class can I fly on a long flight?"
+for remove_stopwords in (False, True):
+    docs = retrieve_context(question, top_k=3, remove_stopwords=remove_stopwords)
+    print(f"remove_stopwords={remove_stopwords}: {[d['id'] for d in docs]}")
+```
+
+```bash
+uv run python -m my_work.lab04_retriever
+```
+
+The shipped retriever counts stop words ("what", "can", "on", "a"), so documents full of common words outrank the travel policy. With stop words removed, `travel-001` is retrieved.
+
+### Step 4 — Prove the fix end to end
+
+```bash
+uv run python demos/m05_rag_failure_dissection.py
+```
+
+Before: all four RAGAS scores 0.0, diagnosis "both". After: faithfulness 1.0, answer relevancy 1.0, context recall 1.0, the correct answer with its citation. Context precision is 0.5, not 1.0: what does that tell you about the other two retrieved documents?
+
+### Step 5 — Write the diagnosis
+
+In `my_work/lab04_report.md`, write one paragraph per failure: question, scores, diagnosis (retrieval or generation), evidence, and the fix you recommend. This is the format Project 2 asks for across all 15 questions.
 
 ---
 
 ## Expected Output
 
+Step 1:
+
 ```
-============================================================
-Running RAG Evaluation with RAGAS
-============================================================
+RAG-HR-01  {'faithfulness': 1.0, 'answer_relevancy': 1.0, 'context_precision': 1.0, 'context_recall': 1.0}  -> ok
+RAG-HR-04  {'faithfulness': 1.0, 'answer_relevancy': 1.0, 'context_precision': 1.0, 'context_recall': 1.0}  -> ok
+RAG-IT-03  {'faithfulness': 1.0, 'answer_relevancy': 1.0, 'context_precision': 1.0, 'context_recall': 1.0}  -> ok
+RAG-TE-02  {'faithfulness': 1.0, 'answer_relevancy': 1.0, 'context_precision': 1.0, 'context_recall': 1.0}  -> ok
+RAG-TE-05  {'faithfulness': 0.0, 'answer_relevancy': 0.0, 'context_precision': 1.0, 'context_recall': 1.0}  -> generation
+Aggregate: {'faithfulness': 0.8, 'answer_relevancy': 0.8, 'context_precision': 1.0, 'context_recall': 1.0}
+```
 
-Collecting agent responses...
+Step 3:
 
---- Sample 1: What are your pricing plans?...
-    Answer: TechCorp offers three plans: Basic at $9.99...
-    Contexts retrieved: 1
+```
+remove_stopwords=False: ['vacation-001', 'itsec-001', 'travel-002']
+remove_stopwords=True: ['itsec-001', 'travel-001', 'vacation-001']
+```
 
---- Sample 2: What is your refund policy?...
-    ...
+Step 4 (from the demo):
 
-Running RAGAS metrics (this may take 1-2 minutes)...
-
-============================================================
-RAGAS EVALUATION RESULTS
-============================================================
-  context_precision          : 0.8333  [PASS]
-  context_recall             : 0.7500  [PASS]
-  faithfulness               : 0.9167  [PASS]
-  answer_relevancy           : 0.8200  [PASS]
-
-============================================================
-BOTTLENECK DIAGNOSIS
-============================================================
-  Average Retrieval Score:  0.7917
-  Average Generation Score: 0.8683
-
-  DIAGNOSIS: Retrieval is the bottleneck.
-  ...
+```
+BEFORE: naive keyword retriever
+  retrieved: ['vacation-001', 'itsec-001', 'travel-002']  (the answer lives in travel-001)
+  answer   : The policy documents provided don't cover that question. Please contact HR or the IT Service Desk for help.
+  RAGAS    : {'faithfulness': 0.0, 'answer_relevancy': 0.0, 'context_precision': 0.0, 'context_recall': 0.0}
+  diagnosis: both
+AFTER: stop words removed
+  retrieved: ['itsec-001', 'travel-001', 'vacation-001']  (the answer lives in travel-001)
+  answer   : Economy class is required for flights under 6 hours; premium economy is allowed for flights of 6 hours or more. (Source: Travel Booking (Section 7.2))
+  RAGAS    : {'faithfulness': 1.0, 'answer_relevancy': 1.0, 'context_precision': 0.5, 'context_recall': 1.0}
+  diagnosis: retrieval
 ```
 
 ---
 
 ## Verification Checklist
 
-- [ ] RAGAS is installed and importable
-- [ ] Six test queries ran through the agent successfully
-- [ ] All four RAGAS metrics produced numerical scores
-- [ ] You identified the bottleneck (retrieval vs. generation)
-- [ ] You noted which queries the agent struggled with (especially out-of-KB queries)
-- [ ] You created the `rag_diagnostic.md` report
-- [ ] You can explain why `context_recall` depends on `ground_truth`
+- [ ] Your script builds `SingleTurnSample`s with `reference`, not `ground_truth`
+- [ ] Your metrics come from `ragas.metrics.collections` (via `make_metrics()`), not the removed lowercase imports
+- [ ] You can explain why RAG-TE-05 is a generation failure using two numbers
+- [ ] You reproduced the retrieval failure and the stop-word fix
+- [ ] Your report has one paragraph per failure with a recommended fix
 
 ---
 
 ## Common Pitfalls
 
-1. **Empty `contexts` list** — If the agent doesn't call `search_knowledge_base`, the contexts list will be empty, causing RAGAS to produce misleading scores. The code above handles this by inserting a placeholder string, but be aware this artificially lowers retrieval scores.
-
-2. **RAGAS version mismatch** — The RAGAS API changed between 0.1.x and 0.4.x. If you see `ImportError` for metric names, check your version with `pip show ragas` and consult the [RAGAS migration guide](https://docs.ragas.io/).
-
-3. **Confusing `context` with `retrieval_context`** — In RAGAS, `contexts` is what the retriever returned (like DeepEval's `retrieval_context`). Don't pass ground-truth documents as contexts — that measures generation only, not retrieval.
+1. **Copying 0.1-era tutorials.** `from ragas.metrics import faithfulness` and `evaluate(Dataset.from_dict(...))` no longer work in 0.4.3. Use the classes and `SingleTurnSample`.
+2. **Installing `langchain-community` 0.4.2.** RAGAS 0.4.3 imports a module that release removed. The repo pins `langchain-community<0.4.2` in `pyproject.toml`; keep the pin if you add packages.
+3. **Reading faithfulness alone.** High faithfulness only says the answer matches what was retrieved. If the wrong documents were retrieved, the answer can be faithful and wrong. Always read it with context precision and recall.
+4. **NaN scores.** A metric that cannot score (for example, no `reference`) returns NaN; the helper turns it into 0.0. Check your inputs before believing a zero.
 
 ---
 
 ## Extension Challenge
 
-**Advanced:** The support agent uses simple keyword matching for retrieval (see `MOCK_KNOWLEDGE_BASE` in `support_agent.py`). Modify the `search_knowledge_base` tool to deliberately return irrelevant results for one query (e.g., return the "pricing" article when asked about "password reset"). Re-run the RAGAS evaluation and observe:
-
-1. How does `context_precision` change for that query?
-2. How does `faithfulness` change — does the agent hallucinate or stay grounded?
-3. Write a one-paragraph analysis of how retrieval quality affects generation quality.
+1. Run all 15 questions (`uv run python demos/m05_project2_rag_eval.py`) and find the second generation failure (RAG-IT-02 has answer relevancy 0.0). Explain it.
+2. Retrieve with `include_noise=True` (two off-topic documents) and measure what happens to context precision.
+3. Score the same five samples with DeepEval's `ContextualPrecisionMetric` and `ContextualRecallMetric` (`evaluators.metrics.contextual_precision()`, `contextual_recall()`) and compare the two frameworks' numbers.

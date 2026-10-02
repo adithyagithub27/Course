@@ -23,13 +23,13 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
 | 13.1 | Self-hosting Langfuse with Docker Compose | SC | 9:00 | ~659 |
-| 13.2 | OTel Collector as the traffic cop | SC | 7:00 | ~618 |
-| 13.3 | Code-along: the CI budget gate | SC | 9:00 | ~800 |
-| 13.4 | Production readiness checklist for observability | SL | 6:00 | ~614 |
-| 13.5 | Chaos demo: kill the observability backend | DM | 5:00 | ~598 |
-| 13.6 | Lab 7: Self-hosted stack end to end | LAB | 4:00 | ~362 |
+| 13.2 | OTel Collector as the traffic cop | SC | 7:00 | ~655 |
+| 13.3 | Code-along: the CI budget gate | SC | 9:00 | ~755 |
+| 13.4 | Production readiness checklist for observability | SL | 6:00 | ~640 |
+| 13.5 | Chaos demo: kill the observability backend | DM | 5:00 | ~675 |
+| 13.6 | Lab 7: Self-hosted stack end to end | LAB | 4:00 | ~395 |
 
-**Names used in this section (match `03-code/`).** Deploy files: `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml`, `deploy/otel-collector.yaml`, `deploy/prometheus.yml`, `deploy/alerts.yml`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/grafana/provisioning/`, `deploy/Dockerfile`. Budget gate: `tests/budget/test_budget_gate.py` with `test_cost_per_session_within_budget`, `test_p95_latency_within_budget`, `test_no_tenant_over_its_daily_soft_cap`, `test_task_success_slo_holds`; budgets from `Settings`: `budget_cost_per_session_usd` [`BUDGET_COST_PER_SESSION_USD`, 0.05], `budget_p95_latency_ms` [`BUDGET_P95_LATENCY_MS`, 4000], `tenant_soft_cap_usd` [`TENANT_SOFT_CAP_USD`, 25]; gate knobs `BUDGET_GATE_SESSIONS` (300), `BUDGET_GATE_INCIDENTS` (`none`), `BUDGET_GATE_SEED` (7). Simulator: `simulator/scenarios.py::generate_day(seed, sessions=, incidents=)`, `INCIDENT_PRESETS`; `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=, judge_rate=, settings=) -> (ReplaySummary, LocalSpanStore)`. Telemetry: `telemetry/otel_setup.py::configure_tracing`, `SafeSpanExporter`, `FailingSpanExporter`, `exporter_health()`, `shutdown_tracing(timeout_ms=)`; `telemetry/metrics.py::EXPORTER_FAILURES` (`atlas_telemetry_export_failures_total{name}`). `.github/workflows/ci.yml` jobs: `test`, `budget-gate`, `live-evals`. Makefile targets: `make budget-check`, `make langfuse-up` / `make langfuse-down`, `make stack` / `make stack-down`, `make swarm RPS=`. Langfuse env: `LANGFUSE_BASE_URL=http://localhost:3000`, `LANGFUSE_RELEASE`.
+**Names used in this section (match `03-code/`).** Deploy files: `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml`, `deploy/otel-collector.yaml`, `deploy/prometheus.yml`, `deploy/alerts.yml`, `deploy/grafana/dashboards/atlas-ops.json`, `deploy/grafana/provisioning/`, `deploy/Dockerfile`. Budget gate: `tests/budget/test_budget_gate.py` with five tests: `test_cost_per_session_within_budget`, `test_p95_latency_within_budget`, `test_no_tenant_over_its_daily_soft_cap`, `test_task_success_slo_holds`, `test_max_input_tokens_per_generation` (the "tokens test"); budgets from `Settings`: `budget_cost_per_session_usd` [`BUDGET_COST_PER_SESSION_USD`, 0.05], `budget_p95_latency_ms` [`BUDGET_P95_LATENCY_MS`, 4000], `max_input_tokens_per_generation` [`BUDGET_MAX_INPUT_TOKENS_PER_GENERATION`, alias `MAX_INPUT_TOKENS_PER_GENERATION`, 24,000], `tenant_soft_cap_usd` [`TENANT_SOFT_CAP_USD`, 25]; gate knobs `BUDGET_GATE_SESSIONS` (300), `BUDGET_GATE_INCIDENTS` (`none`), `BUDGET_GATE_SEED` (7). Simulator: `simulator/scenarios.py::generate_day(seed, sessions=, incidents=)`, `INCIDENT_PRESETS`; `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=, judge_rate=, settings=) -> (ReplaySummary, LocalSpanStore)`. Telemetry: `telemetry/otel_setup.py::configure_tracing(settings, exporter_kind=, store=, extra_exporter=, batch=)`, `SafeSpanExporter` (logs `telemetry exporter <name> failed (<error>); dropping spans`), `FailingSpanExporter(raise_exc=, delay_s=)`, `exporter_health()` (`[{name, exported, failures}]`, also in `/healthz`), `build_resource` (`service.name`, `service.version` = `LANGFUSE_RELEASE`, `deployment.environment`), `shutdown_tracing(timeout_ms=5000)`; `telemetry/metrics.py::EXPORTER_FAILURES` (`atlas_telemetry_export_failures_total{name}`); `tests/integration/test_exporter_failure.py` (three tests). Note: `/metrics` is a mounted app and answers `/metrics` with a 307 redirect to `/metrics/`; use `curl -sL` on screen (Prometheus follows the redirect). `.github/workflows/ci.yml` jobs: `test`, `budget-gate`, `live-evals`. Makefile targets: `make budget-check`, `make langfuse-up` / `make langfuse-down`, `make stack` / `make stack-down`, `make swarm RPS=`. Langfuse env: `LANGFUSE_BASE_URL=http://localhost:3000`, `LANGFUSE_RELEASE` (default `v1.0.0`; CI's `live-evals` job sets it to the commit SHA). Collector env (passed by compose to the `otel-collector` service): `LANGFUSE_BASE_URL`, `LANGFUSE_BASIC_AUTH`. Stack ports: Atlas 8000, Collector 4317/4318/8888, Phoenix 6006, Prometheus 9091, Grafana 3001.
 
 ---
 
@@ -151,6 +151,11 @@ When should you self-host? When you must, because of residency or egress rules. 
 [AVATAR]
 Your Langfuse is up. Next, we put a traffic cop in front of it, so Atlas never talks to a backend directly again.
 
+[SLIDE 4: Recap]
+- Six containers, one Compose file
+- Atlas changes only `LANGFUSE_BASE_URL`
+- Secrets, backups, upgrades, TLS before production
+
 **Recap:** Self-hosted Langfuse is six containers behind one Compose file; Atlas only changes its base URL; and production means secrets, persistence, backups, upgrades and TLS handled deliberately, with ClickHouse as the component to watch.
 
 **Transition:** Next, the OpenTelemetry Collector: receivers, processors and exporters that mask, sample and fan out to two backends at once.
@@ -170,7 +175,7 @@ Your Langfuse is up. Next, we put a traffic cop in front of it, so Atlas never t
 |---|---|
 | ID | 13.2 |
 | Type | SC (screencast / code-along) |
-| Target duration | 7:00 (~620 spoken words) |
+| Target duration | 7:00 (~655 spoken words; the rest is YAML and demo time) |
 | Learning objectives | 1. Read a Collector config as a pipeline: receivers, processors, exporters. 2. Configure attribute masking and tail sampling once, for every backend. 3. Export the same spans to Langfuse and a second backend at the same time. |
 | Prerequisites | 13.1; Lectures 3.2, 4.6, 10.2, 12.1 |
 | Files used | `deploy/otel-collector.yaml`, `deploy/docker-compose.observability.yml`, `telemetry/otel_setup.py` |
@@ -186,99 +191,131 @@ The OpenTelemetry Collector is a separate process. It receives telemetry, runs i
 
 [SCREEN: `deploy/otel-collector.yaml` in VS Code. Footer: "verify against current OTel Collector contrib docs".]
 
-[CODE: receivers and the first processors]
+[CODE: receivers and the first processors, as shipped]
 ```yaml
 receivers:
   otlp:
     protocols:
-      http:
-        endpoint: 0.0.0.0:4318
       grpc:
         endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
 
 processors:
   memory_limiter:
     check_interval: 1s
-    limit_mib: 512
-  batch:
-    send_batch_size: 512
-    timeout: 2s
-  attributes/mask:
+    limit_mib: 400
+    spike_limit_mib: 100
+
+  attributes/redact:
     actions:
       - key: gen_ai.tool.call.result
-        action: hash          # keep a join key, drop the content
-      - key: user.id
-        action: hash
-      - key: user.email
         action: delete
+      - key: gen_ai.input.messages
+        action: delete
+      - key: gen_ai.output.messages
+        action: delete
+      - key: gen_ai.system_instructions
+        action: delete
+      - key: langfuse.observation.input
+        action: delete
+      - key: langfuse.observation.output
+        action: delete
+      - key: gen_ai.tool.call.arguments
+        action: hash            # keep a stable fingerprint so identical calls can still be grouped
+      - key: user.id
+        action: hash            # joinable pseudonym, never the employee id
+      - key: enduser.id
+        action: hash
 ```
 
 Receivers first. One OTLP receiver, listening on the two standard ports: four three one eight for HTTP, four three one seven for gRPC. Atlas sends HTTP.
 
-Processors. `memory_limiter` goes first in every pipeline; it drops data rather than letting the Collector die. `batch` groups spans for efficient export. And `attributes/mask`: this is Lecture 10.2's second layer. Hash the tool result so you keep a join key without the content. Hash the user id. Delete email outright. The SDK-side `mask=` function from Lecture 4.6 still runs; this is the layer that catches whatever the SDK missed, and it applies to every backend at once.
+Processors. `memory_limiter` goes first in every pipeline; it drops data rather than letting the Collector die. Then `attributes/redact`, the second layer from Lecture 10.2. It *deletes* the content attributes outright: tool results, input and output messages, the system instructions, and Langfuse's own input and output fields. And it *hashes* three things you still want to join on: tool arguments, `user.id` and `enduser.id`. The SDK-side `mask=` function from Lecture 4.6 still runs; this layer catches whatever the SDK missed, for every backend at once.
 
-[CODE: tail sampling]
+[CODE: tail sampling and batch, as shipped]
 ```yaml
   tail_sampling:
     decision_wait: 10s
+    num_traces: 50000
+    expected_new_traces_per_sec: 100
     policies:
-      - name: keep-errors
+      - name: errors
         type: status_code
-        status_code: {status_codes: [ERROR]}
-      - name: keep-slow
+        status_code: { status_codes: [ERROR] }
+      - name: slow
         type: latency
-        latency: {threshold_ms: 4000}
-      - name: keep-expensive
+        latency: { threshold_ms: 4000 }
+      - name: expensive
         type: numeric_attribute
-        numeric_attribute: {key: atlas.cost_usd, min_value: 0.05}
-      - name: sample-the-rest
+        numeric_attribute: { key: atlas.cost_usd, min_value: 0.05, max_value: 1000000 }
+      - name: many-steps
+        type: numeric_attribute
+        numeric_attribute: { key: atlas.steps, min_value: 5, max_value: 100 }
+      - name: escalated
+        type: boolean_attribute
+        boolean_attribute: { key: atlas.escalated, value: true }
+      - name: baseline
         type: probabilistic
-        probabilistic: {sampling_percentage: 20}
+        probabilistic: { sampling_percentage: 20 }
+
+  batch:
+    send_batch_size: 512
+    timeout: 2s
 ```
 
-Tail sampling. The Collector waits ten seconds for a trace to complete, then decides whether to keep it. Keep every trace with an error. Keep every trace slower than four seconds, which is our latency budget. Keep every trace that cost more than five cents, because those are the ones Incident 1 taught you to look at. And keep twenty percent of everything else. Four policies, and any match keeps the trace.
+Tail sampling. The Collector waits ten seconds for a trace to complete, then decides whether to keep it. Six policies, and any match keeps the trace. Every error. Every trace slower than four seconds, our latency budget. Every trace that cost more than five cents, the ones Incident 1 taught you to look at. Every trace with five or more steps, the loop from Lecture 5.6. Every escalation. And twenty percent of everything else. Then `batch`, last, groups spans for export.
 
 Compare that with head sampling in the SDK from Lecture 4.6, where you decide at the start of a trace, before you know if it will be slow or fail. Tail sampling is why you can drop eighty percent of normal traffic and still have every incident trace.
 
-[CODE: exporters and pipelines]
+[CODE: exporters and the pipeline, as shipped]
 ```yaml
 exporters:
   otlphttp/langfuse:
-    endpoint: ${LANGFUSE_OTLP_ENDPOINT}     # e.g. http://langfuse-web:3000/api/public/otel
+    endpoint: ${env:LANGFUSE_BASE_URL}/api/public/otel
     headers:
-      Authorization: "Basic ${LANGFUSE_BASIC_AUTH}"   # base64(public_key:secret_key)
+      Authorization: "Basic ${env:LANGFUSE_BASIC_AUTH}"    # base64 of "public_key:secret_key"
+    timeout: 5s
+    retry_on_failure: { enabled: true, max_elapsed_time: 30s }
+    sending_queue: { enabled: true, queue_size: 2000 }
   otlphttp/phoenix:
-    endpoint: http://phoenix:6006
+    endpoint: http://phoenix:6006                          # otlphttp appends /v1/traces
+    timeout: 5s
   debug:
     verbosity: basic
+
+connectors:
+  spanmetrics: ...                                         # span-derived metrics for Prometheus
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, attributes/mask, tail_sampling, batch]
-      exporters: [otlphttp/langfuse, otlphttp/phoenix]
+      processors: [memory_limiter, attributes/redact, tail_sampling, batch]
+      exporters: [otlphttp/langfuse, otlphttp/phoenix, debug, spanmetrics]
 ```
 
-Exporters. Two `otlphttp` exporters with different names, one to Langfuse's OTLP endpoint, one to Phoenix. Langfuse's endpoint takes basic auth built from your public and secret keys, base64 encoded, and verify the exact path against the current docs. A `debug` exporter for troubleshooting, not for pipelines in production.
+Exporters. Two `otlphttp` exporters with different names: one to Langfuse's OTLP endpoint, one to the Phoenix container from Lecture 12.3. Langfuse's endpoint takes basic auth built from your public and secret keys, base64 encoded; verify the exact path against the current docs. A `debug` exporter, which logs a line per batch, and the `spanmetrics` connector, which turns spans into Prometheus metrics.
 
-And the pipeline. Receivers, processors in order, memory limiter first and batch last, then both exporters. Every span goes to both. That is the escape hatch from Lecture 12.1 in eleven lines.
+And the pipeline. Memory limiter first, redaction, tail sampling, batch last, then every exporter. Every kept span goes to Langfuse *and* Phoenix. That's the escape hatch from Lecture 12.1, in one line.
 
-[SCREEN: `deploy/docker-compose.observability.yml`, the collector service, then `make stack`.]
+[SCREEN: `deploy/docker-compose.observability.yml`: the `atlas` service environment and the `otel-collector` service environment. Then `make stack`.]
 
-[CODE: Atlas points at the Collector now]
-```bash
-OTEL_EXPORTER=otlp
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
-LANGFUSE_PUBLIC_KEY=
-LANGFUSE_SECRET_KEY=
+[CODE: who holds which setting in the stack]
+```yaml
+# atlas service (compose)
+OTEL_EXPORTER: otlp
+OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+# otel-collector service (compose): the only place the Langfuse credentials go
+LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-https://cloud.langfuse.com}
+LANGFUSE_BASIC_AUTH: ${LANGFUSE_BASIC_AUTH:-}
 ```
 
-The observability compose file brings up the Collector, Prometheus and Grafana together. Atlas's exporter becomes plain OTLP to the Collector on four three one eight, and the Langfuse keys come *out* of Atlas's environment, because the Collector holds them now. Atlas no longer knows any backend secret. That's a security win on its own.
+`make stack` brings up Atlas, the Collector, Phoenix, Prometheus and Grafana together. Atlas's exporter is plain OTLP to the Collector, and the Langfuse credentials go to the Collector, not to Atlas. Atlas no longer needs any backend secret. That's a security win on its own.
 
-[DEMO: `make replay` for ten seconds. Watch `docker compose logs otel-collector` show batches exported to both. Open local Langfuse and Phoenix; both show the same traces. Open one tool span in Langfuse: `gen_ai.tool.call.result` is a hash.]
+[DEMO: Terminal 1: `make stack`, then `make swarm RPS=2 DURATION=120`. Terminal 2: `docker compose -f deploy/docker-compose.observability.yml logs -f otel-collector` shows `debug` lines for exported batches. Browser: Phoenix on `localhost:6006` and Langfuse both show the same traces. Open one tool span in Phoenix: no `gen_ai.tool.call.result` attribute; `gen_ai.tool.call.arguments` is a hash.]
 
-Replay traffic. The Collector logs show batches going out to both exporters. Langfuse and Phoenix both have the traces. Open a tool span: the result is a hash, not the payload. Masked once, delivered twice.
+Drive traffic through the stack with `make swarm`. Not `make replay`: the replay writes straight to the local store and never touches the Collector. The Collector logs show batches going out. Phoenix and Langfuse both have the traces. Open a tool span: the result is gone and the arguments are a hash. Masked once, delivered twice.
 
 [SLIDE 1: Collector rules]
 - `memory_limiter` first, `batch` last, in every pipeline
@@ -292,6 +329,11 @@ Five rules. Memory limiter first, batch last. Mask in the Collector as the secon
 [AVATAR]
 Two containers ago, Atlas talked to a vendor directly. Now it talks to a process you own, which masks, samples and fans out on your terms. Next, the thing that stops regressions from ever reaching this stack: a CI gate on cost and latency.
 
+[SLIDE 2: Recap]
+- Receivers, processors, exporters, in a pipeline
+- Redact and tail sample once, for every backend
+- Credentials live in the Collector
+
 **Recap:** The Collector is receivers, processors and exporters in a pipeline; put masking and tail sampling there once, keep credentials there, and export to as many backends as you like without changing Atlas.
 
 **Transition:** Next, the CI budget gate: a test that replays a day of traffic and fails the pull request when cost per session or p95 move.
@@ -301,6 +343,8 @@ Two containers ago, Atlas talked to a vendor directly. Now it talks to a process
 - `tail_sampling`, `attributes` and `otlphttp` live in the Collector **contrib** distribution; the core image lacks some of them. The compose must use the contrib image. Verify names and fields against current docs; the `numeric_attribute` policy and `hash` action have been stable but confirm.
 - Langfuse OTLP endpoint path and auth header format: verify against current Langfuse OpenTelemetry docs.
 - Mistake: putting `batch` before `tail_sampling`. Tail sampling needs complete traces; batch after.
+- Processor names are exactly `memory_limiter`, `attributes/redact`, `tail_sampling`, `batch`. There is no `attributes/mask`, `redaction` or `transform` processor in the shipped config (Lecture 10.2 uses the same names).
+- Compose reads `${LANGFUSE_BASIC_AUTH}` from the shell or a `.env` next to the compose file; the `atlas` service also loads `../.env`. If that file still holds `LANGFUSE_PUBLIC_KEY`/`SECRET_KEY`, Atlas exports to Langfuse directly *and* via the Collector (duplicates). Keep the keys out of Atlas's env when the Collector is in front. Self-hosted Langfuse runs in a different compose project; from inside the Collector container use a host-reachable URL (for example `http://host.docker.internal:3000`), not `localhost`. Verify on your Docker version.
 - `decision_wait` must exceed your longest trace, or late spans are orphaned. Ten seconds is fine for Atlas; long agent runs need more.
 
 ---
@@ -311,17 +355,17 @@ Two containers ago, Atlas talked to a vendor directly. Now it talks to a process
 |---|---|
 | ID | 13.3 |
 | Type | SC (screencast / code-along) |
-| Target duration | 9:00 (~800 spoken words; the rest is screen and CI time) |
+| Target duration | 9:00 (~755 spoken words; the rest is screen and CI time) |
 | Learning objectives | 1. Write a budget gate test that replays a deterministic day offline and asserts cost per session, p95 latency and tokens per generation against budgets in `Settings`. 2. Wire it into GitHub Actions so it runs on every pull request without API keys. 3. Tag releases in Langfuse so a regression that reaches production is attributable to a commit. |
 | Prerequisites | Sections 6, 7 and 11; Lecture 2.4 (offline replay) |
 | Files used | `tests/budget/test_budget_gate.py`, `simulator/scenarios.py`, `simulator/replay.py`, `src/northwind/config.py`, `src/northwind/cost.py`, `src/northwind/latency.py`, `.github/workflows/ci.yml`, `telemetry/langfuse_setup.py` |
 
 ### Script
 
-[B-ROLL: A GitHub pull request. Title: "KB retrieval tuning: ATLAS_TOP_K 4 → 20". A red check: "budget-gate: FAILED. p95 4,310 ms > 4,000 ms budget." Elapsed: 3m 41s.]
+[B-ROLL: A GitHub pull request. Title: "FAQ pilot: ATLAS_TOP_K 4 → 20". A red check: "budget-gate: 2 failed: p95 4120 ms exceeds budget 4000 ms; a generation sent 34,990 input tokens (> 24,000)".]
 
 [AVATAR]
-This is the pull request that caused Incident 2, if the budget gate had existed. Red, in under four minutes, before lunch, before anyone outside the knowledge base team knew it was proposed. That's the whole lecture. Everything else is how.
+This is the top-k change from Incident 2, as a pull request, with the budget gate in place. Red, before lunch, before anyone outside the knowledge base team knew it was proposed. Two failures, each with a number. That's the whole lecture. Everything else is how.
 
 The idea is simple because you've built every piece. The mock LLM from Lecture 2.4 produces realistic token counts and latencies without a network call. `generate_day` from the simulator plans a full day of traffic, deterministically. The cost and latency modules from Sections 6 and 7 aggregate the results. All the gate does is assert on those numbers.
 
@@ -329,16 +373,16 @@ The idea is simple because you've built every piece. The mock LLM from Lecture 2
 
 [CODE: budgets in `Settings`]
 ```python
-# src/northwind/config.py  (env: BUDGET_COST_PER_SESSION_USD, BUDGET_P95_LATENCY_MS)
-budget_cost_per_session_usd: float = 0.05    # baseline day: about $0.006; headroom for legitimate growth
-budget_p95_latency_ms: float = 4000.0        # the latency SLO from Lecture 7.1
+# src/northwind/config.py
+budget_cost_per_session_usd: float = 0.05          # BUDGET_COST_PER_SESSION_USD; baseline day: $0.0141
+budget_p95_latency_ms: float = 4000.0              # BUDGET_P95_LATENCY_MS; the latency SLO from Lecture 7.1
+max_input_tokens_per_generation: int = 24_000      # BUDGET_MAX_INPUT_TOKENS_PER_GENERATION; gate baseline worst: 17,992
 
 # tests/budget/test_budget_gate.py
-MAX_INPUT_TOKENS_PER_GENERATION = 8000       # system prompt + 4 snippets + history_token_budget (3000) + tool result (400), with headroom
-REPLAY_SEED = 7
+SEED = int(os.environ.get("BUDGET_GATE_SEED", "7"))
 ```
 
-Budgets live in `Settings`, with a comment on where each number came from. Five cents per session, when the baseline day costs about six tenths of a cent; that's generous headroom while the product is young, and you tighten it as you learn. Four seconds p95, which is the SLO. And two more assertions in the same file: no tenant over its daily soft cap, and the task-success SLO holding on the replayed day. Plus a fixed seed, because a gate that flakes is a gate people learn to ignore.
+Budgets live in `Settings`, with a comment on where each number came from. Five cents per session, when the baseline day costs about a cent and a half; generous headroom while the product is young, and you tighten it as you learn. Four seconds p95, the SLO. And twenty-four thousand input tokens for any single generation, when the worst generation on the baseline gate replay is about eighteen thousand. Plus a fixed seed, because a gate that flakes is a gate people learn to ignore.
 
 Now the test.
 
@@ -378,13 +422,26 @@ def test_no_tenant_over_its_daily_soft_cap(gate):
 
 def test_task_success_slo_holds(gate):
     ...
+
+
+def test_max_input_tokens_per_generation(gate):
+    settings, store, _ = gate
+    worst = max(store.cost_records("generation"), key=lambda g: g.input_tokens)
+    assert worst.input_tokens <= settings.max_input_tokens_per_generation, (
+        f"a generation sent {worst.input_tokens:,} input tokens "
+        f"(> {settings.max_input_tokens_per_generation:,}): trace {worst.trace_id}"
+    )
 ```
 
-The fixture replays a three-hundred-session day with a fixed seed and no incidents, the baseline, into its own store, and the four tests read that store. `cost_per_session` over the request-level cost records against `budget_cost_per_session_usd`. `percentile` of the latency samples against `budget_p95_latency_ms`. Every tenant's rollup against its soft cap. And `compute_slis` against `DEFAULT_SLOS` for task success. [PAUSE] Three environment variables make the gate a demo: `BUDGET_GATE_INCIDENTS=latency_regression make budget-check` replays a bad day and fails; `BUDGET_P95_LATENCY_MS=2500` tightens the budget and fails; `BUDGET_GATE_SESSIONS=1000` makes it slower and more precise.
+The fixture replays a three-hundred-session day with a fixed seed and no incidents, the baseline, into its own store, and five tests read that store. `cost_per_session` against its budget. `percentile` of the latency samples against the p95 budget. Every tenant's rollup against its soft cap. `compute_slis` against `DEFAULT_SLOS` for task success. And the tokens test: the single biggest prompt of the day against twenty-four thousand. It names the trace id, so a red gate hands you the exhibit.
 
-[DEMO: `BUDGET_GATE_INCIDENTS=latency_regression make budget-check`. `test_p95_latency_within_budget` fails: p95 above the 4,000 ms budget. Unset.]
+[SCREEN: `make budget-check PYTEST_ADDOPTS=-s`. Output lines: `cost/session $0.01454 (budget $0.05) total $4.36 over 300 sessions`, `p95 3822 ms (budget 4000 ms) over 781 requests`, `max input tokens/generation 17,992 (budget 24,000)`, then `5 passed`.]
 
-Now the Incident 1 change. Diet off, top-k twelve. The tokens test fails with twenty-four thousand. That's the same number you read off turn two of the trace in Lecture 11.2, on a Monday morning, without a provider or a tenant involved.
+Green first. Cost per session a cent and a half against five. p95 three point eight seconds against four. That one is close, and it should be: the gate is a budget, not a decoration. Worst prompt eighteen thousand tokens against twenty-four. Five passed, in a few seconds.
+
+[DEMO: `ATLAS_TOP_K=20 make budget-check PYTEST_ADDOPTS=-s`. Two failures: `p95 4120 ms exceeds budget 4000 ms` and `a generation sent 34,990 input tokens (> 24,000)`. Then `ATLAS_TOP_K=12 KB_MIN_SCORE=0 make budget-check`: `p95 4469 ms` and `a generation sent 44,664 input tokens`; both tests red.]
+
+Now Incident 2's pull request: top-k twenty. Two failures. p95 four thousand one hundred and twenty against four thousand, and a prompt of thirty-five thousand tokens. Now Incident 1's settings: top-k twelve and the relevance floor at zero. p95 four point five seconds, and a forty-five-thousand-token prompt. Red on both, before either reached a tenant.
 
 Now CI.
 
@@ -461,27 +518,27 @@ jobs:
     ...
 ```
 
-Three jobs. Unit and integration tests, offline, on every pull request and push. The budget gate, offline, after unit passes, also on every pull request. No secrets needed for either, which means a contributor's fork can run them and nothing leaks.
+Three jobs. Unit and integration tests, offline, on every pull request and push, plus a check that the incident datasets regenerate byte for byte. The budget gate, offline, after the tests pass, also on every pull request, and it writes the text console into the job summary. No secrets needed for either, which means a contributor's fork can run them and nothing leaks.
 
 The third job runs the live evals from Section 8 against the `atlas-failures` dataset, and it only runs on pushes to main, because it spends money and needs keys. Fifty items is about a dollar. It's the Incident 3 gate: the prompt version that reaches main gets scored against the traces that failed last time.
 
 Verify the action versions against current GitHub Actions and uv docs before recording; they move.
 
-[CODE: release tagging, `Settings` and `init_langfuse`]
+[CODE: release tagging, `Settings`, `init_langfuse` and `build_resource`]
 ```python
 # src/northwind/config.py: langfuse_release comes from LANGFUSE_RELEASE, default "v1.0.0"
-# CI sets LANGFUSE_RELEASE to the commit; locally the Makefile exports it:
-#   LANGFUSE_RELEASE ?= $(shell git rev-parse --short HEAD)
+# .github/workflows/ci.yml, live-evals job:  LANGFUSE_RELEASE: ${{ github.sha }}
+# your deploy sets it too, e.g.  LANGFUSE_RELEASE=$(git rev-parse --short HEAD) make run
 
 # telemetry/langfuse_setup.py::init_langfuse (as shipped)
 _CLIENT = Langfuse(..., environment=settings.langfuse_environment, release=settings.langfuse_release, ...)
-# every trace now carries the release; build_resource() puts the same value on deployment.release for OTel
+# telemetry/otel_setup.py::build_resource puts the same value on the OTel resource as service.version
 ```
 
-Last piece. The release tag. CI passes the commit SHA as `LANGFUSE_RELEASE`, and the Makefile falls back to `git rev-parse` locally. `init_langfuse` puts it on every trace, and `build_resource` puts the same value on the OTel resource, from Lectures 3.2 and 4.1. So when a regression does reach production, because no gate catches everything, the timeline in your incident template says "release abc123 at 12:30" and you go straight to the diff.
+Last piece. The release tag. `LANGFUSE_RELEASE` defaults to `v1.0.0`, which tells you nothing, so set it to the commit. The live-evals job does that with the GitHub SHA; your deploy should do the same. `init_langfuse` puts it on every trace, and `build_resource` puts it on the OTel resource as `service.version`, from Lectures 3.2 and 4.1. When a regression does reach production, because no gate catches everything, the timeline says "release abc123 at 12:30" and you go straight to the diff.
 
 [SLIDE 1: What the gate catches, and what it doesn't]
-- Catches: context diet off, top-k changes, model swaps, prompt length growth, step limit changes, retry settings that stack timeouts
+- Catches: top-k and relevance-floor changes, diet settings, model swaps, prompt length growth, step limit changes, retry settings that stack timeouts
 - Catches: anything deterministic that changes tokens, steps or simulated latency, including env and config
 - Doesn't catch: provider slowdowns, quality regressions, real-world intent shift
 - For those: fallbacks and breakers (Section 7), online judge and drift (Section 8), the live-evals job
@@ -489,15 +546,22 @@ Last piece. The release tag. CI passes the commit SHA as `LANGFUSE_RELEASE`, and
 What the gate catches: anything deterministic that changes tokens, steps or simulated latency, including config and environment, which is where both of Monday's and Tuesday's causes lived. What it doesn't: provider slowdowns, because the mock is not the provider. Quality regressions, because the mock doesn't judge. Real intent shift. For those you have fallbacks, the breaker, the online judge, drift detection and the live-evals job. The gate is one layer, and it's the cheapest one.
 
 [AVATAR]
-Ninety seconds in CI, zero dollars, and two of the three incidents from Section 11 never happen. Next, the checklist that makes the whole stack production-ready.
+Seconds on your laptop, zero dollars, and the config changes behind two of the three incidents from Section 11 never merge. Next, the checklist that makes the whole stack production-ready.
 
-**Recap:** The budget gate replays a deterministic offline day and asserts cost per session, p95, tenant soft caps and the task-success SLO against budgets in `Settings`, runs on every pull request without secrets, and release tags make anything that slips through attributable to a commit.
+[SLIDE 2: Recap]
+- Replay a fixed day, assert five budgets
+- Red with a number and a trace id
+- Release tag on every trace
+
+**Recap:** The budget gate replays a deterministic offline day and asserts cost per session, p95, tenant soft caps, the task-success SLO and the largest prompt against budgets in `Settings`, runs on every pull request without secrets, and release tags make anything that slips through attributable to a commit.
 
 **Transition:** Next, the production readiness checklist: sampling, back-pressure, secrets, dashboards as code and alert ownership.
 
 ### Speaker notes: common student mistakes / Q&A
 
-- Mistake: budgets set to the current baseline with no headroom. Every legitimate change fails and the gate gets disabled. The shipped default of $0.05 against a $0.006 baseline is deliberately loose for a young product; discuss tightening to 2-3x baseline once traffic is real.
+- Mistake: budgets set to the current baseline with no headroom. Every legitimate change fails and the gate gets disabled. The shipped default of $0.05 against a $0.0145 gate baseline is deliberately loose for a young product; discuss tightening to 2-3x baseline once traffic is real. The p95 budget is close on purpose (3,822 against 4,000 ms).
+- The gate inherits the Makefile's `CACHE=0 DIET=0 ROUTER=0`, so it replays the expensive baseline. Real outputs (2026-10-02): baseline `5 passed`; `ATLAS_TOP_K=20` 2 failed (p95 4,120 ms; 34,990 tokens); `ATLAS_TOP_K=12 KB_MIN_SCORE=0` 2 failed (4,469 ms; 44,664 tokens); `BUDGET_GATE_INCIDENTS=latency_regression` 2 failed (9,262 ms; 31,034 tokens); `BUDGET_GATE_INCIDENTS=cost_spike` 2 failed (6,789 ms; 51,835 tokens).
+- Release tagging: the Makefile does not set `LANGFUSE_RELEASE`. Say so if students ask why their local traces say `v1.0.0`.
 - Mistake: a random seed. Show the flake once if you have time; a gate that fails randomly is worse than none.
 - "Why mean cost per session, not p95?" Either works; p95 catches one runaway session, mean catches broad drift. Suggest both for the capstone.
 - `simulator/replay.py::replay_day(seed, sessions=, incidents=, store=, judge_rate=, settings=)` returns `(ReplaySummary, LocalSpanStore)`; `LocalSpanStore.cost_records()`, `latency_samples()` and `spans(kind=)` in `telemetry/local_store.py` are what the assertions read.
@@ -511,8 +575,8 @@ Ninety seconds in CI, zero dollars, and two of the three incidents from Section 
 | Field | Value |
 |---|---|
 | ID | 13.4 |
-| Type | SL (slides + avatar) |
-| Target duration | 6:00 (~610 spoken words) |
+| Type | SL (slides + avatar, one screen beat) |
+| Target duration | 6:00 (~640 spoken words) |
 | Learning objectives | 1. Walk the twelve-item production checklist and know what "done" means for each. 2. Explain exporter back-pressure and why telemetry must never block a request. 3. Assign ownership to every dashboard and alert. |
 | Prerequisites | 13.1 to 13.3 |
 | Files used | `10-resources/production-checklist.md`, `telemetry/otel_setup.py`, `telemetry/langfuse_setup.py`, `deploy/grafana/dashboards/atlas-ops.json` |
@@ -531,7 +595,7 @@ This checklist is twelve items. You've built most of them. The point of the lect
 2. Volume estimated: spans per day × bytes per span; storage and cost projected for 90 days
 3. Retention set per environment (Lecture 10.3); ClickHouse disk alarmed
 
-First group: volume. One, a written sampling policy. What head rate the SDK applies, what the Collector keeps regardless. If it's not written, it's whatever someone last typed. Two, volume estimated. Spans per day times bytes per span, projected ninety days. Atlas at fourteen hundred sessions a day, four steps each, ten kilobytes a step is about fifty-six megabytes a day. Small. Your company's agent at fifty thousand sessions is two gigabytes a day, and that's a budget line. Three, retention set per environment, with an alarm on ClickHouse disk.
+First group: volume. One, a written sampling policy. What head rate the SDK applies, what the Collector keeps regardless. If it's not written, it's whatever someone last typed. Two, volume estimated. Spans per day times bytes per span, projected ninety days. Atlas's replayed day is four thousand sessions and seventy thousand five hundred and sixty spans, about forty megabytes of attributes in the local store. Small. Multiply by your own traffic, and by however much prompt text you capture, and it becomes a budget line. Three, retention set per environment, with an alarm on ClickHouse disk.
 
 [SLIDE 2: Never block a request]
 4. Exporter back-pressure: bounded queue, drop on overflow, export timeout ≤ 5 s
@@ -551,9 +615,13 @@ Second group, and the most important: never block a request. Four, back-pressure
 [SLIDE 3: Secrets and separation]
 7. No backend credentials in Atlas: the Collector holds them
 8. Project per environment: `atlas-dev`, `atlas-staging`, `atlas-prod`; keys scoped to each
-9. Masking tested: a unit test sends a fake email and employee ID through `pii.mask` and the Collector config
+9. Masking tested: `tests/unit/test_pii.py` and `test_no_raw_pii_reaches_any_span`; Collector rules checked from the data
 
-Third group: secrets. Seven, no backend credentials in Atlas; the Collector holds them, from Lecture 13.2. Eight, a project per environment, with keys scoped to each, so a dev key can never write to prod. Nine, masking *tested*. Not configured, tested. A unit test sends a fake email and employee ID through `pii.mask`, and an integration test asserts the span that leaves the Collector has a hash where the ID was. Masking that isn't tested drifts the first time someone adds a field.
+Third group: secrets. Seven, no backend credentials in Atlas; the Collector holds them, from Lecture 13.2. Eight, a project per environment, with keys scoped to each, so a dev key can never write to prod. Nine, masking *tested*. Not configured, tested.
+
+[SCREEN: Terminal: `pytest -q tests/unit/test_pii.py` → `15 passed`; `pytest -q tests/integration/test_spans.py -k pii` → `1 passed`.]
+
+Fifteen unit tests on the masking functions, and one integration test, `test_no_raw_pii_reaches_any_span`, that runs requests with a fake email, card and employee ID through Atlas and asserts none of them reaches any span. The Collector's redact rules are the second layer, and you check those from the data in Lab 7. Masking that isn't tested drifts the first time someone adds a field.
 
 [SLIDE 4: Dashboards and alerts as code, with owners]
 10. Dashboards in the repo: `deploy/grafana/dashboards/atlas-ops.json`, provisioned, not hand-built
@@ -572,6 +640,11 @@ What does done look like? A one-page `OBSERVABILITY.md` in the repo: the policy,
 
 [AVATAR]
 Open `production-checklist.md` and tick what you have. Most students have eight of twelve after Section 13. The four they're missing are almost always the same: volume estimate, tested masking, alert owners and the shutdown deadline. Fix those before the capstone.
+
+[SLIDE 6: Recap]
+- Telemetry drops, never blocks
+- Masking is tested, credentials in the Collector
+- Every alert and dashboard has an owner
 
 **Recap:** Production observability means a written sampling policy and volume estimate, exporters that drop rather than block, credentials in the Collector with masking tested, and dashboards and alerts as code with a named owner for each.
 
@@ -592,41 +665,43 @@ Open `production-checklist.md` and tick what you have. Most students have eight 
 |---|---|
 | ID | 13.5 |
 | Type | DM (live demo) |
-| Target duration | 5:00 (~600 spoken words; the rest is live demo time) |
-| Learning objectives | 1. Show that Atlas keeps serving with the same p95 when Langfuse and the Collector are down. 2. Read the warning logs and the export-failure metric that make the failure visible without making it fatal. 3. Recognise the two misconfigurations that turn a backend outage into a user-facing incident. |
+| Target duration | 5:00 (~675 spoken words; the rest is live demo time) |
+| Learning objectives | 1. Show that Atlas keeps serving at the same rate when its only span destination, the Collector, is down. 2. Read the warning logs and the export-failure metric that make the failure visible without making it fatal. 3. Recognise the two misconfigurations that turn a backend outage into a user-facing incident. |
 | Prerequisites | 13.1 to 13.4 |
-| Files used | `telemetry/otel_setup.py` (`SafeSpanExporter`, `configure_tracing(batch=)`, `exporter_health()`), `telemetry/metrics.py` (`EXPORTER_FAILURES`), `deploy/docker-compose.langfuse.yml`, `deploy/docker-compose.observability.yml`, `simulator/swarm.py` |
+| Files used | `telemetry/otel_setup.py` (`SafeSpanExporter`, `FailingSpanExporter`, `configure_tracing(batch=)`, `exporter_health()`), `telemetry/metrics.py` (`EXPORTER_FAILURES`), `tests/integration/test_exporter_failure.py`, `deploy/docker-compose.observability.yml`, `deploy/alerts.yml`, `simulator/swarm.py` |
 
 ### Script
 
-[B-ROLL: Split screen. Left: swarm traffic hitting Atlas, p95 ticking at 3.1 s. Right: a terminal cursor hovering over `docker compose stop langfuse-web otel-collector`.]
+[B-ROLL: Split screen. Left: swarm output scrolling, every response 200. Right: a terminal cursor hovering over `docker compose stop otel-collector`.]
 
 [AVATAR]
 Everything in this section adds moving parts between Atlas and your traces. Every moving part can fail. So here's the question that decides whether this stack belongs in production: when the observability backend dies, does Atlas notice?
 
 Let's find out. Live.
 
-[SCREEN: Terminal one: `make swarm RPS=5` running against Atlas with the Collector and local Langfuse up. Terminal two: `watch 'curl -s localhost:8000/metrics | grep atlas_request_latency'` showing p95 around 3.1 s. Browser: local Langfuse, traces arriving.]
+[SCREEN: Terminal one: `make stack`, then `make swarm RPS=2 DURATION=600`, printing a running count of 200s. Terminal two: `watch -n 2 "curl -sL localhost:8000/metrics | grep -E '^atlas_requests_total|^atlas_telemetry_export_failures_total'"`. Browser: Phoenix on `localhost:6006`, traces arriving.]
 
-Swarm at five requests a second. The metrics endpoint shows p95 around three point one seconds. Langfuse is receiving traces. Everything healthy.
+The stack is up and the swarm is sending two requests a second. Terminal two watches two counters on Atlas's metrics endpoint: requests served, and telemetry export failures. Phoenix is receiving traces through the Collector. Everything healthy.
 
 Now the outage.
 
-[DEMO: Terminal three: `docker compose -f deploy/docker-compose.langfuse.yml stop langfuse-web langfuse-worker`. Then `docker compose -f deploy/docker-compose.observability.yml stop otel-collector`. Wait five seconds.]
+[DEMO: Terminal three: `docker compose -f deploy/docker-compose.observability.yml stop otel-collector`. Wait ten seconds.]
 
-Stop Langfuse. Web and worker. And stop the Collector too, so Atlas has nowhere at all to send spans. The worst case.
+Stop the Collector. It's the only place Atlas sends spans, so Atlas now has nowhere at all to export. The worst case.
 
-[SCREEN: Terminal two, the metrics watch. p95 still 3.1 s. `atlas_requests_total` still climbing at the same rate. Terminal one, swarm output: all 200s.]
+[SCREEN: Terminal two: `atlas_requests_total` still climbing at the same rate. Terminal one, swarm output: all 200s.]
 
-Watch the metrics. p95: three point one. Requests: still flowing, all two hundreds. The swarm hasn't noticed. Users wouldn't notice. Atlas is serving exactly as before.
+Watch the counters. Requests: still climbing at the same rate. The swarm: all two hundreds. The swarm hasn't noticed. Users wouldn't notice.
 
 So where did the spans go?
 
-[SCREEN: Atlas logs. Warning lines every few seconds: `WARNING atlas.otel exporter otlp failed: ConnectionError (localhost:4318); 256 spans dropped`. Then `curl localhost:8000/metrics | grep atlas_telemetry_export_failures_total` → `atlas_telemetry_export_failures_total{name="otlp"} 14`. Then `curl localhost:8000/healthz` showing `exporters: [{"name": "otlp", "healthy": false, "failures": 14}, {"name": "local_store", "healthy": true}]`.]
+[SCREEN: `docker compose -f deploy/docker-compose.observability.yml logs atlas`: repeated `telemetry exporter otlp failed (...); dropping spans`. Terminal two: `atlas_telemetry_export_failures_total{name="otlp"}` rising. Then `curl -s localhost:8000/healthz`: `"exporters": [{"name": "otlp", "exported": …, "failures": …}, {"name": "local_store", "exported": …, "failures": 0}]`.]
 
-Into the logs and a counter. `SafeSpanExporter`, the wrapper around every exporter in `otel_setup.py`, catches the connection error, logs one warning per batch, counts it in `atlas_telemetry_export_failures_total`, and returns. The batch processor's queue is bounded at two thousand and forty-eight spans; when it fills, the oldest are dropped. And `/healthz` reports each exporter's health from `exporter_health()`, so a load balancer or a dashboard can see that the OTLP exporter is failing while the service is fine.
+Into the logs and a counter. `SafeSpanExporter`, the wrapper around every exporter in `otel_setup.py`, catches the connection error, logs "telemetry exporter otlp failed, dropping spans", counts it in `atlas_telemetry_export_failures_total`, and returns. The batch processor's queue is bounded at two thousand and forty-eight spans. And `/healthz` lists each exporter with how many batches it exported and how many failed, so a dashboard can see the OTLP exporter failing while the service is fine. The local store keeps receiving spans the whole time.
 
-That counter is an alert in Lecture 9.5's rules: "telemetry export failing for five minutes" pages the platform owner, not the on-call for Atlas, because Atlas is fine.
+[SCREEN: Prometheus on `localhost:9091`, Alerts tab: `AtlasTelemetryExportFailures` firing, severity ticket.]
+
+That counter has a rule in `deploy/alerts.yml`: more than twenty export failures in ten minutes raises a ticket for the platform owner, not a page for Atlas's on-call, because Atlas is fine.
 
 This is item five from the checklist, working. The failure is loud in the right place, logs, a metric and a health field, and silent in the wrong place, the user's response.
 
@@ -641,33 +716,44 @@ Why did it work? Five settings from the previous lecture. Export runs on a backg
 
 Now let me show you how to break it, because you'll inherit code that does.
 
-[DEMO: Restart Atlas with `configure_tracing(batch=False)` forced (env `ATLAS_TRACING_BATCH=0` in the demo branch), backends still down. Metrics watch: p95 climbs to 8.4 s within thirty seconds. Swarm output shows timeouts.]
+[SCREEN: Terminal: `pytest -q tests/integration/test_exporter_failure.py` → `3 passed`. Then a ten-line script that configures tracing with `FailingSpanExporter(raise_exc=False, delay_s=0.2)` and opens twenty spans, once with `batch=True` and once with `batch=False`. Output: `batch=True: 20 spans took 0.00 s` and `batch=False: 20 spans took 4.01 s`.]
+
+The repo turns this demo into tests. Three of them: requests survive an exporter that raises, a slow exporter doesn't block the request path, and the server starts with its OTLP endpoint pointing nowhere. All green.
+
+Now let me show you how to break it, because you'll inherit code that does. A fake exporter that takes two hundred milliseconds per export, like a struggling backend. Twenty spans with the batch processor: no measurable time. The same twenty spans with the simple processor, `batch=False`: four seconds. Every span now waits for the export.
 
 [SLIDE 2: Two ways to turn a telemetry outage into a user outage]
 - `SimpleSpanProcessor` (`batch=False`): exports synchronously inside the request; a dead backend adds the full timeout to every response
 - No timeout, or a 30 s default, on the exporter: the background thread hangs, the queue fills, and shutdown blocks
 - Both are one-line mistakes that pass every unit test
 
-Force the simple processor, which `configure_tracing` supports for tests because it's easy to reason about, and restart with the backends down. p95 goes from three seconds to eight and a half within thirty seconds. Every request now waits for the export to fail. That's how a monitoring outage becomes a product outage, and it's one flag.
+`configure_tracing` supports the simple processor because tests are easier to reason about with it. In production it's how a monitoring outage becomes a product outage: two hundred milliseconds per span, a dozen spans per request, and your p95 just grew by seconds. One flag.
 
 The second way is a missing or default timeout. A thirty-second exporter timeout means the background thread hangs, the queue fills faster, and worse, `shutdown_tracing` blocks for thirty seconds per batch. Your deploys start timing out. Also one line, which is why `_make_exporter` hard-codes five.
 
-[DEMO: Revert to batch mode. Start Langfuse and the Collector again. Within a minute, new traces appear in Langfuse; `/healthz` shows `otlp: healthy`. Callout: the dropped spans are gone for good; the gap is visible in the Langfuse timeline.]
+[DEMO: `docker compose -f deploy/docker-compose.observability.yml start otel-collector`. Within a minute new traces appear in Phoenix; the `failures` count in `/healthz` stops growing. Callout: the dropped spans are gone for good; the gap is visible in the Phoenix timeline.]
 
-Revert, bring the backends back, and within a minute new traces arrive and the health field flips back. The dropped spans are gone; there's a gap in the timeline. That's the trade. You lost eight minutes of traces and kept eight minutes of a working helpdesk. Every time, take that trade.
+Bring the Collector back, and within a minute new traces arrive and the failure count stops growing. The dropped spans are gone; there's a gap in the timeline. That's the trade. You lost eight minutes of traces and kept eight minutes of a working helpdesk. Every time, take that trade.
 
 [AVATAR]
-Add this to your integration tests: configure tracing with an unreachable OTLP endpoint, send ten requests, assert every one returns two hundred within budget and that `exporter_health()` reports the failure. `FailingSpanExporter` in `otel_setup.py` exists for exactly this. It's a twelve-line test and it protects the most important property this stack has.
+Keep those three tests in every repo you run. `test_exporter_failure.py` is under eighty lines, and it protects the most important property this stack has: telemetry can fail, the service can't.
 
-**Recap:** With a batch processor, a bounded queue, short timeouts and a safe exporter wrapper, a dead backend costs you spans, a warning and a counter, not requests; a synchronous processor or a default timeout turns the same outage into a user-facing incident.
+[SLIDE 3: Recap]
+- Batch processor, bounded queue, 5 s timeouts
+- Failures: a log line, a counter, a health field
+- `batch=False` turns an outage into latency
+
+**Recap:** With a batch processor, a bounded queue, short timeouts and a safe exporter wrapper, a dead backend costs you spans, a warning and a counter, not requests; a synchronous processor or a long timeout turns the same outage into a user-facing incident.
 
 **Transition:** Next, Lab 7: the whole self-hosted stack running end to end on your machine, with the budget gate green.
 
 ### Speaker notes: common student mistakes / Q&A
 
 - Rehearse the stop and start sequence; first start of Langfuse after a stop can take thirty seconds while the worker reconnects. Cut the wait.
-- The simple-processor demo needs the backends down to be dramatic; with backends up it's merely slower. `configure_tracing(batch=False)` is the shipped switch; the `ATLAS_TRACING_BATCH` env name is a demo-branch convenience, not in `Settings`.
-- Metric and helper names as shipped: `atlas_telemetry_export_failures_total{name}` (`metrics.EXPORTER_FAILURES`), `SafeSpanExporter`, `FailingSpanExporter`, `exporter_health()`, `shutdown_tracing(timeout_ms=5000)`. Confirm the exact warning text and the `/healthz` payload against `otel_setup.py` and `server.py` before recording.
+- The simple-processor timing is real (2026-10-02, `FailingSpanExporter(raise_exc=False, delay_s=0.2)`, 20 spans: 0.00 s batched, 4.01 s simple). There is no env switch for the processor; `configure_tracing(batch=False)` is the only way, which is the point.
+- Metric and helper names as shipped: `atlas_telemetry_export_failures_total{name}` (`metrics.EXPORTER_FAILURES`), `SafeSpanExporter`, `FailingSpanExporter`, `exporter_health()` (`name`, `exported`, `failures`; no `healthy` field), `shutdown_tracing(timeout_ms=5000)`. Warning text: `telemetry exporter <name> failed (<error>); dropping spans`.
+- `curl localhost:8000/metrics` without `-L` prints nothing (307 redirect to `/metrics/`). Use `curl -sL`.
+- Alert rule: `AtlasTelemetryExportFailures` (`increase(...[10m]) > 20`, ticket) in `deploy/alerts.yml`.
 - "Should we buffer to disk instead of dropping?" You can, via a Collector file exporter or persistent queue, and for compliance logging (Lecture 10.4) you might have to. For operational tracing, dropping is the right default. Mention, don't build. Note that the local SQLite store keeps receiving spans throughout, so offline analysis still works.
 
 ---
@@ -678,7 +764,7 @@ Add this to your integration tests: configure tracing with an unreachable OTLP e
 |---|---|
 | ID | 13.6 |
 | Type | LAB (guided lab with short video intro) |
-| Target duration | 4:00 (~360 spoken words); lab itself about 60 to 90 minutes |
+| Target duration | 4:00 (~395 spoken words); lab itself about 60 to 90 minutes |
 | Learning objectives | 1. Run Langfuse, the Collector, Prometheus and Grafana locally and trace a replayed day through all of them. 2. Confirm masking and tail sampling are working from the data, not the config. 3. Get the budget gate green locally and in a CI run. |
 | Prerequisites | 13.1 to 13.5 |
 | Files used | `04-labs/lab-07-self-host.md`, `deploy/`, `tests/budget/test_budget_gate.py`, `.github/workflows/ci.yml` |
@@ -691,22 +777,24 @@ Everything from this section, running together, on your machine. That's Lab 7. I
 [SLIDE 1: Lab 7 checklist]
 1. `make langfuse-up` and `make stack`: Langfuse, Collector, Prometheus, Grafana all healthy
 2. Atlas exporting to the Collector only; no Langfuse keys in Atlas's env
-3. `OFFLINE=1 make replay`: a day of traffic visible in Langfuse and on the Grafana Atlas Ops dashboard
-4. Proof of masking: a tool span in Langfuse shows a hash, not a payload
+3. `make swarm RPS=2 DURATION=600`: traffic visible in Langfuse or Phoenix and on the Grafana Atlas Ops dashboard
+4. Proof of masking: a tool span shows no `gen_ai.tool.call.result` and hashed arguments
 5. Proof of tail sampling: every error and every >4 s trace present; normal traffic sampled
 6. `make budget-check` green locally; CI run green on a branch
-7. Chaos: stop Langfuse during a replay; Atlas p95 unchanged; `atlas_telemetry_export_failures_total` rises and `/healthz` shows the exporter unhealthy
+7. Chaos: stop the Collector during a swarm; every response still 200; `atlas_telemetry_export_failures_total` rises and `/healthz` shows the failures
 
-Seven steps. Bring up both stacks and get every container healthy. Make sure Atlas exports to the Collector only; if there's a Langfuse key in Atlas's environment, you skipped Lecture 13.2. Replay a day offline and see it in Langfuse and Grafana.
+Seven steps. Bring up both stacks and get every container healthy. Make sure Atlas exports to the Collector only; if there's a Langfuse key in Atlas's environment, you skipped Lecture 13.2. Drive traffic with the swarm and see it in Langfuse and Grafana. The offline replay won't do here: it writes to the local store and never passes through the Collector or Prometheus.
 
-Then prove two things from the data. Open a tool span and see a hash where the payload was. Filter to errors and slow traces and confirm they're all there, while normal traffic is sampled down. The config says it works; the data proves it.
+[SCREEN: Phoenix on `localhost:6006`, one `execute_tool lookup_ticket` span's attributes: no `gen_ai.tool.call.result`; `gen_ai.tool.call.arguments` is a hash string.]
 
-Get the budget gate green locally, push a branch, and get it green in CI. Then run the chaos test yourself: stop Langfuse during a replay, watch p95 hold, watch the export-failure counter climb and the health endpoint say so.
+Then prove two things from the data. Open a tool span: the result is gone and the arguments are a hash. Filter to errors and slow traces and confirm they're all there, while normal traffic is sampled down. The config says it works; the data proves it.
+
+Get the budget gate green locally, push a branch, and get it green in CI. Then run the chaos test yourself: stop the Collector during a swarm, watch the requests keep coming, and watch the export-failure counter climb and the health endpoint say so.
 
 [SLIDE 2: Deliverables]
 - Screenshot: `docker compose ps` with all services healthy
-- Screenshot: Grafana Atlas Ops dashboard with replayed data
-- Screenshot: a masked tool span in Langfuse
+- Screenshot: Grafana Atlas Ops dashboard with swarm traffic
+- Screenshot: a redacted tool span in Langfuse or Phoenix
 - Link or screenshot: green CI run including `budget-gate`
 - Three sentences: what you would change before running this for a real team
 
@@ -715,15 +803,25 @@ Five deliverables. Four screenshots and a link to the CI run. Plus three sentenc
 [SLIDE 3: Where students get stuck]
 - ClickHouse restarting: raise Docker memory to 6 GB or more
 - Traces in Collector logs but not in Langfuse: check the OTLP endpoint path and the basic auth header
-- Grafana dashboard empty: Prometheus target for Atlas `/metrics` not scraping; check `docker compose logs prometheus`
+- Grafana dashboard empty: no traffic yet (replay never reaches Prometheus), or the `atlas:8000` target is down; check Prometheus on `localhost:9091` → Status → Targets
 - Budget gate fails on a fresh clone: check `OFFLINE=1` and the seed; the baseline must be deterministic
 
-Four places people get stuck. ClickHouse restarting means Docker needs more memory. Traces visible in the Collector logs but not in Langfuse means the endpoint path or the auth header is wrong; check the current Langfuse OTLP docs. An empty Grafana dashboard means Prometheus isn't scraping Atlas; read the Prometheus logs. And a budget gate that fails on a fresh clone almost always means offline mode isn't set.
+Four places people get stuck. ClickHouse restarting means Docker needs more memory. Traces visible in the Collector logs but not in Langfuse means the endpoint path or the auth header is wrong; check the current Langfuse OTLP docs. An empty Grafana dashboard means no live traffic or a down scrape target; check Prometheus's targets page on port nine zero nine one. And a budget gate that fails on a fresh clone almost always means offline mode isn't set.
 
 [AVATAR]
 Budget ninety minutes. When it's done, you have the deployment half of the capstone finished before the capstone begins. Post your Grafana screenshot in the Q&A. I want to see them.
 
+[SLIDE 4: Recap]
+- The whole stack, running on your machine
+- Masking and sampling proven from data
+- Gate green in CI; chaos repeated
+
 **Recap:** Lab 7 runs the full self-hosted stack, proves masking and sampling from the data, gets the budget gate green in CI and repeats the chaos test on your own machine.
+
+[SLIDE 5: You can now]
+- Self-host Langfuse behind an OTel Collector
+- Gate pull requests on cost, latency and tokens
+- Prove telemetry failures never reach users
 
 **Transition:** That completes Section 13. Next is the capstone: the Atlas Ops Console, built by you first, then compared with the reference.
 

@@ -6,22 +6,25 @@
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Latency charts: one metric per chart, p95 annotated with a callout, budget line drawn in red.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on litellm 1.103 / langfuse 4.15 / opentelemetry-semantic-conventions 0.66b0 (GenAI attributes are incubating; names may change)."
 > **Companion course tie-in:** Lecture 7.1 links once to *Production Voice AI Agents* for the 800 ms voice budget. Never require it.
+> **Offline latency note:** offline, the mock LLM stamps every call with a simulated latency (`simulated_ttft_ms`, `simulated_latency_ms`) drawn per model, and the agent records those instead of wall time. The mock never times out a slow call: it ignores `timeout=`. Timeouts, retries on timeouts and fallbacks are therefore shown with scripted failures (`retry_storm`, a stalling provider in 7.4) and unit tests, and apply to a real provider with `OFFLINE=0` (see `03-code/.env.chaos.example`).
 
 **Cue legend:** [AVATAR] avatar on camera · [SLIDE n: title] full-screen slide with the listed bullets · [SCREEN: ...] OBS recording · [CODE: ...] code on screen, exact code in the fenced block · [DEMO: ...] live run · [B-ROLL] cutaway · [PAUSE] one-beat pause.
 
-**Code names used in this section (to match `03-code/`):** `northwind.latency` (`percentile`, `StepTiming`, `RequestTiming`, `LatencyBudget`, `violations`), `app.agent.AtlasAgent` (`mode="router"`, `build_router`, `_choose_deployment`), `telemetry.metrics` (`FIRST_TOKEN_SECONDS`, `REQUEST_SECONDS`, `STEP_SECONDS`, `TOOL_ERRORS`, `FALLBACKS`, `RETRIES`, `SHED`), `simulator/scenarios.py` (`slow_provider`, `retry_storm`), `tests/budget/test_budget_gate.py`. On screen, all of this is "Atlas".
+**Code names used in this section (to match `03-code/`):** `northwind.latency` (`LatencySample`, `StepTiming`, `RequestTiming`, `percentile`, `summarize`, `LatencyBudget`, `violations`, `hourly_p95`), `app.agent` (`RETRYABLE`, `FALLBACKS`, `CircuitBreaker`, `AtlasAgent._call_model`, `_backoff`, `build_router_config`, `RouterClient`), `app.server.TenantLimiter`, `telemetry.metrics` (`atlas_request_latency_seconds{tenant,feature}`, `atlas_ttft_seconds{model}`, `atlas_tool_latency_seconds{tool}`, `atlas_llm_retries_total{model,reason}`, `atlas_model_fallbacks_total{from_model,to_model}`, `atlas_inflight{tenant}`, `atlas_queue_wait_seconds{tenant}`, `atlas_requests_shed_total{tenant}`), settings `ATLAS_REQUEST_TIMEOUT_S` (20), `ATLAS_MAX_RETRIES` (2), `ATLAS_ROUTER_ALLOWED_FAILS` (3), `ATLAS_ROUTER_COOLDOWN_S` (30), `ATLAS_TENANT_MAX_INFLIGHT`, `ATLAS_QUEUE_TIMEOUT_S` (3), `simulator/scenarios.py` presets `slow_provider` and `retry_storm`, `tests/budget/test_budget_gate.py`. On screen, all of this is "Atlas".
 
-**The numbers card (one set of figures for the section):**
+**The numbers card for this section (from `01-curriculum/numbers-card.md`; offline latency is the mock's simulated latency):**
 
 | Item | Value |
 |---|---|
-| Model timing (gpt-4.1-mini, observed, illustrative) | time to first token p50 0.55 s, p95 1.1 s; about 9 ms per output token (about 110 tokens/s) |
-| gpt-4.1 | first token p50 0.9 s; about 18 ms per output token |
-| Atlas normal day, user-facing first token | p50 1.9 s, p95 3.4 s, p99 5.6 s |
-| Atlas normal day, full answer | p50 3.6 s, p95 6.8 s, p99 11.0 s |
-| Budget | first visible token ≤ 4.0 s at p95; full answer ≤ 8.0 s at p95; each tool step ≤ 1.2 s at p95 |
-| `slow_provider` (12:00 to 12:45, 35% of calls get first token 4 to 6 s) | untuned: about 72% of requests over the 4 s budget, first-token p95 11.2 s, 0 fallbacks, +$0.00 · tuned: 4.6% over budget, p95 3.8 s, 18% of requests fell back one step, about +$1.20 for the window |
-| `retry_storm` (one tool failing, unbounded retries) | +$7.10 in two hours on one tenant (baseline prices); bounded to 2 retries: +$1.10 |
+| End-to-end latency, baseline day (`make console-text`) | p50 3,232 ms · p95 3,827 ms · p99 3,934 ms · max 4,138 ms (budget p95 4,000 ms) |
+| Time to first token of the final answer (`atlas.ttft_ms` on the agent span; includes step 1) | p50 1,427 ms · p95 1,702 ms |
+| Per-generation time to first token (`atlas_ttft_seconds`) | p50 509 ms · p95 652 ms |
+| Generation duration | p50 960 ms · p95 2,824 ms |
+| p50 / p95 by tenant | ops 2,168 / 3,670 · eng 3,303 / 3,844 · hr 3,345 / 3,836 · finance 3,511 / 3,905 ms |
+| Hourly p95, baseline | flat, 3,647 to 3,870 ms |
+| `slow_provider` preset (13:00 to 17:00, 75% of requests; TTFT ×3.5, tokens/s halved) | day p95 8,877 ms; hourly p95 about 9.2 to 9.4 s from 13:00 to 17:00; cost $55.86 (baseline $56.28); no errors, no retries, no fallbacks |
+| `retry_storm` preset (ops, 10:00 to 12:00, 70%; the first two attempts of each call time out) | $58.00 vs $56.28; 1,002 failed attempts, all `APITimeoutError`; every request still resolves with the default 2 retries |
+| `retry_storm` with `ATLAS_MAX_RETRIES=1` | $50.13; 397 requests end `error` |
 
 ---
 
@@ -31,76 +34,91 @@
 |---|---|
 | ID | 7.1 |
 | Title | Latency budgets for agents |
-| Type | SL (slides + avatar) |
+| Type | SL (slides + avatar, with one terminal beat) |
 | Target duration | 7:00 (about 730 spoken words at ~140 wpm, plus slide and pause time) |
-| One idea | Write a latency budget per step and end to end, measure it at p95, and treat the budget as a contract the rest of the section enforces. |
+| One idea | Write a latency budget end to end, measure it at p95, and treat the budget as a contract the rest of the section enforces. |
 | Prerequisites | Section 5 (streaming, TTFT and TPOT from spans) |
-| Files used | `10-resources/latency-budget-worksheet.md` |
+| Files used | `10-resources/latency-budget-worksheet.md`; Diagram D7 "latency budget of one request"; `make console-text` |
 
 **Learning objectives**
 
 1. Distinguish time to first token, time per output token and total time, and pick the one users feel.
 2. Explain why averages hide the pain and why p95 is the planning number.
-3. Fill in the latency budget worksheet for Atlas: per step, end to end, and the headroom left for chaos.
+3. Fill in the latency budget worksheet for Atlas: the end-to-end contract, the diagnostic numbers underneath, and the headroom left for chaos.
 
 ### Script
 
-[B-ROLL: Ops Console latency page. Top: a single stat tile, "mean latency today: 2.3 s", green. Underneath: the p95 line by five-minute window: 3.4 s most of the day, then a spike to 11 s between 12:00 and 12:45, red.]
+[B-ROLL: Ops Console Latency page on the `slow_provider` replay. Top: four tiles, p95 reads 8,877 ms. Underneath: end-to-end p95 per hour, flat at about 3.8 s all morning, then 9.2 to 9.4 s from 13:00 to 17:00, the red budget line at 4 s.]
 
 [AVATAR]
 
-Two numbers, same day, same requests. The top one is the daily average. Two point three seconds. Boring. Nobody would look twice. The bottom one is the ninety-fifth percentile, by five-minute window. [PAUSE] From noon to quarter to one, one in four users waited more than eight seconds for Atlas to say anything, and one in twenty waited eleven. Nearly three hundred people. The average moved by four tenths of a second and nobody noticed. That's why averages lie, and why this section measures in percentiles.
+Two numbers, same day, same requests. The mean latency for the whole day: four seconds, almost exactly the budget. Nobody would look twice. Underneath, the ninety-fifth percentile per hour. [PAUSE] Flat at three point eight all morning. Then, from one o'clock to five, nine point four seconds. Three in four requests in that window waited more than four seconds for their answer. The mean barely noticed. That's why averages lie, and why this section measures in percentiles.
 
-[SLIDE 1: Three clocks]
-- Time to first token (TTFT): from send to the first streamed token. What users feel as "is it alive?"
-- Time per output token (TPOT): the streaming speed. What users feel as "is it fast?"
-- Total time: the whole thing. What your logs record by default.
-- Agents have a fourth: time to first *visible* token, after all the tool steps
+[SLIDE 1: Three clocks, and the one agents add]
+- Time to first token (TTFT): send to first streamed token of one model call. "Is it alive?"
+- Time per output token (TPOT): the streaming speed. "Is it fast?"
+- Total time: the whole request. What your logs record by default
+- Agents add a fourth: time to the first token of the *final answer*, after every tool step
 
 [AVATAR]
 
-Three clocks, and for agents a fourth. Time to first token is how long the model takes to start. Time per output token is how fast it streams once started. Total time is the whole answer. And for an agent, the one users actually feel is the fourth: time to first visible token. Atlas runs two tool steps before the user sees a single word. The first two model calls stream nothing to the screen. So the user's clock starts at send and stops when the final answer begins. [PAUSE] Measure that one. It's the one that makes people close the tab.
+Three clocks, and for agents a fourth. Time to first token is how long one model call takes to start. Time per output token is how fast it streams once started. Total time is the whole request. And for an agent, the one users actually feel is the fourth: the first token of the final answer. Atlas runs a tool step before the user sees a single word. The first model call streams nothing to the screen. So the user's clock starts at send and stops when the answer begins. [PAUSE] Measure that one. It's the one that makes people close the tab.
 
-[SLIDE 2: Where the time goes in one Atlas request (p50, normal day)]
+[SLIDE 2: Where the time goes in one Atlas request (the demo request from 6.1, offline)]
 
-| Step | What happens | p50 |
+Diagram: D7 build 1, latency budget of one request.
+
+| Step | What happens | Time |
 |---|---|---|
-| 1 | model → tool call (`search_knowledge_base`) | 0.55 s first token + 0.15 s for 60 tokens + 0.20 s tool = 0.90 s |
-| 2 | model → tool call (`lookup_ticket`) | 0.55 + 0.15 + 0.10 tool = 0.80 s |
-| 3 | model → answer, first token | 0.55 s, plus 0.10 s of overhead = 0.65 s |
-| User sees the first word | | **≈ 1.9 s** (p95: 3.4 s) |
-| 3 | streaming 220 tokens at 9 ms | + 2.0 s |
-| Full answer | | **≈ 3.6 s** (p95: 6.8 s) |
+| 1 | model → tool call: first token 457 ms, 42 tokens | 746 ms |
+| tool | `search_knowledge_base` (local index) | a few ms |
+| 2 | model → answer: first token 429 ms | first word of the answer at **1,174 ms** |
+| 2 | streaming 282 tokens at about 7 ms each | + 2,015 ms |
+| Full answer | | **3,189 ms** |
 
 [AVATAR]
 
-Here's the anatomy. Three model calls at about half a second each to first token. Two tool executions, a couple of hundred milliseconds. Two tool-call outputs of sixty tokens each, streamed at nine milliseconds a token. The user sees the first word of the answer at about one point nine seconds on a median request, and three point four at p95. The full answer lands at three point six seconds, six point eight at p95, because two hundred twenty tokens at nine milliseconds is two seconds of streaming.
+Here's the anatomy of the demo request from Section 6. Step one: the model takes under half a second to start and three quarters of a second to finish a forty-two-token tool call. The tool itself takes a few milliseconds. Step two: another half second to start, and the user sees the first word at about one point two seconds. Then two seconds of streaming for a two-hundred-eighty-two-token answer. Three point two seconds in total.
 
-Notice where the time is. [PAUSE] Not in the tools. In waiting for the model to start, three times. Every step you add is another half second before the user sees anything. That's the cost lesson from Section 6 in a different currency.
+Notice where the time is. [PAUSE] Not in the tool. In the model, twice. Every step you add is another model call before the user sees anything. That's the cost lesson from Section 6 in a different currency.
+
+[SCREEN: terminal, `make console-text`, scrolled to the Latency block]
+
+```
+-- Latency ---------------------------------------------------------------------
+total  p50=3232ms  p95=3827ms  p99=3934ms  max=4138ms  n=10184
+ttft   p50=1427ms  p95=1702ms  n=10112
+  eng        p50=3303ms p95=3844ms n=2171
+  finance    p50=3511ms p95=3905ms n=1866
+  hr         p50=3345ms p95=3836ms n=1851
+  ops        p50=2168ms p95=3670ms n=4296
+```
+
+Now the whole replayed day. End to end, p50 three point two seconds, p95 three point eight. The `ttft` row is the fourth clock, first token of the final answer: one point four at the median, one point seven at p95. And ops is fastest, because its shipment and ticket questions return short answers.
 
 [SLIDE 3: The budget (Atlas, from the worksheet)]
-- First visible token: ≤ 4.0 s at p95 (users start re-typing at about 5 s)
-- Full answer: ≤ 8.0 s at p95
-- Each tool step: ≤ 1.2 s at p95 (model 1.1 s p95 alone; tools must be fast)
-- Headroom at p95 today: 0.6 s on first token, 1.2 s on full answer
+- Contract: p95 end to end ≤ 4.0 s (`BUDGET_P95_LATENCY_MS`, the CI gate in 13.3, the alert in 9.5)
+- Today: p95 3.83 s, so 173 ms of headroom
+- Diagnostics under it: answer TTFT p95 1.70 s; per-call TTFT p95 0.65 s; generation p95 2.82 s
+- Users feel the first word: watch answer TTFT even though the contract is end to end
 - Voice agents (Course 3) budget 800 ms end to end; a chat helpdesk gets 4 s; know which you are
 
 [AVATAR]
 
-Now the budget. Four seconds to the first visible token, at p95. Eight seconds to the full answer. One point two seconds per tool step. Where do those come from? From users. In our replay's feedback data, re-typing and abandonment start climbing at about five seconds of silence. Four gives us a margin. [PAUSE] And the headroom today is six tenths of a second at p95. That's the number that matters for the chaos demo in 7.6. When a provider gets slow, six tenths of a second is what we have before we're outside the contract.
+Now the budget. One contract: four seconds end to end, at p95. It's in the config as `BUDGET_P95_LATENCY_MS`, the CI gate in Section 13 fails the build above it, and the alert in Section 9 pages on it. [PAUSE] Today's p95 is three point eight three. That's a hundred seventy-three milliseconds of headroom. Not much. When a provider gets slow, that's what we have before we're outside the contract. Underneath the contract sit the diagnostics: the answer's first token, each call's first token, each generation's duration. They tell you which part moved.
 
 If you've taken the voice agents course, you'll remember eight hundred milliseconds end to end. A voice agent has to answer before the silence gets awkward. A chat helpdesk gets five times that. Same discipline, different number. Know which product you are.
 
 [SLIDE 4: Why p95 and not p99 or the mean]
-- Mean: hides everything; one slow provider minute vanishes into 10,000 requests
+- Mean: hides everything; four slow hours vanish into a day of 10,000 requests
 - p50: what the typical user gets; fine for capacity, useless for pain
 - p95: one in twenty; the number an engineering team can actually hold
 - p99: one in a hundred; watch it, alert on trend, don't budget on it for an LLM app
-- Budget at p95, alert on p95 and p99 slope, report p50 alongside
+- Budget at p95, alert on p95, report p50 alongside
 
 [AVATAR]
 
-Why p95, specifically? The mean hides everything, you've seen that. p50 is what the typical person gets; useful for capacity, useless for pain. p99 is one in a hundred, and with a third-party model provider in the loop, you don't control the tail well enough to promise it. p95 is the one an engineering team can actually hold: one in twenty. We budget at p95, we watch p99 for trend, and we report p50 next to it so nobody thinks the typical experience is slow.
+Why p95, specifically? The mean hides everything; you've seen that. p50 is what the typical person gets; useful for capacity, useless for pain. p99 is one in a hundred, and with a third-party model provider in the loop, you don't control the tail well enough to promise it. p95 is the one an engineering team can actually hold: one in twenty. We budget at p95, we watch p99 for trend, and we report p50 next to it so nobody thinks the typical experience is slow.
 
 [SLIDE 5: The budget worksheet]
 - `10-resources/latency-budget-worksheet.md`
@@ -110,27 +128,29 @@ Why p95, specifically? The mean hides everything, you've seen that. p50 is what 
 
 [AVATAR]
 
-The worksheet is in the resources folder. One row per step, per tool, per model call. Columns for p50, p95, the budget and the headroom. You'll fill it from spans in the next lecture, not from guesses. And every timeout, retry and fallback we add in this section will point back to a row. A timeout you can't justify from the sheet is a timeout that will bite you on a busy day.
+The worksheet is in the resources folder. One row per step, per tool, per model call. Columns for p50, p95, the budget and the headroom. You'll fill it from spans in the next lecture, not from guesses. And every timeout, retry and fallback we add in this section will point back to a row. [PAUSE] Latency and cost pull in opposite directions in one place: retries. A retry is the fastest way to fix a failed call and the fastest way to double your bill. Hold both numbers in your head through this section.
 
-[AVATAR]
-
-One more thing before we measure. [PAUSE] Latency and cost pull in opposite directions in one place: retries. A retry is the fastest way to fix a slow call and the fastest way to double your bill. Hold both numbers in your head through this section. In 7.3 we'll make retries bounded, so they cost you a known amount of both.
+[SLIDE 6: Recap]
+- Users feel the answer's first token
+- Budget at p95: 4 seconds end to end
+- Atlas has 173 ms of headroom today
 
 ### Recap
 
-Agents have a fourth clock, time to first visible token; budget it at p95, four seconds for Atlas, with per-step budgets underneath, and fill the budget from spans.
+Agents have a fourth clock, the first token of the final answer; Atlas's contract is p95 end to end under four seconds, with 173 ms of headroom on a normal day and the diagnostic clocks underneath, all filled from spans.
 
 ### Transition
 
-Next, the code: aggregate TTFT, TPOT and total time from the span store, expose them as Prometheus histograms, and light up the latency page of the Ops Console.
+Next, the code: aggregate TTFT, TPOT and total time from the span store, expose them as Prometheus histograms, and read the Latency page of the Ops Console.
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Measuring total time only.** Most frameworks log total duration. Users feel first visible token. Both matter; budget both.
+- **Measuring total time only.** Most frameworks log total duration. Users feel the answer's first token. Both matter; budget the one you can enforce, watch the one they feel.
 - **Budgeting the mean.** If a student's worksheet has a mean column, send them back to the chart from the hook.
 - **"Just use a faster model."** Model TTFT is half the story; the number of steps is the other half. Fewer steps beat a faster model.
+- **Offline numbers.** The mock draws latency per model and per prompt size; the shape is realistic, the constants are simulated. Provider latency changes; the method doesn't.
 - **Voice comparison.** The 800 ms figure comes from Course 3's latency section. One sentence, then move on.
-- **Numbers on screen are observed on one day and illustrative.** Provider latency changes; the method doesn't.
+- **The hook chart.** Record it with `OFFLINE=1 make replay SCENARIO=slow_provider` and `make console` (Latency page). Lecture 7.6 runs the same replay.
 
 ---
 
@@ -144,130 +164,136 @@ Next, the code: aggregate TTFT, TPOT and total time from the span store, expose 
 | Target duration | 8:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and runs) |
 | One idea | Derive first-token, per-token and total timings from the span attributes you already emit, compute percentiles without numpy, and expose them as Prometheus histograms with low-cardinality labels. |
 | Prerequisites | 7.1; Section 5.4 (`completion_start_time`, `gen_ai.response.time_to_first_chunk`) |
-| Files used | `src/northwind/latency.py`, `telemetry/metrics.py`, `telemetry/local_store.py`, `console/ops_console.py`, `tests/unit/test_latency.py` |
+| Files used | `src/northwind/latency.py`, `telemetry/metrics.py`, `telemetry/local_store.py`, `app/agent.py` (`_finish`), Ops Console Latency page, `tests/unit/test_latency.py` |
 
 **Learning objectives**
 
-1. Compute TTFT, TPOT and total time for a generation from span start, first-chunk time, end time and output tokens.
-2. Implement `percentile(values, p)` with nearest-rank and use it for p50, p95 and p99 per step and per request.
-3. Record `FIRST_TOKEN_SECONDS` and `REQUEST_SECONDS` histograms with buckets that bracket the budget, and labels for feature only.
+1. Compute TTFT, TPOT and total time for a request from its generations, and the answer's first token as the sum of the earlier steps plus the last step's TTFT.
+2. Use `percentile(values, p)` (linear interpolation, no numpy) and `summarize` for p50, p95 and p99 per tenant and per hour.
+3. Read the `atlas_request_latency_seconds{tenant,feature}` and `atlas_ttft_seconds{model}` histograms, with buckets that put an edge on the budget.
 
 ### Script
 
 [AVATAR]
 
-You already have the data. Every generation span in Atlas carries a start time, an end time, the moment the first chunk arrived, and the output token count. [PAUSE] That's four numbers, and from four numbers you get all three clocks. No new instrumentation today. Just arithmetic and a histogram.
+You already have the data. Every generation span in Atlas carries its duration, its time to first token, and its output token count. [PAUSE] Three numbers per step, and from them you get all four clocks. No new instrumentation today. Just arithmetic and a histogram.
 
-[SLIDE 1: From span to clocks]
-- TTFT = `first_chunk_at − start`
-- TPOT = `(end − first_chunk_at) / max(output_tokens − 1, 1)`
-- Total = `end − start`
-- Request first visible token = final generation's `first_chunk_at − request start`
-- Attributes: `gen_ai.response.time_to_first_chunk` (incubating), Langfuse `completion_start_time`
+[SLIDE 1: From spans to clocks]
+- TTFT of a call: `atlas.ttft_ms` on the generation span (also `gen_ai.response.time_to_first_chunk`, incubating)
+- TPOT: `(total − TTFT) / (output_tokens − 1)`
+- Total: the request's duration, `atlas.latency_ms` on the agent span
+- Answer's first token: all earlier steps + the last step's TTFT, `atlas.ttft_ms` on the agent span
+- Langfuse sees the same moment as `completion_start_time`
 
 [AVATAR]
 
-Time to first token is first chunk minus start. Time per output token is the rest of the streaming window divided by the tokens in it. Total is end minus start. And the agent's fourth clock is the final generation's first chunk minus the start of the whole request. All four come from attributes you set in lecture 5.4: the incubating `gen_ai.response.time_to_first_chunk` on the OTel side, and `completion_start_time` in Langfuse.
+Time to first token of one call is on the generation span. Time per output token is the rest of the streaming window divided by the tokens in it. Total is the request's duration. And the agent's fourth clock is every earlier step plus the last step's first token, which `_finish` writes on the agent span. All of it comes from attributes you set in lecture 5.4: the incubating `gen_ai.response.time_to_first_chunk` on the OTel side, `completion_start_time` in Langfuse, and our own `atlas.ttft_ms`.
 
 [SCREEN: VS Code, `src/northwind/latency.py`]
 
 [CODE: `src/northwind/latency.py` (excerpt)]
 
 ```python
-from dataclasses import dataclass
-import math
-
-
-def percentile(values: list[float], p: float) -> float:
-    """Nearest-rank percentile, no numpy. p in [0, 100]."""
-    if not values:
-        return math.nan
-    xs = sorted(values)
-    k = max(1, math.ceil(p / 100 * len(xs)))
-    return xs[k - 1]
-
-
 @dataclass(frozen=True)
-class StepTiming:
-    step: int
-    start: float
-    first_chunk_at: float | None
-    end: float
-    output_tokens: int
-    tool_seconds: float = 0.0
+class LatencySample:
+    """One request's timings in milliseconds."""
+
+    total_ms: float
+    ttft_ms: float | None = None
+    output_tokens: int = 0
+    steps: int = 1
+    trace_id: str = ""
+    tenant: str = ""
+    model: str = ""
 
     @property
-    def ttft(self) -> float:
-        return (self.first_chunk_at or self.end) - self.start
-
-    @property
-    def tpot(self) -> float:
-        if not self.first_chunk_at or self.output_tokens < 2:
-            return 0.0
-        return (self.end - self.first_chunk_at) / (self.output_tokens - 1)
-
-    @property
-    def total(self) -> float:
-        return self.end - self.start + self.tool_seconds
+    def tpot_ms(self) -> float | None:
+        """Time per output token after the first token (ms/token)."""
+        if self.ttft_ms is None or self.output_tokens <= 1:
+            return None
+        return max(0.0, (self.total_ms - self.ttft_ms) / (self.output_tokens - 1))
 
 
 @dataclass(frozen=True)
 class RequestTiming:
-    steps: list[StepTiming]
+    """Whole request assembled from steps; ``to_sample`` gives the aggregate view."""
+
+    trace_id: str
+    steps: tuple[StepTiming, ...]
+    tenant: str = ""
 
     @property
-    def first_visible_token(self) -> float:
-        final = self.steps[-1]
-        return (final.first_chunk_at or final.end) - self.steps[0].start
+    def total_ms(self) -> float:
+        return sum(s.total_ms for s in self.steps)
 
     @property
-    def total(self) -> float:
-        return self.steps[-1].end - self.steps[0].start
+    def ttft_ms(self) -> float | None:
+        """Time until the first token of the *final* answer (what the user perceives)."""
+        if not self.steps:
+            return None
+        last = self.steps[-1]
+        if last.ttft_ms is None:
+            return None
+        return sum(s.total_ms for s in self.steps[:-1]) + last.ttft_ms
 
 
-@dataclass(frozen=True)
-class LatencyBudget:
-    first_visible_p95_s: float = 4.0
-    total_p95_s: float = 8.0
-    step_p95_s: float = 1.2
-
-
-def violations(requests: list[RequestTiming], budget: LatencyBudget) -> dict[str, float]:
-    fv = percentile([r.first_visible_token for r in requests], 95)
-    tot = percentile([r.total for r in requests], 95)
-    step = percentile([s.total for r in requests for s in r.steps[:-1]], 95)
-    return {k: v for k, v in {
-        "first_visible_p95": fv if fv > budget.first_visible_p95_s else None,
-        "total_p95": tot if tot > budget.total_p95_s else None,
-        "step_p95": step if step > budget.step_p95_s else None,
-    }.items() if v is not None}
+def percentile(values: Sequence[float], p: float) -> float:
+    """Linear-interpolated percentile; ``p`` in [0, 100]."""
+    if not values:
+        raise ValueError("percentile of empty sequence")
+    if not 0 <= p <= 100:
+        raise ValueError("p must be between 0 and 100")
+    xs = sorted(values)
+    if len(xs) == 1:
+        return float(xs[0])
+    k = (len(xs) - 1) * p / 100.0
+    lo = math.floor(k)
+    hi = math.ceil(k)
+    if lo == hi:
+        return float(xs[int(k)])
+    return float(xs[lo] + (xs[hi] - xs[lo]) * (k - lo))
 ```
 
-Four pieces. `percentile` is nearest-rank: sort, take the element at the ceiling of p percent of the length. No numpy, because this runs in the CI gate and in the browser coding exercise. `StepTiming` is one generation plus the tool time that followed it; the three clocks are properties. `RequestTiming` gives the agent's fourth clock: the final step's first chunk minus the first step's start. And `violations` compares p95s to the budget and returns only what's over. [PAUSE] Empty dict means green. That's what the CI gate in Section 13 asserts.
+Three pieces. `LatencySample` is one request's timings, and TPOT is a property: the time after the first token, divided by the tokens after the first. Fewer than two tokens, no TPOT. `RequestTiming` builds the agent's fourth clock: every earlier step in full, plus the last step's first token. That's the number on the agent span, and it's the one users feel.
+
+[SCREEN: zoom on `percentile`; the `k = (len(xs) - 1) * p / 100.0` line highlighted]
+
+`percentile` sorts and interpolates linearly between the two neighbours, the same definition pandas uses by default. No numpy, because this runs in the CI gate and in the browser coding exercise. [PAUSE] `summarize`, just below it, gives count, mean, p50, p90, p95, p99, min and max in one call, and `violations` compares a set of samples against a `LatencyBudget` and returns only what's over. Empty list means green. That's what the CI gate in Section 13 asserts for p95.
 
 Now the source: the local span store.
 
-[SCREEN: `telemetry/local_store.py`, then terminal]
+[SCREEN: `telemetry/local_store.py` (`latency_samples`), then terminal]
 
 ```bash
 OFFLINE=1 make replay
-make console-text            # the latency section: p50 / p95 / p99, hourly p95, per-tool p95, all from northwind.latency
+make console-text            # the Latency block: totals, answer TTFT, per tenant, hourly p95
 ```
 
-[DEMO: output:]
+[DEMO: output (Latency block):]
 
 ```
-requests: 10000
-first visible token   p50 1.90s  p95 3.41s  p99 5.62s   budget p95 4.00s  OK  (headroom 0.59s)
-full answer           p50 3.58s  p95 6.79s  p99 10.97s  budget p95 8.00s  OK
-tool steps            p50 0.86s  p95 1.14s  p99 1.71s   budget p95 1.20s  OK
-by step  1: ttft p50 0.55 p95 1.08 | 2: ttft p50 0.54 p95 1.10 | 3: ttft p50 0.56 p95 1.12 tpot p50 9.1ms
-by tool  search_knowledge_base p95 0.31s | lookup_ticket p95 0.14s | check_shipment p95 0.62s
+-- Latency ---------------------------------------------------------------------
+total  p50=3232ms  p95=3827ms  p99=3934ms  max=4138ms  n=10184
+ttft   p50=1427ms  p95=1702ms  n=10112
+  eng        p50=3303ms p95=3844ms n=2171
+  finance    p50=3511ms p95=3905ms n=1866
+  hr         p50=3345ms p95=3836ms n=1851
+  ops        p50=2168ms p95=3670ms n=4296
+hourly p95: 00h=3696 01h=3870 02h=3733 03h=3768 04h=3725 05h=3647 06h=3841 07h=3816 08h=3810 09h=3796 10h=3824 11h=3829 12h=3825 13h=3829 14h=3837 15h=3834 16h=3779 17h=3825 18h=3823 19h=3849 20h=3816 21h=3757 22h=3843 23h=3763
 ```
 
-A word on where these numbers come from in offline mode. The mock LLM doesn't sleep for two seconds per call; it stamps spans with timings drawn from a distribution fitted to real gpt-4.1-mini calls, so a full day replays in a couple of minutes and the percentiles come out realistic. In live mode the same code reads real spans. Either way, the aggregation reads our local store rather than the Langfuse API, because ten thousand traces through a paginated API is slow and Langfuse already shows its own latency views in the UI for browsing. The store is for arithmetic. The UI is for looking.
+A word on where these numbers come from in offline mode. The mock LLM doesn't sleep for three seconds per call; it stamps each response with a simulated first-token time and duration, drawn per model and growing with prompt size, so a full day replays in twenty seconds and the percentiles come out realistic. In live mode the same code reads real spans. Either way, the aggregation reads our local store rather than the Langfuse API, because ten thousand traces through a paginated API is slow and Langfuse already shows its own latency views in the UI for browsing. The store is for arithmetic. The UI is for looking.
 
-There's the worksheet, filled from spans. First visible token p95 three point four one, budget four, fifty-nine hundredths of headroom. Every step's time to first token is just over a second at p95, which is why the step budget is one point two. And look at the tools: `check_shipment` is the slow one, six hundred milliseconds at p95, because it calls an external carrier API. Remember that for the chaos demo.
+[SLIDE 2: The worksheet, filled from spans]
+- End to end: p50 3,232 ms, p95 3,827 ms, budget 4,000 ms, headroom 173 ms
+- Answer's first token: p50 1,427 ms, p95 1,702 ms
+- Per call: TTFT p95 652 ms; generation p95 2,824 ms
+- Hourly p95: flat, 3,647 to 3,870 ms; no lunchtime bump on a normal day
+- By tenant: ops fastest (p95 3,670), finance slowest (p95 3,905)
+
+[AVATAR]
+
+There's the worksheet, filled from spans. End to end, three point eight at p95 against a budget of four. The answer's first token, one point seven. Each model call starts in about two thirds of a second at p95, and the longest generations take nearly three seconds, because that's where the answer streams. And the hourly line is flat: on a normal day, load doesn't move latency. Remember that shape for the chaos demo.
 
 Now the metrics.
 
@@ -282,7 +308,7 @@ TTFT_BUCKETS = (0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0)
 LATENCY = Histogram(
     "atlas_request_latency_seconds",
     "End-to-end request latency",
-    ["tenant"],
+    ["tenant", "feature"],
     buckets=LATENCY_BUCKETS,
     registry=REGISTRY,
 )
@@ -293,9 +319,6 @@ TTFT = Histogram(
     buckets=TTFT_BUCKETS,
     registry=REGISTRY,
 )
-TOOL_CALLS = Counter(
-    "atlas_tool_calls_total", "Tool invocations", ["tool", "outcome"], registry=REGISTRY
-)
 TOOL_LATENCY = Histogram(
     "atlas_tool_latency_seconds",
     "Tool execution time",
@@ -305,21 +328,28 @@ TOOL_LATENCY = Histogram(
 )
 ```
 
-Two rules in this file. First, the buckets bracket the budget: there's a bucket edge at exactly four seconds and at eight, so `histogram_quantile` can answer "what fraction was under budget" precisely, not by interpolation. Second, labels: `tenant` on the request histogram, `model` on time to first token, `tool` on tool latency, nothing else, and never user or session. Four tenants times thirteen buckets is fine; four thousand users is not. [PAUSE] Per-user latency lives in the span store, where cardinality is free.
+Two rules in this file. First, the buckets bracket the budget: there's a bucket edge at exactly four seconds, so the fraction of requests under budget is a ratio of two counters, not an interpolation. Second, labels: `tenant` and `feature` on the request histogram, `model` on time to first token, `tool` on tool latency, nothing else, and never user or session. Four tenants times seven features times thirteen buckets is fine; four thousand users is not. [PAUSE] Per-user latency lives in the span store, where cardinality is free.
 
-[SCREEN: `app/agent.py`, `_finish`: `metrics.record_request(tenant=tenant, model=result.model, outcome=result.outcome, latency_s=..., steps=result.steps)`, and in `_call_model`: `metrics.record_generation(..., ttft_s=ttft_s)`; then the Ops Console latency page]
+[SCREEN: `app/agent.py`: in `_finish`, `metrics.record_request(tenant=tenant, model=result.model, outcome=result.outcome, latency_s=result.latency_ms / 1000.0, steps=result.steps, feature=result.feature)`; in `_call_model`, `metrics.record_generation(..., ttft_s=ttft_s)`]
 
-One `record_request` call at the end of the request, one `record_generation` per model call, and the Ops Console latency page lights up: p50, p95, p99 lines, the four-second budget in red, per-step breakdown, per-tool p95. Same functions, same numbers as the terminal.
+One `record_request` at the end of the request feeds the request histogram, and one `record_generation` per model call feeds `atlas_ttft_seconds`. Read that carefully: despite its help text, `atlas_ttft_seconds` is observed once per model call, so its p95 is the six-hundred-fifty-millisecond number, not the answer's one point seven. The answer's first token lives on the agent span. Label your panels with the one you mean.
 
-Two habits with histograms. Observe once per request, at the end, with the value you computed from spans; don't wrap the whole request in a timer and observe that, because then you've measured total time when the SLI is first visible token. And choose buckets before you have a month of data, because changing buckets later makes old and new data incomparable. Ours run from a tenth of a second to twenty, with edges at the two budgets. [PAUSE] If you ever find yourself wanting p99.9 from a histogram, stop: thirteen buckets can't give you that, and neither can a provider you don't control.
+[SCREEN: Ops Console Latency page: the p50 / p95 / p99 and "TTFT p95 (final answer)" tiles, hourly p50 and p95 with the 4 s budget line, span p95 by observation type, generation TTFT and duration p95 per hour]
 
-[SCREEN: `tests/unit/test_latency.py`]
+The Latency page shows the same numbers: four tiles, the hourly chart with the budget line in red, span p95 by observation type, and the generation detail. Same store, same functions, same numbers as the terminal.
 
-Three unit tests: `percentile` on a known list, `first_visible_token` on a three-step request, and `violations` returning empty on a within-budget set and non-empty when one step is slow.
+[SCREEN: `tests/unit/test_latency.py`, then terminal `uv run pytest tests/unit/test_latency.py -q`: `13 passed`]
+
+The unit tests pin the arithmetic: `test_percentile_linear_interpolation`, `test_request_timing_ttft_is_perceived` for the fourth clock, and `test_violations_aggregate_and_per_sample` for the budget check.
+
+[SLIDE 3: Recap]
+- Four clocks fall out of span attributes
+- Percentiles: linear interpolation, no numpy
+- Histograms: bucket edge at the budget
 
 ### Recap
 
-TTFT, TPOT and total time fall out of four span attributes; `percentile` is nearest-rank without numpy; histograms get bucket edges at the budget and labels for feature and model only.
+TTFT, TPOT, total time and the answer's first token fall out of the span attributes you already emit; `percentile` interpolates without numpy; histograms get a bucket edge at the four-second budget and labels for tenant, feature, model and tool only.
 
 ### Transition
 
@@ -327,9 +357,10 @@ Now you can see where the time goes. Next, the controls that hold it: timeouts, 
 
 ### Speaker notes: common mistakes and Q&A
 
-- **TPOT with one token.** Division by zero; the code returns 0 for fewer than two output tokens.
-- **Missing `first_chunk_at`.** Non-streaming calls have none; `ttft` falls back to the end time and is then equal to total. Say it on screen.
-- **Nearest-rank vs interpolated percentiles.** Prometheus interpolates within a bucket; our function doesn't. Small differences are expected. Bucket edges at the budget minimise them where it matters.
+- **TPOT with one token.** Division by zero; the code returns `None` for fewer than two output tokens.
+- **Missing TTFT.** Non-streaming calls have no first chunk; online, the agent then records `completion_start_time` instead and TTFT is unknown for that call. Offline the mock always reports one.
+- **`atlas_ttft_seconds` naming.** The help text says "final answer", but it is observed per generation. The answer's first token is `atlas.ttft_ms` on the agent span and the console's "TTFT p95 (final answer)" tile. Flag this to students who build their own panel.
+- **Interpolated percentiles.** Our `percentile` and Prometheus's `histogram_quantile` both interpolate, but Prometheus interpolates inside a bucket. Small differences are expected; the bucket edge at 4 s makes the SLO ratio exact.
 - **Coding exercise.** "Percentile latency" in `06-assessments/coding-exercises.md` is this `percentile` function, stdlib only.
 
 ---
@@ -341,48 +372,48 @@ Now you can see where the time goes. Next, the controls that hold it: timeouts, 
 | ID | 7.3 |
 | Title | Timeouts, retries and backoff done right |
 | Type | SC (screencast code-along) |
-| Target duration | 8:00 (about 680 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
-| One idea | Give every call a timeout derived from the budget, bound retries with jittered backoff, make tool calls idempotent, and count every retry as the cost event it is. |
+| Target duration | 8:00 (about 700 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
+| One idea | Give every call a timeout derived from the budget, bound retries with jittered backoff, keep tool writes safe to repeat, and count every retry as the cost event it is. |
 | Prerequisites | 7.2; 6.7 (budget guard) |
-| Files used | `app/agent.py`, `app/tools.py`, `src/northwind/config.py`, `telemetry/metrics.py`, `simulator/scenarios.py::retry_storm` |
+| Files used | `app/agent.py`, `src/northwind/config.py`, `telemetry/metrics.py`, `simulator/scenarios.py` (`retry_storm`), Ops Console Reliability page |
 
 **Learning objectives**
 
-1. Set per-call timeouts (first token and total) from the latency budget and pass them to the Router.
-2. Implement bounded retries with exponential backoff and full jitter, only for retryable errors, and never for a call that already streamed output.
-3. Make `create_ticket` idempotent with a request key, and emit `RETRIES` so a retry storm is visible in Prometheus and in cost.
+1. Set the per-call timeout (`ATLAS_REQUEST_TIMEOUT_S`) and the retry bound (`ATLAS_MAX_RETRIES`) from the latency budget and the failure shape.
+2. Read Atlas's bounded retries with exponential backoff and jitter, only for `RETRYABLE` errors, and the generation span each failed attempt leaves behind.
+3. Measure a retry storm as a cost event (`atlas_llm_retries_total{model,reason}`, the Reliability page) and choose the bound with both cost and outcomes in view.
 
 ### Script
 
-[B-ROLL: Ops Console. Ops tenant, 10:05. The LLM retry line (`atlas_llm_retries_total{reason="APITimeoutError"}`) jumps. Below it, the cost line for ops bends upward. Caption: `retry_storm`.]
+[B-ROLL: Ops Console, Reliability page on the `retry_storm` replay. "LLM retries by error.type": 588 `APITimeoutError` at 10:00, 414 at 11:00, nothing before or after. Caption: `retry_storm`, ops, 10:00 to 12:00.]
 
 [AVATAR]
 
-Ten oh five on a Tuesday. The ticketing system starts returning errors for one tenant. Atlas does what version one was written to do: try again. And again. Five times per step, three steps per request, eight hundred thirty requests over two hours. [PAUSE] Seven dollars ten of extra model calls, on a tenant that spends five dollars in a normal two hours, and every one of those users still got an error. Retries didn't fix anything. They just paid for the failure five times.
+Ten o'clock on a Monday. The provider starts timing out on most of ops's calls. Atlas does what it was built to do: try again. Each timed-out call fails twice before the third attempt gets through. [PAUSE] One thousand and two failed attempts in two hours, every one of them billed for its input tokens, and every user still got an answer, a bit later. Was that retry policy right? By the end of this lecture you'll be able to answer with a number, not a feeling.
 
 [SLIDE 1: Three rules]
 - Timeouts come from the budget, not from a default
 - Retries are bounded, jittered, and only for errors that a retry can fix
-- Every retry is a cost event: count it, and let the budget guard see it
+- Every retry is a cost event: count it, and price it
 
 [AVATAR]
 
-Three rules. Timeouts derive from the budget you wrote in 7.1. Retries are bounded, jittered, and only for errors a retry can actually fix. And every retry is a cost event. It goes on a counter and into the budget guard's spend, so a storm hits the soft cap instead of the credit card.
+Three rules. Timeouts derive from the budget you wrote in 7.1. Retries are bounded, jittered, and only for errors a retry can actually fix. And every retry is a cost event. It goes on a counter and on its own generation span with a price, so a storm shows up on the bill you can see, not just on the invoice.
 
 [SLIDE 2: Timeouts from the budget]
-- Step budget 1.2 s p95; model TTFT p95 1.1 s → first-token timeout 6 s (5× p95, catches a stalled provider, not a slow one)
-- Total call timeout 25 s (a 220-token answer at 3× normal TPOT is 6 s; 25 leaves room for gpt-4.1)
-- Stream idle timeout 5 s: no new chunk for 5 s means the stream is dead
-- Tool timeouts per tool: `check_shipment` 3 s (p95 0.62 s), the rest 1 s
-- The old default was 20 s flat and no first-token timeout: a stalled call ate the whole budget five times over
+- `ATLAS_REQUEST_TIMEOUT_S`: per model call, default 20 s, passed to the client and the Router
+- Normal calls: TTFT p95 0.65 s, generation p95 2.8 s (7.2)
+- A timeout near 2× the slowest normal call (about 6 s) cuts off a stall, not a long answer
+- 20 s × 3 attempts is a minute of waiting before the user sees an error
+- Offline the mock never times out a call; this setting matters against a real provider (verify the client's timeout semantics)
 
 [AVATAR]
 
-Timeouts. The step budget is one point two seconds at p95, and the model's first token is one point one at p95. So a first-token timeout of six seconds, about five times p95, catches a stalled provider without cutting off a merely slow one. Total call timeout, twenty-five seconds, generous because gpt-4.1 streams at half the speed. A stream idle timeout of five seconds: if no chunk arrives for five seconds, the stream is dead, stop waiting. And per-tool timeouts: three seconds for `check_shipment`, one for the rest. [PAUSE] Version one had a twenty-second flat timeout and nothing on first token. A stalled provider ate twenty seconds, then retried, five times. That's a hundred seconds before the user got an error.
+Timeouts. Atlas has one, `ATLAS_REQUEST_TIMEOUT_S`, twenty seconds by default, passed to the OpenAI client and the Router on every call. Is twenty right? Look at the worksheet. A normal call starts in two thirds of a second at p95 and finishes in under three. So twenty seconds is seven times the slowest normal call. [PAUSE] With two retries, a stalled provider can make one user wait a minute before they see an error. Something near twice the slowest normal call, around six seconds, cuts off a stall without cutting off a long answer. One caution: offline, the mock never times out, so this knob only shows its effect against a real provider. Lab 4 and `.env.chaos.example` spell that out.
 
 [SCREEN: VS Code, `app/agent.py`]
 
-[CODE: `app/agent.py` (excerpt): timeouts and bounded retries]
+[CODE: `app/agent.py` (excerpt): retryable errors, backoff and the retry loop]
 
 ```python
 RETRYABLE: tuple[type[BaseException], ...]
@@ -414,27 +445,15 @@ except Exception:  # noqa: BLE001 - pragma: no cover
         while attempts <= self.settings.max_retries:
             attempts += 1
             if self.breaker.is_open(current) and current in FALLBACKS:
-                nxt = FALLBACKS[current]
-                metrics.FALLBACKS.labels(current, nxt).inc()
-                result.fallbacks += 1
-                log.warning("circuit open for %s; falling back to %s", current, nxt)
-                current = nxt
+                ...                                         # 7.4: switch to FALLBACKS[current]
             gen = GenerationRecord(model=current, step=step, attempt=attempts)
             with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
                 ...
                 if attempts > 1:
                     span.set_attribute(ga.ATLAS_RETRIES, attempts - 1)
                 try:
-                    kwargs: dict[str, Any] = dict(
-                        model=current,
-                        messages=messages,
-                        tools=TOOL_SCHEMAS,
-                        stream=stream,
-                        scenario=scenario,
-                        timeout=self.settings.request_timeout_s,
-                    )
                     ...
-                    resp = self.llm.chat(**kwargs)
+                    resp = self.llm.chat(**kwargs)          # kwargs include timeout=settings.request_timeout_s
                     ...
                     self.breaker.record_success(current)
                     return message, finish, current
@@ -455,76 +474,87 @@ except Exception:  # noqa: BLE001 - pragma: no cover
         raise RuntimeError(f"LLM unavailable after {attempts} attempts") from last_exc
 ```
 
-Read the `except`. Five things happen. Only `RETRYABLE` errors get here: timeouts, rate limits, connection errors, server errors. A bad request or an auth error propagates immediately, because retrying it is pointless. Then the honest bill: a timed-out call still cost input tokens on the provider side, so the attempt gets its own generation span with the estimated input tokens, the cost and the error type. That is the line Incident 1 is about. Then the counter, `atlas_llm_retries_total`, with the model and the reason. Then the breaker learns about the failure, and the loop bound, `ATLAS_MAX_RETRIES`, two by default, decides whether there is another attempt. Then jittered backoff: a quarter second doubling per attempt, capped at four seconds, with up to fifty percent of random jitter, and zero when offline so the replay stays fast. [PAUSE] Jitter is not optional. Without it, a thousand clients that failed at the same instant retry at the same instant, and you've built a synchronised storm.
+Read the `except`. Only `RETRYABLE` errors get here: timeouts, rate limits, connection errors, server errors. A bad request or an auth error propagates immediately, because retrying it is pointless. Then the honest bill: a timed-out call still cost input tokens on the provider side, so the attempt gets its own generation span with the estimated input tokens, the cost and the error type. That is the line Incident 1 is about.
 
-Now tools, which have their own retry problem.
+[SCREEN: zoom on `metrics.LLM_RETRIES` and `_backoff`]
 
-[SCREEN: `app/tools.py`]
+Then the counter, `atlas_llm_retries_total`, with the model and the reason. Then the breaker learns about the failure, and the loop bound, `ATLAS_MAX_RETRIES`, two by default, decides whether there is another attempt. Then jittered backoff: a quarter second doubling per attempt, capped at four seconds, with up to half of it random, and zero offline so the replay stays fast. [PAUSE] Jitter is not optional. Without it, a thousand clients that failed at the same instant retry at the same instant, and you've built a synchronised storm.
 
-[CODE: `app/tools.py` (excerpt): idempotent ticket creation]
+[SLIDE 3: Tool calls: who retries, and what must be safe to repeat]
+- Atlas never re-runs a tool by itself; the model decides to call it again (the loop scenario in 5.6)
+- `ATLAS_MAX_TOOL_RETRIES` bounds that: after N failures of one tool, stop and say so (`tool_retries_exhausted`)
+- Reads (`lookup_ticket`, `check_shipment`) are naturally safe to repeat
+- Writes (`create_ticket`) are not: give a write an idempotency key (trace id + step) before you let anything retry it
+- Atlas's `create_ticket` has no key yet: it is only ever called once per step, and that's the rule to keep
 
-```python
-def create_ticket(subject: str, body: str, priority: str = "normal", *, request_key: str) -> Ticket:
-    """Idempotent: the same request_key always returns the same ticket, never a duplicate."""
-    if (existing := ticket_store.by_request_key(request_key)) is not None:
-        return existing
-    with tool_timeout(seconds=1.0, tool="create_ticket"):
-        return ticket_store.create(subject=subject, body=body, priority=priority, request_key=request_key)
-```
+[AVATAR]
 
-`create_ticket` takes a `request_key`, which the agent derives from the trace id and the step number. Same key, same ticket. So if the tool timed out after the ticket was created but before the response arrived, the retry returns the existing ticket instead of opening a second one. [PAUSE] Without this, the retry storm from the hook also opened four thousand duplicate tickets. Reads like `lookup_ticket` are naturally idempotent. Writes need a key.
-
-Tool retries follow the same shape: at most two, jittered, counted with `kind="tool"`, and a tool that fails twice sends the step to the strong model, which you saw in 6.6.
+Tools have their own retry problem. Atlas never re-runs a tool by itself. The model asks for it again, which is exactly the loop from lecture 5.6, and `ATLAS_MAX_TOOL_RETRIES` is the bound that turns a failing tool into an honest answer. Reads are safe to repeat. Writes aren't. If anything in your stack ever retries `create_ticket`, give it an idempotency key first, the trace id plus the step, so a retry returns the same ticket instead of opening a second one.
 
 [SCREEN: terminal]
 
-Replay the storm, before and after.
+Now replay the storm, twice.
 
 ```bash
-OFFLINE=1 ATLAS_MAX_RETRIES=10 make replay SCENARIO=retry_storm   # v1: retry until it works (the preset hits ops 10:00-12:00)
-OFFLINE=1 ATLAS_MAX_RETRIES=2 make replay SCENARIO=retry_storm    # bounded, jittered: the shipped default
+OFFLINE=1 make replay SCENARIO=retry_storm STORE=.atlas/retry2.sqlite                    # shipped bound: 2 retries
+OFFLINE=1 ATLAS_MAX_RETRIES=1 make replay SCENARIO=retry_storm STORE=.atlas/retry1.sqlite  # tighter bound
 ```
 
-[SLIDE 3: The storm, before and after (two hours, ops, baseline prices)]
+[DEMO: the two summaries:]
 
-| | Unbounded retries (v1) | Bounded, jittered, idempotent |
+```
+Total cost $57.9980   p95 latency 3889 ms   elapsed 19.4s
+Outcomes: escalated=40, guardrail=66, resolved=10088
+...
+Total cost $50.1286   p95 latency 3946 ms   elapsed 19.7s
+Outcomes: error=397, escalated=36, guardrail=66, resolved=9695
+```
+
+[SLIDE 4: The storm, two bounds (ops, 10:00 to 12:00; full day)]
+
+| | 2 retries (shipped) | 1 retry |
 |---|---|---|
-| Extra generations | 4,150 | 640 |
-| Extra cost | $7.10 | $1.10 |
-| Duplicate tickets | 3,900 | 0 |
-| p95 first visible token during storm | 41 s (timeouts stacked) | 4.9 s (fast fail after 2 tries, then escalation or honest error) |
-| User outcome | error after ~100 s | error or strong-model answer within 5 s |
+| Day cost | $58.00 (+$1.72 vs $56.28) | $50.13 |
+| Failed attempts billed (Reliability page) | 1,002, all `APITimeoutError` | 806 |
+| Requests ending `error` | 0 | **397** |
+| What users saw | every answer, a little later | 397 "Atlas is temporarily unavailable" |
 
 [AVATAR]
 
-Same storm. Extra cost drops from seven dollars to one. Duplicate tickets from thirty-nine hundred to zero. And p95 during the storm drops from forty-one seconds, because five twenty-second timeouts stacked up, to under five. [PAUSE] The users still saw a broken ticketing system. That's not Atlas's fault. But they saw it in five seconds instead of a hundred, they didn't get four duplicate tickets, and the department wasn't billed seven dollars for the privilege.
+With the shipped bound of two, the storm costs a dollar seventy-two extra, a thousand failed attempts billed for their input, and every request still resolves. Tighten it to one retry, and the day gets cheaper, fifty dollars thirteen. [PAUSE] Cheaper because three hundred ninety-seven people got an error instead of an answer, and their requests stopped spending. That's not a saving. The right bound comes from the failure shape: here the provider fails exactly twice, so two is the smallest bound that works. Retries are a trade between cost and outcomes, and you only see the trade when both are on the same table.
 
-[SLIDE 4: Retry checklist]
-- Timeouts: first token, total, stream idle, per tool, all from the budget
-- Retry only `RETRYABLE`; never after streamed output
-- Max 2, full jitter, capped
-- Writes take a request key
-- `RETRIES` counter feeds the anomaly detector and the Section 9 alert
+[SLIDE 5: Retry checklist]
+- One timeout per call, justified by a row in the worksheet
+- Retry only `RETRYABLE`; never a bad request
+- Bounded (`ATLAS_MAX_RETRIES`), jittered, capped
+- Every failed attempt: its own span, its own price, a counter
+- Writes take an idempotency key before anything retries them
 
 [AVATAR]
 
-The checklist. Every timeout justified by a budget row. Retry only what can succeed, never a partial answer. Two attempts, jittered. Writes idempotent. And the counter, which is what turns a retry storm into a page instead of an invoice.
+The checklist. Every timeout justified by a worksheet row. Retry only what can succeed. Bounded, jittered, capped. Every failed attempt priced on its own span and counted. Writes idempotent. And the counter is what turns a retry storm into a page instead of an invoice: Section 9 alerts above a fifth of a retry per request.
+
+[SLIDE 6: Recap]
+- One timeout per call, from the budget
+- Bounded, jittered retries; every attempt priced
+- Choose the bound with cost and outcomes together
 
 ### Recap
 
-Derive first-token, total, idle and per-tool timeouts from the budget, bound retries to two with full jitter and only for retryable errors, give writes a request key, and count every retry as a cost event.
+Derive the per-call timeout from the budget, bound retries with jittered backoff and only for retryable errors, price every failed attempt on its own span, and choose the bound by looking at cost and outcomes together: one retry saved money on `retry_storm` by turning 397 answers into errors.
 
 ### Transition
 
-Retries help when the failure is brief. When a whole model or provider goes slow for an hour, you need somewhere else to send the traffic. Next: fallbacks and circuit breakers with the Router.
+Retries help when the failure is brief. When a whole model goes bad for an hour, you need somewhere else to send the traffic. Next: fallbacks and circuit breakers.
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Retrying after partial output.** The classic double-answer bug. The `streamed_tokens` check is the guard; explain it slowly.
-- **`num_retries` on the Router and our own loop.** Choose one. The code sets `num_retries=0` on the Router when the agent manages retries, or drops the loop and uses the Router's. Say which you're demoing; the repo uses the agent loop for visibility.
+- **Retrying after partial output.** With streaming, a failure mid-stream is still an exception on the call; Atlas retries the whole step. That's acceptable because nothing reached the user before the final step; on the final step it would mean a repeated beginning. Mention it as a production edge case.
+- **`num_retries` on the Router and our own loop.** `build_router_config` passes `num_retries=settings.max_retries` to the Router, and the agent loop has its own bound. In router mode they multiply; say which one you are demoing and prefer one.
 - **Idempotency keys from timestamps.** Time changes between attempts. Use trace id plus step.
-- **Exponential backoff without a cap.** Attempt 6 waits 32 s. The cap is 8 s; with max 2 retries it never matters, but keep it.
-- **Verify exception class names** on the installed litellm before recording.
+- **Retry-After.** The loop backs off with jitter but does not read a provider's `Retry-After` header yet; 7.5 covers why you should.
+- **Backoff cap.** `min(2**attempt * 0.25, 4.0)`: with two retries the cap never matters, but keep it.
+- **Verify exception class names** on the installed `openai` before recording.
 
 ---
 
@@ -536,33 +566,33 @@ Retries help when the failure is brief. When a whole model or provider goes slow
 | Title | Fallbacks and circuit breakers with the Router |
 | Type | SC (screencast code-along) |
 | Target duration | 8:00 (about 650 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
-| One idea | Configure model and provider fallback lists with cooldowns in the LiteLLM Router so a slow or failing deployment is bypassed automatically, and log every fallback with a reason so you can see what it cost. |
+| One idea | Give every model a fallback, put a circuit breaker in front of it so a failing deployment is bypassed automatically, and log every fallback with the served model so you can see what it cost. |
 | Prerequisites | 7.3; 6.6 (Router setup) |
-| Files used | `app/agent.py`, `src/northwind/config.py`, `telemetry/metrics.py` |
+| Files used | `app/agent.py` (`FALLBACKS`, `build_router_config`, `CircuitBreaker`, `_call_model`), `src/northwind/config.py`, `telemetry/metrics.py`, `tests/unit/test_agent.py` |
 
 **Learning objectives**
 
-1. Extend the Router with `fallbacks`, `context_window_fallbacks`, `allowed_fails`, `cooldown_time` and `retry_after`, and explain each as a circuit-breaker term (closed, open, half-open).
-2. Add a second provider deployment for the same logical model and order the fallback list by latency and cost.
-3. Log a fallback on the span and in `FALLBACKS{from_model,to_model,reason}`, and read the cost of fallbacks from the showback.
+1. Explain a circuit breaker's three states (closed, open, half-open) and map them to the Router's `allowed_fails` and `cooldown_time` and to Atlas's own `CircuitBreaker`.
+2. Read the `FALLBACKS` table and order a fallback list by cost and failure independence.
+3. Log a fallback on the span (served model, `error.type` on the failed attempts) and in `atlas_model_fallbacks_total{from_model,to_model}`, and price it on the model that answered.
 
 ### Script
 
 [AVATAR]
 
-A retry says: try the same thing again. A fallback says: try something else. [PAUSE] When gpt-4.1-mini's first token goes from half a second to five seconds for forty-five minutes, retrying it is just waiting twice. Sending the step to another deployment is what gets the user an answer. The Router does this for us, and a circuit breaker stops us from hammering the slow one while it recovers.
+A retry says: try the same thing again. A fallback says: try something else. [PAUSE] When gpt-4.1-mini stops answering for twenty minutes, retrying it is just waiting three times. Sending the step to another model is what gets the user an answer. And a circuit breaker stops you from hammering the broken one while it recovers.
 
 [SLIDE 1: Circuit breaker in three states]
-- Closed: traffic flows to the deployment; failures are counted
-- Open: after `allowed_fails` failures within a minute, the deployment is cooled down for `cooldown_time` seconds; traffic goes to the fallback
-- Half-open: after the cooldown, one request probes; success closes the circuit, failure re-opens it
-- LiteLLM Router: `allowed_fails=3`, `cooldown_time=30`; timeouts count as failures
+- Closed: traffic flows to the model; failures are counted
+- Open: after `threshold` consecutive failures, skip the model for `cooldown_s`; traffic goes to the fallback
+- Half-open: after the cooldown, the next request probes; success closes the circuit, failure re-opens it
+- Atlas's `CircuitBreaker`: 3 failures, 30 s. The Router's equivalents: `allowed_fails`, `cooldown_time`
 
 [AVATAR]
 
-Three states. Closed is normal: requests flow, failures get counted. Open: after three failures in a minute, the Router puts that deployment in a thirty-second cooldown and sends everything to the fallback. Half-open: when the cooldown ends, the next request probes the deployment. Success closes the circuit. Another failure re-opens it. In the Router those are `allowed_fails` and `cooldown_time`, and a timeout counts as a failure, which is exactly what we want for a slow provider.
+Three states. Closed is normal: requests flow, failures get counted. Open: after three failures in a row, the model is skipped for thirty seconds and everything goes to the fallback. Half-open: when the cooldown ends, the next request probes the model. Success closes the circuit. Another failure re-opens it. In the LiteLLM Router those are `allowed_fails` and `cooldown_time`; Atlas also has its own small breaker, because it runs without the Router offline and in tests.
 
-[SCREEN: VS Code, `app/agent.py`, `build_router`]
+[SCREEN: VS Code, `app/agent.py`]
 
 [CODE: `app/agent.py` (excerpt): fallback table, Router config and the breaker]
 
@@ -578,43 +608,47 @@ FALLBACKS: dict[str, str] = {
 
 ```python
 def build_router_config(settings: Settings) -> dict[str, Any]:
-    """LiteLLM Router kwargs (verified against litellm 1.103): model_list, fallbacks,
-    num_retries, timeout, allowed_fails, cooldown_time. Pure data — testable offline."""
-    models = sorted(
-        {
-            settings.model,
-            settings.escalation_model,
-            settings.routing_model,
-            settings.degraded_model,
-            "gpt-4o-mini",
-        }
-    )
+    ...
     return {
-        "model_list": [
-            {
-                "model_name": m,
-                "litellm_params": {"model": f"openai/{m}", "api_key": settings.openai_api_key},
-            }
-            for m in models
-        ],
+        "model_list": [...],                                   # one deployment per model (6.6)
         "fallbacks": [{m: [FALLBACKS[m]]} for m in models if m in FALLBACKS],
         "num_retries": settings.max_retries,
         "timeout": settings.request_timeout_s,
-        "allowed_fails": 3,
-        "cooldown_time": 30,
+        "allowed_fails": settings.router_allowed_fails,        # ATLAS_ROUTER_ALLOWED_FAILS, default 3
+        "cooldown_time": settings.router_cooldown_s,           # ATLAS_ROUTER_COOLDOWN_S, default 30
     }
 ```
 
 ```python
 class CircuitBreaker:
     """Per-model breaker: open after ``threshold`` consecutive failures, half-open after cooldown."""
+
+    def __init__(
+        self,
+        threshold: int = 3,
+        cooldown_s: float = 30.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        ...
+
+    def is_open(self, model: str) -> bool:
+        opened = self._opened_at.get(model)
+        if opened is None:
+            return False
+        if self._clock() - opened >= self.cooldown_s:
+            return False  # half-open: allow a probe
+        return True
 ```
 
-Five deployments and one fallback each, in a plain table. `gpt-4.1-mini` falls back to `gpt-4o-mini`, a different model family so a family-wide slowdown doesn't take both; `gpt-4o-mini` falls back up to `gpt-4.1`, because a slightly dearer answer beats no answer; and `gpt-4.1` falls back down to `gpt-4.1-mini`, because if the strong model is down you still answer. Cheapest viable first, strongest last, because a fallback step on gpt-4.1 costs a cent. The Router gets the same table through `build_router_config`, plus `allowed_fails` and `cooldown_time`: after three failures a deployment cools down for thirty seconds. [PAUSE] And because Atlas also runs without the Router, offline and in tests, `CircuitBreaker` does the same job in-process: it opens for a model after a threshold of consecutive failures and half-opens after a cooldown, and `_call_model` consults it before every attempt.
+Five models and one fallback each, in a plain table. `gpt-4.1-mini` falls back to `gpt-4o-mini`, a different model family, so a problem with one family doesn't take both; `gpt-4o-mini` falls back up to `gpt-4.1`, because a dearer answer beats no answer; `gpt-4.1` falls back down to mini, because if the strong model is down you still answer; and nano and `gpt-5-mini` fall back to mini.
+
+[SCREEN: zoom on `allowed_fails` and `cooldown_time`, then on `is_open`]
+
+The Router gets the same table through `build_router_config`, plus `allowed_fails` and `cooldown_time`, both from the environment. [PAUSE] And because Atlas also runs without the Router, `CircuitBreaker` does the same job in-process: it opens for a model after three consecutive failures, half-opens after thirty seconds, and `_call_model` consults it before every attempt.
 
 One thing the Router does not tell you by default: that a fallback happened. We need that on the span and on a counter.
 
-[CODE: `app/agent.py` (excerpt): logging fallbacks]
+[CODE: `app/agent.py` (excerpt): logging fallbacks, in `_call_model`]
 
 ```python
             if self.breaker.is_open(current) and current in FALLBACKS:
@@ -627,49 +661,83 @@ One thing the Router does not tell you by default: that a fallback happened. We 
             with self.tracer.start_as_current_span(ga.llm_span_name(current)) as span:
 ```
 
-Before each attempt, if the breaker is open for the model we wanted, switch to its fallback, count it with from and to, log a warning with both names, and then open the generation span under the model that will actually answer. [PAUSE] Two things this buys you. Cost attribution stays honest: `_price` runs on `current`, the model that answered, and the span is named after it. And the fallback rate becomes a time series, `atlas_model_fallbacks_total`, which is the first thing you look at in the chaos demo.
+Before each attempt, if the breaker is open for the model we wanted, switch to its fallback, count it with from and to, log a warning with both names, and open the generation span under the model that will actually answer. [PAUSE] Two things this buys you. Cost attribution stays honest: `_price` runs on `current`, the model that answered, and the span is named after it. And the fallback rate becomes a time series, `atlas_model_fallbacks_total`, which Grafana plots next to the retries in Section 9.
+
+[SCREEN: terminal]
+
+Let's watch it happen. Offline, with a provider that never answers gpt-4.1-mini in time.
+
+```bash
+OFFLINE=1 OTEL_EXPORTER=none ATLAS_PROMPT_CACHE=0 ATLAS_CONTEXT_DIET=0 uv run python -c "
+import logging; logging.disable(logging.WARNING)
+import httpx, openai
+from app.agent import AtlasAgent
+from app.mock_llm import MockLLM
+
+class StallingProvider(MockLLM):
+    '''gpt-4.1-mini never answers within the timeout; every other model does.'''
+    def chat(self, *, model, **kw):
+        if model == 'gpt-4.1-mini':
+            raise openai.APITimeoutError(request=httpx.Request('POST', 'https://api.openai.com/v1/chat/completions'))
+        return super().chat(model=model, **kw)
+
+a = AtlasAgent(llm=StallingProvider(seed=7))
+for i in range(3):
+    r = a.run('When is payroll paid?', tenant='hr')
+    print(i + 1, r.outcome, r.model, f'retries={r.retries} fallbacks={r.fallbacks} cost=\${r.cost_usd:.5f}')
+print('breaker:', a.breaker.state('gpt-4.1-mini'))
+"
+```
+
+[DEMO: output:]
+
+```
+1 error gpt-4.1-mini retries=3 fallbacks=0 cost=$0.00302
+2 resolved gpt-4o-mini retries=0 fallbacks=2 cost=$0.00167
+3 resolved gpt-4o-mini retries=0 fallbacks=2 cost=$0.00167
+breaker: open
+```
+
+Request one pays for the lesson: three timed-out attempts, all billed for their input, three tenths of a cent, and the user gets an error. Those three failures open the circuit. [PAUSE] Request two never touches mini: both steps go straight to `gpt-4o-mini`, two fallbacks, resolved. Request three, same. And notice the price: the fallback answer cost less than a mini answer, because gpt-4o-mini is cheaper per token. A fallback can make a request dearer or cheaper. That's why it's priced on the served model.
 
 [SLIDE 2: What to log when a fallback fires]
-- On the generation: served model (for cost), requested model, reason, `level="WARNING"`
-- Counter: `atlas_model_fallbacks_total{from_model,to_model}`; the reason is in the warning log and on the failed attempt's span (`error.type`)
+- On the generation span: the served model (span name and `gen_ai.request.model`), cost on that model
+- On each failed attempt: its own span with `error.type` and an estimated cost (7.3)
+- Counter: `atlas_model_fallbacks_total{from_model,to_model}`; the reason is in the failed attempts and the warning log
 - Not on the span: the full error body (size and PII); put it in the structured log with the trace id
 - A fallback is not an error to the user; it's a warning to you
 
 [AVATAR]
 
-Log the served model, the requested model and the reason. Keep the error body in the structured log, not the span, because error bodies are big and sometimes contain the prompt. And notice the level: warning. A fallback is a success for the user and a warning for you. If you log it as an error, your error rate lies during every provider hiccup.
-
-[SLIDE 3: The cost of resilience (from the showback, `by model`)]
-- Normal day: fallbacks 0.3% of steps, about $0.40 (mostly rate-limit blips at peak)
-- 45-minute slow provider (7.6, tuned): 18% of requests fall back one step; about 110 of them land on gpt-4.1: about $1.20
-- Cheaper than the alternative: 200 users waiting 11 seconds and re-typing
-- Read fallback cost weekly; a rising baseline means a provider is degrading
-
-[AVATAR]
-
-Resilience has a price, and you can read it in the showback by model. On a normal day, fallbacks are a third of a percent of steps, forty cents, mostly rate-limit blips at lunchtime. During a slow-provider window, tuned the way we'll do in 7.6, eighteen percent of requests fall back one step, about a hundred ten of them to gpt-4.1: a dollar twenty. [PAUSE] A dollar twenty to keep two hundred users under four seconds. That's the cheapest reliability you'll ever buy. And watch the weekly number: a fallback baseline that creeps up is a provider quietly degrading before it has an incident.
+Log the served model and the reason. Keep the error body in the structured log, not the span, because error bodies are big and sometimes contain the prompt. And treat a fallback as a warning, not an error. A fallback is a success for the user. If you log it as an error, your error rate lies during every provider hiccup. [PAUSE] Resilience has a price, and you can read it in the showback by model: when fallbacks fire, a new model appears in the "Cost by model" table. Read that table weekly. A fallback line that creeps up is a provider degrading before it has an incident.
 
 [SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "retry or fallback or breaker"`]
 
-[DEMO: green. The tests use the mock LLM with the `retry_storm` scenario and assert: the failed attempts get their own generation spans with `error.type` and an estimated cost, `atlas.retries` is set, the breaker opens after the threshold and the next call goes to `FALLBACKS[model]`, and the cost is computed on the served model.]
+[DEMO: `3 passed, 21 deselected`: `test_retry_storm_is_billed`, `test_circuit_breaker_states`, `test_fallback_after_circuit_opens`]
 
-Unit tests, offline, using the mock LLM's scripted timeouts. They assert the retry spans, the counter, the breaker, and that the cost was computed on the model that actually answered.
+Three unit tests pin this offline: failed attempts are billed with their error type, the breaker moves through closed, open and half-open on a fake clock, and once it's open the next call goes to `FALLBACKS[model]`.
+
+[SLIDE 3: Recap]
+- Every model has one fallback
+- Breaker: 3 failures open, 30 s cooldown
+- Price the fallback on the served model
 
 ### Recap
 
-Give every model a fallback in `FALLBACKS`, cheapest viable first, put the Router's `allowed_fails` plus `cooldown_time` and our own `CircuitBreaker` in front of it; count every fallback in `atlas_model_fallbacks_total{from_model,to_model}`, price the generation on the served model, and read its cost in the showback by model.
+Give every model a fallback in `FALLBACKS`, open a breaker after three failures and probe after thirty seconds (`CircuitBreaker`, or the Router's `allowed_fails` and `cooldown_time`), count every fallback in `atlas_model_fallbacks_total{from_model,to_model}`, and price the generation on the model that answered.
 
 ### Transition
 
-Fallbacks handle a slow model. Next, the provider says no: rate limits, per-tenant queues, and how to degrade gracefully instead of failing loudly.
+Fallbacks handle a failing model. Next, the provider and your own traffic say "too much": rate limits, per-tenant queues, and how to degrade gracefully instead of failing loudly.
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Fallback to the same model on the same provider.** It fails the same way. Different provider or different model, never the same deployment.
+- **Fallback to the same model on the same provider.** It fails the same way. Different model or different provider, never the same deployment.
 - **Strongest model first in the list.** It works and costs 5× for the whole outage. Cheapest viable first.
-- **Silent fallbacks.** The Router does not annotate spans. Opening the generation span under `current`, the model that answers, is our code; without it, the trace says gpt-4.1-mini and the bill says gpt-4.1.
-- **Cooldown too long.** 30 s means a 45-minute slowdown costs you many probes, which is fine. 30 minutes means you miss the recovery. Keep it short; the half-open probe is cheap.
-- **Verify Router kwargs** on the installed litellm: `build_router_config` uses `model_list`, `fallbacks`, `num_retries`, `timeout`, `allowed_fails`, `cooldown_time`, all present on 1.103; `context_window_fallbacks`, `retry_after` and `routing_strategy` are available extensions for a second provider under the same logical name.
+- **Silent fallbacks.** The Router does not annotate spans. Opening the generation span under `current`, the model that answers, is our code; without it, the trace says gpt-4.1-mini and the bill says something else.
+- **Cooldown too long.** 30 s means a long outage costs you a probe every 30 s, which is cheap. 30 minutes means you miss the recovery.
+- **The demo's first request errors.** With `ATLAS_MAX_RETRIES=2` the first request uses all three attempts on mini before the breaker opens. That's the price of learning; a lower `threshold` opens sooner and flaps more.
+- **Verify Router kwargs** on the installed litellm: `model_list`, `fallbacks`, `num_retries`, `timeout`, `allowed_fails`, `cooldown_time` are present on 1.103; `context_window_fallbacks` and `routing_strategy` are extensions for a second provider under the same logical name.
 
 ---
 
@@ -679,98 +747,157 @@ Fallbacks handle a slow model. Next, the provider says no: rate limits, per-tena
 |---|---|
 | ID | 7.5 |
 | Title | Rate limits, queues and graceful degradation |
-| Type | SL (slides + avatar) |
-| Target duration | 6:00 (about 610 spoken words at ~140 wpm, plus slide and pause time) |
-| One idea | Treat 429s and queues as a capacity problem: honour `Retry-After`, cap concurrency per tenant, shed the least valuable traffic first, and tell users the truth in degraded mode. |
+| Type | SL (slides + avatar, with a short code and terminal beat) |
+| Target duration | 6:00 (about 640 spoken words at ~140 wpm, plus slide and pause time) |
+| One idea | Treat 429s and queues as a capacity problem: back off and count, cap concurrency per tenant, shed the least valuable traffic first, and tell users the truth in degraded mode. |
 | Prerequisites | 7.4; 6.7 (economy mode) |
-| Files used | Diagram "request path with per-tenant semaphores"; `app/server.py` (concept) |
+| Files used | `app/server.py` (`TenantLimiter`), `src/northwind/config.py` (`ATLAS_TENANT_MAX_INFLIGHT`, `ATLAS_QUEUE_TIMEOUT_S`), `telemetry/metrics.py`; diagram "request path with per-tenant semaphores" |
 
 **Learning objectives**
 
-1. Handle HTTP 429 correctly: read `Retry-After`, back off, count it, and let the Router cool the deployment.
-2. Design per-tenant concurrency limits so one department's burst can't starve the others.
+1. Handle a provider's HTTP 429 correctly: back off with jitter, count it, let the breaker or the Router cool the deployment, and know where `Retry-After` fits.
+2. Read Atlas's per-tenant concurrency limiter (`TenantLimiter`) and its three metrics, and size the slots from the showback.
 3. Define a shedding order and a degraded-mode message that keeps trust.
 
 ### Script
 
 [AVATAR]
 
-Twelve thirty on the busiest day of the quarter. Operations opens a hundred sessions in a minute because a shipping system went down and everyone wants to know where their pallets are. The provider answers a third of Atlas's calls with 429: too many requests. [PAUSE] Here's the question. Who should wait? If your answer is "whoever came last," finance is about to lose its payroll question to a hundred pallet lookups.
+Half past nine on the busiest day of the quarter. A shipping system goes down and everyone in operations opens Atlas at once to ask where their pallets are. The provider starts answering a third of Atlas's calls with 429: too many requests. [PAUSE] Here's the question. Who should wait? If your answer is "whoever came last," finance is about to lose its payroll question to a hundred pallet lookups.
 
-[SLIDE 1: What a 429 is telling you]
+[SLIDE 1: What a provider's 429 is telling you]
 - You are over a tokens-per-minute or requests-per-minute limit for this key or model
-- It carries `Retry-After` (seconds); honour it, don't guess
+- It often carries `Retry-After` (seconds); honour it rather than guessing
 - It is retryable, but retrying immediately makes it worse for everyone on the key
-- Count it: `RETRIES{reason="RateLimitError"}`; the Router counts it toward `allowed_fails`
+- Atlas: `RateLimitError` is in `RETRYABLE`; counted in `atlas_llm_retries_total{reason="RateLimitError"}`; three in a row open the breaker
 - Persistent 429s are a capacity signal: raise the limit, add a provider, or shed load
 
 [AVATAR]
 
-A 429 is the provider telling you you've exceeded a per-minute limit for tokens or requests. It usually carries a `Retry-After` header. Honour that number. Don't guess, and don't retry immediately, because everyone else on the same key is retrying too. Our retry loop from 7.3 handles it: bounded, jittered, counted, and the Router counts it toward the cooldown, so a rate-limited deployment gets bypassed. [PAUSE] But if 429s are persistent, that's not an error. It's capacity. And capacity has three answers: pay for more, add a second provider under the same name like we did in 7.4, or decide who waits.
+A 429 from the provider means you've exceeded a per-minute limit for tokens or requests. It often carries a `Retry-After` header. Honour that number, and don't retry immediately, because everyone else on the same key is retrying too. Atlas's loop from 7.3 handles the basics: `RateLimitError` is retryable, the backoff is jittered, every one is counted with its reason, and three in a row open the breaker so the fallback takes over. Reading `Retry-After` itself is the next improvement, and a short one. [PAUSE] But if 429s are persistent, that's not an error. It's capacity. And capacity has three answers: pay for more, add a second provider, or decide who waits. The third one is ours to build.
 
 [SLIDE 2: Per-tenant concurrency]
-- One semaphore per tenant, sized from the showback share: ops 13, eng 7, finance 6, hr 6 (32 total)
-- A tenant at its limit waits in its own queue, up to 3 s, then gets degraded mode
-- No tenant can consume more than its share of the provider limit
-- Metrics: `atlas_inflight{tenant}` gauge, `atlas_queue_wait_seconds{tenant}` histogram
-- Diagram: requests → tenant semaphores → shared Router → provider
+- One semaphore per tenant, sized from the showback share of sessions: ops 13, eng 7, finance 6, hr 6, unknown tenants 2
+- A request waits up to `ATLAS_QUEUE_TIMEOUT_S` (3 s) for a slot in its own tenant's queue, then gets HTTP 429 with `Retry-After: 1`
+- No tenant can take more than its share of the provider's capacity
+- Metrics: `atlas_inflight{tenant}`, `atlas_queue_wait_seconds{tenant}`, `atlas_requests_shed_total{tenant}`
+- Diagram: requests → tenant semaphores → agent → provider
 
-[B-ROLL: diagram builds. Four lanes labelled by tenant, each with a small number, merging into the Router, then a single pipe to the provider. Operations' lane fills to red; the other three stay green.]
+[B-ROLL: diagram builds. Four lanes labelled by tenant, each with its slot count, merging into Atlas, then a single pipe to the provider. The ops lane fills to red; the other three stay green.]
 
 [AVATAR]
 
-Per-tenant concurrency. One semaphore per tenant, sized from the tenant's share of the bill: ops gets thirteen slots, eng seven, finance six, hr six. When ops fills its thirteen, the hundred-and-first pallet question waits in operations' queue, up to three seconds, and then gets degraded mode. Finance's six slots are untouched. [PAUSE] That's the whole trick. The provider's limit is shared, so somebody has to divide it before the provider does it for you, and the provider divides it by who asked first.
+One semaphore per tenant, sized from the showback: ops gets thirteen slots, eng seven, finance six, hr six, and an unknown tenant two. When ops fills its thirteen, the next pallet question waits in ops's own queue, up to three seconds, and is then turned away with a 429 and a one-second `Retry-After`. Finance's six slots are untouched. [PAUSE] That's the whole trick. The provider's limit is shared, so somebody has to divide it before the provider does it for you, and the provider divides it by who asked first.
 
-Two metrics: an in-flight gauge per tenant, and a queue-wait histogram, both low cardinality. When queue wait shows up on the dashboard for one tenant, that tenant has outgrown its slots, and the showback tells you whether to give it more.
+[SCREEN: VS Code, `app/server.py`]
+
+[CODE: `app/server.py` (excerpt): `TenantLimiter`]
+
+```python
+class TenantLimiter:
+    """One semaphore per tenant (Lecture 7.5). A request waits up to ``timeout_s`` for a slot in
+    its own tenant's queue; then it is shed with 429 so one noisy tenant cannot take every
+    provider slot. ``atlas_inflight{tenant}`` and ``atlas_queue_wait_seconds{tenant}`` show it."""
+
+    @asynccontextmanager
+    async def slot(self, tenant: str):  # type: ignore[no-untyped-def]
+        sem = self._sem(tenant)
+        t0 = time.perf_counter()
+        try:
+            await asyncio.wait_for(sem.acquire(), timeout=self.timeout_s)
+        except TimeoutError:
+            metrics.QUEUE_WAIT.labels(tenant).observe(time.perf_counter() - t0)
+            metrics.SHED.labels(tenant).inc()
+            raise HTTPException(
+                status_code=429,
+                detail=f"tenant {tenant} is at its concurrency limit; retry shortly",
+                headers={"Retry-After": "1"},
+            ) from None
+        metrics.QUEUE_WAIT.labels(tenant).observe(time.perf_counter() - t0)
+        metrics.INFLIGHT.labels(tenant).inc()
+        try:
+            yield
+        finally:
+            metrics.INFLIGHT.labels(tenant).dec()
+            sem.release()
+```
+
+Twenty lines. Wait for your tenant's semaphore, up to the queue timeout. If the wait runs out, record how long it waited, count a shed, and answer 429 with `Retry-After`. Otherwise count yourself in flight, run the agent, and release on the way out, even on an exception. The `/chat` route wraps the agent call in `async with limiter.slot(tenant)`.
+
+[SCREEN: terminal: Atlas started with one slot for ops and a half-second queue, and the mock sleeping its simulated latency; then five requests at once, four from ops and one from finance]
+
+```bash
+# terminal 1
+OFFLINE=1 OTEL_EXPORTER=none ATLAS_TENANT_MAX_INFLIGHT=ops=1 ATLAS_QUEUE_TIMEOUT_S=0.5 ATLAS_MOCK_LATENCY_SCALE=1 make run
+```
+
+```bash
+# terminal 2: five requests at once
+for t in ops ops ops ops finance; do
+  curl -s -o /dev/null -w "$t %{http_code} %{time_total}s\n" -X POST localhost:8000/chat \
+       -H 'Content-Type: application/json' -H "X-Tenant: $t" -d '{"message": "When is payroll paid?"}' &
+done; wait
+```
+
+[DEMO: the five responses, then `curl -s localhost:8000/metrics/ | grep -E "^atlas_(inflight|requests_shed_total|queue_wait_seconds_count)"`:]
+
+```
+ops 429 0.505642s
+ops 429 0.504116s
+ops 429 0.508527s
+finance 200 2.975176s
+ops 200 2.979478s
+atlas_inflight{tenant="ops"} 0.0
+atlas_inflight{tenant="finance"} 0.0
+atlas_queue_wait_seconds_count{tenant="ops"} 4.0
+atlas_queue_wait_seconds_count{tenant="finance"} 1.0
+atlas_requests_shed_total{tenant="ops"} 3.0
+```
+
+One ops request gets the slot and takes three seconds. Three more ops requests wait half a second each and are shed. Finance never notices: its own slot, answered in three seconds. The counters agree: three shed, all ops.
 
 [SLIDE 3: Shedding order (what to drop first when you must)]
-1. Repeat `shipment_status` checks within 5 minutes: serve the cached tool result, no model call
+1. Repeat `shipment_status` checks within 5 minutes: serve the tool result you already have, no model call
 2. Non-urgent `policy_question` from a tenant over its soft cap: economy mode (6.7)
 3. Judge sampling (Section 8): pause it; it's your own traffic
-4. Escalations to gpt-4.1: hold, unless `sensitive_action`
-5. Never shed: `password_reset`, `create_ticket` for priority "high"
+4. Escalations to gpt-4.1: hold, unless the request is sensitive
+5. Never shed: `password_reset`, and `create_ticket` for priority P1 and P2
 
 [AVATAR]
 
-When you must shed, shed in a declared order. First, repeated shipment checks within five minutes: serve the tool result you already have, no model call at all. Second, policy questions from a tenant already over its soft cap go to economy mode. Third, your own traffic: pause the judge sampling from Section 8, because grading answers is less important than giving them. Fourth, hold escalations to the strong model unless they're sensitive actions. And two things you never shed: password resets and high-priority tickets, because those are the requests where a delay costs more than the tokens. [PAUSE] Write this list down before the incident. During the incident nobody has time to argue about it.
+When you must shed, shed in a declared order. This is policy you write, not something Atlas ships today beyond the economy mode from 6.7. First, repeated shipment checks: serve the tool result you already have. Second, policy questions from a tenant already over its soft cap go to economy mode. Third, your own traffic: pause the judge sampling from Section 8. Fourth, hold escalations to the strong model unless they're sensitive. And never shed password resets and urgent tickets. [PAUSE] Write this list down before the incident. During the incident nobody has time to argue about it.
 
 [SLIDE 4: Degraded mode messaging]
 - Say what's happening: "Atlas is busy right now, so this answer is shorter than usual."
 - Say what still works: "Ticket creation and password resets are unaffected."
-- Say what to do: "For the full policy text, see the linked article, or ask again in a few minutes."
+- Say what to do: Atlas's budget refusal already does: "open a ticket in ServiceHub ... urgent issues can call extension 4000"
 - Never fake it: no invented answers to fill a shorter budget
-- Mark the response `degraded=True` and tag the trace `degraded` so you can count it
+- Make it countable: `budget_decision` is in every response and `atlas.budget.decision` on the trace
 
 [AVATAR]
 
-And the message. Degraded mode is not a failure if you tell the truth. Say what's happening, in one sentence. Say what still works. Say what to do. And never let the shorter budget turn into an invented answer. A three-line honest reply keeps trust. A confident wrong one loses it for a quarter. Mark the response and tag the trace, so the number of degraded answers is on the dashboard next to the number of fallbacks.
+And the message. Degraded mode is not a failure if you tell the truth. Say what's happening, say what still works, say what to do; Atlas's budget refusal from 6.7 already points to a ticket and a phone extension. Never let a shorter budget turn into an invented answer. And make it countable: the decision is in every response and on every trace, so the number of degraded answers sits on the dashboard next to the number of fallbacks.
 
-[SLIDE 5: The reliability stack so far]
-- 7.3 timeouts and bounded retries: survive a blip
-- 7.4 fallbacks and cooldowns: survive a slow or failing model
-- 7.5 per-tenant concurrency and shedding: survive your own success
-- 6.7 budgets and economy mode: survive a runaway
-- Next: prove it, with chaos
-
-[AVATAR]
-
-Here's the stack. Timeouts and bounded retries survive a blip. Fallbacks and cooldowns survive a slow model. Per-tenant concurrency and shedding survive your own success. Budgets survive a runaway. [PAUSE] Four layers, each justified by a number from a worksheet or a report. Next, we break the provider on purpose and see whether they hold.
+[SLIDE 5: Recap]
+- Back off on 429s; persistent ones mean capacity
+- One semaphore per tenant, sized from the showback
+- Shed in a declared order; tell users the truth
 
 ### Recap
 
-Honour `Retry-After` and count 429s, divide the provider's limit with per-tenant semaphores sized from the showback, shed in a declared order starting with your own traffic, and tell users the truth in degraded mode.
+Back off and count on 429s, divide capacity with per-tenant semaphores sized from the showback (`TenantLimiter`, shed with 429 and `Retry-After`), shed in a declared order starting with your own traffic, and tell users the truth in degraded mode.
 
 ### Transition
 
-Time for chaos. In the next lecture we inject a slow provider at peak and watch p95, fallback rate and cost, then tune and run it again.
+Time for chaos. In the next lecture we inject a slow provider in the busy afternoon and watch p95, retries and cost, then work out what would actually fix it.
 
 ### Speaker notes: common mistakes and Q&A
 
 - **Global concurrency only.** One tenant's burst still starves the others. Per-tenant is the point.
-- **Semaphore sizes as guesses.** Derive from the showback share of sessions; revisit monthly.
+- **Semaphore sizes as guesses.** The defaults come from the showback share of sessions (ops 43%); `ATLAS_TENANT_MAX_INFLIGHT=ops=13,eng=7,...` or a single number for every tenant. Revisit monthly.
+- **Two different 429s.** The provider's 429 is an error Atlas retries; Atlas's own 429 is a shed it returns to the caller. Name them differently on the dashboard.
 - **Shedding writes first.** Students often drop `create_ticket` because it's "expensive". It's the one thing users can't get elsewhere. Never shed writes.
-- **Degraded answers that hallucinate.** Economy mode caps output tokens; the prompt must say "if you cannot answer within the limit, say so and link the article", or the model fills the gap.
-- **This is a slides lecture.** The semaphore code lives in `app/server.py`; Lab 4 has students read it.
+- **The demo needs `ATLAS_MOCK_LATENCY_SCALE=1`.** Offline the mock answers instantly unless it sleeps its simulated latency; without it, nobody ever waits for a slot. `test_tenant_limiter_sheds_after_queue_timeout` pins the same behavior in CI.
 
 ---
 
@@ -781,114 +908,131 @@ Time for chaos. In the next lecture we inject a slow provider at peak and watch 
 | ID | 7.6 |
 | Title | Chaos demo: slow provider during peak |
 | Type | DM (live demo) |
-| Target duration | 7:00 (about 720 spoken words at ~140 wpm; remaining time is dashboards and runs) |
-| One idea | Inject a slow provider at lunchtime peak, watch p95 blow through the budget with zero fallbacks, then tune first-token timeouts and fallbacks and hold p95 at 3.8 seconds for about a dollar. |
+| Target duration | 7:00 (about 760 spoken words at ~140 wpm; remaining time is dashboards and runs) |
+| One idea | Inject a slow provider in the busy afternoon, read the silent incident from three charts (p95 up, retries and cost flat), and see which fixes buy seconds and which buy milliseconds. |
 | Prerequisites | 7.1 to 7.5 |
-| Files used | `simulator/scenarios.py::slow_provider`, `console/ops_console.py`, `src/northwind/config.py` |
+| Files used | `simulator/scenarios.py` (`slow_provider` preset), Ops Console Latency, Reliability and Cost pages, `.env.chaos.example`, `tests/unit/test_agent.py` |
 
 **Learning objectives**
 
-1. Read a latency incident from three charts: p95 first visible token, fallback rate and cost per hour.
-2. Explain why untuned timeouts produce a slow failure rather than a fast fallback.
-3. Tune first-token timeout and fallback order, re-run, and verify against the budget.
+1. Read a latency incident from three charts: hourly p95 against the budget, LLM retries by error type, and cost per hour.
+2. Explain why a slow provider produces no errors, no retries and no fallbacks until something turns slowness into an error.
+3. Measure what you control (the context diet, routing) against the incident, and say what only a timeout plus a second provider can fix.
 
 ### Script
 
 [AVATAR]
 
-Everything in this section has been a claim. Timeouts from the budget, fallbacks with cooldowns, per-tenant queues. [PAUSE] Claims are cheap. Let's break the provider at the busiest time of day and see what's true.
+Everything in this section has been a claim. Budgets, timeouts, retries, fallbacks, per-tenant queues. [PAUSE] Claims are cheap. Let's slow the provider down in the busiest part of the afternoon and see what's true.
 
 [SLIDE 1: The scenario: `slow_provider`]
-- 12:00 to 12:45, lunchtime peak: 1,400 requests in the hour, up from 1,000
-- 35% of calls to gpt-4.1-mini get a first token after 4 to 6 seconds instead of 0.55
-- No errors. No 429s. Just slow. The hardest kind of incident to see.
-- Run 1: version-one settings (20 s flat timeout, no first-token timeout, no fallbacks)
-- Run 2: tuned settings from 7.3 and 7.4
+- 13:00 to 17:00, the afternoon peak, 75% of requests hit
+- Every call's time to first token ×3.5, streaming speed halved
+- No errors. No 429s. Just slow. The hardest kind of incident to see
+- Same seed, same 4,000 sessions as the baseline day
 
 [AVATAR]
 
-The scenario. Forty-five minutes at lunchtime. Traffic up forty percent. About a third of calls to the small model take four to six seconds to start instead of half a second. No errors. Nothing returns a status code you could alert on. Just slow. This is the incident that gets you a Slack message saying "is Atlas down?" while every health check is green.
+The scenario. Four hours of the afternoon peak. Three in four requests get a provider that takes three and a half times longer to start and streams at half speed. No errors. Nothing returns a status code you could alert on. Just slow. This is the incident that gets you a chat message saying "is Atlas down?" while every health check is green.
 
-[SCREEN: terminal, then Ops Console with three panels: p95 first visible token with the red 4 s line, fallback rate, cost per hour]
+[SCREEN: terminal, then the Ops Console with three pages side by side: Latency (hourly p50 and p95, red 4 s budget line), Reliability (LLM retries by `error.type`), Cost (cost per hour by tenant)]
 
-Run one. Version-one settings.
+Run it.
 
 ```bash
-OFFLINE=1 ATLAS_REQUEST_TIMEOUT_S=20 make replay SCENARIO=slow_provider     # untuned: the shipped default timeout
+OFFLINE=1 make replay SCENARIO=slow_provider STORE=.atlas/slow.sqlite
+make console STORE=.atlas/slow.sqlite
 ```
 
-[DEMO: the three panels fill in. From 12:00 the p95 line climbs: 3.4 → 6.1 → 9.8 → 11.2 s by 12:20 and stays there until 12:45. Fallback rate: flat zero. Cost per hour: flat, $2.50, unchanged. Requests in flight (fourth small panel): climbing to the concurrency ceiling. Error rate: 0.2%, unchanged.]
+[DEMO: the replay summary, then the three pages:]
 
-Watch the p95. Twelve oh five, six seconds. Twelve ten, almost ten. Twelve twenty, eleven point two, and it stays there for the rest of the window. Now look at the other two panels. [PAUSE] Fallback rate: zero. Cost: unchanged, two dollars fifty an hour, exactly normal. Error rate: normal.
+```
+Replay seed=7  requests=10114  sessions=4000  spans=69989  scores=11956  feedback=1284
+Total cost $55.8560   p95 latency 8877 ms   elapsed 19.5s
+Outcomes: escalated=47, guardrail=71, resolved=9996
+Scenarios: none=7473, slow_provider=2641
+Incidents: slow_provider@13-17h
+```
 
-This is what a slow failure looks like. Nothing failed, so nothing fell back. The twenty-second timeout never fired, because five seconds is under twenty. Every one of those slow calls just... completed. Slowly. Three steps, each with roughly a one-in-three chance of a five-second start. Seven requests in ten hit at least one. One in four hit two, and that's eleven seconds to the first word. For forty-five minutes. Nearly three hundred people waited more than eight seconds.
+Watch the p95 line. Flat at three point eight all morning. At one o'clock it jumps to nine point four, and it stays between nine point two and nine point four until five. Now look at the other two pages. [PAUSE] The Reliability page says "No failed LLM attempts in this store." Not one failed call all day. Cost per hour: the afternoon bars look like any other afternoon. The whole day costs fifty-five eighty-six, slightly less than the baseline, not more.
 
-And the cost panel is the cruelest part. Finance would never know. Nothing cost more. The bill for a terrible lunch hour was identical to a good one.
+[SCREEN: Latency page, "Generation detail": generation duration p95 about 2.8 s all morning, about 6.5 s from 13:00 to 17:00]
+
+This is what a slow failure looks like. Nothing failed, so nothing retried and nothing fell back. The twenty-second timeout never fired, because a slow call here takes six or seven seconds, well under twenty. Every one of those slow calls just completed. Slowly. Two model calls per request, both slow, and the user waits nine seconds for an answer.
+
+And the cost panel is the cruelest part. Finance would never know. The bill for a terrible afternoon is the same as for a good one.
+
+[SLIDE 2: The diagnosis, from three charts]
+- p95 9.2 to 9.4 s from 13:00 to 17:00; 3.8 s outside
+- Generation TTFT p95 about 650 ms → about 2,250 ms in the window (Latency page, generation detail)
+- LLM retries: zero. Fallbacks: zero. Errors: zero
+- Cost per hour: unchanged
+- Red latency with nothing else moving means: the provider is slow, and nothing is turning slowness into an error
 
 [AVATAR]
 
-So what do we change? Not the fallback list; it was fine, it just never fired. The thing that never fired is the timeout. [PAUSE] Six seconds to first token, from 7.3. Five times the p95. Slow enough that a normal slow call gets through, fast enough that a stalled one fails in time to fall back within the budget.
+Read the three charts together. Latency red. Retries flat. Cost flat. The generation detail on the Latency page shows each call's first token going from about two thirds of a second to over two seconds. [PAUSE] That combination, red latency with nothing else moving, has exactly one meaning: the provider is slow, and nothing in your stack is turning slowness into an error. The fallback list from 7.4 is fine. It never fired, because fallbacks fire on errors.
 
-[SCREEN: `src/northwind/config.py` diff, then terminal]
+So what can you change? Start with what you control. Fewer tokens per call means less to stream.
 
-```python
-llm_first_token_timeout_s: float = 6.0      # was: none
-llm_total_timeout_s: float = 25.0           # was: 20.0 flat
-llm_max_retries: int = 0                    # for a slow provider, don't retry the same deployment; fall back
-```
-
-Note the last line. For this scenario we set the agent's retries to zero, because retrying a slow deployment is waiting twice. The Router's fallback list takes over. Run two.
+[SCREEN: terminal, then the Latency page for the new store]
 
 ```bash
-OFFLINE=1 ATLAS_REQUEST_TIMEOUT_S=6 ATLAS_MAX_RETRIES=1 make replay SCENARIO=slow_provider   # tuned: tight timeout, one retry, breaker + FALLBACKS
+OFFLINE=1 make replay SCENARIO=slow_provider DIET=1 STORE=.atlas/slow_diet.sqlite            # context diet on
+OFFLINE=1 make replay SCENARIO=slow_provider DIET=1 ROUTER=1 STORE=.atlas/slow_dr.sqlite       # + small-model routing
 ```
 
-[DEMO: p95 climbs to 4.4 s at 12:05, then settles at 3.8 s from 12:10 to 12:45. Fallback rate: rises to 18% by 12:10 and holds; a small panel shows to_model split: `gpt-5-mini` 62%, `gpt-4.1` 38%. Cost per hour: $2.50 → $3.70 for the window. Cooldown events: a step chart showing the OpenAI mini deployment cycling open/half-open every 30 s.]
-
-Now the same forty-five minutes. p95 pokes up to four point four at twelve oh five, one window of pain, then the cooldowns kick in and it settles at three point eight. Under budget. Fallback rate: eighteen percent, holding. Sixty-two percent of those fallbacks went to `gpt-5-mini`, cheapest viable first, and thirty-eight percent to gpt-4.1 when the fast model was also busy. Cost per hour: two fifty to three seventy. [PAUSE] A dollar twenty for the window. And the cooldown chart shows the circuit breaker doing exactly what 7.4 described: open for thirty seconds, one probe, open again, until twelve forty-five when the probe succeeds and it closes.
-
-[SLIDE 2: Run 1 vs Run 2 (12:00 to 12:45)]
-
-| | v1 settings | Tuned |
-|---|---|---|
-| p95 first visible token | 11.2 s | 3.8 s |
-| Requests over 4 s budget | 72% | 4.6% |
-| Fallback rate | 0% | 18% |
-| Extra cost for the window | $0.00 | about $1.20 |
-| Users who waited more than 8 s | about 290 | 3 |
-| Visible in cost panel? | No | Yes: fallbacks are a line item |
+[DEMO: both summaries end `p95 latency 8404 ms`. The hourly p95 in the window drops from about 9.3 s to about 8.8 s with the diet; routing doesn't move it, because the slowest requests are policy questions that stay on gpt-4.1-mini. The diet run costs $41.68 for the day, diet plus routing $33.70.]
 
 [AVATAR]
 
-Side by side. Eleven point two to three point eight. Users over eight seconds: two hundred ten to three. A dollar twenty. And the last row is the one I want you to remember: in the tuned version, the incident shows up in the cost panel, because fallbacks cost money and we attribute them honestly. Reliability made the incident visible to finance. [PAUSE] That's not a side effect. That's observability.
+The diet takes the afternoon from nine point three to eight point eight. Routing moves the cost, not the p95, because the slowest requests are long policy answers that stay on the mid-size model. [PAUSE] Half a second. That's what your own levers buy when the provider is slow everywhere: milliseconds, not seconds. Worth having, and nowhere near four seconds.
 
-[SLIDE 3: What we did not change]
-- Fallback list: already right, never fired
-- Concurrency limits: held; ops queued for 1.1 s at worst
-- Budget guard: never triggered; $1.20 is inside every tenant's headroom
-- The agent's prompt, models or tools: untouched
+[SLIDE 3: What actually fixes a slow provider]
+- A timeout that turns a stall into an error: `ATLAS_REQUEST_TIMEOUT_S`, about 2× the slowest normal call (7.3)
+- The error opens the breaker; the next calls go to `FALLBACKS[model]` (7.4)
+- The fallback must be somewhere the slowness isn't: another model family or another provider
+- Offline, the mock slows every model and never times out, so this half is proven by tests, not by the replay
+- Against a real provider: `.env.chaos.example` (`ATLAS_REQUEST_TIMEOUT_S=4`, `ATLAS_MAX_RETRIES=1`, `ATLAS_ROUTER_MODE=1`, `OFFLINE=0`)
 
 [AVATAR]
 
-And what we didn't touch. The fallback list. The concurrency limits, which held; ops queued for a second at worst. The budget guard, which never fired, because a dollar twenty is inside everyone's headroom. The prompt, the models, the tools. One timeout was the whole fix, and the reason we knew which one was that three charts told us fallbacks were at zero while p95 was at eleven.
+The fix that buys seconds has two halves. First, a timeout tight enough to turn a stalled call into an error: around twice the slowest normal call, not twenty seconds. Second, somewhere else to send the step once the breaker opens, and it has to be somewhere the slowness isn't: another model family, or better, another provider. [PAUSE] Here's the honest part. In this replay the whole provider is slow, every model, and the offline mock never times out a call. So the replay can't show the second half. You saw it work in 7.4, with the stalling provider: three timeouts, breaker open, every following request answered by the fallback. Against a real provider, `.env.chaos.example` has the settings, and the lab walks you through them.
 
-One more run for you to try yourself: set the first-token timeout to two seconds instead of six and watch what happens. [PAUSE] Fallback rate goes to forty percent on a normal day, cost goes up a third, and p95 barely moves. Too tight is its own incident. The lab is about finding the number in between.
+[SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "slow_provider or fallback"`: `2 passed`]
+
+Two tests pin the mechanism offline: the slow-provider scenario really makes a request slower, and once the breaker is open the next call goes to the fallback.
+
+[SLIDE 4: What we did not change, and why]
+- The fallback list: right already, it just needs an error to fire
+- Concurrency limits (7.5): a slow provider fills slots; watch `atlas_queue_wait_seconds` live (Section 9), not in a replay
+- Budget guard: never triggered; the day cost the same
+- The prompt and the tools: untouched; this was never Atlas's bug
+
+[AVATAR]
+
+And what we didn't touch. The fallback list, which is right; it just needs an error. The concurrency limits: a slow provider holds every slot longer, so on a live server `atlas_queue_wait_seconds` and the shed counter climb, which you'll watch in Grafana in Section 9; a replay has no server and no queue. The budget guard, which never fired, because the day cost the same. The prompt and the tools. [PAUSE] One more run for you to try in the lab: a timeout that's too tight. On a real provider, set it below your slowest normal call, and healthy answers start timing out and falling back, cost goes up and p95 barely moves. Too tight is its own incident. The lab is about finding the number in between.
+
+[SLIDE 5: Recap]
+- Slow provider: p95 red, everything else flat
+- Your levers buy milliseconds, not seconds
+- Seconds need a timeout and a second provider
 
 ### Recap
 
-A slow provider is a silent incident: p95 blows the budget while errors, fallbacks and cost stay flat; a first-token timeout of five times p95 turns it into fallbacks that hold p95 at 3.8 s for about a dollar.
+A slow provider is a silent incident: p95 goes to 9.4 seconds while retries, fallbacks and cost stay flat; the context diet buys half a second, and only a timeout that turns stalls into errors, plus a fallback somewhere the slowness isn't, gets you back under four.
 
 ### Transition
 
-Your turn. Lab 4 hands you the same scenario with a different seed and asks you to hold p95 under four seconds until the budget gate passes.
+Your turn. Lab 4 hands you the same scenario and asks you to bring p95 back toward four seconds, with every changed setting justified from the worksheet.
 
 ### Speaker notes: common mistakes and Q&A
 
-- **"Why not just fall back on latency?"** The Router falls back on errors and timeouts. A timeout is how you turn latency into an error. That's the insight of the whole demo.
-- **Latency-based routing alone.** It helps between two deployments with the same name but reacts over minutes; the timeout reacts in six seconds. Use both.
-- **Retries during a slowdown.** Show the `llm_max_retries=0` line and explain that for this scenario the fallback list is the retry.
-- **The 4.4 s blip.** The first five minutes are over budget because the breaker needs three failures to open. That's the trade; tighter `allowed_fails` opens faster and flaps more.
-- **Panel layout for recording.** Three panels stacked, same time axis, p95 with the red budget line. Annotate 12:00 and 12:45.
+- **"Why not just fall back on latency?"** Fallbacks fire on errors and timeouts. A timeout is how you turn latency into an error. That's the insight of the whole demo.
+- **Latency-based routing.** It helps between two deployments of the same model but reacts over minutes; a timeout reacts in seconds. Use both.
+- **"Why doesn't the replay show the tuned run?"** The mock draws a simulated latency and returns it; it has no wall clock to time out and it slows every model in the scenario. Say it on camera; `.env.chaos.example` says the same in its header.
+- **The 20 s default.** `ATLAS_REQUEST_TIMEOUT_S=20` is generous on purpose so a first install never times out. Production sets it from the worksheet.
+- **Recording.** Three pages, same time axis, p95 with the red budget line. Annotate 13:00 and 17:00.
 
 ---
 
@@ -899,45 +1043,46 @@ Your turn. Lab 4 hands you the same scenario with a different seed and asks you 
 | ID | 7.7 |
 | Title | Lab 4: Hold p95 under 4 seconds during chaos |
 | Type | LAB (guided lab; short video intro, work off-video) |
-| Target duration | Video 3:00 (about 260 spoken words at ~140 wpm, plus slide time); lab work 45 to 90 minutes |
-| One idea | Tune timeouts, fallbacks and concurrency until the budget gate passes on a slow-provider day with a new seed, and explain each setting from the worksheet. |
+| Target duration | Video 3:00 (about 290 spoken words at ~140 wpm, plus slide time); lab work about 75 minutes |
+| One idea | Reproduce the slow-provider day, tune timeouts, retries, fallbacks and concurrency with every change justified from the worksheet, and prove the result with the budget gate and a before/after table. |
 | Prerequisites | 7.1 to 7.6 |
-| Files used | `04-labs/lab-04-latency-chaos.md`, `src/northwind/config.py`, `tests/budget/test_budget_gate.py`, `simulator/scenarios.py` |
+| Files used | `04-labs/lab-04-latency-chaos.md`, `.env.chaos.example`, `src/northwind/config.py`, `tests/budget/test_budget_gate.py`, `simulator/scenarios.py` |
 
 **Learning objectives**
 
-1. Run the `slow_provider` scenario with seed `4` and read the three charts.
-2. Adjust `llm_first_token_timeout_s`, fallback order, `allowed_fails`, `cooldown_time` and per-tenant concurrency until `make budget-check` passes.
+1. Run the `slow_provider` scenario and read the three charts from 7.6.
+2. Tune `ATLAS_REQUEST_TIMEOUT_S`, `ATLAS_MAX_RETRIES`, `ATLAS_ROUTER_ALLOWED_FAILS`, `ATLAS_ROUTER_COOLDOWN_S` and `ATLAS_TENANT_MAX_INFLIGHT`, and check each change against the budget gate.
 3. Justify every changed setting with a row from the latency budget worksheet.
 
 ### Script
 
 [AVATAR]
 
-Lab four. Same scenario as the demo, different seed, and this time the slow calls hit a different model and a different hour. [PAUSE] Your job is to make the budget gate pass, and to write one line for every setting you changed saying which worksheet row justifies it.
+Lab four. Same scenario as the demo, and this time you hold the controls. [PAUSE] Your job is to bring p95 back under the four-second budget, and to write one line for every setting you changed saying which worksheet row justifies it.
 
-[SCREEN: `04-labs/lab-04-latency-chaos.md`, the checklist]
+[SCREEN: `04-labs/lab-04-latency-chaos.md`, the checklist; then `03-code/.env.chaos.example`]
 
-The lab starts with `OFFLINE=1 make replay SCENARIO=slow_provider SEED=4`, then `make budget-check`. The gate asserts three things: p95 first visible token under four seconds, cost per session under seventy-five hundredths of a cent, and zero duplicate tickets. On the lab seed, the default settings fail the first one and, if you're not careful with retries, the second.
-
-Then you tune. `llm_first_token_timeout_s`. The order of the fallback list. `allowed_fails` and `cooldown_time`. And the per-tenant concurrency numbers, because on this seed the slow window hits the ops tenant's burst.
+You start by reproducing the incident: `make replay SCENARIO=slow_provider`, then the budget gate with the same incident, `BUDGET_GATE_INCIDENTS=slow_provider make budget-check`. It fails on p95, as it should. Then you copy `.env.chaos.example` to `.env.chaos` and tune: the per-call timeout, the retry bound, the Router's `allowed_fails` and cooldown, and the per-tenant concurrency slots.
 
 [SLIDE 1: Lab 4 checklist]
-- Replay `slow_provider` with seed `4`; screenshot the three charts, gate red
-- Tune config until `make budget-check` is green; screenshot again
-- Fill the worksheet row for each changed setting
-- Stretch: make it pass with fallback cost under $1.00 for the window
-- Submit: both screenshots, the config diff, the worksheet
+- Replay `slow_provider`; screenshot the three charts; gate red on p95
+- Tune `.env.chaos`; re-run; record p95, cost per session and outcomes after each change
+- Fill the worksheet row for each changed setting in `notes/lab-04.md`
+- Keep cost per session under $0.05 the whole time
+- Submit: the screenshots, the `.env.chaos` diff, the before/after table
 
 [AVATAR]
 
-Two hints. First, look at the fallback panel before you touch anything; if it's at zero, the fix is a timeout, not a fallback. Second, when the gate passes, try to make it pass cheaper. The stretch goal is fallback cost under a dollar for the window, and it's harder than it sounds, because tightening the timeout raises the fallback rate on healthy calls too.
+Two hints. First, look at the retries and fallback panels before you touch anything; if they're at zero, the fix starts with a timeout, not a fallback. Second, remember what 7.6 showed: offline, the mock slows every model and never times out a call, so the replay shows the problem and the context diet's half second, and the timeout-and-fallback half needs a real provider or the stalling provider from 7.4. The lab tells you which steps run where, and if you have keys, how to set a spending cap before you run anything against the real API.
 
-The lab is written for offline mode. If you have keys and want to run it against the real provider, the lab tells you how, and reminds you to set a spending cap first.
+[SLIDE 2: You can now]
+- Budget latency at p95 and measure it from spans
+- Bound retries and price every failed attempt
+- Contain a failing model with breakers, fallbacks and per-tenant queues
 
 ### Recap
 
-Lab 4 makes the budget gate pass on a slow-provider day with a new seed, with every changed setting justified from the worksheet.
+Lab 4 reproduces the slow-provider day and asks you to tune the reliability settings toward the four-second budget, with every change justified from the worksheet and measured on cost as well as latency.
 
 ### Transition
 
@@ -945,9 +1090,10 @@ Before the lab, the Section 7 quiz.
 
 ### Speaker notes: common mistakes and Q&A
 
-- **Retries on.** Students who leave `llm_max_retries=2` pass the latency gate and fail the cost gate. That's the intended lesson.
-- **Timeout too tight.** 2 s passes p95 but fails the stretch goal on cost. Point them at the fallback rate on the healthy hours.
+- **Retries on during a slowdown.** More retries only add waiting when nothing errors; when the timeout does fire, every retry is billed. Point students at the 7.3 table.
+- **Timeout too tight.** Below the slowest normal call, healthy answers time out and fall back; cost rises and p95 barely moves.
 - **Skipping the worksheet.** Grade it. The setting without a justification is the one that breaks next quarter.
+- **Gate store.** `make budget-check` writes `.atlas/budget-gate.sqlite`; `BUDGET_GATE_STORE` moves it if two runs share a machine.
 
 ---
 
@@ -972,7 +1118,7 @@ Before the lab, the Section 7 quiz.
 
 [AVATAR]
 
-Six questions. You'll compute a p95 from a short list with the nearest-rank rule. You'll be given a provider's TTFT p95 and asked for a sensible first-token timeout. You'll match four failure shapes, a blip, a slow provider, an outage and a burst, to the control that handles each. And you'll spot the one setting in a Router config that makes a slow provider invisible.
+Six questions. You'll compute a p95 from a short list, the way `percentile` does it, with linear interpolation. You'll be given a provider's normal call times and asked for a sensible per-call timeout. You'll match four failure shapes, a blip, a slow provider, an outage and a burst, to the control that handles each. And you'll spot the one setting in a Router config that makes a slow provider invisible.
 
 [SLIDE 1: Quiz: 6 questions]
 - Percentiles and budgets
@@ -982,7 +1128,7 @@ Six questions. You'll compute a p95 from a short list with the nearest-rank rule
 
 [AVATAR]
 
-One tip: whenever a question shows you a chart with flat errors and rising latency, the answer involves a timeout.
+One tip: whenever a question shows you a chart with flat errors and rising latency, the answer involves a timeout, because nothing falls back until something errors.
 
 ### Recap
 
@@ -994,5 +1140,5 @@ Atlas is fast and it stays up. Next section: is it any good? Online evaluation, 
 
 ### Speaker notes: common mistakes and Q&A
 
-- Most-missed: "p95 of [1, 2, 2, 3, 3, 3, 4, 5, 9, 12]" with nearest rank. Answer: ceil(0.95 × 10) = 10th value = 12.
-- Second: students pick "add a fallback" for the slow-provider chart; the answer is "add a first-token timeout so the fallback fires".
+- Most-missed: "p95 of [1, 2, 2, 3, 3, 3, 4, 5, 9, 12]" the way `northwind.latency.percentile` computes it. Answer: k = 9 × 0.95 = 8.55, so 9 + 0.55 × (12 − 9) = 10.65. Nearest rank would give 12; check which definition the quiz file uses before recording.
+- Second: students pick "add a fallback" for the slow-provider chart; the answer is "tighten the per-call timeout so the fallback can fire".

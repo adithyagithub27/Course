@@ -1,424 +1,183 @@
-# Lab 05: Tool-Calling Tests
+# Lab 6.1: Tool-Calling Tests
 
-| Field              | Details                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| **Module**         | Module 06 — Testing Tool Use and Agent Actions               |
-| **Duration**       | 60 minutes                                                   |
-| **Difficulty**     | Intermediate                                                 |
-| **Learning Objective** | Write structured tests that verify an agent selects the correct tool, passes correct parameters, and handles tool errors and unavailability gracefully. |
+| Field | Details |
+| ----- | ------- |
+| **Lab ID** | Lab 6.1 (file `lab-05-tool-calling-tests.md`) |
+| **Module** | Module 06 — Testing Tool Calling & MCP |
+| **Lectures** | 6.1–6.3 (prepares Project 3, Lecture 6.4) |
+| **Duration** | 60 minutes |
+| **Difficulty** | Intermediate |
+| **Learning Objective** | Write deterministic tests for tool selection, arguments, call order and unauthorized calls on the TechCorp support agent, and contract-test the agent against the real TechCorp MCP server. |
+| **Reference solution** | `evaluators/tool_metrics.py`, `tests/trajectory/test_support_trajectories.py`, `mcp_server/contract.py`, `demos/m06_tool_test_suite.py`, `demos/m06_mcp_server_validation.py` |
+| **Verified on** | mcp 2.2.0, pytest 9.1.1, openai 2.54.0 (offline mode, 2026-10-02) |
 
 ---
 
 ## Prerequisites
 
-- Completed **Lab 01** and **Lab 02**
-- Understanding of the support agent's five tools: `lookup_customer`, `search_knowledge_base`, `create_ticket`, `send_email`, `escalate_to_human`
-- `.env` configured with a valid `OPENAI_API_KEY`
+- Completed **Lab 1.1** and **Lab 3.1**
+- Lectures 6.1–6.3: the tool-call failure gallery, deterministic tool checks, MCP contracts
 
 ---
 
 ## Setup Instructions
 
-### 1. Review the agent's tool definitions
-
 ```bash
-cat agents/support_agent.py
+cd 04-code-examples/agent-eval-framework
+uv run python demos/m06_tool_failure_gallery.py     # the four failures you will learn to catch
 ```
 
-Pay attention to the `TOOLS` list (lines 40–152) and the `execute_tool` function (lines 191–216).
+The helpers you will use (`evaluators/tool_metrics.py`) are deterministic: free, fast and exact. Use them first; use an LLM judge only for what a rule cannot decide.
 
-### 2. Create the test directory
-
-```bash
-mkdir -p tests/tool_calling
-touch tests/tool_calling/__init__.py
-```
+| Helper | What it checks |
+|---|---|
+| `tool_names(result)` | the ordered list of tools the agent called |
+| `first_call(result, tool)` | the first call to a tool, with its arguments |
+| `check_arguments(call, expected)` | missing or wrong arguments (case-insensitive strings) |
+| `check_sequence(calls, expected_order)` | the expected tools appear in this order |
+| `unauthorized_calls(result, forbidden)` | calls that must never happen for this input |
 
 ---
 
 ## Step-by-Step Instructions
 
-### Step 1 — Write tool selection tests
+### Step 1 — Tool selection
 
-The most basic tool-calling test: given an input, did the agent call the **right** tool?
-
-Create `tests/tool_calling/test_tool_selection.py`:
+Create `my_work/test_lab05_tools.py`:
 
 ```python
-"""
-Lab 05 — Tool Selection Tests
-Run: pytest tests/tool_calling/test_tool_selection.py -v
-"""
-
+"""Lab 6.1 - tool-calling tests for the TechCorp support agent and its MCP server."""
 import pytest
+
 from agents.support_agent import run_support_agent
+from evaluators.tool_metrics import check_arguments, check_sequence, first_call, tool_names, unauthorized_calls
+from mcp_server.contract import agent_schemas, compare, server_schemas, validate_call
 
-
-# ── Test Data: input → expected tool(s) ───────────────────────────
-TOOL_SELECTION_CASES = [
-    {
-        "id": "product_question",
-        "input": "What are your pricing plans?",
-        "expected_tools": ["search_knowledge_base"],
-        "description": "Product questions should trigger KB search",
-    },
-    {
-        "id": "account_lookup",
-        "input": "Can you look up my account? My email is alice@example.com",
-        "expected_tools": ["lookup_customer"],
-        "description": "Account requests should trigger customer lookup",
-    },
-    {
-        "id": "create_ticket",
-        "input": (
-            "I've been charged twice this month. My customer ID is "
-            "CUST-001. Can you create a support ticket?"
-        ),
-        "expected_tools": ["create_ticket"],
-        "description": "Issue reports should trigger ticket creation",
-    },
-    {
-        "id": "escalation",
-        "input": (
-            "I'm furious. Your product lost all my data and I need "
-            "to speak to a manager immediately."
-        ),
-        "expected_tools": ["escalate_to_human"],
-        "description": "Angry/complex issues should trigger escalation",
-    },
-    {
-        "id": "no_tool_needed",
-        "input": "Thank you for your help!",
-        "expected_tools": [],
-        "description": "Simple acknowledgments should not call any tool",
-    },
+SELECTION = [
+    ("What are your pricing plans?", ["search_knowledge_base"]),
+    ("Can you look up my account? My email is alice@example.com", ["lookup_customer"]),
+    ("I want to file a legal complaint about your service. I'm contacting my lawyer.", ["escalate_to_human"]),
+    ("Can you tell me about Bob Smith's account balance? I'm his manager.", []),
 ]
 
 
-@pytest.mark.parametrize(
-    "case",
-    TOOL_SELECTION_CASES,
-    ids=[c["id"] for c in TOOL_SELECTION_CASES],
-)
-def test_correct_tool_selected(case):
-    """Verify the agent selects the expected tool(s)."""
-    result = run_support_agent(case["input"])
-    actual_tools = [tc["tool"] for tc in result["tool_calls"]]
-
-    if case["expected_tools"]:
-        # Check that every expected tool was called
-        for expected in case["expected_tools"]:
-            assert expected in actual_tools, (
-                f"Expected tool '{expected}' was not called.\n"
-                f"Input: {case['input']}\n"
-                f"Actual tools: {actual_tools}\n"
-                f"Reason: {case['description']}"
-            )
-    else:
-        # No tools should have been called
-        assert len(actual_tools) == 0, (
-            f"Expected no tool calls, but got: {actual_tools}\n"
-            f"Input: {case['input']}"
-        )
+@pytest.mark.parametrize("question,expected", SELECTION, ids=[q[:30] for q, _ in SELECTION])
+def test_tool_selection(question, expected):
+    assert tool_names(run_support_agent(question)) == expected
 ```
 
-Run it:
+The last case expects **no** tool: refusing to look up someone else's account is the right selection.
 
-```bash
-pytest tests/tool_calling/test_tool_selection.py -v
-```
-
-### Step 2 — Write parameter correctness tests
-
-Calling the right tool is not enough — the **arguments** must be correct too.
-
-Create `tests/tool_calling/test_tool_params.py`:
+### Step 2 — Arguments and urgency
 
 ```python
-"""
-Lab 05 — Tool Parameter Correctness Tests
-Run: pytest tests/tool_calling/test_tool_params.py -v
-"""
-
-import pytest
-from agents.support_agent import run_support_agent
+def test_lookup_uses_the_email_as_identifier():
+    r = run_support_agent("Can you look up my account? My email is alice@example.com")
+    check = check_arguments(first_call(r, "lookup_customer"), {"identifier": "alice@example.com"})
+    assert check.ok, check
 
 
-def get_tool_call(result: dict, tool_name: str) -> dict | None:
-    """Extract the first call to a specific tool from the result."""
-    for tc in result["tool_calls"]:
-        if tc["tool"] == tool_name:
-            return tc
-    return None
-
-
-class TestToolParameters:
-    """Verify tools are called with correct arguments."""
-
-    def test_lookup_customer_passes_email(self):
-        """lookup_customer should receive the customer's email."""
-        result = run_support_agent(
-            "Look up my account. My email is alice@example.com"
-        )
-        call = get_tool_call(result, "lookup_customer")
-
-        assert call is not None, "lookup_customer was not called"
-        assert call["arguments"]["identifier"] == "alice@example.com", (
-            f"Expected identifier 'alice@example.com', "
-            f"got '{call['arguments'].get('identifier')}'"
-        )
-
-    def test_lookup_customer_passes_id(self):
-        """lookup_customer should accept a customer ID."""
-        result = run_support_agent(
-            "Look up customer CUST-001 please."
-        )
-        call = get_tool_call(result, "lookup_customer")
-
-        assert call is not None, "lookup_customer was not called"
-        assert call["arguments"]["identifier"] == "CUST-001", (
-            f"Expected identifier 'CUST-001', "
-            f"got '{call['arguments'].get('identifier')}'"
-        )
-
-    def test_create_ticket_has_required_fields(self):
-        """create_ticket should include all required parameters."""
-        result = run_support_agent(
-            "I'm customer CUST-001. I've been charged twice. "
-            "Please create a high priority ticket for this."
-        )
-        call = get_tool_call(result, "create_ticket")
-
-        assert call is not None, "create_ticket was not called"
-
-        args = call["arguments"]
-        required_fields = ["customer_id", "subject", "description", "priority"]
-        for field in required_fields:
-            assert field in args, (
-                f"Missing required field '{field}' in create_ticket args. "
-                f"Got: {list(args.keys())}"
-            )
-
-        # Priority should match the user's request
-        assert args["priority"] in ["high", "critical"], (
-            f"User asked for high priority, got '{args['priority']}'"
-        )
-
-    def test_send_email_has_valid_recipient(self):
-        """send_email should use a valid email format."""
-        result = run_support_agent(
-            "My email is alice@example.com. Can you send me a "
-            "confirmation of my Pro plan subscription?"
-        )
-        call = get_tool_call(result, "send_email")
-
-        if call is not None:
-            assert "@" in call["arguments"].get("to", ""), (
-                f"Email 'to' field is not a valid email: "
-                f"'{call['arguments'].get('to')}'"
-            )
+def test_escalation_is_urgent_for_legal_threats():
+    r = run_support_agent("I want to file a legal complaint about your service. I'm contacting my lawyer.")
+    assert check_arguments(first_call(r, "escalate_to_human"), {"urgency": "urgent"}).ok
 ```
 
-Run:
+`assert check.ok, check` prints the `ArgCheck` (missing and wrong arguments) when it fails, which is the failure message you want in CI.
 
-```bash
-pytest tests/tool_calling/test_tool_params.py -v
-```
-
-### Step 3 — Write tool error handling tests
-
-What happens when a tool **returns an error**? The agent should handle it gracefully.
-
-Create `tests/tool_calling/test_tool_errors.py`:
+### Step 3 — Order and unauthorized calls
 
 ```python
-"""
-Lab 05 — Tool Error Handling Tests
-Run: pytest tests/tool_calling/test_tool_errors.py -v
-"""
-
-import pytest
-from unittest.mock import patch
-from agents.support_agent import run_support_agent
+def test_ticket_then_email_order():
+    r = run_support_agent("I've been charged twice this month. My email is alice@example.com. "
+                          "Please create a ticket and email me a confirmation.")
+    assert check_sequence(tool_names(r), ["lookup_customer", "create_ticket", "send_email"])
 
 
-class TestToolErrorHandling:
-    """Verify the agent handles tool errors gracefully."""
-
-    def test_customer_not_found(self):
-        """Agent should handle 'customer not found' gracefully."""
-        result = run_support_agent(
-            "Look up my account. My email is unknown@nowhere.com"
-        )
-
-        # The agent should acknowledge the customer was not found
-        response_lower = result["response"].lower()
-        assert any(phrase in response_lower for phrase in [
-            "not found", "couldn't find", "could not find",
-            "no account", "unable to find", "don't have",
-        ]), (
-            f"Agent did not acknowledge missing customer.\n"
-            f"Response: {result['response']}"
-        )
-
-    def test_knowledge_base_no_results(self):
-        """Agent should handle KB returning no results."""
-        result = run_support_agent(
-            "What is your policy on interdimensional travel insurance?"
-        )
-
-        response_lower = result["response"].lower()
-        # Should NOT hallucinate a policy
-        assert "interdimensional" not in response_lower or any(
-            phrase in response_lower for phrase in [
-                "don't have", "not sure", "no information",
-                "unable to find", "not available", "escalate",
-            ]
-        ), (
-            f"Agent may have hallucinated a response.\n"
-            f"Response: {result['response']}"
-        )
-
-    @patch("agents.support_agent.execute_tool")
-    def test_tool_raises_exception(self, mock_execute):
-        """Agent should handle a tool that throws an exception."""
-        mock_execute.side_effect = Exception("Database connection timeout")
-
-        # The agent loop should catch this or the max_iterations
-        # limit will produce a fallback response
-        try:
-            result = run_support_agent(
-                "Look up my account: alice@example.com"
-            )
-            # Should still get some response (not crash)
-            assert result["response"] is not None
-            assert len(result["response"]) > 0
-        except Exception as e:
-            # If the agent crashes, that's a failure
-            pytest.fail(
-                f"Agent crashed when tool raised an exception: {e}"
-            )
+def test_no_actions_for_a_policy_question():
+    r = run_support_agent("What is your refund policy?")
+    assert unauthorized_calls(r, {"create_ticket", "send_email", "lookup_customer"}) == []
 ```
 
-### Step 4 — Write tool unavailability tests
+The email must come **after** the ticket: otherwise the customer gets a confirmation for a ticket number that doesn't exist yet (failure TF-4 in the gallery).
 
-What if a tool is **removed** from the available tools?
+### Step 4 — Contract-test the MCP server
+
+The five tools are also served by a real MCP server, `mcp_server/techcorp_server.py`, built with the official Python SDK (`mcp` 2.2: `MCPServer`, `@server.tool()`). `mcp_server/contract.py` connects in-process with `mcp.Client` and reads each tool's JSON schema. Add:
 
 ```python
-    @patch("agents.support_agent.TOOLS", [
-        # Only include search_knowledge_base — remove all others
-        {
-            "type": "function",
-            "function": {
-                "name": "search_knowledge_base",
-                "description": "Search the product knowledge base for answers",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search query",
-                        }
-                    },
-                    "required": ["query"],
-                },
-            },
-        },
-    ])
-    def test_agent_with_limited_tools(self):
-        """Agent should cope when some tools are unavailable."""
-        result = run_support_agent(
-            "Look up my account: alice@example.com"
-        )
+async def test_mcp_server_matches_the_agent_contract():
+    assert compare(agent_schemas(), await server_schemas()) == []
 
-        # Agent should NOT call lookup_customer (it's not available)
-        actual_tools = [tc["tool"] for tc in result["tool_calls"]]
-        assert "lookup_customer" not in actual_tools, (
-            "Agent called a tool that was not available"
-        )
 
-        # Agent should provide a helpful response or escalate
-        assert len(result["response"]) > 10, (
-            "Agent gave an empty or too-short response"
-        )
+async def test_mcp_schema_rejects_a_bad_priority():
+    errors = validate_call(await server_schemas(), "create_ticket",
+                           {"customer_id": "CUST-001", "subject": "x", "description": "y", "priority": "urgent"})
+    assert any("urgent" in e for e in errors)
 ```
 
-Add this test method inside the `TestToolErrorHandling` class, then run all tool tests:
+The first test fails the build if someone changes a tool on one side only. The second proves the schema rejects a value the agent might invent (`"urgent"` is an escalation urgency, not a ticket priority).
+
+Run everything:
 
 ```bash
-pytest tests/tool_calling/ -v
+uv run pytest -q my_work/test_lab05_tools.py
+uv run python demos/m06_mcp_server_validation.py      # the same contract checks, printed
 ```
+
+### Step 5 — Watch a test catch a failure
+
+Re-run `demos/m06_tool_failure_gallery.py` and, for each of TF-1 to TF-4, write which of your tests (or which helper) would have failed. One of the four needs a check you have not written yet: write it.
 
 ---
 
 ## Expected Output
 
 ```
-tests/tool_calling/test_tool_selection.py::test_correct_tool_selected[product_question] PASSED
-tests/tool_calling/test_tool_selection.py::test_correct_tool_selected[account_lookup] PASSED
-tests/tool_calling/test_tool_selection.py::test_correct_tool_selected[create_ticket] PASSED
-tests/tool_calling/test_tool_selection.py::test_correct_tool_selected[escalation] PASSED
-tests/tool_calling/test_tool_selection.py::test_correct_tool_selected[no_tool_needed] PASSED
-tests/tool_calling/test_tool_params.py::TestToolParameters::test_lookup_customer_passes_email PASSED
-tests/tool_calling/test_tool_params.py::TestToolParameters::test_lookup_customer_passes_id PASSED
-tests/tool_calling/test_tool_params.py::TestToolParameters::test_create_ticket_has_required_fields PASSED
-tests/tool_calling/test_tool_params.py::TestToolParameters::test_send_email_has_valid_recipient PASSED
-tests/tool_calling/test_tool_errors.py::TestToolErrorHandling::test_customer_not_found PASSED
-tests/tool_calling/test_tool_errors.py::TestToolErrorHandling::test_knowledge_base_no_results PASSED
-tests/tool_calling/test_tool_errors.py::TestToolErrorHandling::test_tool_raises_exception PASSED
-tests/tool_calling/test_tool_errors.py::TestToolErrorHandling::test_agent_with_limited_tools PASSED
+$ uv run pytest -q my_work/test_lab05_tools.py
+..........                                                               [100%]
+10 passed
+```
 
-========================= 13 passed in ~45s =========================
+The MCP demo:
+
+```
+Tools exposed by the techcorp-support MCP server:
+  lookup_customer(identifier)  required=['identifier']
+  search_knowledge_base(query)  required=['query']
+  create_ticket(customer_id, subject, description, priority)  required=['customer_id', 'subject', 'description', 'priority']
+  send_email(to, subject, body)  required=['to', 'subject', 'body']
+  escalate_to_human(reason, urgency)  required=['reason']
+Agent vs server schema differences: none
+...
+Validating the agent's real tool calls against the server's JSON schemas:
+  lookup_customer: valid
+  create_ticket: valid
+  bad call example: ["'urgent' is not one of ['low', 'medium', 'high', 'critical']", "'subject' is a required property", "'description' is a required property"]
 ```
 
 ---
 
 ## Verification Checklist
 
-- [ ] Five tool selection tests cover all five tools plus the "no tool" case
-- [ ] Parameter correctness tests verify exact argument values
-- [ ] Error handling tests cover: customer not found, no KB results, tool exception
-- [ ] Unavailability test removes tools and verifies the agent adapts
-- [ ] All tests pass with `pytest -v`
-- [ ] No hardcoded API keys in any test file
+- [ ] 10 tests pass: 4 selection, 2 argument, 2 order/unauthorized, 2 MCP contract
+- [ ] At least one test asserts that **no** tool was called
+- [ ] The order test uses `check_sequence`, not equality (extra calls in between are allowed)
+- [ ] The MCP tests run without starting a separate server process
+- [ ] You mapped TF-1 to TF-4 to tests and wrote the missing one
 
 ---
 
 ## Common Pitfalls
 
-1. **Non-deterministic tool selection** — LLMs don't always pick the same tool for the same input. If a test is flaky, run it 3 times. If it fails >1 time, the test expectation might be too strict or the agent's prompt needs improvement.
-
-2. **Forgetting to mock at the right level** — When using `@patch`, make sure you're patching the function in the module where it's **imported**, not where it's **defined**. For `execute_tool`, patch `agents.support_agent.execute_tool`.
-
-3. **Testing tool output instead of tool selection** — Tool calling tests should verify which tool was called and with what arguments. Testing the final response is a different concern (covered by evaluation metrics in Labs 02–03).
+1. **Asserting on reply text instead of tool calls.** "I've opened a ticket" in the reply proves nothing. Assert on `result["tool_calls"]`.
+2. **Exact list equality for multi-step tasks.** A harmless extra `search_knowledge_base` breaks `==`. Use `check_sequence` for order and `unauthorized_calls` for what must never happen.
+3. **Async tests not collected.** The repo sets `asyncio_mode = "auto"` in `pyproject.toml`; run pytest from the repo root so that config applies.
+4. **`mcp` 1.x tutorials.** The 1.x high-level server was `FastMCP`; in `mcp` 2.x it is `MCPServer`, and errors come back as `result.is_error == True`.
 
 ---
 
 ## Extension Challenge
 
-**Advanced:** Write a "multi-tool workflow" test that verifies the agent chains multiple tools correctly. For example:
-
-> "I'm customer CUST-001. I need to create a ticket about my billing issue and send me an email confirmation."
-
-Verify that the agent:
-1. Calls `lookup_customer` with `CUST-001` (to verify identity)
-2. Calls `create_ticket` with the correct customer ID and subject
-3. Calls `send_email` to confirm the ticket creation
-4. The tools are called in a logical order (lookup before create, create before email)
-
-```python
-def test_multi_tool_workflow():
-    result = run_support_agent(
-        "I'm customer CUST-001. Create a ticket about my billing "
-        "issue and send me an email confirmation at alice@example.com."
-    )
-    tools_called = [tc["tool"] for tc in result["tool_calls"]]
-
-    # Verify all expected tools were called
-    assert "create_ticket" in tools_called
-    # Verify logical ordering if both lookup and create were called
-    if "lookup_customer" in tools_called:
-        lookup_idx = tools_called.index("lookup_customer")
-        create_idx = tools_called.index("create_ticket")
-        assert lookup_idx < create_idx, "Lookup should happen before ticket creation"
-```
+1. TF-3 (a tool error reported as success): make `create_ticket` fail by passing your own `tool_executor` to `run_support_agent()`, then assert that the reply does not claim success.
+2. Run the MCP server over stdio (`make mcp`) and connect to it from another MCP client.
+3. Start Project 3: the Operations Agent has six tools, roles and a destructive `delete_record` (`08-projects/project-3-tool-calling/README.md`).
