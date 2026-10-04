@@ -111,8 +111,8 @@ test-integration: ## integration tests only
 
 eval: judge ## alias for judge
 
-judge: ## sampled online judge over the local store (offline heuristic unless OPENAI_API_KEY and OFFLINE=0)
-	$(PY) evals/online_judge.py --seed $(SEED) $(if $(filter 1,$(OFFLINE)),--dry-run,)
+judge: ## sampled online judge over the local store (offline heuristic unless OPENAI_API_KEY and OFFLINE=0; LANGFUSE=1 also writes scores to Langfuse)
+	$(PY) evals/online_judge.py --seed $(SEED) $(if $(filter 1,$(OFFLINE)),--dry-run,) $(LANGFUSE_FLAG)
 
 feedback: ## feedback vs judge correlation
 	$(PY) evals/feedback.py --seed $(SEED)

@@ -419,7 +419,12 @@ class AtlasAgent:
         self._clock = clock
         self._sleep = sleep
         self._tracer = tracer
-        self.breaker = CircuitBreaker()
+        # Same knobs as the Router path: ATLAS_ROUTER_ALLOWED_FAILS consecutive failures open the
+        # breaker for ATLAS_ROUTER_COOLDOWN_S seconds (defaults 3 and 30).
+        self.breaker = CircuitBreaker(
+            threshold=max(1, self.settings.router_allowed_fails),
+            cooldown_s=float(self.settings.router_cooldown_s),
+        )
         self.on_step = on_step  # progress callback (step, context_tokens, result): loop demo
         self.llm: LLMClient = llm or self._default_llm()
 
@@ -604,7 +609,13 @@ class AtlasAgent:
                         inp,
                         float(cost.total_usd),
                     )
-                    gen.latency_ms = (self._clock() - started) * 1000.0
+                    # offline, the mock says how long the call ran before timing out
+                    sim_ms = getattr(exc, "simulated_latency_ms", None)
+                    gen.latency_ms = (
+                        float(sim_ms)
+                        if sim_ms is not None
+                        else (self._clock() - started) * 1000.0
+                    )
                     result.generations.append(gen)
                     result.retries += 1
                     metrics.LLM_RETRIES.labels(current, type(exc).__name__).inc()

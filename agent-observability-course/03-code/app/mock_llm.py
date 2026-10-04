@@ -9,12 +9,20 @@ Scenario hooks (``scenario=`` at construction or per call):
 * ``loop``             — keeps re-calling ``lookup_ticket`` after a tool error (step limit demo)
 * ``context_bloat``    — long-winded answers; tools return whole articles (see ``app.tools``)
 * ``retry_storm``      — the first N attempts of every call time out (``APITimeoutError``)
-* ``slow_provider``    — TTFT x3.5, tokens/s halved
+* ``slow_provider``    — TTFT x3.5, tokens/s halved on the primary deployment (the gpt-4.1
+  family, :data:`SLOW_PROVIDER_MODELS`); the fallback ``gpt-4o-mini`` is unaffected
 * ``prompt_regression``— answers drop citations and next steps (also triggered by the v2 prompt)
 
 Latency is *simulated*: the response carries ``simulated_ttft_ms`` and
 ``simulated_latency_ms``; with ``latency_scale > 0`` the mock also sleeps that
 fraction of it so streaming demos feel real.
+
+Timeouts: ``chat(timeout=...)`` is honoured. When a call's simulated duration exceeds the
+timeout (the agent passes ``ATLAS_REQUEST_TIMEOUT_S``), the mock raises
+``openai.APITimeoutError`` carrying ``simulated_latency_ms = timeout``, so the agent's retry,
+circuit-breaker and fallback path runs offline exactly as it would against a provider. The
+mock treats the timeout as a whole-call deadline (LiteLLM's ``timeout`` semantics); the openai
+client's float ``timeout`` is a per-read timeout, so verify the semantics of your client.
 """
 
 from __future__ import annotations
@@ -58,6 +66,9 @@ LATENCY_PROFILE: dict[str, tuple[float, float]] = {
     "gpt-5-mini": (900.0, 12.0),
     "gpt-4o-mini": (350.0, 8.0),
 }
+#: Models served by the deployment that ``slow_provider`` slows down. gpt-4o-mini (the first
+#: fallback in ``app.agent.FALLBACKS``) and gpt-5-mini run elsewhere and keep normal latency.
+SLOW_PROVIDER_MODELS: frozenset[str] = frozenset({"gpt-4.1-mini", "gpt-4.1", "gpt-4.1-nano"})
 CACHE_MIN_PREFIX = 1024  # OpenAI caches prefixes of at least 1024 tokens, in 128-token blocks
 
 INTENT_KEYWORDS: dict[str, tuple[str, ...]] = {
@@ -225,6 +236,7 @@ class MockStats:
     calls: int = 0
     stream_calls: int = 0
     failures_raised: int = 0
+    timeouts_raised: int = 0
     tool_calls: int = 0
     per_model: dict[str, int] = field(default_factory=dict)
 
@@ -539,13 +551,27 @@ class MockLLM:
             base_ttft * (0.75 + 0.5 * rng.random()) + usage.prompt_tokens * 0.02
         )  # long prompts: slower TTFT
         per_tok = tpot * (0.9 + 0.2 * rng.random())
-        if scenario == "slow_provider":
+        if scenario == "slow_provider" and model in SLOW_PROVIDER_MODELS:
             ttft *= 3.5
             per_tok *= 2.0
         total = ttft + usage.completion_tokens * per_tok
         return round(ttft, 1), round(total, 1)
 
-    def _maybe_fail(self, messages: list[dict[str, Any]], scenario: str | None, model: str) -> None:
+    @staticmethod
+    def _timeout_error(timeout_s: float | None) -> openai.APITimeoutError:
+        req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        exc = openai.APITimeoutError(request=req)
+        if timeout_s:
+            exc.simulated_latency_ms = float(timeout_s) * 1000.0  # type: ignore[attr-defined]
+        return exc
+
+    def _maybe_fail(
+        self,
+        messages: list[dict[str, Any]],
+        scenario: str | None,
+        model: str,
+        timeout_s: float | None = None,
+    ) -> None:
         if scenario != "retry_storm":
             return
         key = hashlib.sha256(
@@ -555,8 +581,7 @@ class MockLLM:
         self._attempts[key] = n + 1
         if n < self.retry_storm_failures:
             self.stats.failures_raised += 1
-            req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
-            raise openai.APITimeoutError(request=req)
+            raise self._timeout_error(timeout_s)
 
     # ------------------------------------------------------------------ public API
     def chat(
@@ -568,15 +593,17 @@ class MockLLM:
         stream: bool = False,
         prompt_cache_key: str | None = None,
         scenario: str | None = None,
+        timeout: float | None = None,
         **_ignored: Any,
     ) -> ChatCompletion | Iterator[ChatCompletionChunk]:
-        """Mimics ``client.chat.completions.create``. Extra kwargs are ignored."""
+        """Mimics ``client.chat.completions.create``. ``timeout`` (seconds) is honoured against
+        the simulated duration; other extra kwargs are ignored."""
         scenario = scenario or self.scenario
         self.stats.calls += 1
         self.stats.per_model[model] = self.stats.per_model.get(model, 0) + 1
         self._call_counter += 1
         rng = _rng(self.seed, model, _last_user(messages), len(messages))
-        self._maybe_fail(messages, scenario, model)
+        self._maybe_fail(messages, scenario, model, timeout)
         content, tool_calls = self._decide(messages, model, scenario, rng)
         if content is None and not tool_calls:
             # loop scenario: re-issue the last tool call verbatim
@@ -588,6 +615,10 @@ class MockLLM:
         output_text = content or json.dumps([{"name": n, "arguments": a} for n, a in tool_calls])
         usage = self._usage(messages, tools, model, output_text, prompt_cache_key)
         ttft_ms, total_ms = self._latency(model, usage, scenario, rng)
+        if timeout and total_ms > float(timeout) * 1000.0:
+            self.stats.failures_raised += 1
+            self.stats.timeouts_raised += 1
+            raise self._timeout_error(timeout)
         completion_id = f"chatcmpl-mock-{self._call_counter:06d}"
         tc_objs = [
             ChatCompletionMessageFunctionToolCall(

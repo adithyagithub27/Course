@@ -1,32 +1,26 @@
 # Voice Configuration — PENDING
 
-> **Status:** ⏳ Awaiting configuration from course owner
+> **Status:** Awaiting the course owner's choice (see `MY_DECISIONS_REQUIRED.md`). Shared by Courses 2, 3 and 4.
 
 | Setting | Value |
 |---|---|
-| **Voice ID** | `PENDING` — to be provided by course owner |
-| **Avatar ID** | `PENDING` — to be provided by course owner |
+| **Voice** | `PENDING` — chosen by the course owner in HeyGen studio |
+| **Where the ID lives** | Environment variable `HEYGEN_VOICE_ID` only (never in this repo) |
 | **Language** | English (US) |
-| **Speaking Rate** | ~140 words per minute (HeyGen default, adjust if needed) |
-| **Loudness Target** | –16 LUFS (normalized in post-production) |
-
-## Requirements
-
-- Both the **Voice ID** and **Avatar ID** must be provided before **Phase 5 (Week 9)** of the production timeline.
-- Once provided, update this file with the actual IDs.
-- Then begin batch HeyGen generation for all scripted avatar scenes.
+| **Speaking rate** | ~140 words per minute (scripts are written to this; if a script runs long, cut it, don't speed up the voice) |
+| **Loudness target** | –16 LUFS (normalized in post-production) |
+| **Pronunciation** | `voice-ai-agents-course/09-production/tools/pronunciation.json`. Course 2 terms are **not in it yet**: add DeepEval, RAGAS, G-Eval, promptfoo, Garak, PyRIT, GEval and gpt-4.1 (Langfuse, MCP, RAG and gpt-4.1-mini are already there) before the Module 3 pilot |
 
 ## Action Items
 
-1. Course owner selects a HeyGen voice that matches the desired tone (conversational, confident, clear).
-2. Course owner provides the Voice ID and Avatar ID.
-3. Update this file and `09-heygen/avatar-config/PENDING.md` with the actual values.
-4. Run a 30-second test generation to validate pacing, pronunciation, and naturalness.
-5. If approved, proceed with batch generation across all modules.
+1. Course owner selects a voice that matches the tone below, together with the avatar (`../avatar-config/PENDING.md`).
+2. Set `HEYGEN_VOICE_ID` in the environment.
+3. Run the 3-scene pilot (see the avatar file) and listen for technical terms; add fixes to `pronunciation.json`.
+4. Record the voice **name** here and rename the file to `voice-config.md`.
 
 ## Voice Tone Guidelines
 
-- **Conversational:** Not robotic or overly formal. Should sound like a knowledgeable colleague.
-- **Confident:** Declarative statements, not hedging. "This fails because…" not "This might possibly fail…"
-- **Clear:** Good enunciation on technical terms (e.g., "hallucination," "retrieval-augmented generation," "guardrails").
-- **Paced:** Natural pauses at sentence breaks. Not rushed.
+- **Conversational:** a knowledgeable colleague, not robotic or formal.
+- **Confident:** declarative statements. "This fails because…", not "This might possibly fail…".
+- **Clear:** good enunciation on technical terms ("hallucination", "faithfulness", "retrieval-augmented generation", "guardrails").
+- **Paced:** natural pauses at sentence breaks and at every `[PAUSE]` cue.

@@ -7,8 +7,8 @@
 # spanmetrics connector). Every sampled span goes to Langfuse AND Phoenix (Lecture 13.2).
 #
 # Redaction happens HERE as defence in depth: even if an app forgets to mask, the
-# collector deletes tool results and message bodies and hashes user ids before anything
-# leaves the network (Section 10.2).
+# collector deletes tool results, message bodies and user ids before anything leaves the
+# network (Section 10.2).
 receivers:
   otlp:
     protocols:
@@ -24,6 +24,16 @@ processors:
     spike_limit_mib: 100
 
   # 1. Drop or hash sensitive span attributes.
+  #
+  # LIMITATION: the attributes processor's `hash` action is a plain, UNKEYED SHA-256 (no salt,
+  # no secret; contrib 0.116.1 has no keyed/HMAC option here). A hash of a low-entropy value
+  # such as a five-digit employee ID (NW-12345) is reversible by hashing all 100,000 candidates,
+  # so it is not a pseudonym. Identifiers are therefore DELETED here. If a backend needs a
+  # joinable user key, the app should emit a keyed HMAC pseudonym itself
+  # (northwind.pii.stable_hash, keyed with ATLAS_PII_HASH_KEY), never the raw id.
+  # `hash` is kept only for gen_ai.tool.call.arguments, which Atlas has already masked at the
+  # source (identifiers inside are <EMPLOYEE_ID:hmac> placeholders), so the digest just groups
+  # identical calls and exposes nothing new.
   attributes/redact:
     actions:
       - key: gen_ai.tool.call.result
@@ -39,11 +49,11 @@ processors:
       - key: langfuse.observation.output
         action: delete
       - key: gen_ai.tool.call.arguments
-        action: hash            # keep a stable fingerprint so identical calls can still be grouped
+        action: hash            # fingerprint of already-masked arguments: groups identical calls
       - key: user.id
-        action: hash            # joinable pseudonym, never the employee id
+        action: delete          # raw employee id; an unkeyed hash of it is reversible
       - key: enduser.id
-        action: hash
+        action: delete
 
   # 2. Keep every interesting trace, sample the rest (decision at trace end).
   tail_sampling:

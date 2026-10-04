@@ -232,6 +232,8 @@ def run_judge(
     judge = pick_judge(dry_run=dry_run, model=model)
     policy = JudgeSamplingPolicy(rate=rate)
     already = {s.trace_id for s in store.scores(name="judge_overall")}
+    # "always judge a thumbs-down" (JudgeSamplingPolicy.always_judge_negative_feedback)
+    thumbs_down = {s.trace_id for s in store.scores(name="user_feedback") if s.value <= 0.25}
     summary = JudgeRunSummary(judge=judge.name)
     overall: list[float] = []
     for span in store.spans(kind="agent", since=since):
@@ -251,12 +253,13 @@ def run_judge(
             steps=int(a.get("atlas.steps", 1) or 1),
             tenant=str(a.get("atlas.tenant", "")),
             escalated=bool(a.get("atlas.escalated", False)),
+            feedback_negative=span.trace_id in thumbs_down,
         )
         if not policy.should_judge(t):
             continue
-        summary.sampled += 1
         if limit is not None and summary.scored >= limit:
-            break
+            break  # capped (JUDGE_MAX_CALLS / --limit): this trace is not counted as sampled
+        summary.sampled += 1
         scores = judge.score(
             question=str(a.get("langfuse.observation.input", "")),
             answer=str(a.get("langfuse.observation.output", "")),
@@ -312,6 +315,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--model", default=None)
     ap.add_argument(
+        "--langfuse",
+        action="store_true",
+        help="also write scores to Langfuse when OFFLINE=1 (with OFFLINE=0 they are written "
+        "whenever LANGFUSE_PUBLIC_KEY/SECRET_KEY are set)",
+    )
+    ap.add_argument(
         "--seed",
         type=int,
         default=None,
@@ -324,6 +333,11 @@ def main(argv: list[str] | None = None) -> int:
         from simulator.replay import replay_day
 
         replay_day(args.seed, store=store, judge_rate=0.0)
+    lf = None
+    if settings.langfuse_enabled and (args.langfuse or not settings.offline):
+        from telemetry.langfuse_setup import init_langfuse
+
+        lf = init_langfuse(settings)  # create_score is a no-op until the client exists
     env_cap = os.environ.get("JUDGE_MAX_CALLS", "").strip()
     limit = args.limit if args.limit is not None else (int(env_cap) if env_cap.isdigit() else None)
     summary = run_judge(
@@ -332,7 +346,12 @@ def main(argv: list[str] | None = None) -> int:
         limit=limit,
         dry_run=args.dry_run,
         model=args.model or settings.judge_model,
+        write_langfuse=lf is not None,
     )
+    if lf is not None:
+        from telemetry.langfuse_setup import flush
+
+        flush()
     print(summary.render())
     print(json.dumps({k: v for k, v in summary.__dict__.items()}, indent=2))
     return 0

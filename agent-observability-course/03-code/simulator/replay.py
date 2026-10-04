@@ -35,12 +35,12 @@ for p in (ROOT, ROOT / "src"):
 
 from opentelemetry.trace import NoOpTracer  # noqa: E402
 
-from app.agent import AgentResult, AtlasAgent  # noqa: E402
+from app.agent import AgentResult, AtlasAgent, CircuitBreaker  # noqa: E402
 from app.knowledge import get_kb  # noqa: E402
 from app.mock_llm import MockLLM  # noqa: E402
 from app.tools import TicketStore  # noqa: E402
 from northwind.config import Settings  # noqa: E402
-from northwind.pii import contains_pii  # noqa: E402
+from northwind.pii import contains_pii, mask_text  # noqa: E402
 from simulator.scenarios import (  # noqa: E402
     DEFAULT_DATE,
     INCIDENT_PRESETS,
@@ -66,6 +66,11 @@ RESOURCE = {
     "deployment.environment": "replay",
     "atlas.offline": True,
 }
+
+
+def _masked(text: str | None, limit: int) -> str:
+    """Mask PII (hashed placeholders, as ``genai_attrs._safe`` does), then clip."""
+    return mask_text(text or "", hash_ids=True)[:limit]
 
 
 def _hex(*parts: Any, n: int) -> str:
@@ -122,6 +127,15 @@ class ReplayEngine:
         )  # the replay builds its own SpanRecords; agent spans are discarded
         self._agents: dict[tuple[Any, ...], AtlasAgent] = {}
         self.rng = random.Random(seed)
+        # One circuit breaker for the whole replay (one process, one set of deployments), on the
+        # *replayed* clock: the cooldown is measured in day time, not in wall time, so a replay
+        # is deterministic however fast the machine is.
+        self._now = 0.0
+        self.breaker = CircuitBreaker(
+            threshold=max(1, self.settings.router_allowed_fails),
+            cooldown_s=float(self.settings.router_cooldown_s),
+            clock=lambda: self._now,
+        )
 
     def _agent(self, params: dict[str, Any]) -> AtlasAgent:
         key = (
@@ -143,6 +157,7 @@ class ReplayEngine:
                 tracer=self._tracer,
                 capture_content=False,
             )
+            self._agents[key].breaker = self.breaker
         return self._agents[key]
 
     # ------------------------------------------------------------------ span building
@@ -267,8 +282,9 @@ class ReplayEngine:
                     "gen_ai.tool.name": tr.name,
                     "gen_ai.tool.type": "function",
                     "gen_ai.tool.call.id": tr.call_id,
-                    "gen_ai.tool.call.arguments": tr.arguments[:300],
-                    "gen_ai.tool.call.result": tr.result[:300],
+                    # masked like the live path (genai_attrs._safe), then clipped
+                    "gen_ai.tool.call.arguments": _masked(tr.arguments, 300),
+                    "gen_ai.tool.call.result": _masked(tr.result, 300),
                     "atlas.tool.result_tokens": tr.result_tokens,
                     ga.ATLAS_STEP: step,
                 }
@@ -339,8 +355,9 @@ class ReplayEngine:
             "atlas.turn": req.turn,
             "atlas.latency_ms": round(total_ms, 1),
             "atlas.tool_calls": list(result.tool_calls),
-            ga.LF_OBS_INPUT: req.message[:300],
-            ga.LF_OBS_OUTPUT: result.answer[:4000],  # the batch judge (make judge) reads it
+            # masked exactly like the live path (genai_attrs._safe); the batch judge reads it
+            ga.LF_OBS_INPUT: _masked(req.message, 300),
+            ga.LF_OBS_OUTPUT: ga._safe(result.answer, True),
         }
         if result.cached_tokens:
             root_attrs["gen_ai.usage.cache_read.input_tokens"] = result.cached_tokens
@@ -407,6 +424,7 @@ class ReplayEngine:
             lf = _langfuse_client()
         for req in plan:
             agent = self._agent(req.params)
+            self._now = req.ts
             history = histories.get(req.session_id, [])
             result = agent.run(
                 req.message,
@@ -507,7 +525,7 @@ class ReplayEngine:
                 )
                 summary.feedback += 1
             if lf is not None:
-                _push_langfuse(lf, req, result)
+                _push_langfuse(lf, req, result, trace_id)
             if len(batch) >= 500:
                 summary.spans += store.insert(batch)
                 batch = []
@@ -530,27 +548,46 @@ def _langfuse_client() -> Any:
     return init_langfuse(_S.from_env())
 
 
-def _push_langfuse(lf: Any, req: PlannedRequest, result: AgentResult) -> None:
+def _push_langfuse(lf: Any, req: PlannedRequest, result: AgentResult, trace_id: str) -> None:
     """Mirror a replayed request into Langfuse as agent > generation/tool observations.
 
-    Langfuse v4 observations are timestamped when created, so replayed traces appear
-    at replay time (durations are preserved via explicit ``end_time``).
+    The Langfuse trace uses the **same trace id** as the local store, so ``make judge`` and
+    ``make feedback`` scores (``create_score(trace_id=...)``) attach to it, and carries the same
+    tags as the stored root span (tenant, feature, intent, prompt version, scenario). Inputs and
+    outputs pass through the client's ``mask=langfuse_mask``. Langfuse v4 observations are
+    timestamped when created, so replayed traces appear at replay time (durations are preserved
+    via explicit ``end_time``).
     """
     from langfuse import propagate_attributes
 
     now_ns = time.time_ns()
-    root = lf.start_observation(
-        name="invoke_agent atlas",
-        as_type="agent",
-        input=req.message,
-        metadata={"tenant": req.tenant, "scenario": req.scenario, "replay": True},
-    )
-    try:
-        with propagate_attributes(
-            session_id=req.session_id,
-            user_id=req.persona.user_id,
-            tags=[f"tenant:{req.tenant}", f"intent:{result.intent}", "replay"],
-        ):
+    tags = [
+        f"tenant:{req.tenant}",
+        f"feature:{result.feature}",
+        f"intent:{result.intent}",
+        f"prompt:{result.prompt_version}",
+        "replay",
+    ] + ([f"scenario:{req.scenario}"] if req.scenario else [])
+    with propagate_attributes(
+        session_id=req.session_id,
+        user_id=req.persona.user_id,
+        tags=tags,
+        trace_name="invoke_agent atlas",
+    ):
+        root = lf.start_observation(
+            trace_context={"trace_id": trace_id},
+            name="invoke_agent atlas",
+            as_type="agent",
+            input=req.message,
+            metadata={
+                "tenant": req.tenant,
+                "feature": result.feature,
+                "prompt_version": result.prompt_version,
+                "scenario": req.scenario,
+                "replay": True,
+            },
+        )
+        try:
             offset = 0
             for g in result.generations:
                 gen = root.start_observation(
@@ -577,11 +614,12 @@ def _push_langfuse(lf: Any, req: PlannedRequest, result: AgentResult) -> None:
                 )
                 offset += 50_000_000
                 t.end(end_time=now_ns + offset)
-        root.update(
-            output=result.answer, metadata={"cost_usd": result.cost_usd, "outcome": result.outcome}
-        )
-    finally:
-        root.end()
+            root.update(
+                output=result.answer,
+                metadata={"cost_usd": result.cost_usd, "outcome": result.outcome},
+            )
+        finally:
+            root.end()
 
 
 def replay_day(

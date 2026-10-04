@@ -198,7 +198,7 @@ With a one-second timeout, healthy calls start timing out: retries and fallbacks
 ## Stretch goals
 
 1. Per-tenant queues (Lecture 7.5): `make run`, then `make swarm RPS=5 DURATION=30` from two terminals at once. Watch `atlas_requests_shed_total{tenant}` and `atlas_queue_wait_seconds` on `curl -sL localhost:8000/metrics`. Which tenant is shed first with the default `ATLAS_TENANT_MAX_INFLIGHT=ops=13,eng=7,finance=6,hr=6,other=2`, and why?
-2. Make `create_ticket` idempotent with a key derived from `(session_id, step, arguments hash)`, then replay `SCENARIO=retry_storm` and check that no session creates two tickets with the same key.
+2. Make `create_ticket` idempotent with a key (the trace id plus the step, as lecture 7.3 suggests), then write a unit test that calls the tool twice with the same key and asserts one ticket comes back. Atlas never re-runs a tool by itself, so the test is the evidence, not a replay.
 3. Add a gauge `atlas_circuit_open{model}` in `telemetry/metrics.py`, fed from `CircuitBreaker.state`, next to the shipped `atlas_model_fallbacks_total`. It is not in the repo; you'll alert on it in Lab 6.
 
 ---

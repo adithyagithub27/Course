@@ -47,7 +47,7 @@
 
 *Related lecture: 5.4 Streaming: time to first token and tokens per second*
 
-- **A.** TTFT 400 ms; (181 − 1) tokens / 2.0 s = 90 tokens/s; users feel TTFT most because it is the silence before anything appears, which is why the course records `gen_ai.response.time_to_first_chunk` and Langfuse's `completion_start_time`.
+- **A.** TTFT 400 ms; (181 − 1) tokens / 2.0 s = 90 tokens/s; users feel TTFT most because it is the silence before anything appears, which is why the course records `gen_ai.response.time_to_first_chunk` and `atlas.ttft_ms` on the generation span and Langfuse's `completion_start_time`.
   - *Explanation:* Correct. TPOT is the inverse, about 11 ms per token. Total time matters too, but a 400 ms start with steady streaming feels responsive while a 2.4 s silence followed by a burst does not.
 - **B.** TTFT 400 ms; 181 tokens / 2.4 s = 75 tokens/s; users feel tokens per second most.
   - *Explanation:* Incorrect. The decode rate excludes the first token's time and the first token itself, and TTFT dominates perceived latency.
@@ -77,14 +77,14 @@
 
 ---
 
-### Q5. In the `loop` scenario, Atlas calls `lookup_ticket` with a malformed id, gets an error, tries again with the same id, and repeats until the step limit. In the trace, `atlas.context_tokens` per step reads 1,150, 1,720, 2,290, 2,860, ... What does the pattern tell you about cost, and what would you see without step spans?
+### Q5. In the `loop` scenario, `lookup_ticket` returns `ticket_service_unavailable` with `"retry": true` for TCK-100231, the model tries again with the same id, and it repeats until the step limit (6 by default). In the trace, the generation's input tokens per step read 3,261, 3,330, 3,399, 3,468, ... What does the pattern tell you about cost, and what would you see without step spans?
 
 *Related lecture: 5.6 Break it: the loop you can only see in a trace*
 
 - **A.** The model is hallucinating ticket ids; the fix is a better prompt.
-  - *Explanation:* Incorrect as the whole answer. The model does repeat a bad id, but the operational fix is a step limit, surfacing the tool error to the model clearly, and truncating error payloads. Prompt tuning alone gives no guarantee.
+  - *Explanation:* Incorrect as the whole answer. The model does repeat the same id, but the operational fix is a step limit, surfacing the tool error to the model clearly, and truncating error payloads. Prompt tuning alone gives no guarantee.
 - **B.** Cost per step is constant; without step spans you would see the same thing in the total.
-  - *Explanation:* Incorrect. Context grows by about 570 tokens per step, so each step costs more than the last.
+  - *Explanation:* Incorrect. Input grows by 69 tokens per step (the failed tool result rides along in the history), so each step costs more than the last.
 - **C.** Input tokens grow linearly per step (each failed result stays in history), so cumulative cost grows quadratically with steps; without step spans you would only see "one slow, expensive request with many generations" and no indication that the same tool call was repeated with the same arguments.
   - *Explanation:* Correct. Step spans plus tool spans with arguments make the repetition and the growth explicit. The step limit turns an unbounded quadratic into a bounded one, and the `step_limit_reached` event marks it.
 - **D.** The provider is slowing down; this is a latency incident.

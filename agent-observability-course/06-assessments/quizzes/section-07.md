@@ -9,69 +9,69 @@
 
 ---
 
-### Q1. Twenty requests: eighteen take 900 ms and two take 12,000 ms. The latency budget is "p95 ≤ 4,000 ms". A teammate says "mean is 2,010 ms, we're fine." What is the correct reading?
+### Q1. Ten request latencies, in seconds: [1, 2, 2, 3, 3, 3, 4, 5, 9, 12]. What is the p95 the way `northwind.latency.percentile` computes it, and is it within a 4-second budget?
 
-*Related lecture: 7.1 Latency budgets for agents*
+*Related lecture: 7.2 Code-along: measure TTFT, TPOT and p95 from spans*
 
-- **A.** Fail: p95 is 12,000 ms (with linear interpolation the 95th percentile of this sample lands in the two slow values), so a tenth of users had an unacceptable experience while the average looked healthy. Percentile budgets exist precisely because averages hide tails.
-  - *Explanation:* Correct. Coding exercise CE2 uses this exact sample. Report p50, p95 and p99 together; act on p95; never quote a mean as a latency SLI.
-- **B.** Pass, because two slow requests out of twenty is 10% and the budget allows 5%.
-  - *Explanation:* Incorrect. The logic is inverted: p95 ≤ 4,000 ms means at most 5% may exceed 4,000 ms, and here 10% do.
-- **C.** Inconclusive: twenty requests is too few to compute a percentile.
-  - *Explanation:* Incorrect. Twenty is small but computable; the CI gate replays thousands, and the conclusion here is unambiguous.
-- **D.** Pass: the mean is under budget, and p95 is a statistical curiosity.
-  - *Explanation:* Incorrect. The budget is defined on p95, and the mean is dragged down by the eighteen fast requests; one in ten users waited 12 seconds.
+- **A.** 10.65 s: sorted, the rank is k = (10 − 1) × 0.95 = 8.55, so the value is 9 + 0.55 × (12 − 9) = 10.65. Over budget.
+  - *Explanation:* Correct. `percentile` interpolates linearly between the two neighbours, the same default as pandas. The mean of this list is 4.4 s and the median is 3 s; the budget is defined on p95 because averages hide the tail.
+- **B.** 12 s: the 95th percentile of ten values is the largest one.
+  - *Explanation:* Incorrect for this course. That is the nearest-rank definition; `percentile` interpolates, so it lands between 9 and 12. Both are over budget, but the CI gate compares the interpolated number.
+- **C.** 9 s: 95% of ten values is 9.5, rounded down to the ninth value.
+  - *Explanation:* Incorrect. Rounding down discards the interpolation and under-reports the tail.
+- **D.** 4.4 s: the mean, just over budget.
+  - *Explanation:* Incorrect. 4.4 s is the mean. The budget is "p95 ≤ 4,000 ms", never a mean.
 
 **Correct answer: A**
 
 ---
 
-### Q2. During the `slow_provider` chaos demo you cut the per-call timeout from 20 s to 6 s and nothing else. p95 improves from 9,900 ms to 7,100 ms, but the error rate in the slow window doubles from 16% to 31%. Why, and what is missing?
+### Q2. The latency worksheet says a normal model call starts in about 0.7 s at p95 and finishes in under 3 s. Atlas ships `ATLAS_REQUEST_TIMEOUT_S=20` with `ATLAS_MAX_RETRIES=2`. What per-call timeout does lecture 7.3 argue for, and why?
 
 *Related lecture: 7.3 Timeouts, retries and backoff done right*
 
-- **A.** The timeout is too short for normal traffic; raise it back.
-  - *Explanation:* Incorrect. Normal calls finish in under a second; 6 s is generous for them. The problem is what happens after a timeout.
-- **B.** Failing faster shortens the tail, but every timed-out call is retried against the *same* slow provider, so calls that would have completed in 8 s are now cut off and re-attempted, and more of them end in failure. A shorter timeout only helps when the retry has somewhere better to go: a fallback provider or model.
-  - *Explanation:* Correct. Lab 4 walks through this trap. Timeouts bound the wait; fallbacks change the destination; circuit breakers stop paying the timeout at all once the provider is known to be slow.
-- **C.** The error rate doubled because the mock LLM has a bug.
-  - *Explanation:* Incorrect. The mock reproduces real provider behaviour: a slow endpoint plus a short timeout is a timeout error.
-- **D.** p95 and error rate are unrelated; this is a coincidence.
-  - *Explanation:* Incorrect. They are directly coupled through the timeout: the same knob moved both.
+- **A.** Keep 20 s: a longer timeout means fewer errors.
+  - *Explanation:* Incorrect. 20 s is about seven times the slowest normal call; with two retries a stalled provider can make one user wait a minute before seeing an error.
+- **B.** About 6 s, roughly twice the slowest normal call: it cuts off a stall without cutting off a long answer, and it turns a stall into an error that a retry or a fallback can act on.
+  - *Explanation:* Correct. The timeout is derived from a worksheet row, not guessed. Offline, the mock ignores `timeout=`, so the effect shows only against a real provider (`.env.chaos.example`).
+- **C.** 1 s, the p95 time to first token: anything slower is a failure.
+  - *Explanation:* Incorrect. The timeout covers the whole call; a 1 s limit would cut off most normal answers.
+- **D.** No timeout; rely on the 4 s end-to-end budget.
+  - *Explanation:* Incorrect. A budget is a measurement, not a control. Without a per-call timeout nothing stops a stalled call.
 
 **Correct answer: B**
 
 ---
 
-### Q3. A LiteLLM `Router` is configured with `fallbacks=[{"atlas-primary": ["atlas-fallback"]}]`, `allowed_fails=2`, `cooldown_time=120`. What does the cooldown do, and why does the fallback *rate* going up during an outage indicate success rather than failure?
+### Q3. Match each failure shape to the control that handles it: (1) a blip of a few transient 5xx errors; (2) a slow provider whose calls stall but do not error; (3) a provider outage; (4) a burst of traffic from one tenant.
 
 *Related lecture: 7.4 Fallbacks and circuit breakers with the Router*
 
-- **A.** Fallbacks are free, so the rate does not matter either way.
-  - *Explanation:* Incorrect. Fallbacks change model and therefore cost and quality; Lab 4 measures both (nano is cheaper and scores lower on `grounded`).
-- **B.** Cooldown pauses all traffic for 120 s after two failures; a high fallback rate means users are being rejected.
-  - *Explanation:* Incorrect. Cooldown removes one deployment from rotation, not all traffic; fallbacks serve users, they do not reject them.
-- **C.** After two failures within the window, the primary deployment is taken out of rotation for 120 s and requests go straight to the fallback without first paying the primary's timeout; a rising fallback rate means the breaker is open and users are being served quickly by the healthy path, which is exactly the intended behaviour during a provider incident.
-  - *Explanation:* Correct. This is the circuit-breaker pattern (closed → open → half-open probe). Lab 4's tuned run has a 71% fallback rate in the slow window and a p95 of 3,400 ms. Alert on the breaker staying open too long, not on fallbacks happening.
-- **D.** Cooldown lowers the temperature of the model to make it faster.
-  - *Explanation:* Incorrect. Cooldown is a routing concept, unrelated to sampling temperature.
+- **A.** (1) fallback; (2) retry; (3) shedding; (4) timeout.
+  - *Explanation:* Incorrect. Retrying a stall just waits again, and shedding does not answer anyone during an outage.
+- **B.** (1) shedding; (2) fallback; (3) retry; (4) circuit breaker.
+  - *Explanation:* Incorrect. A fallback on a slow provider never fires, because nothing errors; that is why (2) needs a timeout first.
+- **C.** (1) bounded, jittered retry; (2) a per-call timeout that turns the stall into an error so a fallback can fire; (3) fallback plus a circuit breaker so requests stop paying the primary's failures; (4) per-tenant concurrency limits that shed with 429 and `Retry-After`.
+  - *Explanation:* Correct. Each shape gets its own control. The slow provider is the trap: errors stay flat while latency rises, and nothing falls back until something errors.
+- **D.** All four: raise the retry bound.
+  - *Explanation:* Incorrect. More retries lengthen the tail on (2), multiply load on (3) and amplify (4).
 
 **Correct answer: C**
 
 ---
 
-### Q4. Which fallback configuration passes the p95 gate but is rejected by the course, and why?
+### Q4. A teammate's Router config has a fallback for every model, `allowed_fails=3` and `cooldown_time=30`, and `timeout=600`. During the `slow_provider` scenario p95 goes to 9.4 s, yet `atlas_model_fallbacks_total` stays flat and the breaker never opens. Which setting makes the slow provider invisible to the reliability controls?
 
 *Related lecture: 7.4 Fallbacks and circuit breakers with the Router*
 
-- **A.** Falling back to a second provider serving the same model.
-  - *Explanation:* Incorrect (acceptable): same model, same cost, different availability domain. Lecture 7.4 lists it as the ideal when available.
-- **B.** No fallback, retries only.
-  - *Explanation:* Incorrect as the answer to this question: it fails the gate rather than passing it, since retries against a slow provider extend the tail.
-- **C.** Falling back from `gpt-4.1-mini` to `gpt-4.1-nano`.
-  - *Explanation:* Incorrect (this is the accepted one): a cheaper, faster model keeps cost per session down during the outage at a measured, temporary quality cost.
-- **D.** Falling back from `gpt-4.1-mini` to `gpt-4.1` (the escalation model).
-  - *Explanation:* Correct, this is the rejected one. It passes p95 and, in the offline replay, even cost, but in a real outage it routes most traffic to a model five times the price, tripling cost per session, and it hides the outage behind better answers so nobody investigates. Escalation and fallback are different decisions with different models.
+- **A.** `allowed_fails=3`: it should be 1.
+  - *Explanation:* Incorrect. The breaker counts failures, and a stall that never times out is not a failure. Lowering the count changes nothing.
+- **B.** `cooldown_time=30`: it should be 300.
+  - *Explanation:* Incorrect. Cooldown only matters after the breaker opens, which it never does here.
+- **C.** The fallback table: it needs a second provider.
+  - *Explanation:* Incorrect. The fallbacks exist; they never fire, because no call fails.
+- **D.** `timeout=600`: with a ten-minute timeout a slow call never errors, so retries, fallbacks and the breaker never see a failure. A timeout near twice the slowest normal call turns the stall into an error the other controls can act on.
+  - *Explanation:* Correct. That is lecture 7.6's lesson: a slow provider is a silent incident until a timeout makes it loud. Fallbacks, priced on the model that answered (`gpt-4.1-mini` falls back to `gpt-4o-mini`), then move the traffic somewhere the slowness isn't.
 
 **Correct answer: D**
 
@@ -94,17 +94,17 @@
 
 ---
 
-### Q6. `create_ticket` is not idempotent. During a `retry_storm`, what is the specific harm, and what is the fix from lecture 7.3?
+### Q6. Atlas never re-runs a tool by itself, but a teammate adds a generic HTTP retry wrapper around every tool call, including `create_ticket`. What is the specific harm, and what is the fix from lecture 7.3?
 
 *Related lecture: 7.3 Timeouts, retries and backoff done right*
 
 - **A.** No harm: retries only affect latency.
   - *Explanation:* Incorrect. A retried write that succeeded the first time (the response was just slow) creates a duplicate.
-- **B.** A timed-out `create_ticket` whose first attempt actually succeeded is retried and creates a second, third ticket for the same request: cost (extra tool and model calls) plus a data-quality incident for the helpdesk team. Fix: derive an idempotency key from `(session_id, step, arguments hash)` and have the tool return the existing ticket when the key repeats.
-  - *Explanation:* Correct. Lab 4's stretch goal asserts no session creates two tickets with the same key under `retry_storm`. Reads can be retried freely; writes need idempotency before they are retried at all.
+- **B.** A `create_ticket` call whose first attempt actually succeeded, but answered slowly, is retried and opens a second ticket for the same request: extra calls plus a data-quality incident for the helpdesk team. Fix: give the write an idempotency key (the trace id plus the step) before anything retries it, so a retry returns the same ticket.
+  - *Explanation:* Correct. Reads like `lookup_ticket` are safe to repeat; writes need idempotency before they are retried at all. The model asking for a tool again is a different problem, bounded by `ATLAS_MAX_TOOL_RETRIES` (lecture 5.6).
 - **C.** The harm is that tickets get the wrong priority.
   - *Explanation:* Incorrect. Priority is unaffected by retries; duplication is the problem.
 - **D.** The fix is to never retry any tool.
-  - *Explanation:* Incorrect. Idempotent reads like `lookup_ticket` benefit from a bounded retry; the rule is "retry only what is safe to repeat".
+  - *Explanation:* Incorrect. Reads benefit from a bounded retry; the rule is "retry only what is safe to repeat".
 
 **Correct answer: B**

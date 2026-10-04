@@ -45,7 +45,7 @@ def test_burn_rate():
     [
         (15, "1h", "page"),
         (14, "1h", None),
-        (6.5, "6h", "page"),
+        (6.5, "6h", "ticket"),
         (3.5, "1d", "ticket"),
         (0.5, "3d", None),
     ],

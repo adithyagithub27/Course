@@ -1,116 +1,80 @@
 # AI Agent Quality Scorecard
 
+> AI Agent Testing & Evaluation — template for Lecture 13.3, Lab 13.1 and the capstone report. The weekly table can be generated with `monitoring/scorecard.py` (`build_scorecard`, `render_markdown`); the release decision follows the capstone gate (`capstone/platform.py`).
+
 ## Executive Summary
 
 | Field | Value |
 |-------|-------|
-| **Agent** | [Agent Name] |
-| **Date** | [YYYY-MM-DD] |
-| **Evaluator** | [Name/Team] |
-| **Overall Score** | **[XX]%** |
-| **Recommendation** | READY / NOT READY / CONDITIONAL |
+| **Agent and version** | [name, vX.Y] |
+| **Week / date** | [YYYY-MM-DD] |
+| **Prepared by** | [name / team] |
+| **Overall status** | GREEN / AMBER / RED |
+| **Release decision** | SHIP / BLOCK |
+| **One-line summary** | [Is it working? What's the trend? What needs attention?] |
 
 ---
 
-## Quality Score Breakdown
+## Five Quality Dimensions (T3)
 
-| Category | Score | Threshold | Status | Weight |
-|----------|-------|-----------|--------|--------|
-| Functional Quality | __% | 80% | PASS/FAIL | 25% |
-| LLM Output Quality | __% | 70% | PASS/FAIL | 20% |
-| RAG Quality | __% | 70% | PASS/FAIL | 15% |
-| Security | __% | 90% | PASS/FAIL | 25% |
-| Performance | __% | Target | PASS/FAIL | 10% |
-| Reliability | __% | 90% | PASS/FAIL | 5% |
-| **Weighted Total** | **__%** | **70%** | **PASS/FAIL** | **100%** |
+Targets from `monitoring/scorecard.py`: correctness 0.85, faithfulness 0.85, relevance 0.80, safety 0.95, reliability 0.90. GREEN = on target, AMBER = within 5 points, RED = further below. Trend vs last week: ↑ improving, → flat, ↓ declining.
 
----
+| Dimension | This week | Last week | Trend | Light | Evidence (metrics) |
+|---|---|---|---|---|---|
+| Correctness | | | | | Answer Correctness, Tool Correctness, Task Completion |
+| Faithfulness | | | | | Faithfulness (DeepEval / RAGAS), Hallucination |
+| Relevance | | | | | Answer Relevancy, context precision |
+| Safety | | | | | red-team pass rate, PII Safety, injection resistance |
+| Reliability | | | | | consistency, failure rate, p95 latency, cost per task |
 
-## Category Details
-
-### Functional Quality
-| Metric | Score | Status |
-|--------|-------|--------|
-| Task Completion Rate | __% | |
-| Tool Selection Accuracy | __% | |
-| Workflow Completion | __% | |
-| Error Handling | __% | |
-
-**Key Findings:**
-- 
-- 
-
-### LLM Output Quality
-| Metric | Score | Status |
-|--------|-------|--------|
-| Answer Relevancy | __ | |
-| Faithfulness | __ | |
-| Hallucination Rate | __ | |
-| Coherence | __ | |
-
-**Key Findings:**
-- 
-- 
-
-### Security Assessment
-| Attack Vector | Tests | Passed | Failed | Resistance |
-|---------------|-------|--------|--------|-----------|
-| Prompt Injection | __ | __ | __ | __% |
-| Jailbreak | __ | __ | __ | __% |
-| PII Leakage | __ | __ | __ | __% |
-| Unauthorized Actions | __ | __ | __ | __% |
-| Data Exfiltration | __ | __ | __ | __% |
-
-**Critical Findings:**
-- 
-- 
-
-### Performance
-| Metric | Value | Target | Status |
-|--------|-------|--------|--------|
-| P50 Latency | __ s | __ s | |
-| P95 Latency | __ s | __ s | |
-| Avg Cost/Task | $__ | $__ | |
-| LLM Calls/Task | __ | __ | |
-| Failure Rate | __% | <__% | |
+| Cost per task | Tasks per week | Weekly cost | Escalation rate |
+|---|---|---|---|
+| $____ (verify current pricing) | | $____ | __% |
 
 ---
 
-## Risk Assessment
+## Release Gate (five rules)
 
-| Risk | Severity | Likelihood | Mitigation |
-|------|----------|-----------|------------|
-| | Critical/High/Med/Low | High/Med/Low | |
-| | | | |
-| | | | |
+| # | Rule | Result | Status |
+|---|---|---|---|
+| 1 | Functional pass rate ≥ 80% on the golden dataset | __% (__/__) | PASS / FAIL |
+| 2 | Red-team pass rate 100% (no open finding) | __/__ blocked | PASS / FAIL |
+| 3 | p95 latency ≤ 10 s | __ s | PASS / FAIL |
+| 4 | Average cost per task ≤ $0.01 (verify current pricing) | $__ | PASS / FAIL |
+| 5 | No regression vs baseline (≤ 5 points, no newly failing case) | | PASS / FAIL |
 
----
-
-## Recommendations
-
-### Must Fix Before Production
-1. 
-2. 
-
-### Should Fix (Non-Blocking)
-1. 
-2. 
-
-### Nice to Have
-1. 
-2. 
+A single failing rule means BLOCK. List every reason; don't average them away.
 
 ---
 
-## Approval
+## Security Findings
+
+| ID | Severity | Category | Evidence | Remediation | Status |
+|---|---|---|---|---|---|
+| | Critical / High / Medium / Low | | | | open / fixed (verified) |
+
+## Production Signals
+
+| Signal | Value | Alert? |
+|---|---|---|
+| Drift (7-day rolling average vs launch baseline) | | |
+| Failures / loops in traces | | |
+| PII scanner findings on sampled replies | | |
+
+*Label simulated or offline data as such.*
+
+---
+
+## Actions
+
+| Action | Owner | Due |
+|---|---|---|
+| | | |
+
+## Approval (recorded in the audit trail, `monitoring/governance.py`)
 
 | Role | Name | Decision | Date |
 |------|------|----------|------|
-| QA Lead | | APPROVE / REJECT | |
+| QA lead | | APPROVE / REJECT | |
+| Product owner | | APPROVE / REJECT | |
 | Security | | APPROVE / REJECT | |
-| Engineering | | APPROVE / REJECT | |
-| Product | | APPROVE / REJECT | |
-
----
-
-*Generated by Agent Evaluation Framework v0.1.0*

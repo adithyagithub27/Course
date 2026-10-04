@@ -1,24 +1,22 @@
 # Avatar Configuration — PENDING
 
-> **Status:** ⏳ Awaiting configuration from course owner
+> **Status:** Awaiting the course owner's choice (see `MY_DECISIONS_REQUIRED.md`). Shared by Courses 2, 3 and 4: one avatar across all three courses.
 
 | Setting | Value |
 |---|---|
-| **Avatar ID** | `PENDING` — to be provided by course owner |
-| **Voice ID** | `PENDING` — to be provided by course owner |
-| **Avatar Style** | TBD (business casual recommended) |
-| **Background** | TBD (solid dark or subtle gradient recommended) |
+| **Avatar** | `PENDING` — chosen by the course owner in HeyGen studio |
+| **Avatar style** | TBD (business casual recommended) |
+| **Background** | TBD (Deep Navy `#0A1628` or a subtle dark gradient, per `10-graphics/design-system.md`) |
+| **Where the ID lives** | Environment variable `HEYGEN_AVATAR_ID` only. Never write the ID or any API key into this repo (`CLAUDE.md`). |
 
 ## Requirements
 
-- Both the **Avatar ID** and **Voice ID** must be provided before **Phase 5 (Week 9)** of the production timeline.
-- Once provided, update this file with the actual IDs.
-- Then begin batch HeyGen generation for all scripted avatar scenes.
+- Chosen before the first HeyGen batch (Module 3 pilot, per `PRODUCTION-GUIDE.md`: never generate the whole course before Module 3 has passed review).
+- Record the **name** of the chosen avatar and style here (not the ID), then rename this file to `avatar-config.md`.
 
 ## Action Items
 
-1. Course owner selects a HeyGen avatar and voice from the HeyGen studio.
-2. Course owner provides the Avatar ID and Voice ID.
-3. Update this file and `09-heygen/voice-config/PENDING.md` with the actual values.
-4. Run a 30-second test generation to validate lip sync, pacing, and tone.
-5. If approved, proceed with batch generation across all modules.
+1. Course owner selects the avatar and the voice (`../voice-config/PENDING.md`) together.
+2. Set `HEYGEN_API_KEY`, `HEYGEN_AVATAR_ID`, `HEYGEN_VOICE_ID` in the shell (or an untracked `.env`).
+3. Pilot: `python voice-ai-agents-course/09-production/tools/heygen_batch.py generate 09-heygen/scenes/section-03.json --limit 3`; check lip sync, pacing and tone.
+4. If approved, generate Module 3 in full, review, then the remaining modules one at a time.

@@ -14,7 +14,7 @@
 *Related lecture: 3.6 Break it: orphan spans, missing context and double counting*
 
 - **A.** The tool ran in a task or thread that did not inherit the agent span's context, so the span had no current parent and became a new root; fix by propagating context (for example `contextvars.copy_context().run(...)`) or by creating the span with `start_as_current_span` inside the parent's context.
-  - *Explanation:* Correct. OpenTelemetry context lives in `contextvars`; a new thread or an `asyncio.create_task` without context copying starts empty. Lab 2 reproduces exactly this orphan and its fix.
+  - *Explanation:* Correct. OpenTelemetry context lives in `contextvars`; a new thread or an `asyncio.create_task` without context copying starts empty. Lecture 3.6 reproduces exactly this orphan and its fix.
 - **B.** Tool spans are always separate traces by OpenTelemetry design.
   - *Explanation:* Incorrect. Any span created while another span is current becomes its child, whatever its kind.
 - **C.** The exporter only supports one span per trace.
@@ -47,11 +47,11 @@
 
 *Related lecture: 3.3 GenAI semantic conventions*
 
-- **A.** `openinference.span.kind = "LLM"`, `llm.token_count.prompt = 1184`.
+- **A.** `openinference.span.kind = "LLM"`, `llm.token_count.prompt = 3262`.
   - *Explanation:* Incorrect as the answer to this question: these are valid OpenInference conventions (Arize's), which Section 12 contrasts with the OTel GenAI conventions. The course's manual instrumentation uses `gen_ai.*`.
-- **B.** `llm.model = "gpt-4.1-mini"`, `llm.tokens = 1242`.
+- **B.** `llm.model = "gpt-4.1-mini"`, `llm.tokens = 3306`.
   - *Explanation:* Incorrect. Those are ad hoc names. Tools that understand the conventions would not recognise them.
-- **C.** `gen_ai.operation.name = "chat"`, `gen_ai.request.model = "gpt-4.1-mini"`, `gen_ai.usage.input_tokens = 1184`, `gen_ai.usage.output_tokens = 58`, plus `gen_ai.provider.name = "openai"`.
+- **C.** `gen_ai.operation.name = "chat"`, `gen_ai.request.model = "gpt-4.1-mini"`, `gen_ai.usage.input_tokens = 3262`, `gen_ai.usage.output_tokens = 44`, plus `gen_ai.provider.name = "openai"`.
   - *Explanation:* Correct. Operation name distinguishes a chat call from `execute_tool` or `invoke_agent`; request model and usage fields are the standard names from `opentelemetry-semantic-conventions` 0.66b0 (incubating). Cached input tokens go in `gen_ai.usage.cache_read_input_tokens`.
 - **D.** `span.kind = "generation"`, `model = "gpt-4.1-mini"`.
   - *Explanation:* Incorrect. `span.kind` in OpenTelemetry is CLIENT/SERVER/INTERNAL and so on; "generation" is a Langfuse observation type, not an OTel span kind, and `model` is not a convention attribute.

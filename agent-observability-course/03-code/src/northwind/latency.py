@@ -150,10 +150,16 @@ def summarize(values: Iterable[float]) -> LatencyStats:
 
 @dataclass(frozen=True)
 class LatencyBudget:
-    """Targets in ms. ``None`` disables a check."""
+    """Targets in ms. ``None`` disables a check.
+
+    ``ttft_p95_ms`` applies to :attr:`LatencySample.ttft_ms`, which is the time to the first
+    token of the **final answer** (``RequestTiming.ttft_ms``, ``atlas.ttft_ms`` on the agent
+    span; Lecture 7.1's fourth clock), not the per-generation TTFT in ``atlas_ttft_seconds``.
+    The default, 2,000 ms, sits above the replayed day's final-answer p95 of 1,702 ms; the
+    contract that gates CI is still ``total_p95_ms``."""
 
     total_p95_ms: float = 4000.0
-    ttft_p95_ms: float | None = 1200.0
+    ttft_p95_ms: float | None = 2000.0
     per_step_ms: float | None = 2500.0
     tpot_ms: float | None = 60.0
 

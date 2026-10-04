@@ -20,7 +20,7 @@
 - **C.** Enable two-factor authentication, because keys are often stolen.
   - *Explanation:* Incorrect. Good practice, but not what the lecture requires. The risk being managed is spend, not account takeover.
 - **D.** Set a monthly budget limit (a hard cap) with an email alert below it, because the course's own subject is agents that can spend money unexpectedly, and a cap turns a mistake into a bounded one.
-  - *Explanation:* Correct. A budget cap around $10 with an alert at $5 covers the whole course and guarantees that a bug in your loop costs at most the cap. It is the personal version of the per-tenant hard cap Atlas gets in Section 6.
+  - *Explanation:* Correct. A hard cap around $20 with an alert at $5 covers the whole course (expected spend is $5 to $15) and guarantees that a bug in your loop costs at most the cap. It is the personal version of the per-tenant hard cap Atlas gets in Section 6.
 
 **Correct answer: D**
 
@@ -30,7 +30,7 @@
 
 *Related lecture: 2.2 Project setup with uv and the Makefile*
 
-- **A.** It passes (with a few `live`-marked tests skipped), because `OFFLINE=1` is the default, the unit tests cover pure-Python modules in `src/northwind/`, and the integration tests run the FastAPI app against the mock LLM with an in-memory span exporter.
+- **A.** It passes (401 tests in the shipped repo), because `OFFLINE=1` is the default, the unit tests cover pure-Python modules in `src/northwind/`, and the integration tests run the FastAPI app against the mock LLM with an in-memory span exporter.
   - *Explanation:* Correct. Designing the test suite to be green without keys is deliberate: it makes the CI budget gate in Section 13 possible and gives students an immediate first win.
 - **B.** It passes only if Docker is running, because tests need Langfuse.
   - *Explanation:* Incorrect. No test needs Langfuse or Docker. Self-hosting arrives in Section 13 and even then tests stay independent of it.
@@ -43,7 +43,7 @@
 
 ---
 
-### Q3. Your first trace in Langfuse shows an `atlas.chat` span with three children: `search_knowledge_base`, an `openai.chat gpt-4.1-mini` generation and nothing else. Where in this trace do the token usage and the cost live?
+### Q3. Your first trace in Langfuse is named `invoke_agent atlas`. Under it are `step 1` (with a `chat gpt-4.1-mini` generation and an `execute_tool search_knowledge_base` retriever) and `step 2` (with a second `chat gpt-4.1-mini` generation). Where in this trace do the token usage and the cost live?
 
 *Related lecture: 2.3 Quick win: one request, one trace*
 
@@ -53,24 +53,24 @@
   - *Explanation:* Correct. Usage comes back from the provider per model call, so it is attached to the generation observation. Roll-ups by trace, session, user or tenant are aggregations over generation spans.
 - **C.** Nowhere in the trace; cost is only on the OpenAI invoice.
   - *Explanation:* Incorrect. The point of the course is that cost is attributed inside the trace, per call, in near real time.
-- **D.** On the root `atlas.chat` span, because that is the request.
+- **D.** On the root `invoke_agent atlas` span, because that is the request.
   - *Explanation:* Incorrect. The root span carries request-level attributes (tenant, user, session) and Langfuse may show a rolled-up total there, but usage is recorded where the tokens were consumed.
 
 **Correct answer: B**
 
 ---
 
-### Q4. `OFFLINE=1 make replay` finishes in a few seconds and reports about 2,200 requests and $35 of cost for a full day. Where did that $35 come from, and how much did the replay actually cost you?
+### Q4. `OFFLINE=1 make replay` finishes in about 20 seconds and reports 4,000 sessions, 10,184 requests and $56.28 of cost for Monday 2026-09-14. Where did that $56.28 come from, and how much did the replay actually cost you?
 
 *Related lecture: 2.4 Offline mode: a full day of traffic for free*
 
 - **A.** The number is random and changes on every run.
-  - *Explanation:* Incorrect. The replay is seeded (`--seed 42` by default), so the same seed produces the same spans and the same total every time. That determinism is what makes before/after comparisons in Section 6 trustworthy.
-- **B.** The replay called OpenAI 2,200 times at a discount; you were billed about $35.
+  - *Explanation:* Incorrect. The replay is seeded (seed 7, the Makefile default), so the same seed produces the same spans and the same total every time. That determinism is what makes before/after comparisons in Section 6 trustworthy.
+- **B.** The replay called OpenAI 10,184 times at a discount; you were billed about $56.
   - *Explanation:* Incorrect. The replay makes no LLM calls at all.
-- **C.** The $35 is the cost that the mock LLM's realistic token counts *would* have incurred at the pinned price table, computed by the same pricing code Atlas uses in production; the replay cost you nothing.
+- **C.** The $56.28 is the cost that the mock LLM's realistic token counts *would* have incurred at the pinned price table, computed by the same pricing code Atlas uses in production; the replay cost you nothing.
   - *Explanation:* Correct. The mock emits usage figures drawn from realistic distributions per intent and scenario; `pricing.py` prices them exactly as it would price real usage. You get real cost arithmetic on synthetic traffic for free.
-- **D.** The $35 is Langfuse's ingestion fee for 8,000 spans.
+- **D.** The $56.28 is Langfuse's ingestion fee for the day's 70,560 spans.
   - *Explanation:* Incorrect. Langfuse Cloud's free tier covers the course, and ingestion cost is not what the replay reports.
 
 **Correct answer: C**

@@ -128,16 +128,16 @@
 
 ---
 
-### Q8. In Challenge 4.7, a student wraps the injection check as a guardrail observation but creates it *before* opening the agent span, and scores the guardrail observation instead of the trace. What are the two consequences?
+### Q8. In Challenge 4.7, a student calls `injection_guardrail(message)` in the route, *before* `run_agent` opens the agent observation, and scores it with `score_current_trace(name="injection_flagged", value=1 if flagged else 0)` with no data type. What are the two consequences?
 
 *Related lecture: 4.7 Challenge: add a guardrail observation*
 
-- **A.** Nothing changes; observation placement and score target are cosmetic.
+- **A.** Nothing changes; observation placement and score type are cosmetic.
   - *Explanation:* Incorrect. Both choices determine what you can query later.
-- **B.** The guardrail becomes a separate root trace with no tenant, user or session on it, so refusal rate per tenant cannot be computed; and a score on the observation does not appear in trace-level filters or the Scores dashboard, so `injection_flagged` cannot be used as a trace metric.
-  - *Explanation:* Correct. The lecture's two common mistakes. Fix: open the agent span first (it carries the identity attributes), run the guardrail inside it, and call `score_current_trace(name="injection_flagged", value=1 or 0, data_type="BOOLEAN")`.
-- **C.** The agent span will fail to start because a guardrail already exists.
-  - *Explanation:* Incorrect. Spans do not conflict; the agent span simply starts a new trace after the orphaned guardrail.
+- **B.** Every check becomes its own one-observation trace, disconnected from the request it guarded, so you can't open a refused request and see why; and the score is stored as NUMERIC, so the UI shows an average instead of a flagged rate and you can't filter for flagged traces.
+  - *Explanation:* Correct. These are the lecture's two common mistakes. Fix: call the check as the first thing inside the agent observation (as `run_agent` does) and score with `data_type="BOOLEAN"` on every trace, zeros included, so the rate has a denominator.
+- **C.** The agent observation will fail to start because a guardrail already exists.
+  - *Explanation:* Incorrect. Observations do not conflict; the agent simply starts a new trace after the separate guardrail trace.
 - **D.** Langfuse will reject a `guardrail` type unless the trace has a generation.
   - *Explanation:* Incorrect. A refused request legitimately has a guardrail and no generation; that trace shape is exactly what the challenge asks for.
 

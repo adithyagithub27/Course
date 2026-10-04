@@ -2,11 +2,13 @@
 
 ## AI Agent Testing & Evaluation — Course Positioning Strategy
 
+> Refreshed 2026-10-04 per `00-course-strategy/next-course-market-research.md` §6 and fix-plan decision T8: position on **full lifecycle + CI/CD quality gates + enterprise scenarios**. Never claim "first", "only", "nothing else exists" or "the complete" anything. Course facts: 55 lectures, 6 h 40 min, 16 sections, 5 projects (Project 5 is the capstone), 12 labs, offline mode with no API key needed.
+
 ---
 
 ## 1. Positioning Statement
 
-**For** QA engineers, AI engineers, and engineering leaders **who** ship AI agents and LLM-powered applications without systematic quality assurance, **our course** is a hands-on, production-focused training program **that** teaches you to build enterprise-grade evaluation frameworks using DeepEval, RAGAS, promptfoo, Langfuse, and GitHub Actions. **Unlike** fragmented blog posts, single-tool tutorials, or theoretical ML courses, **we** deliver a complete, integrated quality platform you build from scratch — covering the full lifecycle from first test case to production monitoring and CI/CD gates.
+**For** QA engineers, AI engineers and engineering leads **who** ship AI agents and need to prove they work, **this course** is a hands-on, production-focused program **that** takes one realistic agent through the whole quality lifecycle — test strategy, evaluation metrics, RAG and tool-calling tests, red teaming, tracing, cost, regression, CI/CD quality gates and production monitoring — with DeepEval, RAGAS, promptfoo, Langfuse and OpenTelemetry in one pipeline. **Unlike** courses that go deep on one tool or one stage, **it ends with** a quality gate that blocks a bad pull request and a capstone platform that says SHIP or BLOCK with reasons.
 
 ---
 
@@ -14,255 +16,135 @@
 
 ### Customer Profile
 
-#### Customer Jobs (What They're Trying to Do)
+#### Customer Jobs
 
-| Job Type       | Job Description                                                          |
-| -------------- | ------------------------------------------------------------------------ |
-| Functional     | Ship AI agents that work reliably in production                          |
-| Functional     | Catch hallucinations, errors, and regressions before users see them      |
-| Functional     | Satisfy enterprise compliance and AI governance requirements             |
-| Functional     | Integrate AI quality checks into existing CI/CD workflows                |
-| Functional     | Monitor agent behavior in production and detect drift                    |
-| Social         | Demonstrate AI quality expertise to team/management                      |
-| Social         | Build credibility as an AI quality engineering professional              |
-| Emotional      | Feel confident that their AI agent won't embarrass them in production    |
-| Emotional      | Reduce anxiety about non-deterministic system behavior                   |
+| Job Type | Job Description |
+|---|---|
+| Functional | Ship AI agents that behave reliably in production |
+| Functional | Catch hallucinations, wrong tool calls and regressions before users do |
+| Functional | Put AI quality checks into existing CI/CD |
+| Functional | Show leadership and auditors evidence of quality |
+| Social | Become the person on the team who knows how to test AI |
+| Emotional | Stop worrying that the next prompt edit breaks something silently |
 
 #### Customer Pains
 
-| Pain                                                     | Severity   |
-| -------------------------------------------------------- | ---------- |
-| No established playbook for testing non-deterministic AI | **Extreme** |
-| Hallucinations discovered by end users, not tests        | **Extreme** |
-| Traditional testing tools (JUnit, pytest) feel inadequate alone | **High** |
-| Security vulnerabilities (prompt injection, PII leakage) undetected | **Extreme** |
-| No visibility into agent behavior in production          | **High**   |
-| Tool fragmentation — too many options, unclear which to use | **High** |
-| AI quality treated as optional, not systematic           | **High**   |
-| Expensive consultant-led training ($3,000–$10,000+)      | **Medium** |
-| Blog posts and docs are scattered, incomplete, outdated  | **Medium** |
-| No way to prove AI quality to stakeholders with real metrics | **High** |
+| Pain | Severity |
+|---|---|
+| Exact-match tests flake on correct answers; no clear replacement | High |
+| Hallucinations found by customers, not tests | High |
+| Security gaps (prompt injection, PII leakage, unauthorized tool calls) untested | High |
+| No visibility into what the agent did and what it cost | High |
+| Many tools, unclear which to use for what | Medium |
+| Tutorials stop at "run one metric"; nothing connects to CI and production | Medium |
 
 #### Customer Gains
 
-| Gain                                                      | Importance |
-| --------------------------------------------------------- | ---------- |
-| Systematic, repeatable evaluation framework               | **Critical** |
-| Confidence that agents are production-ready               | **Critical** |
-| Automated quality gates that block bad deployments        | **High**   |
-| Full observability into agent behavior and costs          | **High**   |
-| Career advancement into AI quality engineering            | **High**   |
-| Reusable code and templates for real projects             | **High**   |
-| Enterprise-grade patterns, not toy examples               | **Medium** |
-| Multi-tool mastery (not locked into one vendor)           | **Medium** |
+| Gain | Importance |
+|---|---|
+| A repeatable evaluation workflow they can apply to any agent | Critical |
+| A CI gate that blocks bad changes automatically | High |
+| Traces and cost data that explain failures | High |
+| Reusable code and templates (test strategy, scorecard) | High |
+| A portfolio project for interviews | High |
 
 ---
 
 ### Value Map
 
-#### Our Products & Features
+| Feature | What students get |
+|---|---|
+| 16 sections, 55 lectures, 6 h 40 min | Progressive path from the first failure demo to the capstone |
+| One running example (TechCorp support agent) + four more agents | Realistic agents with real failure cases: RAG, six-tool operations agent, banking agent, three-agent reply desk |
+| 5 projects + 12 labs | Every technical section ends in code students run themselves |
+| Full lifecycle in one pipeline | DeepEval, RAGAS, promptfoo (+ Garak, PyRIT), Langfuse, OpenTelemetry GenAI, MCP contract tests |
+| CI/CD quality gates | GitHub Actions workflow: PR comment, merge blocked on failure, nightly capstone |
+| Enterprise scenarios | Five scenario datasets (customer support, HR, insurance claims, banking, software engineering), governance and audit trail |
+| Offline mode | Every lab, demo and 204 tests run without an API key, with identical numbers |
 
-| Feature                                    | Description                                     |
-| ------------------------------------------ | ----------------------------------------------- |
-| 13-section structured curriculum           | Progressive skill building from basics to capstone |
-| 5 hands-on projects + capstone             | Real, working code — not theoretical exercises   |
-| Multi-tool coverage                        | DeepEval, RAGAS, promptfoo, Langfuse, OTEL, GitHub Actions |
-| Enterprise quality platform (capstone)     | Complete, integrated system students actually build |
-| Reusable code templates                    | Production-ready code for immediate workplace use |
-| CI/CD integration patterns                 | GitHub Actions workflows with quality gates      |
-| Security/red teaming module                | Prompt injection, jailbreak, PII testing         |
-| Production monitoring module               | Drift detection, cost tracking, alerting         |
-
-#### Pain Relievers
-
-| Pain                                    | How We Relieve It                                   |
-| --------------------------------------- | --------------------------------------------------- |
-| No testing playbook for AI              | We *are* the playbook — structured, complete, practical |
-| Hallucinations in production            | Hallucination detection metrics with automated thresholds |
-| Traditional tools feel inadequate       | We integrate with pytest — your existing skills still apply |
-| Security vulnerabilities undetected     | Dedicated red teaming module with promptfoo          |
-| No production visibility               | Full observability stack with Langfuse + OpenTelemetry |
-| Too many tools, unclear choices         | We teach *when and why* to use each tool, not just *how* |
-| Expensive training alternatives         | $12.99 sale price vs. $4,200+ for comparable training |
-| Scattered, incomplete resources         | Single, comprehensive, structured learning path      |
-| Can't prove quality to stakeholders     | Dashboard with real metrics, scores, and trend data  |
-
-#### Gain Creators
-
-| Gain                                    | How We Create It                                     |
-| --------------------------------------- | ---------------------------------------------------- |
-| Systematic evaluation framework         | Build one from scratch — own it, customize it, extend it |
-| Production confidence                   | CI/CD gates that literally block bad deployments     |
-| Career advancement                      | Portfolio capstone project + in-demand skills         |
-| Reusable templates                      | All project code is designed for real workplace reuse |
-| Enterprise-grade patterns               | Every architecture pattern scales to production      |
-| Multi-tool mastery                      | 6+ tools mastered with clear guidance on when to use each |
-| Automated quality gates                 | GitHub Actions pipeline you build and own            |
-| Full observability                      | Langfuse + OTEL tracing you can deploy immediately   |
+| Pain | How the course relieves it |
+|---|---|
+| Flaky tests | Threshold-based metrics and a five-layer test strategy (Modules 2–4) |
+| Hallucinations | Faithfulness against the agent's own tool results; regression gate (Modules 3, 11, 12) |
+| Security gaps | promptfoo against the real agent and tools, a 16-attack banking matrix, Garak and PyRIT (Module 8) |
+| No visibility | Langfuse v4 and OpenTelemetry GenAI traces, cost per trace (Module 9) |
+| Tool overload | Each tool introduced for one job, with a comparison where tools overlap |
+| Nothing connects | One repo, one agent, one pipeline, from first test to nightly gate |
 
 ---
 
-## 3. Competitive Positioning Map
+## 3. Competitive Landscape
 
-```
-                        HIGH DEPTH
-                           │
-                           │
-     Academic Papers ●     │      ● This Course
-     & Textbooks           │        (AI Agent Testing
-                           │         & Evaluation)
-                           │
-                           │
-     ● Maven/Cohort        │      ● Enterprise Training
-       Courses ($4,200+)   │        (Custom, $10K+)
-                           │
-  ─────────────────────────┼──────────────────────────
-  LOW ACCESSIBILITY        │        HIGH ACCESSIBILITY
-                           │
-                           │
-     ● Scattered Blog      │      ● Tool-Specific
-       Posts & Docs        │        Tutorials (free)
-                           │
-                           │
-     ● Conference Talks    │      ● YouTube Introductions
-       & Workshops         │
-                           │
-                        LOW DEPTH
-```
+The eval-and-observability lane on Udemy is no longer empty (research date 2026-09-28; re-verify listings in Udemy Marketplace Insights before launch):
 
-### Competitive Landscape Detail
+| Course (Udemy) | Overlap | How this course differs |
+|---|---|---|
+| Testing AI Systems with DeepEval: AI Agents, Chatbots & RAG (Rahul Shetty, remade June 2026) | DeepEval, golden datasets, synthetic data, safety, agent evaluation | Adds RAGAS, red teaming against tools, tracing, cost, CI gates and a capstone platform |
+| AI Agents, RAG & LLM Evals for Beginners: DeepEval & RAGAS (with Ollama) | DeepEval + RAGAS + HF Evaluate | Adds security, observability, CI/CD and production monitoring |
+| Production LLM Evaluation And Observability | DeepEval + Langfuse, agentic RAG chatbot, pre/post-production | Adds tool-calling and MCP tests, multi-agent tests, red teaming, CI gates, enterprise scenarios |
+| LangFuse: LLM Observability, Tracing, Evaluation, Monitoring | Langfuse | Langfuse is one module here, connected to evaluation and CI |
+| LLM Observability and Cost Management: Langfuse, Monitoring | Observability + cost | Cost engineering is one module; adds evaluation and security |
+| Build & Test AI Agents, ChatBot, RAG with Ollama & Local LLMs | Testing agents with LangChain v1 | Framework-agnostic agents (plain OpenAI tool calling); full lifecycle |
+| Production AI Agents with LangChain + LangGraph [2026] | Security, testing, LangSmith sections | Testing is the whole course, not a section |
+| Prompt Injection & LLM Defense (2026) | promptfoo, Garak, PyRIT | Red teaming is one module, tied to agent tools and CI |
 
-| Competitor Type             | Depth | Accessibility | Price        | Weakness                            |
-| --------------------------- | ----- | ------------- | ------------ | ----------------------------------- |
-| **Blog posts & docs**       | Low   | High          | Free         | Fragmented, single-tool, no project |
-| **YouTube tutorials**       | Low   | High          | Free         | Surface-level, no structured path   |
-| **Tool-specific tutorials** | Medium| High          | Free         | Only one tool, no integration       |
-| **Conference workshops**    | Medium| Low           | $500–2,000   | One-time, no replay, no support     |
-| **Maven cohort courses**    | High  | Low           | $2,000–4,200 | Expensive, fixed schedule           |
-| **Enterprise training**     | High  | Very Low      | $5,000–15,000| Custom engagements, inaccessible    |
-| **Academic content**        | High  | Low           | Varies       | Theoretical, not production-focused |
-| **This course**             | **High** | **High**   | **$12.99**   | —                                   |
+Off-platform: Maven's "AI Evals for Engineers & PMs" (about $4,200 per cohort, research §2) and free DeepLearning.AI short courses cover evaluation in depth or briefly; this course is self-paced, project-based and connects evaluation to CI and production.
 
-### Our Unique Position
-
-We occupy the **upper-right quadrant** — high depth AND high accessibility. No competitor currently holds this position for AI agent evaluation:
-
-- **Deeper than free content** — structured curriculum, multi-tool, enterprise architecture, capstone
-- **More accessible than premium training** — self-paced, affordable, no prerequisites beyond basic Python
-- **More practical than academic content** — every concept maps to working code and real tools
-- **More integrated than tool-specific courses** — covers the complete quality lifecycle, not one tool
+**Where we compete:** breadth across the lifecycle in one pipeline, CI/CD quality gates, enterprise scenarios, a tool-calling agent tested at the trajectory level, and an offline mode that makes every lab free. **Where competitors are stronger:** Rahul Shetty's audience and QA brand; dedicated security courses go deeper on offensive techniques; single-tool courses go deeper on that tool.
 
 ---
 
 ## 4. Key Messaging Pillars
 
-### Pillar 1: "Your Agents Need Real Tests, Not Vibes"
+### Pillar 1: "Test the trajectory, not just the answer"
+An agent can say the right thing and do the wrong thing. The course tests tool choice, arguments, order and loops, not only text.
+*Proof:* the six failure modes gallery (Lecture 1.4); trajectory tests and MCP contracts (Module 6).
 
-**Core message:** AI agents are non-deterministic systems that cannot be tested with traditional methods. You need purpose-built evaluation frameworks with real metrics — not manual spot-checking or "it looks good" approvals.
+### Pillar 2: "One deleted line, caught in CI"
+The running story: a prompt edit makes the agent invent refund terms; a faithfulness check in the CI gate blocks the pull request.
+*Proof:* Lecture 0.1 demo; regression demo (pass rate 100% → 70%, Faithfulness 1.00 → 0.25, offline); the PR comment in Lecture 12.2.
 
-**Supporting points:**
-- Hallucinations, tool errors, and security vulnerabilities are invisible without systematic testing
-- Non-deterministic outputs require statistical evaluation, not binary pass/fail
-- Production failures are 10x more expensive than catching issues in the evaluation pipeline
+### Pillar 3: "The whole lifecycle, one pipeline"
+From the first DeepEval test to drift alerts and an audit trail, in one repo with one agent.
+*Proof:* the capstone's SHIP/BLOCK gate across functional, security, performance and regression stages.
 
-**Use in:** Course description hook, social media, landing page hero
-
----
-
-### Pillar 2: "Build It, Don't Just Learn About It"
-
-**Core message:** This isn't a theoretical overview — you build five real projects and a complete enterprise quality platform. Every concept becomes working code you can deploy at work tomorrow.
-
-**Supporting points:**
-- 5 hands-on projects + integrated capstone
-- All code is production-ready and reusable
-- You leave with a portfolio piece, not just a certificate
-
-**Use in:** Course description middle, promotional videos, comparison marketing
-
----
-
-### Pillar 3: "The Complete Playbook (So You Don't Have To Assemble It Yourself)"
-
-**Core message:** Instead of spending months stitching together blog posts, tool docs, and conference talks, get the entire AI quality engineering discipline in one structured course — from first test case to production monitoring.
-
-**Supporting points:**
-- 6+ tools mastered with clear guidance on when to use each
-- Full lifecycle: evaluation → security → observability → CI/CD → production
-- Single learning path replaces months of self-directed research
-
-**Use in:** Value proposition, FAQ section, comparison with free alternatives
-
----
-
-### Pillar 4: "Enterprise Quality at Indie Price"
-
-**Core message:** The patterns and architectures in this course are what enterprise AI teams pay consultants $10K+ to build. You get the same depth for $12.99 on sale.
-
-**Supporting points:**
-- Enterprise-grade patterns, not toy demos
-- Multi-tool integration mirrors real production architectures
-- CI/CD and monitoring patterns used by teams shipping AI at scale
-
-**Use in:** Price justification, comparison with expensive alternatives, social proof
+### Pillar 4: "Enterprise scenarios, free to run"
+Banking, insurance, HR, support and engineering scenarios; a red-team matrix with real findings; and an offline mode so every lab runs without an API key.
+*Proof:* Project 4 (two findings in the launched SecureBank, verified fix); `05-datasets/enterprise-scenarios/`.
 
 ---
 
 ## 5. Price Positioning
 
-### Price Strategy
+Udemy list and sale prices are set by the owner and by Udemy promotions (see `MY_DECISIONS_REQUIRED.md`; verify current Udemy pricing rules). Messaging:
 
-| Tier                 | Price     | Context                                     |
-| -------------------- | --------- | ------------------------------------------- |
-| **Udemy Sale Price** | $12.99    | Primary purchase price (Udemy promotions)   |
-| **Udemy List Price** | $84.99    | Displayed as reference / crossed out        |
-| **Maven Comparable** | $2,000–4,200 | Cohort-based AI engineering courses      |
-| **Enterprise Training** | $5,000–15,000 | Custom corporate AI quality training |
-| **Consultant Build** | $15,000–50,000 | Having consultants build your eval framework |
+- **Self-paced and affordable** compared with cohort courses (Maven's evals cohort is about $4,200, research §2) — state the comparison factually; no "x-times value" multipliers.
+- **Total cost transparency:** "No API key needed for the labs. Running them live costs a few dollars in total (verify current pricing)."
+- **Udemy's refund policy** applies (verify the current policy wording before quoting it).
 
-### Value Multiplier Framing
-
-```
-$12.99 (sale) vs. $4,200 (Maven cohort) = 323x value multiplier
-$12.99 (sale) vs. $15,000 (consultant) = 1,155x value multiplier
-```
-
-### Price Justification Points
-
-1. **Comparable depth to $4,200 cohort courses** — same tools, same patterns, same production-grade architecture
-2. **Self-paced advantage** — rewatch any section, code along at your speed, no fixed cohort schedule
-3. **API costs are minimal** — approximately $5–10 total for the entire course using OpenAI
-4. **Immediate ROI** — catch one hallucination in production and the course has paid for itself 1,000x
-5. **Career investment** — AI quality engineering roles command $150K–250K+ in top markets
-
-### Pricing Psychology
-
-- **Anchor high, deliver low:** Always mention the $4,200+ alternatives before stating our $12.99 price
-- **Total cost transparency:** "$12.99 for the course + ~$5–10 for API keys = under $25 total"
-- **ROI framing:** "One production AI failure costs more than 1,000 copies of this course"
-- **No-risk framing:** Udemy's 30-day money-back guarantee eliminates purchase hesitation
+Avoid: salary claims, "pays for itself 1,000x", invented incident costs.
 
 ---
 
 ## 6. Positioning Summary
 
-### One-Line Positioning
+### One-line positioning
 
-> **The complete, hands-on course for testing and evaluating AI agents in production — at 1/300th the price of alternatives.**
+> **Test and evaluate AI agents across the whole lifecycle — metrics, red teaming, tracing and CI/CD quality gates — on realistic enterprise agents, in Python.**
 
-### Elevator Pitch (30 seconds)
+### Elevator pitch (30 seconds)
 
-> Most AI agents ship without real testing. When they hallucinate, leak data, or call the wrong tools in production, nobody catches it because nobody built the evaluation framework. This course teaches you to build one — from scratch — using DeepEval, RAGAS, promptfoo, Langfuse, and GitHub Actions. You build five real projects, integrate them into a complete enterprise quality platform, and leave with production-ready code. It's the testing playbook for AI agents that doesn't exist anywhere else — for $12.99.
+> One harmless-looking prompt edit can make an agent invent your refund policy, and every unit test stays green. This course shows you how to catch that and everything like it: evaluation with DeepEval and RAGAS, tool-calling and multi-agent tests, red teaming with promptfoo, Garak and PyRIT, tracing with Langfuse and OpenTelemetry, cost and regression checks, and a GitHub Actions gate that blocks the bad pull request. You build five projects on realistic agents and finish with a quality platform that says SHIP or BLOCK — and every lab runs free, without an API key.
 
-### Tagline Options
+### Tagline options
 
 1. "Test your agents before your users do."
-2. "Production-ready AI quality. From scratch. In Python."
-3. "The evaluation framework your AI agents are missing."
-4. "Stop shipping AI agents on vibes. Start shipping on metrics."
+2. "Stop shipping agents on vibes. Ship on evidence."
+3. "From first eval to CI gate, in one pipeline."
+4. "Your agent said the right thing. Did it do the right thing?"
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025*
+*Document version: 2.0*
+*Last updated: 2026-10-04*
 *Status: Active — guides all marketing communications*

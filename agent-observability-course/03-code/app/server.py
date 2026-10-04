@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from app.agent import AgentResult, AtlasAgent
 from northwind.budget import BudgetGuard
 from northwind.config import SCENARIOS, TENANTS, Settings, get_settings, normalise_tenant_id
+from northwind.pii import mask_text
 from telemetry import metrics
 from telemetry.langfuse_setup import create_score
 from telemetry.local_store import LocalSpanStore, ScoreRecord
@@ -200,6 +201,28 @@ def _fastapi_telemetry_off() -> dict[str, Any]:
     return {}
 
 
+def _asgi_endpoint(asgi_app: Any) -> Any:
+    """Wrap a raw ASGI app as a Starlette endpoint (an exact-path route, no redirect)."""
+
+    async def endpoint(request: Request) -> Any:
+        from starlette.responses import Response
+
+        sent: dict[str, Any] = {"status": 200, "headers": [], "body": b""}
+
+        async def send(message: dict[str, Any]) -> None:
+            if message["type"] == "http.response.start":
+                sent["status"], sent["headers"] = message["status"], message.get("headers", [])
+            elif message["type"] == "http.response.body":
+                sent["body"] += message.get("body", b"")
+
+        await asgi_app(request.scope, request.receive, send)
+        headers = {k.decode(): v.decode() for k, v in sent["headers"]}
+        headers.pop("content-length", None)
+        return Response(content=sent["body"], status_code=sent["status"], headers=headers)
+
+    return endpoint
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -244,7 +267,11 @@ def create_app(
     app = FastAPI(
         title="Atlas helpdesk agent", version="1.0.0", lifespan=lifespan, **_fastapi_telemetry_off()
     )
-    app.mount("/metrics", metrics.metrics_app())
+    # Mounted twice so both /metrics and /metrics/ answer 200 directly (a single mount at
+    # "/metrics" made Starlette answer /metrics with a 307 redirect to /metrics/).
+    metrics_asgi = metrics.metrics_app()
+    app.add_route("/metrics", _asgi_endpoint(metrics_asgi), methods=["GET"], include_in_schema=False)
+    app.mount("/metrics/", metrics_asgi)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
@@ -315,7 +342,8 @@ def create_app(
         outcome = {1: "positive", -1: "negative", 0: "neutral"}[fb.score]
         metrics.FEEDBACK.labels(tenant, outcome).inc()
         value = 1.0 if fb.score == 1 else 0.0 if fb.score == -1 else 0.5
-        comment = " | ".join(x for x in [fb.reason, fb.comment] if x)
+        # Free text is user data: redact it like every span attribute before storing or sending.
+        comment = " | ".join(mask_text(x, hash_ids=True) for x in [fb.reason, fb.comment] if x)
         store: LocalSpanStore | None = app.state.store
         if store is not None:
             store.add_score(

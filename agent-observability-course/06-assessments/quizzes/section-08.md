@@ -9,136 +9,136 @@
 
 ---
 
-### Q1. Atlas passed a 300-case offline eval suite before launch. Three months later the HR business partner says answers have become vague. The suite still passes. What does lecture 8.1 say is going on?
+### Q1. Atlas's judge runs on a 10% head sample plus a tail of traces that are always judged. Which traces belong in the tail, and which sample does the headline quality number come from?
 
-*Related lecture: 8.1 Offline evals are not enough*
+*Related lecture: 8.2 Code-along: sampled LLM-as-judge on live traces*
 
-- **A.** Vagueness cannot be measured, so nothing can be done.
-  - *Explanation:* Incorrect. A G-Eval criterion for groundedness and specificity measures it well enough to alert on, as Lab 5 shows.
-- **B.** The business partner is wrong; passing evals prove quality.
-  - *Explanation:* Incorrect. Offline evals prove quality on the cases you thought of, at the time you wrote them.
-- **C.** Production has drifted from the eval set: new intents, new phrasing, a new prompt version or model snapshot, and a knowledge base that changed; the suite measures yesterday's distribution, so only evaluation on live traffic (sampled judge, feedback, drift detection) can see today's quality.
-  - *Explanation:* Correct. "Quality in production" means measuring on the traffic you actually serve and comparing windows over time. Incident 3 is exactly a regression the suite could not see because the suite never contained the new prompt's failure modes.
-- **D.** Offline evals expire after 30 days and must be re-run.
-  - *Explanation:* Incorrect. Re-running the same suite on the same cases would still pass; the cases are the problem, not their age.
+- **A.** The tail is a random extra 10%; the headline uses head and tail together for a bigger n.
+  - *Explanation:* Incorrect. The tail is chosen by content, so mixing it into the mean biases quality downwards. This is the most common bug the lecture warns about.
+- **B.** The tail is the traces that matter for investigation (errors, step limits, escalations, thumbs-down); the headline quality estimate uses the head sample only, because the tail is biased toward bad traces by design.
+  - *Explanation:* Correct. Head gives you an unbiased estimate; tail gives you the failures. `JudgeSamplingPolicy` records why each trace was picked so the two can be separated.
+- **C.** The tail is the most expensive traces; the headline uses the tail because cost and quality go together.
+  - *Explanation:* Incorrect. Cost is one tail rule a team might add, but the headline still comes from the head sample.
+- **D.** There is no tail; judge 100% of traces so the estimate is exact.
+  - *Explanation:* Incorrect. Judging everything on gpt-4.1 would cost about $109 a day, almost six times serving after Section 6; sampling is what keeps the judge affordable.
+
+**Correct answer: B**
+
+---
+
+### Q2. The judge uses 3 criteria, each one call of about 1,200 input and 150 output tokens on gpt-4.1-mini ($0.40 / $1.60 per million tokens; verify current pricing), so $0.00072 per call. Atlas serves 10,000 traces a day and the head sample is 10%. What is the judge's daily bill for the head sample?
+
+*Related lecture: 8.2 Code-along: sampled LLM-as-judge on live traces*
+
+- **A.** $0.72: 1,000 traces × $0.00072.
+  - *Explanation:* Incorrect. That counts one call per trace; each judged trace is three calls, one per criterion.
+- **B.** $21.60: 10,000 traces × 3 × $0.00072.
+  - *Explanation:* Incorrect. That judges every trace; the head sample is 10%.
+- **C.** $2.16: 1,000 traces × 3 criteria × $0.00072 (the tail adds a little on top).
+  - *Explanation:* Correct. $0.00216 per judged trace, about $2.16 a day: roughly 4% of the $56.28 baseline day and about 11% of the $19.07 day after Section 6's levers. Report it as a line item and cap it with `JUDGE_MAX_CALLS`.
+- **D.** $0.216: the judge's tokens are billed at the cached rate.
+  - *Explanation:* Incorrect. Each judge prompt contains a different trace, so there is no long shared prefix to cache.
 
 **Correct answer: C**
 
 ---
 
-### Q2. A week of Atlas traffic has 15,660 requests, 187 errors and 312 thumbs-down. You can afford to judge about 10% of traces. Compare uniform sampling with the course's tail-sampling policy.
+### Q3. A teammate writes the `resolved` criterion as "Did the agent give a good answer?". Scores cluster between 0.7 and 0.9 whatever the answer, and two runs of the same trace disagree. What should the criterion add?
 
 *Related lecture: 8.2 Code-along: sampled LLM-as-judge on live traces*
 
-- **A.** Tail sampling is cheaper because it judges fewer traces.
-  - *Explanation:* Incorrect. It judges more (all the "always" traces on top of the base rate); the benefit is coverage of failures, not cost.
-- **B.** Neither matters because the judge should score every trace.
-  - *Explanation:* Incorrect. Judging 100% of a week costs about 7% of serving cost in Lab 5's numbers; sampling is what keeps the judge affordable.
-- **C.** Uniform keeps all errors; tail sampling keeps a random 10%.
-  - *Explanation:* Incorrect. Reversed: uniform sampling is blind to trace content, so it keeps about 10% of errors (19 of 187).
-- **D.** Uniform keeps ~10% of everything including errors (about 19 of 187); tail sampling keeps 100% of traces matching `always` rules (errors, negative feedback, escalations, step limits) plus 10% of the rest, for about 29% more judge calls; but the tail sample is biased toward bad traces, so headline quality must be reported from the uniform slice only.
-  - *Explanation:* Correct. Lab 5 shows 1,566 vs 2,014 judged traces. Investigation wants every bad trace; measurement wants an unbiased sample; the judge records `sample_reason` so the two can be separated.
+- **A.** A higher threshold, so fewer answers pass.
+  - *Explanation:* Incorrect. The threshold moves the pass line but does nothing about a vague scale; the scores would still cluster.
+- **B.** A bigger judge model; vagueness is a capability problem.
+  - *Explanation:* Incorrect. A larger model is just as generous with an undefined criterion, at five times the price.
+- **C.** Few words: the shorter the criterion, the more consistent the judge.
+  - *Explanation:* Incorrect. Short criteria are exactly what produce the generous, noisy scores in the question.
+- **D.** What a zero looks like, spelled out for a helpdesk agent: for example, "the employee got what they asked for and a next step; an answer that only says 'contact HR', asks for information it already has, or doesn't address the question scores 0".
+  - *Explanation:* Correct. A judge is generous unless you tell it exactly what failure is. Atlas's `CRITERIA` name the failure cases for `resolved`, `grounded` and `safe_escalation`.
 
 **Correct answer: D**
 
 ---
 
-### Q3. Which DeepEval construction correctly expresses the course's `grounded` criterion?
+### Q4. The `grounded` criterion currently reads "The answer is accurate." Which addition makes a zero unambiguous for Atlas?
 
 *Related lecture: 8.2 Code-along: sampled LLM-as-judge on live traces*
 
-- **A.** `GEval(name="grounded", criteria="Every policy claim in the answer is supported by the retrieved knowledge base passages; invented numbers or entitlements score 0.", evaluation_params=[LLMTestCaseParams.INPUT, LLMTestCaseParams.ACTUAL_OUTPUT, LLMTestCaseParams.RETRIEVAL_CONTEXT], threshold=0.7, model="gpt-4.1-mini")` scored on `LLMTestCase(input=..., actual_output=..., retrieval_context=[...])`.
-  - *Explanation:* Correct. Groundedness needs the retrieved passages, so `RETRIEVAL_CONTEXT` must be among the evaluation params and the test case must carry `retrieval_context`; the criteria text is agent-specific and the threshold turns the 0-1 score into pass/fail.
-- **B.** `GEval(name="grounded", criteria="Is the answer good?", evaluation_params=[LLMTestCaseParams.ACTUAL_OUTPUT])`
-  - *Explanation:* Incorrect. Without input or retrieval context the judge cannot check grounding, and "good" is too vague to be reproducible (Lab 5's stretch goal measures judge agreement for this reason).
-- **C.** `LLMTestCase(input=..., expected_output=...)` with an exact-match assertion.
-  - *Explanation:* Incorrect. Production traces have no expected output, and exact match fails on every paraphrase; that is an offline test style, not an online judge.
-- **D.** A regex that checks the answer contains a number.
-  - *Explanation:* Incorrect. Containing a number is not the same as containing the *right* number from the knowledge base.
+- **A.** "Every policy statement is backed by a cited knowledge-base article or a quoted tool result; any number, entitlement or deadline that appears in neither scores 0."
+  - *Explanation:* Correct. It defines what counts as support and names the failure (an invented number or entitlement). If you also pass the retrieved passages as `retrieval_context`, the judge can check the citation instead of trusting it.
+- **B.** "Be strict."
+  - *Explanation:* Incorrect. Strictness without a definition of failure just shifts the noise.
+- **C.** "Score 1 if the answer sounds confident."
+  - *Explanation:* Incorrect. Confidence is the signature of a hallucination, not of grounding.
+- **D.** "Compare against the expected answer."
+  - *Explanation:* Incorrect. Production traces have no expected answer; that is an offline-eval construction.
 
 **Correct answer: A**
 
 ---
 
-### Q4. Feedback data: sessions with thumbs-up have a judge `resolved` mean of 0.93, thumbs-down 0.61, and the 92% of sessions with no feedback score 0.87. A manager proposes reporting "quality = share of thumbs-up among feedback" (75%). What is wrong with that?
+### Q5. On the replayed day, `make feedback` prints `joined_with_judge=363 agreement=80% judge|👍=0.91 judge|👎=0.91`. The disagreement table shows 81 traces where user and judge disagree, 71 of them thumbs-down that the judge rated fine. How should you read this?
 
 *Related lecture: 8.3 Capturing user feedback that means something*
 
-- **A.** Nothing; feedback is the voice of the user.
-  - *Explanation:* Incorrect. It is the voice of the 8% of users who clicked, who are not representative.
-- **B.** Survivorship bias: people who bother to click are systematically happier (0.93) or angrier (0.61) than the silent majority (0.87), so any statistic over feedback alone misrepresents overall quality. Use the judge on a uniform sample for the headline, and use feedback to find *which* traces to read and to calibrate the judge (84% agreement in Lab 5).
-  - *Explanation:* Correct. Feedback is a precious targeting signal and a calibration set, not a population estimate.
-- **C.** Thumbs-down should be weighted double because negative feedback is rarer.
-  - *Explanation:* Incorrect. Arbitrary weights do not fix a biased sample; they add a second bias.
-- **D.** Feedback should be removed from the product because it is unreliable.
-  - *Explanation:* Incorrect. It is reliable for what it is: a pointer to problem traces and a check on the judge. The reasons attached to thumbs-down are the fastest route to a dataset item.
+- **A.** The judge is broken and should be replaced by the thumbs.
+  - *Explanation:* Incorrect. 12.7% of requests carry a vote; the judge covers a defined sample. Neither replaces the other.
+- **B.** The judge's mean is the same for thumbs-up and thumbs-down, so on this day the votes carry almost no information about answer quality (the simulator draws them independently of the answer); the 81 disagreements are the week's reading list, because each one is either a judge error or a user who wanted something the policy forbids.
+  - *Explanation:* Correct. Agreement is a calibration check, not a quality score. Click through the disagreements: they are where the judge's criteria or the product are wrong.
+- **C.** 80% agreement means quality is 80%.
+  - *Explanation:* Incorrect. Agreement measures whether two signals match, not how good the answers are.
+- **D.** Thumbs-down should be weighted double because negative feedback is rarer.
+  - *Explanation:* Incorrect. Arbitrary weights do not fix a noisy or biased signal; they add a second bias.
 
 **Correct answer: B**
 
 ---
 
-### Q5. Lecture 8.4 turns injection attempts, refusals and PII-in-output into time series. Why metrics here rather than only trace attributes?
+### Q6. A manager wants to report "quality = 79% positive feedback". Feedback covers 12.7% of requests, and on real traffic the per-answer feedback rate falls in long sessions. Which bias does this hide, and what does lecture 8.3 do about it?
 
-*Related lecture: 8.4 Guardrail and safety metrics*
+*Related lecture: 8.3 Capturing user feedback that means something*
 
-- **A.** Because metrics can carry the full prompt text for review.
-  - *Explanation:* Incorrect. Metrics must never carry high-cardinality or sensitive text; that is a cardinality and privacy violation.
-- **B.** Because traces cannot store booleans.
-  - *Explanation:* Incorrect. Traces store the per-request fact (the guardrail observation and its boolean score from Challenge 4.7).
-- **C.** Because safety questions are about *rates over time* ("did injection attempts triple this week?", "is PII leaking after the release?"), which are cheap to answer from low-cardinality counters in Prometheus and expensive to answer by scanning every trace; the trace still holds the evidence for any individual case.
-  - *Explanation:* Correct. Counters like `atlas_guardrail_events_total{tenant,kind}` and `atlas_pii_in_output_total{tenant}` give alertable trends; the trace gives the example when the alert fires.
-- **D.** Because Langfuse deletes guardrail observations after a day.
-  - *Explanation:* Incorrect. Retention is configurable and not the reason.
+- **A.** No bias: 79% of users are happy.
+  - *Explanation:* Incorrect. It is 79% of the votes, from the minority who clicked; a reader will hear "79% of users".
+- **B.** Recency bias; fix by weighting recent votes more.
+  - *Explanation:* Incorrect. The problem is who votes, not when.
+- **C.** Survivorship: the users who give up leave instead of voting, so the people who remain to click are not representative. Report the rate next to the score ("79% of 12.7%"), track abandonment as its own metric (no final answer viewed, or the same question re-asked within 2 minutes), and judge the complaints with the tail rule.
+  - *Explanation:* Correct. Feedback is a targeting signal and a calibration set, not a population estimate. The headline quality comes from the judge's head sample.
+- **D.** Selection bias in the judge; fix by judging only voted traces.
+  - *Explanation:* Incorrect. That would import the feedback bias into the judge.
 
 **Correct answer: C**
 
 ---
 
-### Q6. The weekly drift report shows: judge `grounded` PSI 0.19, answer length PSI 0.31, cost PSI 0.03, latency PSI 0.02. Using the thresholds from lecture 8.5, what does this say?
+### Q7. A drift report row reads: `judge_grounded  mean 0.91 → 0.89 (−2.2%)  PSI 0.18`. Using `DriftThresholds` (PSI 0.10 watch, 0.25 alert; mean −15% alert), what is the status and the next step?
 
 *Related lecture: 8.5 Drift detection: compare this week to last week*
 
-- **A.** Latency drifted the most because it has the smallest PSI.
-  - *Explanation:* Incorrect. Smaller PSI means less shift.
-- **B.** PSI cannot be applied to judge scores because they are bounded in 0-1.
+- **A.** OK: the mean barely moved.
+  - *Explanation:* Incorrect. The mean can stay nearly flat while the distribution changes shape, for example when part of the traffic gets worse. That is what PSI catches.
+- **B.** Watch: PSI is between 0.10 and 0.25 even though the mean moved only 2%, so part of the distribution shifted; open the low cluster and slice by `prompt_version` to name the change.
+  - *Explanation:* Correct. A small mean delta with a sizeable PSI is a distribution that split. The split by prompt version is what turns "quality fell" into "prompt v2 did it".
+- **C.** Alert: any PSI above 0.1 pages someone.
+  - *Explanation:* Incorrect. 0.10 to 0.25 is watch; alert starts at 0.25 or a mean drop of 15%.
+- **D.** PSI cannot be applied to judge scores because they are bounded in 0 to 1.
   - *Explanation:* Incorrect. PSI works on any binned distribution; bounded scores bin perfectly well.
-- **C.** Everything is stable; PSI under 0.5 is noise.
-  - *Explanation:* Incorrect. The course's thresholds are < 0.1 stable, 0.1 to 0.25 moderate shift, > 0.25 significant shift.
-- **D.** Cost and latency are stable; `grounded` shifted moderately and answer length shifted significantly, so the output distribution changed while operational metrics did not, which points at a prompt or model change rather than an infrastructure problem; slice by `prompt_version` next.
-  - *Explanation:* Correct. This is the Incident 3 signature. PSI compares the distribution of a metric between two windows, so it catches shape changes that a mean would understate.
-
-**Correct answer: D**
-
----
-
-### Q7. `evals/to_dataset.py` promotes traces with `grounded < 0.4` to a Langfuse dataset with `source_trace_id`. What closes the loop back to Section 4 and to offline evals?
-
-*Related lecture: 8.6 From bad trace to regression test*
-
-- **A.** The dataset becomes the input to offline evals (Course 2 style) that run against every new prompt version *before* it is promoted to the `production` label, so the failures observed in production this week cannot recur silently next week; `source_trace_id` lets a reviewer open the original trace for context.
-  - *Explanation:* Correct. Production → judge → dataset → offline eval → prompt label promotion is the full quality loop. Incident 3 happened because the promotion step skipped the eval.
-- **B.** Langfuse automatically fixes the prompt based on dataset items.
-  - *Explanation:* Incorrect. Langfuse stores and evaluates; humans (or your CI) change prompts.
-- **C.** Dataset items replace the knowledge base entries that were wrong.
-  - *Explanation:* Incorrect. Dataset items hold the question and the *expected* answer for testing; the knowledge base is a separate artefact.
-- **D.** The dataset is emailed to the prompt author.
-  - *Explanation:* Incorrect. There is no automated value in that; the loop is about running evals.
-
-**Correct answer: A**
-
----
-
-### Q8. Judging 10% of a week's traffic cost $1.67 against $246 of serving cost. A colleague argues observability should be free and wants the judge switched off. Which response reflects lecture 8.2 and Lab 5?
-
-*Related lecture: 8.2 Code-along: sampled LLM-as-judge on live traces*
-
-- **A.** Agree: 0.7% overhead is waste.
-  - *Explanation:* Incorrect. 0.7% is the price of the only signal that detected Incident 3, whose "cost" was two wrong HR answers and a week of eroded trust.
-- **B.** Keep it, and keep reporting its cost as a line item on the Quality page: the judge's cost is a known, tunable fraction (sample rate, model choice, criteria count) of serving cost, and making it visible is what keeps it justified in the next finance review.
-  - *Explanation:* Correct. Observability that hides its own cost gets switched off; observability that shows its cost next to what it caught gets funded. Same argument applies to Langfuse ingestion and to tail sampling.
-- **C.** Switch the judge to gpt-4.1 to make it more accurate, whatever the cost.
-  - *Explanation:* Incorrect. A more expensive judge is a decision to be measured (agreement vs cost), not a default.
-- **D.** Judge 100% of traffic so the estimate is exact.
-  - *Explanation:* Incorrect. That is $16.70 a week (6.8%) for a marginal gain in precision; the uniform 10% slice already estimates weekly means well.
 
 **Correct answer: B**
+
+---
+
+### Q8. `make drift` on the two-week store (Lab 5) shows: `judge_grounded` alert, 0.943 → 0.720, PSI 2.013; `judge_resolved` alert, PSI 3.678; `latency_ms` watch, mean −25.9% (improved); `steps` ok. What does this combination say?
+
+*Related lecture: 8.5 Drift detection: compare this week to last week*
+
+- **A.** An infrastructure incident: latency moved, so the provider changed.
+  - *Explanation:* Incorrect. Latency *improved*; the drift report flags the shape change but never alerts on an improvement.
+- **B.** Nothing actionable: two metrics alert every week.
+  - *Explanation:* Incorrect. A PSI around 2 is far beyond the 0.25 alert line; this is a real change.
+- **C.** The judge drifted, not Atlas; recalibrate the judge.
+  - *Explanation:* Incorrect as the first step. Check what changed in Atlas in the window before blaming the judge; feedback moving the same way (79% → 74% positive on the drift day) corroborates a real regression.
+- **D.** The output got worse while the operation got cheaper and faster: shorter, vaguer answers. That is the signature of a prompt or model change, not infrastructure; the Quality page's split by prompt version (v1 grounded 0.941 vs v2 0.586) names the release, and moving the `production` label back to v1 is the fix.
+  - *Explanation:* Correct. This is Incident 3's signature. A cost-only or latency-only view would have rewarded the regression.
+
+**Correct answer: D**

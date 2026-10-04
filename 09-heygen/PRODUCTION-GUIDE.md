@@ -1,8 +1,9 @@
 # HeyGen Production Guide — AI Agent Testing & Evaluation
 
-> **Course:** AI Agent Testing & Evaluation (Udemy)
-> **Format:** ~60 lectures, 6–10 minutes each, avatar-presented with mixed visuals
-> **Last updated:** 2025-01-XX
+> **Course:** AI Agent Testing & Evaluation (Udemy) — Course 2 in this repo. The rules in this guide (7-beat structure, tone, scene types, QA bar) are shared by Courses 3 and 4.
+> **Format:** 55 lectures, 400 minutes of lectures (6 h 40 min), 3–8 minutes each, avatar-presented with mixed visuals. Source of truth for IDs, titles and durations: `01-curriculum/full-curriculum.md`.
+> **Scripts:** `02-course-content/section-XX-slug.md`, one file per module (decision T5).
+> **Last updated:** 2026-10-04
 
 ---
 
@@ -10,11 +11,13 @@
 
 | Tool | Role |
 |---|---|
-| **HeyGen** | Avatar presenter — generates talking-head clips from scripts |
-| **OBS Studio** | Screen recordings — code demos, terminal sessions, dashboards |
-| **Figma / Canva** | Diagrams, architecture visuals, slide graphics, recap cards |
-| **CapCut / DaVinci Resolve** | Assembly and editing — stitch avatar + diagrams + demos |
+| **HeyGen** | Avatar presenter — generates talking-head clips from the `[AVATAR]` blocks of the scripts |
+| **OBS Studio** | Screen recordings — code demos, terminal sessions, dashboards (`03-demos/` specs) |
+| **SVG diagrams + slide builder** | Master diagrams D1–D16 in `10-graphics/diagrams/`; slide decks generated from the `[SLIDE]` cues (see "Visual Assets" below) |
+| **CapCut / DaVinci Resolve** | Assembly and editing — stitch avatar + slides + diagrams + demos |
 | **Udemy** | Final publishing platform |
+
+Shared production tools (used by all three courses) live in `voice-ai-agents-course/09-production/tools/`: `scene_extractor.py` (scripts → HeyGen scene manifest), `heygen_batch.py generate|poll` (submit and download, resumable), `slide_builder.py` (decks), `pronunciation.json` (spoken-form glossary; add terms there, never inline in scripts). Secrets come only from environment variables: `HEYGEN_API_KEY`, `HEYGEN_AVATAR_ID`, `HEYGEN_VOICE_ID`, `OPENAI_API_KEY`.
 
 ---
 
@@ -49,9 +52,9 @@ Every lecture follows exactly seven beats. No exceptions.
 | Metric | Value |
 |---|---|
 | Speaking rate | ~140 words per minute |
+| 3-minute lecture | ~420 spoken words |
 | 6-minute lecture | ~840 spoken words |
-| 8-minute lecture | ~1,000–1,100 spoken words |
-| 10-minute lecture | ~1,400 spoken words |
+| 8-minute lecture | ~1,120 spoken words (less in screencasts: demo output, typing and dwell fill the rest) |
 
 Count your words. If a script runs long, cut — don't speed up.
 
@@ -59,9 +62,9 @@ Count your words. If a script runs long, cut — don't speed up.
 
 ## Production Rules
 
-1. **Avatar never talks >60 seconds without a visual change.** Cut to a diagram, code, terminal, or different angle. Talking heads lose attention fast.
+1. **Avatar never talks >60 seconds (about 140 words) without a visual change (decision A3).** Cut to a diagram, code, terminal, or different angle. Talking heads lose attention fast.
 
-2. **Every lecture opens with a hook — NEVER "Hi guys, welcome back."** Start with a problem, a failure, a surprising stat, or a provocative question. Earn the viewer's next 30 seconds.
+2. **Every lecture opens with a hook — NEVER "Hi guys, welcome back" or "Welcome back" (decision A4).** Start with a problem, a failure, a surprising stat, or a provocative question. Earn the viewer's next 30 seconds.
 
 3. **One idea per lecture.** If the title needs the word "and," split it into two lectures. Focused lectures get higher completion rates.
 
@@ -86,8 +89,8 @@ Count your words. If a script runs long, cut — don't speed up.
 - **Real-world analogies.** Compare abstract concepts to things people already understand.
 
 ### Rhythm & Engagement
-- **Use a number or concrete example every 45 seconds.** "This cuts false positives by 60%." "Three out of five agents fail here."
-- **Say payoff before theory.** "This saves 40% of debugging time" — THEN explain the mechanism. People listen harder when they know why it matters.
+- **Use a number or concrete example every 45 seconds.** Use real numbers from the course repo ("pass rate dropped from 100% to 70%", "routing saved 29%"), never invented statistics. An outside statistic needs a source or an inline "(verify: source)" note (decision A6).
+- **Say payoff before theory.** "One faithfulness check would have blocked this deploy" — THEN explain the mechanism. People listen harder when they know why it matters.
 - **Questions to camera every 60–90 seconds.** "So what happens next?" "Think about this for a second…" "Why would that matter?"
 - **Engaging hooks throughout.** "Imagine…" / "Here's where this fails…" / "Let's see this in action…" / "Watch what happens when…"
 
@@ -100,6 +103,7 @@ Count your words. If a script runs long, cut — don't speed up.
 - ~~"Let's dive in"~~ (unless genuinely diving into a demo)
 - ~~"Hi guys, welcome back"~~
 - ~~"Before we get started"~~
+- ~~"Welcome back"~~
 
 If you catch yourself writing filler, delete the sentence and rewrite with a concrete fact or example.
 
@@ -126,69 +130,62 @@ Each scene type has specific production requirements:
 
 ## Batch Production Workflow
 
-Produce in batches — never one lecture at a time.
+Work one module (script section) at a time: extract scenes, generate, review, record screencasts, assemble, QA, then move on. Never generate the whole course in HeyGen before Module 3 has passed review (`CLAUDE.md`).
 
-### Phase 1: Script All
-1. Write **ALL scripts** for a module before generating any video.
-2. Review every script against this guide's tone rules and the 7-beat structure.
-3. Confirm word counts are within budget.
+### Phase 1: Scripts
+1. The module's script is `02-course-content/section-XX-slug.md` (all 55 lectures exist). Review it against this guide and `SCRIPT-TEMPLATE.md`: 7 beats, word count vs target, hook, recap card (A1), "You can now" card on the last lecture of the module (A2), no avatar run over 140 words (A3).
+2. Run the code the lecture shows: `cd 04-code-examples/agent-eval-framework && make test` (204 passed, 5 skipped), then each demo in the lecture's `[SCREEN]`/`[CODE]` cues (`03-demos/README.md` maps lectures to demos). If a library upgrade breaks a test, pin the version in `pyproject.toml`; don't rewrite scripts mid-recording.
 
-### Phase 2: Group Scenes by Type
-4. Extract all avatar scenes across the module → batch-generate in HeyGen.
-5. Extract all diagram scenes → batch-create in Figma/Canva.
-6. Extract all code/terminal demos → list them for OBS recording.
+### Phase 2: Extract avatar scenes
+3. `python voice-ai-agents-course/09-production/tools/scene_extractor.py 02-course-content/section-03-first-eval.md --out 09-heygen/scenes/section-03.json --polish`
+   Only `[AVATAR]` blocks go to HeyGen; every other cue becomes a slide, screencast or B-roll.
 
-### Phase 3: Record
-7. Record **all screen demos with OBS in one session per module.** Consistent screen layout, font size, and terminal theme.
-8. Generate all avatar clips in HeyGen. Group by similar length for efficient batching.
+### Phase 3: Generate
+4. Pilot: `python voice-ai-agents-course/09-production/tools/heygen_batch.py generate 09-heygen/scenes/section-03.json --limit 3`, review lip sync and pronunciation, then the full batch.
+5. `heygen_batch.py poll 09-heygen/scenes/section-03.json --download-dir 09-heygen/generated --wait`. Files are named `S{section:02}/{lecture_id}-{beat}.mp4`.
 
-### Phase 4: Assemble
-9. Assemble in CapCut or DaVinci Resolve: avatar scenes + diagrams + demos + transitions.
-10. Add background music (low, –24 LUFS under voice).
-11. Add title cards and recap cards from templates.
+### Phase 4: Visuals and screencasts
+6. Build the module's slide deck from the `[SLIDE]` cues (see Visual Assets) and check every slide against `10-graphics/slide-deck-outline.md`.
+7. Record all screencasts for the module with OBS in one session from the `03-demos/demo-scripts/` specs (same layout, font size and terminal theme).
 
-### Phase 5: QA
-12. QA each assembled video against the original scene plan:
-    - [ ] Every beat present?
-    - [ ] No avatar segment >60 s without visual change?
-    - [ ] Visual change every 15–30 s?
-    - [ ] Hook in first 15 s?
-    - [ ] Word count matches target duration?
-    - [ ] Audio normalized to –16 LUFS?
+### Phase 5: Assemble
+8. Assemble in CapCut or DaVinci Resolve: avatar clips + slides + diagrams + screencasts + title, recap and next-up cards.
+9. Background music low (–24 LUFS under voice).
 
-### Phase 6: Export & Publish
-13. Export: **1920×1080, H.264, 30 fps, –16 LUFS audio.**
-14. Upload to Udemy with correct section/lecture mapping.
+### Phase 6: QA, export, log
+10. QA against the script (checklist below), export **1920×1080, H.264, 30 fps, –16 LUFS**, upload to Udemy with the module/lecture mapping.
+11. Add one line per exported lecture to `BUILD_LOG.md` (ID, date, status). Commit manifests and status files; never commit MP4s.
 
 ---
 
-## File Naming Convention
+## Visual Assets
+
+- **Master diagrams:** SVG files in `10-graphics/diagrams/` (`D{n}-{slug}.svg`, build steps as `D{n}-step{k}.svg`), D1–D16, listed in `10-graphics/diagrams/index.json` and mapped to lectures in `10-graphics/slide-deck-outline.md`. Rebuild with `python 10-graphics/diagrams/_src/build_diagrams.py`. Palette, type and scene kits K1–K7: `10-graphics/design-system.md` (decision A7).
+- **Slide decks:** generated from the scripts' `[SLIDE n: ...]` cues, one PPTX per module:
+  `python voice-ai-agents-course/09-production/tools/slide_builder.py --course . --scripts-dir 02-course-content`
+  (add `--section 06` for one module). A cue that names a diagram (for example "D3 build 2") embeds the rendered PNG. Regenerate after any script edit rather than hand-editing decks.
+- There are no separate `scene-plans/` or `visual-specs/` folders (decision T9): the `[SLIDE]`/`[SCREEN]` cues in the scripts plus `slide-deck-outline.md` are the visual spec.
+
+---
+
+## File Layout
 
 ```
+02-course-content/
+│   section-00-welcome.md … section-15-career.md     ← lecture scripts (Course 3/4 cue format)
+03-demos/
+│   README.md, demo-scripts/demo-NN-*.md             ← screencast specs with real output
 09-heygen/
-├── scripts/
-│   ├── M01-L01-what-is-agent-testing.md
-│   ├── M01-L02-why-agents-are-different.md
-│   └── ...
-├── scene-plans/
-│   ├── M01-L01-scene-plan.md
-│   └── ...
-├── visual-specs/
-│   ├── M01-L01-diagrams.md
-│   └── ...
-├── generated/
-│   ├── M01-L01-avatar-hook.mp4
-│   └── ...
-├── review/
-│   └── ...
-├── final/
-│   └── ...
-├── avatar-config/
-│   └── PENDING.md
-├── voice-config/
-│   └── PENDING.md
-├── PRODUCTION-GUIDE.md       ← this file
-└── SCRIPT-TEMPLATE.md
+│   ├── PRODUCTION-GUIDE.md                          ← this file
+│   ├── SCRIPT-TEMPLATE.md                           ← the script format
+│   ├── avatar-config/PENDING.md                     ← avatar choice (IDs live in env vars)
+│   ├── voice-config/PENDING.md                      ← voice choice
+│   ├── scenes/section-XX.json                       ← manifests from scene_extractor.py (committed)
+│   └── generated/S{section:02}/{lecture_id}-{beat}.mp4   ← HeyGen output (git-ignored)
+10-graphics/
+    ├── design-system.md, slide-deck-outline.md
+    ├── diagrams/ (D1–D16 SVG, index.json)
+    └── slides/section-XX.pptx                       ← generated decks
 ```
 
 ---
@@ -202,7 +199,9 @@ Before any lecture ships, it must pass this checklist:
 - [ ] Demo or concrete example within the first 90 seconds
 - [ ] Visual changes at least every 30 seconds
 - [ ] No filler phrases
-- [ ] Recap with exactly 3 bullet points
+- [ ] `[SLIDE n: Recap]` card with exactly 3 bullets (each under 10 words) before the spoken recap
+- [ ] Last lecture of the module ends with a `[SLIDE n: You can now]` card
+- [ ] Version banner on every code lecture; every price says "verify current pricing"
 - [ ] Bridge teases the next lecture
 - [ ] Audio at –16 LUFS
 - [ ] 1920×1080, H.264, 30 fps

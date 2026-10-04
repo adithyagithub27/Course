@@ -43,6 +43,31 @@ SCENARIOS: tuple[str, ...] = (
 )
 
 
+_DOTENV_LOADED = False
+
+
+def load_dotenv_once() -> str | None:
+    """Load ``.env`` from the current directory (or a parent) into ``os.environ``, once.
+
+    Real environment variables always win (``override=False``), so ``make`` flags such as
+    ``CACHE=1`` and one-off ``FOO=bar make ...`` prefixes behave as before, and the older
+    ``set -a; source .env; set +a`` workaround still works. ``ATLAS_DOTENV=0`` turns it off
+    (the test suite does). Returns the loaded path, or None."""
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED or os.environ.get("ATLAS_DOTENV", "1").strip() == "0":
+        return None
+    _DOTENV_LOADED = True
+    try:
+        from dotenv import find_dotenv, load_dotenv
+    except ImportError:  # pragma: no cover - python-dotenv is a runtime dependency
+        return None
+    path = find_dotenv(usecwd=True)
+    if path:
+        load_dotenv(path, override=False)
+        return path
+    return None
+
+
 def normalise_tenant_id(value: str | None) -> str | None:
     """Map header values to a tenant id; unknown values return ``None``."""
     if not value:
@@ -149,7 +174,9 @@ class Settings:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
-        """Read settings from ``env`` (defaults to ``os.environ``)."""
+        """Read settings from ``env`` (defaults to ``os.environ``, after loading ``.env``)."""
+        if env is None:
+            load_dotenv_once()
         e = os.environ if env is None else env
         g = e.get
         exporter = (g("OTEL_EXPORTER") or "console").strip().lower()

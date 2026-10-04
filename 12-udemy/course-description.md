@@ -2,6 +2,8 @@
 
 ## AI Agent Testing & Evaluation: Build Production-Ready Quality Frameworks with Python
 
+> Positioning follows `00-course-strategy/next-course-market-research.md` §6 and fix-plan decision T8: full lifecycle + CI/CD quality gates + enterprise scenarios. No "first", "only" or "comprehensive first" claims. Numbers match `01-curriculum/full-curriculum.md`: **55 lectures, 6 h 40 min of video, 16 sections (Modules 0–15), 5 projects (Project 5 is the capstone), 12 labs**.
+
 ---
 
 ## Course Title
@@ -12,69 +14,67 @@
 
 ## Subtitle
 
-Master AI agent evaluation, LLM testing, RAG quality, red teaming, observability & CI/CD. Build an enterprise quality platform with Python.
+Test and evaluate AI agents end to end: DeepEval, RAGAS, promptfoo, Langfuse, OpenTelemetry and CI/CD quality gates in Python.
 
 ---
 
 ## Course Description
 
 > Copy-paste ready for the Udemy course description field.
-> Formatted with Udemy-compatible bold and structure.
 
-Your AI agent passed every demo. It impressed the stakeholders. Then it went to production — and started hallucinating, leaking customer data, calling the wrong tools, and costing $200/day in wasted API calls. Nobody caught it because nobody tested it.
+Your AI agent passed every demo. Then someone "tidied up" one line of its system prompt. The agent stopped checking the knowledge base and started telling customers a 14-day refund window that doesn't exist. Every unit test stayed green.
 
-This is the reality for most AI-powered applications shipping today. Traditional software testing — unit tests, integration tests, CI/CD pipelines — was built for deterministic systems. AI agents are fundamentally different: they're non-deterministic, multi-step, tool-calling systems where the same input can produce a different output every time. The testing playbook doesn't exist yet. Until now.
+Traditional testing was built for deterministic code. AI agents are non-deterministic, multi-step, tool-calling systems: the same question gets different words, the wrong tool, or a confident made-up answer. This course gives you a complete, repeatable way to test them — from your first evaluation to a quality gate that blocks bad pull requests and monitoring that catches drift after release.
 
-**AI Agent Testing & Evaluation** is the first comprehensive, hands-on course that teaches you how to build production-grade quality frameworks for AI agents, LLM applications, and RAG pipelines — using real tools, real code, and real evaluation metrics that matter in enterprise environments.
+**What you'll build**
 
-**What You'll Build:**
+You work on one realistic running example — **TechCorp's customer support agent** (five tools: account lookup, knowledge-base search, tickets, email, escalation) — plus four more agents along the way: a RAG policy assistant, a six-tool operations agent, a banking agent you red team, and a three-agent reply desk. Five projects:
 
-You won't just watch lectures — you'll build five real projects and a full capstone:
+1. **Project 1 — Evaluate a customer support agent:** a 10-case golden dataset, Answer Relevancy, Faithfulness and a custom correctness metric with DeepEval, and a pass/fail report by category
+2. **Project 2 — Diagnose a RAG agent:** RAGAS 0.4 metrics on 15 policy questions in three domains, retrieval vs generation diagnosis, and a fix
+3. **Project 3 — Test a multi-tool agent:** tool selection, arguments, error handling and authorization for a six-tool operations agent, plus MCP contract tests
+4. **Project 4 — Red team a banking agent:** a 16-attack matrix with promptfoo and a Python runner, two real findings in the launched version, and a verified fix
+5. **Project 5 — Capstone: an agent quality platform:** functional, security, performance and regression stages, a five-rule SHIP/BLOCK gate, a Streamlit dashboard, Langfuse tracing and a nightly GitHub Actions run
 
-1. **Evaluation Suite** — A complete DeepEval + pytest test suite measuring relevance, faithfulness, hallucination, and coherence across your agent's outputs
-2. **RAG Quality Pipeline** — A RAGAS-powered evaluation framework testing context precision, recall, and answer faithfulness for retrieval-augmented generation
-3. **Security Test Harness** — A red teaming framework using promptfoo to test for prompt injection, jailbreaks, PII leakage, and harmful content generation
-4. **Observability Stack** — Full agent instrumentation with Langfuse and OpenTelemetry, including trace visualization and production monitoring dashboards
-5. **CI/CD Quality Gate** — A GitHub Actions pipeline that runs your evaluation suite on every commit, blocking deployments that fail quality thresholds
-6. **Capstone: Enterprise AI Agent Quality Platform** — A complete, integrated quality platform combining all five projects into a production-ready system with a Streamlit dashboard, automated regression testing, and real-time monitoring
+**What makes this course different**
 
-**What Makes This Course Different:**
+Several good courses now teach DeepEval, RAGAS or Langfuse. This one is built around the **whole quality lifecycle in one pipeline**:
 
-Most AI testing content covers one tool in isolation. This course is different because:
+- **Full lifecycle:** test strategy → evaluation metrics → RAG and tool-calling tests → multi-agent tests → red teaming → tracing → performance and cost → regression and synthetic data → CI/CD gates → production monitoring and governance
+- **CI/CD quality gates:** a GitHub Actions workflow that runs your evaluation on every pull request, comments the results and blocks the merge when quality drops
+- **Enterprise scenarios:** five scenario datasets (customer support, HR, insurance claims, banking, software engineering) and agents that behave like real ones, including the failure cases
+- **Security beyond one tool:** promptfoo against the real agent and its tools, plus a lecture comparing Garak and PyRIT
+- **Runs without an API key:** an offline mode with a deterministic mock model and judge runs every lab, demo and the 204-test suite for free; add a key to run the same code live
 
-- **Multi-tool mastery** — You learn DeepEval, RAGAS, promptfoo, Langfuse, and OpenTelemetry together, understanding when and why to use each one
-- **Enterprise-grade architecture** — Every pattern is designed for real production environments, not toy demos
-- **Full lifecycle coverage** — From first test case to production monitoring, CI/CD gates, and drift detection
-- **Hands-on from minute one** — Every concept is immediately applied in code; you build as you learn
-- **Battle-tested patterns** — Evaluation strategies used by teams shipping AI agents at scale
+**Tools & technologies**
 
-**Tools & Technologies You'll Master:**
+- **DeepEval** — pytest-style evaluation, G-Eval custom metrics, tool correctness, the Synthesizer
+- **RAGAS** — RAG metrics (faithfulness, answer relevancy, context precision, context recall)
+- **promptfoo**, plus **Garak** and **PyRIT** — red teaming and security testing
+- **Langfuse** and **OpenTelemetry GenAI conventions** — tracing, cost per trace, scores
+- **MCP** — contract tests for agent tools
+- **GitHub Actions**, **Streamlit**, **pytest**, **Python 3.11+**, **OpenAI** models (gpt-4.1-mini agent, gpt-4.1 judge)
 
-- **DeepEval** — LLM evaluation framework with pytest integration
-- **RAGAS** — RAG-specific evaluation metrics (context precision, recall, faithfulness)
-- **promptfoo** — Red teaming and security testing for LLM applications
-- **Langfuse** — LLM observability, tracing, and production monitoring
-- **OpenTelemetry** — Distributed tracing standard for agent instrumentation
-- **GitHub Actions** — CI/CD pipeline automation for evaluation suites
-- **Streamlit** — Quality dashboard visualization
-- **pytest** — Test orchestration and assertion framework
-- **Python** — All code, all projects, all frameworks
+**Course structure (16 sections, 55 lectures)**
 
-**Course Structure:**
+- **Section 0 — Welcome & Course Overview:** a real agent failure, the roadmap, environment setup
+- **Section 1 — AI Agents: What You Need to Know for Testing:** tokens, the agent loop, the six ways agents fail
+- **Section 2 — Why Traditional Testing Breaks:** non-determinism, five quality dimensions, a five-layer test strategy
+- **Section 3 — Your First Agent Evaluation:** DeepEval, golden datasets, Project 1
+- **Section 4 — Evaluation Metrics Deep Dive:** LLM and agent metrics, LLM-as-judge, G-Eval
+- **Section 5 — RAG Agent Evaluation:** RAGAS, retrieval vs generation, Project 2
+- **Section 6 — Testing Tool Calling & MCP:** tool tests, MCP contracts, Project 3
+- **Section 7 — Multi-Agent System Testing:** hand-offs, loops, failure injection
+- **Section 8 — Security Testing & Red Teaming:** threat model, promptfoo, PII, Project 4, Garak and PyRIT
+- **Section 9 — Agent Observability & Tracing:** Langfuse, OpenTelemetry GenAI spans
+- **Section 10 — Performance & Reliability Testing:** benchmarks, reliability, cost engineering
+- **Section 11 — Regression Testing & Synthetic Data:** baselines, regression gates, DeepEval Synthesizer
+- **Section 12 — CI/CD for Agent Evaluation:** quality gates, GitHub Actions, dashboards
+- **Section 13 — Production Monitoring & Governance:** drift, audit trails, leadership scorecards
+- **Section 14 — Enterprise Capstone:** the agent quality platform, Project 5
+- **Section 15 — Career & Next Steps:** interview questions, a 30-day practice plan
 
-The course is organized into a clear learning path that builds your skills progressively:
-
-- **Foundation** (Sections 1–3) — Why AI agents break traditional testing, core evaluation concepts, and your first test cases
-- **Core Evaluation** (Sections 4–6) — Deep dives into LLM metrics, RAG evaluation, and tool-calling tests
-- **Security & Red Teaming** (Section 7) — Prompt injection, jailbreaks, PII leakage, and adversarial testing
-- **Custom Metrics** (Section 8) — G-Eval, LLM-as-judge, and building domain-specific evaluation metrics
-- **Test Data Engineering** (Section 9) — Golden datasets, synthetic data generation, and regression suites
-- **CI/CD Integration** (Section 10) — Wiring evaluation into GitHub Actions with quality gates
-- **Observability** (Section 11) — Langfuse, OpenTelemetry, production tracing, and monitoring
-- **Production Operations** (Section 12) — Drift detection, cost monitoring, alerting, and scaling
-- **Capstone** (Section 13) — Building the complete enterprise quality platform
-
-Every section includes concept lectures, hands-on coding demos, and practical exercises. You'll leave with working code, reusable templates, and the confidence to evaluate any AI agent in production.
+Every technical section has a hands-on lab or project with real code you run yourself. You leave with a working repository, reusable templates (test strategy, quality scorecard) and a portfolio project.
 
 ---
 
@@ -82,18 +82,18 @@ Every section includes concept lectures, hands-on coding demos, and practical ex
 
 > Udemy format: "By the end of this course, you will be able to..."
 
-1. Design test strategies specifically for non-deterministic AI agents that go beyond traditional unit and integration testing
-2. Build comprehensive evaluation suites using DeepEval with native pytest integration for seamless developer workflows
-3. Measure LLM output quality with industry-standard metrics including relevance, faithfulness, hallucination detection, and coherence scoring
-4. Evaluate RAG pipelines end-to-end using RAGAS metrics: context precision, context recall, answer faithfulness, and answer relevancy
-5. Test AI agent tool calling with assertions on selection accuracy, parameter correctness, sequence validation, and error handling
-6. Red team AI agents for prompt injection, jailbreak attacks, PII leakage, and harmful content generation using promptfoo
-7. Instrument AI agents with Langfuse and OpenTelemetry for full distributed tracing and production observability
-8. Build custom evaluation metrics using G-Eval and LLM-as-judge patterns tailored to your specific domain requirements
-9. Create regression test suites powered by golden datasets and synthetic data generation for repeatable quality assurance
-10. Wire evaluation pipelines into GitHub Actions CI/CD with automated quality gates that block failing deployments
-11. Monitor AI agents in production for quality drift, performance degradation, cost trends, and anomalous behavior
-12. Build an enterprise AI agent quality platform from scratch — integrating evaluation, security testing, observability, and CI/CD into a unified system
+1. Design a test strategy for a non-deterministic AI agent using six failure modes, five quality dimensions and a five-layer agent eval pyramid
+2. Build evaluation suites with DeepEval and pytest, using golden datasets and threshold-based metrics
+3. Measure answer relevancy, faithfulness, hallucination and correctness, and build custom G-Eval metrics calibrated against human labels
+4. Evaluate RAG agents with RAGAS and tell retrieval failures from generation failures
+5. Test tool calling: selection, arguments, order, error handling, authorization and MCP contracts
+6. Test multi-agent systems with hand-off validation, loop detection and failure injection
+7. Red team agents for prompt injection, jailbreaks, PII leakage and unauthorized actions with promptfoo, and know when to add Garak or PyRIT
+8. Trace agents with Langfuse and OpenTelemetry GenAI conventions and find the failing step and the cost hotspot
+9. Benchmark latency and cost and cut cost with model routing and prompt optimization while re-checking quality
+10. Catch regressions with stored baselines and scale test data with synthetic generation
+11. Wire evaluation into GitHub Actions with a quality gate that comments on pull requests and blocks bad changes
+12. Monitor agents in production for drift and report quality to leadership with a scorecard and an audit trail
 
 ---
 
@@ -101,28 +101,27 @@ Every section includes concept lectures, hands-on coding demos, and practical ex
 
 ### Who This Course Is For
 
-- **QA engineers and SDETs** wanting to transition into AI testing — leverage your testing expertise in the fastest-growing domain in software
-- **AI/ML engineers** who ship agents and LLM applications without systematic evaluation — and know they need a better approach
-- **Software developers** building LLM-powered applications who want to ensure quality, reliability, and safety before going to production
-- **DevOps engineers** responsible for integrating AI quality checks into CI/CD pipelines and deployment workflows
-- **Engineering managers and tech leads** who need to establish AI quality standards and evaluation processes for their teams
-- **Enterprise architects and AI governance teams** defining evaluation frameworks and compliance standards for AI systems at scale
+- **QA engineers and SDETs** moving into AI testing — your testing instincts transfer; this course adds the AI-specific methods
+- **AI/ML engineers** who ship agents and LLM applications and want a systematic way to prove quality
+- **Software developers** building LLM-powered features who need reliability and safety before production
+- **DevOps and platform engineers** adding AI quality checks to CI/CD
+- **Engineering managers and tech leads** setting AI quality standards, gates and reporting for their teams
 
 ### Who This Course Is NOT For
 
-- Complete programming beginners (you need basic Python knowledge)
-- Researchers focused on theoretical ML evaluation (this is applied, production-focused)
-- People looking for a no-code AI course (we write real Python code throughout)
+- Complete programming beginners (you need basic Python)
+- Researchers looking for theoretical ML evaluation (this course is applied and production-focused)
+- People looking for a no-code AI course (you write and run real Python)
 
 ---
 
 ## Prerequisites
 
-- **Basic Python** — Variables, functions, classes, and installing packages with pip. No advanced Python knowledge needed; we explain everything as we go.
-- **Basic understanding of APIs** — You know what a REST API is and have made API calls before. We cover all LLM-specific API concepts in the course.
-- **A computer with internet access** — Windows, Mac, or Linux. All tools are cross-platform.
-- **An OpenAI API key** — Required for LLM evaluation. Total API cost for the entire course is approximately $5–10.
-- **No prior AI/ML experience required** — We cover the fundamentals of LLMs, agents, RAG, and tool calling from the ground up. If you understand software testing, you can learn AI testing.
+- **Basic Python** — functions, classes, installing packages. Comfort with a terminal.
+- **Basic understanding of APIs** — what an API call is. LLM and agent concepts are taught from the ground up.
+- **A computer with Python 3.11+** — Windows, macOS or Linux. Node.js 20+ for the promptfoo lectures.
+- **An OpenAI API key is optional** — every lab runs in offline mode for free. With a key, running the labs live costs a few dollars in total (verify current pricing; set a spending limit).
+- **No prior AI/ML experience required.**
 
 ---
 
@@ -130,19 +129,16 @@ Every section includes concept lectures, hands-on coding demos, and practical ex
 
 > Displayed when a student enrolls.
 
-Welcome to **AI Agent Testing & Evaluation**! You've just taken the most important step toward building AI systems that actually work in production.
+Welcome to **AI Agent Testing & Evaluation**!
 
-Here's how to get the most out of this course:
+How to get the most out of the course:
 
-1. **Start with Section 1** — even if you're experienced. The foundational concepts frame everything that follows.
-2. **Code along with every demo** — this is a hands-on course. You'll learn 10x more by typing the code yourself.
-3. **Set up your environment early** — follow the setup guide in Section 2 before diving into the technical lectures.
-4. **Use the Q&A section** — I personally respond to every question. If you're stuck, ask. That's what I'm here for.
-5. **Build the capstone project** — it integrates everything and gives you a portfolio piece you can show employers.
+1. **Set up first:** follow Lecture 0.2 (Course Roadmap & Environment Setup) and run `make test` before Section 1. No API key needed.
+2. **Code along:** every demo runs from the course repository; type the lab code yourself.
+3. **Do the projects:** Projects 1–4 build the skills, Project 5 (the capstone) is your portfolio piece.
+4. **Ask in Q&A:** if you're stuck, post the command you ran and the output you got.
 
-Your AI agents deserve better than "it works on my machine." Let's build the quality framework that proves it.
-
-See you in Lecture 1!
+See you in Lecture 0.1.
 
 ---
 
@@ -152,33 +148,31 @@ See you in Lecture 1!
 
 Congratulations — you've completed **AI Agent Testing & Evaluation**!
 
-You now have skills that fewer than 1% of AI engineers possess:
+You can now:
 
-- You can evaluate AI agents with real metrics, not vibes
-- You can catch hallucinations, security vulnerabilities, and quality regressions before they reach production
-- You can build enterprise-grade quality platforms that scale
+- Evaluate AI agents with real metrics, not vibes
+- Catch hallucinations, security gaps and regressions before they reach production
+- Put a quality gate in CI and monitor quality after release
 
-**What to do next:**
+**Next steps:**
 
-1. **Finish your capstone project** if you haven't already — it's the best portfolio piece from this course
-2. **Apply these patterns at work** — start with one agent, one evaluation suite, and expand from there
-3. **Share your work** — post your quality dashboard or evaluation results on LinkedIn. Tag me — I'd love to see what you build
-4. **Leave a review** — your honest feedback helps other engineers find this course and helps me make it better
+1. Finish the capstone if you haven't — it's the best portfolio piece from the course
+2. Apply one pattern at work this week: one agent, one golden dataset, one gate
+3. Follow the 30-day practice plan (Lecture 15.2 resource)
+4. Leave a review — it helps other engineers find the course
 
-The AI quality engineering field is brand new. You're now at the forefront. Go build systems that people can trust.
-
-Thank you for learning with me. See you in the next course!
+Thank you for learning with me.
 
 ---
 
 ## Instructor Bio
 
-> Short version for the course listing.
+> Short version for the course listing. Owner to personalise (see `MY_DECISIONS_REQUIRED.md`).
 
-I build AI systems that have to work in production — not just in demos. After years of shipping LLM-powered applications and learning the hard way that traditional testing doesn't work for AI agents, I developed the evaluation frameworks taught in this course. Every pattern, every tool integration, and every architecture in this course comes from real-world production experience. I teach what I use.
+I build AI systems that have to work in production, not just in demos. This course teaches the evaluation, red-teaming and monitoring practices I use to decide whether an agent is ready to ship — with every lecture backed by code you can run.
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025*
-*Status: Ready for Udemy platform upload*
+*Document version: 2.0*
+*Last updated: 2026-10-04 (positioning refresh T8, real lecture count and runtime T7)*
+*Status: Draft for Udemy upload — verify Udemy listing rules and character limits before pasting*

@@ -76,10 +76,12 @@ def burn_rate(slo: SLO, sli: SLI) -> float:
     return bad_fraction / slo.error_budget_fraction
 
 
-#: Multi-window burn-rate alert thresholds (Google SRE workbook).
+#: Multi-window burn-rate alert thresholds (Google SRE workbook), with the severities used in
+#: ``deploy/alerts.yml``: 14.4x over 1h pages (AtlasTaskSuccessBurnRateFast), 6x over 6h opens a
+#: ticket (AtlasTaskSuccessBurnRateSlow).
 BURN_RATE_ALERTS: tuple[tuple[str, float, str], ...] = (
     ("1h", 14.4, "page"),
-    ("6h", 6.0, "page"),
+    ("6h", 6.0, "ticket"),
     ("1d", 3.0, "ticket"),
     ("3d", 1.0, "ticket"),
 )

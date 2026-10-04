@@ -5,12 +5,23 @@ payment card numbers in strings, dicts and lists. With ``hash_ids=True`` the
 replacement carries a short deterministic hash so analysts can still join
 records without seeing the raw value.
 
+The hash is a **keyed HMAC-SHA256** (Section 10.2). An unkeyed or salted SHA-256 of a
+five-digit employee ID is a lookup table: anyone can hash all 100,000 IDs in a fraction
+of a second. The key comes from ``ATLAS_PII_HASH_KEY`` (generate one with
+``python -c "import secrets; print(secrets.token_hex(32))"``). Without it the code falls
+back to :data:`DEMO_PII_HASH_KEY`, which is public (it is in this file), so the hash is
+then no stronger than the old salted one; a warning is logged once when the demo key is
+used outside ``OFFLINE=1``. Rotating the key breaks historical joins: plan for it.
+
 ``langfuse_mask`` has the exact signature Langfuse expects for ``Langfuse(mask=...)``.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
+import logging
+import os
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -27,6 +38,36 @@ CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 # Ticket ids and tracking ids are *not* PII and must survive masking.
 _SAFE_RE = re.compile(r"\b(?:TCK|SHP)-\d{4,8}\b")
 
+#: Format examples that the knowledge base, the system prompt and the tool schemas print
+#: ("employee ID (format NW-12345)") plus the mock's placeholder. They are still masked in
+#: telemetry, but :func:`contains_pii` does not count them as PII in an answer. No persona
+#: in the simulator uses them; a real employee holding one of these IDs would not be counted.
+EXAMPLE_IDS: frozenset[str] = frozenset({"NW-12345", "NW-00000"})
+
+#: Fallback HMAC key for offline runs and tests. NOT A SECRET: set ATLAS_PII_HASH_KEY.
+DEMO_PII_HASH_KEY = "atlas-demo-pii-key-not-a-secret"
+PII_HASH_KEY_ENV = "ATLAS_PII_HASH_KEY"
+
+log = logging.getLogger("atlas.pii")
+_warned_demo_key = False
+
+
+def pii_hash_key() -> bytes:
+    """The HMAC key: ``ATLAS_PII_HASH_KEY`` if set, else the demo key (warns once if not offline)."""
+    global _warned_demo_key
+    key = os.environ.get(PII_HASH_KEY_ENV, "").strip()
+    if key:
+        return key.encode()
+    offline = os.environ.get("OFFLINE", "1").strip().lower() in {"1", "true", "yes", "on", ""}
+    if not offline and not _warned_demo_key:
+        _warned_demo_key = True
+        log.warning(
+            "%s is not set: PII pseudonyms use the public demo key and can be reversed by "
+            "brute force. Set a secret key (see .env.example).",
+            PII_HASH_KEY_ENV,
+        )
+    return DEMO_PII_HASH_KEY.encode()
+
 
 def _luhn_ok(digits: str) -> bool:
     total = 0
@@ -40,9 +81,15 @@ def _luhn_ok(digits: str) -> bool:
     return total % 10 == 0
 
 
-def short_hash(value: str, salt: str = "northwind", length: int = 8) -> str:
-    """Deterministic short hash for joinable pseudonyms."""
-    return hashlib.sha256(f"{salt}:{value}".encode()).hexdigest()[:length]
+def short_hash(
+    value: str, salt: str = "northwind", length: int = 8, *, key: bytes | None = None
+) -> str:
+    """Deterministic short pseudonym for joins: HMAC-SHA256 keyed with ``ATLAS_PII_HASH_KEY``.
+
+    ``salt`` is a domain label (different salts give unrelated pseudonyms for the same value);
+    the secrecy comes from the key, never from the salt."""
+    k = pii_hash_key() if key is None else key
+    return hmac.new(k, f"{salt}:{value}".encode(), hashlib.sha256).hexdigest()[:length]
 
 
 @dataclass(frozen=True)
@@ -58,16 +105,17 @@ class MaskStats:
 
 
 def mask_with_stats(
-    text: str, *, hash_ids: bool = False, salt: str = "northwind"
+    text: str, *, hash_ids: bool = False, salt: str = "northwind", key: bytes | None = None
 ) -> tuple[str, MaskStats]:
     """Mask PII in one string; returns the masked text and counts."""
     if not text:
         return text, MaskStats()
     counts = {"emails": 0, "phones": 0, "employee_ids": 0, "cards": 0}
+    hkey = (pii_hash_key() if key is None else key) if hash_ids else b""
 
     def tag(kind: str, raw: str) -> str:
         if hash_ids:
-            return f"<{kind}:{short_hash(raw, salt)}>"
+            return f"<{kind}:{short_hash(raw, salt, key=hkey)}>"
         return f"<{kind}>"
 
     def sub_email(m: re.Match[str]) -> str:
@@ -112,12 +160,16 @@ def mask_with_stats(
 
 
 @lru_cache(maxsize=8192)
+def _mask_text_cached(text: str, hash_ids: bool, salt: str, key: bytes) -> str:
+    return mask_with_stats(text, hash_ids=hash_ids, salt=salt, key=key)[0]
+
+
 def mask_text(text: str, *, hash_ids: bool = False, salt: str = "northwind") -> str:
     """Mask e-mails, phones, employee IDs and card numbers in ``text``; returns the masked string.
 
-    Memoised: telemetry masks the same system prompts and tool results over and over.
+    Memoised (per key): telemetry masks the same system prompts and tool results over and over.
     """
-    return mask_with_stats(text, hash_ids=hash_ids, salt=salt)[0]
+    return _mask_text_cached(text, hash_ids, salt, pii_hash_key() if hash_ids else b"")
 
 
 def stable_hash(value: str, salt: str = "northwind", length: int = 8) -> str:
@@ -157,5 +209,12 @@ def make_mask(hash_ids: bool = True, salt: str = "northwind") -> Callable[..., A
 
 
 def contains_pii(text: str) -> bool:
-    """Cheap check used for the PII-in-output metric."""
+    """Cheap check used for the PII-in-output metric.
+
+    Documented format examples (:data:`EXAMPLE_IDS`, e.g. "format NW-12345") are not counted:
+    an answer that repeats the KB's own example is not leaking anyone's data."""
+    if not text:
+        return False
+    for example in EXAMPLE_IDS:
+        text = re.sub(rf"\b{re.escape(example)}\b", " ", text)
     return mask_with_stats(text)[1].total > 0

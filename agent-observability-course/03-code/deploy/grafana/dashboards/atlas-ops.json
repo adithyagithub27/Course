@@ -79,7 +79,7 @@
           "uid": "prometheus"
         },
         "enable": true,
-        "expr": "changes(atlas_build_info[5m]) > 0",
+        "expr": "count by (version, prompt_version) (atlas_build_info unless atlas_build_info offset 5m)",
         "iconColor": "blue",
         "titleFormat": "release {{version}} prompt {{prompt_version}}"
       }

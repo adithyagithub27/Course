@@ -17,6 +17,8 @@ for p in (ROOT, ROOT / "src"):
 for key in list(os.environ):
     if key.startswith(("LANGFUSE_", "LANGSMITH_", "OPENAI_")):
         os.environ.pop(key, None)
+os.environ.pop("ATLAS_PII_HASH_KEY", None)  # tests use the demo key
+os.environ["ATLAS_DOTENV"] = "0"  # a developer's .env must not change test results
 os.environ["OFFLINE"] = "1"
 os.environ["OTEL_EXPORTER"] = "memory"
 os.environ["ATLAS_LOCAL_STORE"] = ""
