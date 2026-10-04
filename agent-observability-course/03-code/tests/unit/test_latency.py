@@ -96,3 +96,11 @@ def test_by_group_and_hourly():
     assert g["a"].count == 2 and g["b"].max == 50
     h = hourly_p95([(0, 100), (10, 300), (3700, 50)])
     assert set(h) == {0, 3600} and h[0] == pytest.approx(290)
+
+
+def test_default_budget_targets_final_answer_ttft():
+    """Default ttft_p95_ms is for the final answer (7.1): the baseline day's 1,702 ms passes."""
+    b = LatencyBudget()
+    assert b.ttft_p95_ms == 2000.0
+    ok = [LatencySample(total_ms=3800, ttft_ms=1702, output_tokens=200, steps=2)] * 20
+    assert violations(ok, b) == []

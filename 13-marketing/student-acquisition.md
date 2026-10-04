@@ -2,7 +2,9 @@
 
 ## Channel Mix
 
-| Channel | Expected Impact | Cost | Timeline |
+> Channel shares are planning assumptions, not measured data; replace them with real numbers from Udemy and LinkedIn analytics after launch.
+
+| Channel | Expected Impact (assumption) | Cost | Timeline |
 |---|---|---|---|
 | **Udemy organic** | 40-50% of students | Free (Udemy's cut) | Ongoing |
 | **LinkedIn organic** | 20-25% | Free (time only) | Pre-launch + ongoing |

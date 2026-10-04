@@ -27,6 +27,8 @@ Each option is evaluated on:
 
 **Subtitle:** Master AI agent evaluation, LLM testing, RAG quality, red teaming, observability & CI/CD. Build an enterprise quality platform with Python.
 
+*Subtitle in use (`12-udemy/course-description.md`, 2026-10-04):* "Test and evaluate AI agents end to end: DeepEval, RAGAS, promptfoo, Langfuse, OpenTelemetry and CI/CD quality gates in Python." It names the tools competitors are searched for and leads with the lifecycle angle (T8).
+
 **Why it works:**
 - **Keywords in title:** "AI Agent Testing," "Evaluation," "Production-Ready," "Python" — all high-intent search terms
 - **Outcome promise:** "Build Production-Ready Quality Frameworks" — students know exactly what they'll achieve
@@ -63,7 +65,7 @@ Each option is evaluated on:
 **Subtitle:** Master DeepEval, RAGAS, promptfoo, Langfuse & GitHub Actions. Build enterprise evaluation frameworks for AI agents with Python.
 
 **Why it works:**
-- **Emerging keyword:** "AI Quality Engineering" is a new job title / discipline — captures first-mover search traffic
+- **Emerging keyword:** "AI Quality Engineering" is a new job title / discipline — an emerging search term (verify volume in Udemy Marketplace Insights)
 - **Lifecycle framing:** "Test, Evaluate & Monitor" signals complete coverage (not just testing)
 - **"In Production" differentiator:** Separates from tutorial-level content — signals real-world application
 - **Subtitle tool list:** Names all 5 major tools for practitioners searching by tool name
@@ -209,5 +211,5 @@ Use keywords from Options #2 and #3 in the course description and promotional ma
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2025*
+*Document version: 1.1*
+*Last updated: 2026-10-04 (subtitle aligned with the Udemy listing; no first-mover claims)*

@@ -9,18 +9,18 @@
 
 ---
 
-### Q1. Atlas's task-success SLO is 99% over 30 days. In the last hour, 96% of requests were resolved. What is the burn rate, and what does it mean?
+### Q1. Atlas's task-success SLO is 95%. In the last hour, 20% of requests ended `error`, `step_limit`, `tool_error` or `timeout`. What is the burn rate, and does either burn-rate rule in `deploy/alerts.yml` fire on this hour alone?
 
 *Related lecture: 9.1 SLIs for agents that leadership understands*
 
 - **A.** Burn rate cannot be computed without a full month of data.
   - *Explanation:* Incorrect. Burn rate is computed over a short window precisely so you can act before the month is over.
-- **B.** Burn rate 0.96; the SLO is healthy because 96% is close to 99%.
+- **B.** Burn rate 0.80; the SLO is healthy because 80% is close to 95%.
   - *Explanation:* Incorrect. Burn rate is not the SLI value; it is how fast you are consuming the error budget relative to the allowed rate.
-- **C.** Burn rate 4: the error budget is 1% (100% − 99%), the observed error rate is 4%, and 4% / 1% = 4, meaning at this rate the whole month's error budget is gone in 30 / 4 = 7.5 days.
-  - *Explanation:* Correct. Burn rate = observed error rate / (1 − SLO). Multi-window burn-rate alerts (for example 14.4× over 1 h and 5 m for fast burn, 6× over 6 h and 30 m for slow burn) page on rate of consumption rather than on a single bad minute. `northwind.slo.burn_rate` implements this.
-- **D.** Burn rate 3; the SLO is breached for the month.
-  - *Explanation:* Incorrect arithmetic, and one bad hour does not breach a 30-day SLO; it consumes budget.
+- **C.** Burn rate 4: the allowed bad fraction is 5% (1 − 0.95), the observed bad fraction is 20%, and 20% / 5% = 4, so a 30-day budget would be gone in 7.5 days. The fast rule pages at 14.4 over 1 h and the slow rule tickets at 6 over 6 h, so neither fires yet; the hour still eats budget and shows on the dashboard.
+  - *Explanation:* Correct. Burn rate = observed bad fraction / allowed bad fraction. Write both fractions down first. `northwind.slo.burn_rate` implements it, and `AtlasTaskSuccessBurnRateFast` / `Slow` encode the two windows.
+- **D.** Burn rate 15; the fast rule pages.
+  - *Explanation:* Incorrect arithmetic: 15 would need a 75% bad fraction.
 
 **Correct answer: C**
 
@@ -43,24 +43,24 @@
 
 ---
 
-### Q3. In the Grafana Atlas Ops dashboard, lecture 9.3 adds an annotation query that draws a vertical line whenever `atlas_build_info` changes. What problem does that solve during an incident?
+### Q3. The `tool_success` SLO is 99% over 30 days. Atlas makes about 200,000 tool calls a month, and 1,400 have errored so far this month. How much error budget is left?
 
-*Related lecture: 9.3 Grafana: the Atlas Ops dashboard*
+*Related lecture: 9.1 SLIs for agents that leadership understands*
 
-- **A.** It shows the release boundary on every panel, so "the regression started when p95 or cost changed" can be read against "the release happened at 12:30" without leaving the dashboard; Incident 2's `top_k` change is found this way, and Langfuse's `release` field does the same on the trace side.
-  - *Explanation:* Correct. Releases are the most common cause of step changes; putting them on the time axis is the cheapest correlation you can buy.
-- **B.** It forces Grafana to re-import the dashboard JSON.
-  - *Explanation:* Incorrect. Provisioning and annotations are unrelated.
-- **C.** It marks the moment the dashboard was refreshed.
-  - *Explanation:* Incorrect. Annotations are about events in the system being observed, not about the viewer.
-- **D.** It hides data from before the release.
-  - *Explanation:* Incorrect. It adds a marker; nothing is hidden.
+- **A.** 1% of the month, because the SLO is 99%.
+  - *Explanation:* Incorrect. 1% is the allowed bad fraction, not what is left.
+- **B.** 600 failed calls, 30% of the budget: the budget is 1% × 200,000 = 2,000 failed calls, and 2,000 − 1,400 = 600.
+  - *Explanation:* Correct. The error budget is the number of bad events the SLO allows in the window. With 30% left, risky changes wait; the burn rate says how fast the rest is going.
+- **C.** None: any failure breaches a 99% SLO.
+  - *Explanation:* Incorrect. The SLO allows 1% failures; 1,400 of 200,000 is 0.7%.
+- **D.** 98,600 calls: 99% of 200,000 minus the failures.
+  - *Explanation:* Incorrect. That mixes good and bad events; the budget counts bad ones only.
 
-**Correct answer: A**
+**Correct answer: B**
 
 ---
 
-### Q4. Two alert rules for tool errors are proposed. Rule 1: `rate(atlas_tool_calls_total{outcome="error"}[5m]) > 0.5`. Rule 2: `(sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)) > 0.10 and sum(rate(atlas_tool_calls_total[5m])) by (tool) > 0.1` with `for: 2m` and a `runbook_url`. Which is better and why?
+### Q4. Two alert rules for tool errors are proposed. Rule 1: `rate(atlas_tool_calls_total{outcome="error"}[5m]) > 0.5`. Rule 2: `(sum(rate(atlas_tool_calls_total{outcome="error"}[5m])) by (tool) / sum(rate(atlas_tool_calls_total[5m])) by (tool)) > 0.10 and sum(rate(atlas_tool_calls_total[5m])) by (tool) > 0.1` with `for: 2m` and a `runbook` annotation. Which is better and why?
 
 *Related lecture: 9.5 Alert rules and the runbook*
 
@@ -94,17 +94,17 @@
 
 ---
 
-### Q6. Lecture 9.4 builds saved views and a cost dashboard in Langfuse filtered by tag. Given that Grafana already shows cost per tenant, what does the Langfuse view add?
+### Q6. Using the severities in `deploy/alerts.yml`, which pair is right: one alert that pages someone, and one that raises a ticket for the next business day?
 
-*Related lecture: 9.4 Langfuse dashboards and saved views*
+*Related lecture: 9.5 Alert rules and the runbook*
 
-- **A.** Alerting, which Grafana cannot do.
-  - *Explanation:* Incorrect. Grafana and Prometheus are the alerting path in this course.
-- **B.** Nothing; it duplicates Grafana.
-  - *Explanation:* Incorrect. They answer different questions from different data.
-- **C.** Higher-resolution numbers, because Langfuse polls Prometheus more often.
-  - *Explanation:* Incorrect. Langfuse does not read Prometheus; it aggregates its own traces.
-- **D.** Drill-down: from "finance cost rose" in a Langfuse view you can click through to the sessions, users (hashed), prompt versions and individual traces that made up the number, and share that view with a stakeholder who will never open Grafana; metrics give the trend, traces give the explanation.
-  - *Explanation:* Correct. Grafana is for on-call and SLOs; Langfuse views are for engineers and product owners investigating *which* traffic cost or scored what. Together they form the "see" and "explain" pair from lecture 1.5.
+- **A.** Page: `AtlasToolErrorRate` (any tool above 5% errors for 10 minutes). Ticket: `AtlasBudgetHardCapHit`.
+  - *Explanation:* Incorrect, both reversed. With bounded tool retries a failing tool at 2 a.m. is a morning problem, while a tenant being refused is users locked out now.
+- **B.** Page: `AtlasTenantCostAnomaly`. Ticket: `AtlasLatencyP95High`.
+  - *Explanation:* Incorrect, both reversed. The cost anomaly is a ticket; p95 above 4 s for 10 minutes is the users' experience and pages.
+- **C.** Page: `AtlasLatencyP95High` (p95 above 4 s for 10 minutes). Ticket: `AtlasTenantCostAnomaly` (a tenant's last hour above 2.5× its average hour over the previous day, and above $1, for 15 minutes).
+  - *Explanation:* Correct. Page when users are hurting now or money is burning fast enough that it can't wait (`AtlasBudgetHardCapHit`, `AtlasRetryStorm`, the fast burn rate); ticket when the morning is soon enough. In the shipped file only `AtlasLatencyP95High` has a `runbook` annotation and none has an owner; Lab 6 and the capstone add them.
+- **D.** Everything pages, so nothing is missed.
+  - *Explanation:* Incorrect. An on-call who is paged for tickets stops reading pages.
 
-**Correct answer: D**
+**Correct answer: C**

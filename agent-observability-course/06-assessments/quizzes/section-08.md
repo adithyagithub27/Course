@@ -16,7 +16,7 @@
 - **A.** The tail is a random extra 10%; the headline uses head and tail together for a bigger n.
   - *Explanation:* Incorrect. The tail is chosen by content, so mixing it into the mean biases quality downwards. This is the most common bug the lecture warns about.
 - **B.** The tail is the traces that matter for investigation (errors, step limits, escalations, thumbs-down); the headline quality estimate uses the head sample only, because the tail is biased toward bad traces by design.
-  - *Explanation:* Correct. Head gives you an unbiased estimate; tail gives you the failures. `JudgeSamplingPolicy` records why each trace was picked so the two can be separated.
+  - *Explanation:* Correct. Head gives you an unbiased estimate; tail gives you the failures. Keep the two separable when you compute the quality tiles: the head sample (`head_sample(trace_id, rate)`) is deterministic per trace id, so you can always tell which judged traces it picked.
 - **C.** The tail is the most expensive traces; the headline uses the tail because cost and quality go together.
   - *Explanation:* Incorrect. Cost is one tail rule a team might add, but the headline still comes from the head sample.
 - **D.** There is no tail; judge 100% of traces so the estimate is exact.

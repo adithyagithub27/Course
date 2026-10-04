@@ -15,14 +15,14 @@
 ### LinkedIn
 - **Frequency:** 3 posts/week
 - **Format:** Text posts (problem/insight), carousels (how-to), video clips (demos)
-- **Tone:** Professional, data-driven, enterprise-focused
+- **Tone:** Professional, data-driven, enterprise-focused. Only use numbers from the course repo (say "offline" where it applies) or sourced ones
 - **Hashtags:** #AIAgentTesting #LLMEvaluation #AIQuality #AIEngineering
 
 ### X/Twitter
 - **Frequency:** 5 tweets/week
 - **Format:** Threads (tutorials), single tweets (tips/insights), demo GIFs
 - **Tone:** Concise, technical, developer-friendly
-- **Example thread starter:** "I tested an AI agent for prompt injection using promptfoo. It failed 4 out of 10 attacks. Here's what happened (thread):"
+- **Example thread starter:** "My agent blocked 10 out of 10 prompt-injection attacks. Then I asked in two turns and it leaked another customer's account. Here's what a single-turn red team misses (thread):"
 
 ### Reddit
 - **Communities:** r/MachineLearning, r/LangChain, r/Python, r/QualityAssurance
@@ -44,7 +44,7 @@
 2. "DeepEval vs RAGAS: when to use which"
 3. "I red-teamed a customer support agent — here's the report"
 4. "Why assertEqual() doesn't work for LLMs"
-5. "The $0.002 test that catches 80% of agent failures"
+5. "One faithfulness check that would have blocked a bad prompt edit"
 6. "How to set up AI evals in your CI/CD pipeline"
 7. "LLM-as-judge: using one AI to grade another"
 8. "The metric most AI teams ignore (and shouldn't)"

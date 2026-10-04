@@ -107,7 +107,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q5. A replay with `--seed 42` reports a day cost of $35.24 on your machine and $35.24 on the instructor's. Someone argues the replay is therefore "fake data" and worthless for learning cost engineering. What is the best counter?
+### Q5. `OFFLINE=1 make replay` (seed 7) reports a day cost of $56.28 on your machine and $56.28 on the instructor's. Someone argues the replay is therefore "fake data" and worthless for learning cost engineering. What is the best counter?
 
 *Domain: D1 · Related lecture: 2.4 Offline mode: a full day of traffic for free*
 
@@ -156,18 +156,18 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: D**
 
-### Q8. A student wraps each agent step in `atlas.step N` and records `atlas.context_tokens`. On a normal request the values are 1,180, 1,650, 1,990. On another request they read 1,150, 1,150, 1,150, 1,150, 1,150, 1,150. What does the second pattern most likely indicate?
+### Q8. A student's `step N` spans record `atlas.context_tokens`. On a normal request the values are 2,521, 3,190, 3,604. On another request they read 2,521 at every one of six steps, each of which called a tool. What does the second pattern most likely indicate?
 
 *Domain: D2 · Related lecture: 5.2 Code-along: tracing the tool loop step by step*
 
 - **A.** A healthy request; constant context is ideal.
   - *Explanation:* Incorrect. In a tool loop, each step should add at least the previous tool result; perfectly flat context across six steps is suspicious.
-- **B.** The step span attribute is being set once from the initial message list and not recomputed per step (an instrumentation bug), or history is being reset each step (an agent bug); either way, the attribute is not measuring what it claims and needs a test like Lab 3's monotonic-growth assertion.
+- **B.** The step span attribute is being set once from the initial message list and not recomputed per step (an instrumentation bug), or history is being reset each step (an agent bug); either way, the attribute is not measuring what it claims and needs a test that asserts the value grows when a step adds a tool result (Lab 3's test is the pattern).
   - *Explanation:* Correct. Instrumentation needs tests too. Six identical readings across steps that call tools is a signal the measurement is wrong or the agent is discarding its own results.
 - **C.** Prompt caching is working.
   - *Explanation:* Incorrect. Caching changes the *price* of input tokens, not their count.
 - **D.** The context diet trimmed history to exactly the same size each step.
-  - *Explanation:* Incorrect as the likely cause: the diet trims to a budget (3,000 by default), well above 1,150, and would not produce identical values at every step below budget. Also the Lab 3 fixture disables the diet.
+  - *Explanation:* Incorrect as the likely cause: the diet trims history to `ATLAS_HISTORY_TOKENS` (8,000) and tool results to 1,400 tokens, both well above these values, and it is off by default (`DIET=0`).
 
 **Correct answer: B**
 
@@ -220,18 +220,18 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: A**
 
-### Q12. Two changes are proposed for the same replayed day (baseline $35.24). Change X (caching) alone: $27.10. Change Y (diet) alone: $29.60. Together: $22.85. A manager adds the two individual savings ($8.14 + $5.64 = $13.78) and expects $21.46. Why is the combined result only $12.39 of saving?
+### Q12. Three levers are measured on the same replayed day (baseline $56.28): caching alone $37.00, diet alone $41.99, routing alone $47.07. A manager adds the three individual savings ($19.28 + $14.29 + $9.21 = $42.78) and expects $13.50. All three together cost $19.07. Why is the combined saving smaller than the sum?
 
-*Domain: D3 · Related lecture: 6.5 The context diet*
+*Domain: D3 · Related lecture: 6.8 Challenge: cut Atlas's daily cost by 40%*
 
 - **A.** One of the replays used a different seed.
   - *Explanation:* Incorrect (assuming the same seed, which the challenge requires); the effect is structural.
-- **B.** The diet is broken when caching is on.
-  - *Explanation:* Incorrect. Both work; they overlap.
+- **B.** Routing is broken when caching is on.
+  - *Explanation:* Incorrect. All three work; they overlap.
 - **C.** Savings always add linearly; the replay is wrong.
   - *Explanation:* Incorrect. Savings on the same tokens do not add.
-- **D.** The two changes act on overlapping tokens: caching cuts the *price* of prefix tokens, the diet cuts the *number* of history and tool-result tokens; tokens the diet removes were partly cached already (cheap), so removing them saves less than at full price. Measure changes cumulatively in the order you will ship them, as Challenge 6.8 does.
-  - *Explanation:* Correct. This is why the challenge table shows each step's delta against the previous step, not against baseline.
+- **D.** The levers act on overlapping tokens: once caching has cut the price of the prefix and the diet has cut the number of history and tool-result tokens, there is less spend left for routing to move to a cheaper model, so its saving on top is much smaller than its $9.21 alone. Measure changes cumulatively in the order you will ship them, as Challenge 6.8 does.
+  - *Explanation:* Correct. Caching and the diet happen to add almost exactly on this day ($22.71 together), but routing on top saves only $3.64. Each step's delta is measured against the previous step, not against baseline.
 
 **Correct answer: D**
 
@@ -300,13 +300,13 @@ Cost engineering carries the largest weight because it is the course's signature
 *Domain: D3 · Related lecture: 6.6 Small-model-first routing with LiteLLM Router*
 
 - **A.** Routing saves the most money of the three cost controls.
-  - *Explanation:* Incorrect. In Challenge 6.8 caching (−23%) and the diet (−16%) each saved more than routing (−10%), because escalations were already only 6% of generations.
-- **B.** Routing's saving is bounded by the share of traffic that currently goes to the expensive model; with 6% escalation, tightening the rules to 3.4% saved about 10% of the day's cost at a judge cost of 0.004, and the saving would be larger for a system that escalates more.
-  - *Explanation:* Correct. Know your model mix before you expect a saving; the measurement is on the same seed with the judge on the uniform slice.
-- **C.** Routing has no quality cost.
-  - *Explanation:* Incorrect. The judge dropped 0.004; small, but measured and reported.
+  - *Explanation:* Incorrect. On the replayed day caching alone saves 34% and the diet 25%; routing alone saves 16% ($56.28 → $47.07).
+- **B.** Routing's saving is bounded by the share of traffic in the intents it moves: a third of generations (6,700 of 20,087, the simple intents) move to gpt-4.1-nano at a quarter of mini's price, which is 16% of the day; and because it changes which model answers, it is the lever that needs a quality number per intent next to it.
+  - *Explanation:* Correct. Know your model and intent mix before you expect a saving, and keep `atlas.intent` on every span so a quality drop on one intent can be moved back to mini with one line in `SIMPLE_INTENTS`.
+- **C.** Routing has no possible quality cost, so it needs no measurement.
+  - *Explanation:* Incorrect. The offline judge scores were unchanged, but a smaller model can be worse on real traffic; that is why the decision is made per intent and measured.
 - **D.** The router should fall back to gpt-4.1 when the mini model is slow.
-  - *Explanation:* Incorrect. Fallback to the expensive model is the rejected pattern from Section 7.
+  - *Explanation:* Incorrect. Atlas's `FALLBACKS` send gpt-4.1-mini to gpt-4o-mini, a different family at a lower price; making the expensive model the default fallback turns an outage into a cost incident.
 
 **Correct answer: B**
 
@@ -334,7 +334,7 @@ Cost engineering carries the largest weight because it is the course's signature
 *Domain: D4 · Related lecture: 7.4 Fallbacks and circuit breakers with the Router*
 
 - **A.** Without a breaker: primary times out at 4 s, fallback answers in about 1.2 s, total about 5.2 s per request, over the 4 s budget; with the breaker open, requests skip the primary and complete in about 1.2 s.
-  - *Explanation:* Correct. The breaker's job is to stop paying the timeout once the provider is known to be slow; that is what collapses p95 in Lab 4's final run.
+  - *Explanation:* Correct. The breaker's job is to stop paying the timeout once the provider is known to be slow; that is the slow-call rule Lab 4 asks you to add, since the shipped breaker counts only errors.
 - **B.** Without a breaker the fallback never runs.
   - *Explanation:* Incorrect. Fallback runs after the timeout error.
 - **C.** With the breaker open, all requests fail fast.
@@ -374,7 +374,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q22. Atlas returns HTTP 200 with a `stopped_reason` field for step limits, budget refusals and guardrail refusals, rather than HTTP 5xx. Which reliability argument supports this?
+### Q22. Atlas answers a step-limit stop and a guardrail refusal with HTTP 200 and an `outcome` field (`step_limit`, `guardrail`), and a budget refusal with HTTP 429 and `outcome="refused"`. Which reliability argument supports this design?
 
 *Domain: D4 · Related lecture: 7.5 Rate limits, queues and graceful degradation*
 
@@ -382,10 +382,10 @@ Cost engineering carries the largest weight because it is the course's signature
   - *Explanation:* Incorrect. They are standard; the question is what they mean.
 - **B.** Clients ignore status codes anyway.
   - *Explanation:* Incorrect. Clients and load balancers act on them, which is exactly why they must be accurate.
-- **C.** These are *designed* outcomes, not server failures: the service did what it intended (stop, refuse, decline), so they belong in the error-rate SLI as their own categories (`outcome=step_limit|budget|guardrail`) rather than being counted as availability failures that would trip retries at the client and load balancer.
-  - *Explanation:* Correct. Graceful degradation means the response is honest and structured; the SLI distinguishes "failed" from "declined for a reason".
+- **C.** These are *designed* outcomes, not server failures: the service did what it intended (stop, decline, refuse), so they are counted as their own outcome categories in the SLIs rather than as availability failures; and the budget refusal uses 429 because it is a quota decision the client should back off from, not a fault that a load balancer should retry elsewhere.
+  - *Explanation:* Correct. Graceful degradation means the response is honest and structured; the SLI distinguishes "failed" from "declined for a reason", and the status code tells the client what to do next.
 - **D.** 200 hides problems from the dashboard, which reduces alert noise.
-  - *Explanation:* Incorrect. Hiding is not the goal; the outcome attribute keeps them visible and countable.
+  - *Explanation:* Incorrect. Hiding is not the goal; the `outcome` label on `atlas_requests_total` keeps them visible and countable.
 
 **Correct answer: C**
 
@@ -419,7 +419,7 @@ Cost engineering carries the largest weight because it is the course's signature
 - **C.** Lower the threshold until agreement rises.
   - *Explanation:* Incorrect. Moving the threshold changes what is called a pass, not how consistently it is judged.
 - **D.** Tighten the criterion text with concrete, observable conditions (for example "the answer states the specific entitlement or ticket action, or explicitly hands off with a ticket id"), re-measure agreement (Cohen's kappa) on a fixed set, and only alert once agreement is acceptable; a criterion you cannot judge consistently cannot be alerted on.
-  - *Explanation:* Correct. Lab 5's stretch goal. Alerts on noisy judgements produce alert fatigue and eventually get muted.
+  - *Explanation:* Correct. Measure agreement first (lecture 8.3's disagreement table is the starting point). Alerts on noisy judgements produce alert fatigue and eventually get muted.
 
 **Correct answer: D**
 
@@ -502,7 +502,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q30. Which dashboard panel from lecture 9.3 most directly answers the CTO's Monday question "did Atlas earn its money last week"?
+### Q30. Which dashboard panel from lecture 9.3 most directly answers the engineering manager's Monday question "did Atlas earn its money last week"?
 
 *Domain: D6 · Related lecture: 9.3 Grafana: the Atlas Ops dashboard*
 
@@ -551,7 +551,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q33. The collector's `attributes` processor is configured with `action: hash` on `atlas.user_id_raw`. What does this achieve that `action: delete` would not, and what does it not achieve?
+### Q33. The collector's `attributes/redact` processor uses `action: hash` on `user.id` (and `delete` on message bodies and tool results). What does this achieve that `action: delete` would not, and what does it not achieve?
 
 *Domain: D7 · Related lecture: 10.2 Code-along: masking in the SDK and the collector*
 
@@ -634,16 +634,16 @@ Cost engineering carries the largest weight because it is the course's signature
 
 ## D9: Portability, deployment and CI gates
 
-### Q38. Atlas exports to the OTel Collector, which sends to Langfuse and to a file. Langfuse is down for 12 minutes at 2 RPS. Which statement is true with the course's default configuration?
+### Q38. Atlas exports to the OTel Collector, which sends to Langfuse and to Phoenix. Langfuse is down for 12 minutes at 2 RPS. Which statement is true with the course's default configuration?
 
 *Domain: D9 · Related lecture: 13.5 Chaos demo: kill the observability backend*
 
 - **A.** Atlas requests fail for 12 minutes.
   - *Explanation:* Incorrect. The batch processor and collector are asynchronous; requests are unaffected.
 - **B.** Every span is preserved and delivered when Langfuse returns.
-  - *Explanation:* Incorrect. The collector's sending queue covers about 8 minutes at this rate with default sizing; beyond that, spans to that exporter are dropped.
-- **C.** Atlas keeps serving with unchanged p95; the file exporter keeps every span; the Langfuse exporter buffers and retries, then drops the oldest batches once its queue fills (roughly the last 4 of the 12 minutes are lost for Langfuse only), and `otelcol_exporter_send_failed_spans` records the drops so you can alert on them.
-  - *Explanation:* Correct. Drop telemetry, never requests; size the queue for your longest tolerable backend outage; alert on the dropping.
+  - *Explanation:* Incorrect. The Langfuse exporter retries each failed batch for at most 30 s (`retry_on_failure.max_elapsed_time`), then drops it.
+- **C.** Atlas keeps serving with unchanged p95; Phoenix keeps receiving every sampled span; the Langfuse exporter retries each batch for up to 30 s and then drops it, so almost all of the 12 minutes is missing in Langfuse only, and the collector's own metrics (`otelcol_exporter_send_failed_spans`, port 8888) record the drops so you can alert on them.
+  - *Explanation:* Correct. Drop telemetry, never requests; size `retry_on_failure` and `sending_queue` for your longest tolerable backend outage; alert on the dropping.
 - **D.** The collector crashes when an exporter is unreachable.
   - *Explanation:* Incorrect. Exporters fail independently; the `memory_limiter` protects the collector.
 
@@ -655,7 +655,7 @@ Cost engineering carries the largest weight because it is the course's signature
 
 - **A.** The PR merges because latency passed.
   - *Explanation:* Incorrect. Any budget breach fails the gate.
-- **B.** The gate fails the PR with a comment showing the before/after table; the author either finds a compensating saving (for example tighter tool-result truncation), justifies raising the budget in the PR with the quality evidence for `top_k=8`, or drops the change; the gate is not bypassed.
+- **B.** `test_cost_per_session_within_budget` fails, so the required `budget gate` check goes red with the number in the assertion message; the author either finds a compensating saving (for example tighter tool-result truncation), justifies raising the budget in the PR with the quality evidence for `top_k=8`, or drops the change; the gate is not bypassed.
   - *Explanation:* Correct. The gate makes cost a first-class review criterion. Raising the budget is allowed, but as a visible, argued decision, not a workaround.
 - **C.** The author sets `ATLAS_TOP_K=4` in CI only, so the gate passes.
   - *Explanation:* Incorrect. Testing a different configuration from the one you ship defeats the gate.

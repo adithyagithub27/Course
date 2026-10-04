@@ -101,3 +101,25 @@ def test_reload_settings_reads_env():
     s = reload_settings({"ATLAS_MODEL": "gpt-4.1-nano"})
     assert s.model == "gpt-4.1-nano"
     reload_settings({})
+
+
+def test_dotenv_loaded_without_overriding_real_env(monkeypatch, tmp_path):
+    """.env is read at startup; variables already in the environment win (make flags, prefixes)."""
+    import northwind.config as cfg
+
+    (tmp_path / ".env").write_text("ATLAS_TOP_K=9\nATLAS_PROMPT_VERSION=v2\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cfg, "_DOTENV_LOADED", False)
+    monkeypatch.delenv("ATLAS_TOP_K", raising=False)
+    monkeypatch.setenv("ATLAS_PROMPT_VERSION", "v1")
+    monkeypatch.setenv("ATLAS_DOTENV", "1")
+    try:
+        s = Settings.from_env()
+        assert s.retrieval_top_k == 9 and s.prompt_version == "v1"
+    finally:
+        import os
+
+        os.environ.pop("ATLAS_TOP_K", None)
+    monkeypatch.setattr(cfg, "_DOTENV_LOADED", False)
+    monkeypatch.setenv("ATLAS_DOTENV", "0")  # the test suite's setting
+    assert Settings.from_env().retrieval_top_k == Settings.retrieval_top_k

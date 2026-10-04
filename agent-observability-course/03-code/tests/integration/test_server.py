@@ -166,3 +166,22 @@ def test_import_app_module():
 @pytest.mark.parametrize("path", ["/healthz", "/budget", "/metrics"])
 def test_get_endpoints_exist(client, path):
     assert client.get(path).status_code == 200
+
+
+def test_metrics_answers_without_redirect(client):
+    for path in ("/metrics", "/metrics/"):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code == 200 and "atlas_requests_total" in r.text, path
+
+
+def test_feedback_comment_is_redacted(client):
+    r = client.post("/chat", json={"message": "When is payroll paid?"}, headers=HDR)
+    tid = r.json()["trace_id"]
+    client.post(
+        "/feedback",
+        json={"trace_id": tid, "score": -1, "comment": "I am NW-40213, mail me at a.b@northwind.example"},
+        headers=HDR,
+    )
+    comment = client.app_store.scores(name="user_feedback")[0].comment
+    assert "NW-40213" not in comment and "a.b@northwind.example" not in comment
+    assert "<EMPLOYEE_ID:" in comment and "<EMAIL:" in comment

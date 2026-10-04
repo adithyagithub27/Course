@@ -1,298 +1,125 @@
-# Production Checklist
+# Production Checklist — Course 2: AI Agent Testing & Evaluation
 
-> **Purpose:** A phase-by-phase checklist covering every deliverable from initial discovery through course launch. Check items off as they are completed. Do not skip phases.
+> **Purpose:** phase-by-phase checklist from discovery to launch. Check items off with a date. Module-level detail: `COURSE_STATUS.md`. Production rules: `09-heygen/PRODUCTION-GUIDE.md`.
 >
-> **Last Updated:** 2026-09-24
+> **Last updated:** 2026-10-04. Course facts: 16 modules (M00–M15), **55 lectures, 400 min (6 h 40 min)**, 5 projects, 12 labs, 14 quizzes (`01-curriculum/full-curriculum.md`).
 
 ---
 
-## How to Use This Checklist
+## Phase 1: Discovery — Done
 
-1. Work through phases sequentially — each phase builds on the previous
-2. Check off items (`[x]`) as they are completed
-3. Add dates next to completed items for tracking
-4. If a phase is blocked, note the blocker inline
-5. Cross-reference with `COURSE_STATUS.md` for module-level detail
-
----
-
-## Phase 1: Discovery (Weeks 1–2)
-
-> **Goal:** Understand the market, validate the course concept, and define what makes this course unique.
-
-### Competitor Analysis
-- [ ] Identify top 10 competing courses on Udemy (AI testing, LLM evaluation)
-- [ ] Analyze competitor curricula (topics covered, gaps, runtime, ratings)
-- [ ] Document competitor pricing and enrollment numbers
-- [ ] Identify content gaps and underserved topics
-- [ ] Write competitor analysis summary document
-
-### Tool Evaluation
-- [ ] Evaluate DeepEval (features, API stability, documentation quality)
-- [ ] Evaluate RAGAS (features, RAG-specific metrics, compatibility)
-- [ ] Evaluate promptfoo (prompt testing, regression, red-teaming)
-- [ ] Evaluate Langfuse (observability, tracing, self-hosted vs cloud)
-- [ ] Evaluate OpenTelemetry (LLM instrumentation, integration points)
-- [ ] Confirm all tools work together in a single Python environment
-- [ ] Document tool versions to pin for the course
-- [ ] Estimate total API cost for a student completing all labs
-
-### Persona Definition
-- [ ] Define primary persona (beginner Python developer entering AI)
-- [ ] Define secondary persona (mid-level engineer adding AI testing to existing systems)
-- [ ] Define tertiary persona (enterprise/staff engineer building quality frameworks)
-- [ ] Document persona pain points, goals, and learning preferences
-
-### Differentiation
-- [ ] Write course differentiation document (why this course vs. competitors)
-- [ ] Define the unique value proposition (1-sentence pitch)
+- [x] Competitor analysis: eight overlapping Udemy courses plus Maven and DeepLearning.AI (`00-course-strategy/next-course-market-research.md` §6, 2026-09-28; `course-differentiation.md` v2.0, 2026-10-04)
+- [x] Tool evaluation and pinned versions (`uv.lock`, checked 2026-10-01): openai 2.54.0, deepeval 4.2.7, ragas 0.4.3, langfuse 4.16.0, mcp 2.2.0, opentelemetry-sdk 1.45.0, promptfoo 0.123.1, garak 0.17.0, pyrit 1.1.0
+- [x] All tools work together in one environment (Garak and PyRIT in separate environments by design)
+- [x] API cost: $0 offline; a few dollars to run the labs live (verify current pricing)
+- [x] Personas P1–P4 (curriculum)
+- [x] Positioning: full lifecycle + CI/CD gates + enterprise scenarios, no "first"/"only" claims (T8)
 - [ ] Validate positioning with 2–3 trusted reviewers
 
----
+## Phase 2: Content Architecture — Done
 
-## Phase 2: Content Architecture (Weeks 3–5)
+- [x] 16 modules, 55 lectures with objectives, types and durations (2026-10-02, incl. Lecture 8.5)
+- [x] Runtime reconciled: 400 min (T7; supersedes the 8.5–9.5 h target)
+- [x] Frozen taxonomies: six failure modes (T2), five quality dimensions (T3), five-layer eval pyramid (T4)
+- [x] 5 projects and 12 labs specified; lab IDs follow modules (Lab 1.1 … Lab 13.1)
+- [x] Metric reference: `06-evaluation-frameworks/`, `11-course-assets/cheatsheets/`
+- [x] Visual design system (shared by Courses 2–4) and slide-deck outline (`10-graphics/`)
+- [ ] Course thumbnail concepts (3 options) — after the Module 3 pilot
+- [ ] Owner approval of the visual design system
 
-> **Goal:** Design the complete curriculum, define every lecture, and establish the visual system.
+## Phase 3: Scripts & Code
 
-### Curriculum Design
-- [ ] Define all 16 modules with titles and descriptions
-- [ ] Break each module into individual lectures (~60 total)
-- [ ] Write learning objectives for every lecture
-- [ ] Define prerequisites and knowledge flow between modules
-- [ ] Map lecture types (concept, demo, lab, project, recap)
-- [ ] Validate pacing (target 8.5–9.5 hours total runtime)
-- [ ] Assign estimated runtime per lecture
+### Scripts (`02-course-content/`, one file per module)
+- [x] All 55 lecture scripts written in the Course 3/4 cue format (T5); legacy `09-heygen/scripts/` removed
+- [ ] QA pass per module: 7 beats, hook, word count vs target, recap card (A1), "You can now" card (A2), no avatar run > 140 words (A3), banned phrases (A4), screen beat in slide lectures (A5), no unsourced statistics (A6)
+  - [ ] M00 Welcome & Course Overview
+  - [ ] M01 AI Agents: What You Need to Know for Testing
+  - [ ] M02 Why Traditional Testing Breaks for AI Agents
+  - [ ] M03 Your First Agent Evaluation
+  - [ ] M04 Evaluation Metrics Deep Dive
+  - [ ] M05 RAG Agent Evaluation
+  - [ ] M06 Testing Tool Calling & MCP
+  - [ ] M07 Multi-Agent System Testing
+  - [ ] M08 Security Testing & Red Teaming
+  - [ ] M09 Agent Observability & Tracing
+  - [ ] M10 Performance & Reliability Testing
+  - [ ] M11 Regression Testing & Synthetic Data
+  - [ ] M12 CI/CD for Agent Evaluation
+  - [ ] M13 Production Monitoring & Governance
+  - [ ] M14 Enterprise Capstone
+  - [ ] M15 Career & Next Steps
 
-### Lab & Project Specifications
-- [ ] Design 5 hands-on projects with clear deliverables
-- [ ] Design capstone project (end-to-end evaluation framework)
-- [ ] Write lab specifications for each guided exercise
-- [ ] Define starter code vs. solution code for each lab
-- [ ] Define datasets required for each lab/project
-- [ ] Validate that labs build progressively in complexity
-
-### Evaluation Metric Framework
-- [ ] Define the taxonomy of evaluation metrics covered in the course
-- [ ] Map which metrics are taught in which modules
-- [ ] Create a metrics reference sheet (student downloadable)
-- [ ] Validate metric coverage against industry best practices
-
-### Visual Design System
-- [ ] Define color palette, typography, and slide templates
-- [ ] Design slide master templates (title, content, code, diagram)
-- [ ] Design diagram style guide (architecture diagrams, flow charts)
-- [ ] Design code snippet visual style (font, theme, highlighting)
-- [ ] Create course thumbnail concept (3 options minimum)
-- [ ] Get course owner approval on visual design system
-
----
-
-## Phase 3: Scripts & Code (Weeks 5–8)
-
-> **Goal:** Write every lecture script and build every code example, lab, and project.
-
-### Lecture Scripts
-- [ ] Write scripts for Module 01 (Introduction & Course Setup)
-- [ ] Write scripts for Module 02 (Why AI Agents Need Testing)
-- [ ] Write scripts for Module 03 (Testing Fundamentals for AI)
-- [ ] Write scripts for Module 04 (LLM Output Evaluation Basics)
-- [ ] Write scripts for Module 05 (DeepEval Framework Deep Dive)
-- [ ] Write scripts for Module 06 (RAG Evaluation with RAGAS)
-- [ ] Write scripts for Module 07 (Prompt Regression Testing)
-- [ ] Write scripts for Module 08 (Agent Workflow Testing)
-- [ ] Write scripts for Module 09 (Observability & Monitoring)
-- [ ] Write scripts for Module 10 (CI/CD for AI Agents)
-- [ ] Write scripts for Module 11 (Red-Teaming & Safety Testing)
-- [ ] Write scripts for Module 12 (Production Monitoring Dashboards)
-- [ ] Write scripts for Module 13 (Capstone Project)
-- [ ] Write scripts for Module 14 (Advanced Topics & What's Next)
-- [ ] Review all scripts for consistency, tone, and pacing
-- [ ] Proofread all scripts (grammar, clarity, accuracy)
-
-### Code Development
-- [ ] Build all code examples for each module
-- [ ] Build all lab starter templates
-- [ ] Build all lab solution code
-- [ ] Build all 5 project codebases
-- [ ] Build capstone project codebase
-- [ ] Write requirements.txt / pyproject.toml with pinned versions
-- [ ] Write setup instructions (README per project)
-- [ ] Test all code on clean Python 3.11+ environment
-- [ ] Test all code on Windows, macOS, and Linux (or document platform notes)
+### Code (`04-code-examples/agent-eval-framework/`)
+- [x] Five agents, evaluators, security, observability, performance, regression, monitoring, capstone
+- [x] Offline mode (mock LLM + mock judge); `make test`: 204 passed, 5 live skipped
+- [x] 61 lecture demos run offline (`make demos`)
+- [x] `pyproject.toml` + committed `uv.lock` (A10); `requirements.txt` generated for pip users
+- [x] CI workflow `.github/workflows/agent-eval.yml`
+- [ ] Run the Garak scan once (configured, not yet run) and capture real numbers for Lecture 8.5
+- [ ] Test on Windows and macOS (or document platform notes)
 
 ### Datasets
-- [ ] Create or source datasets for each lab
-- [ ] Create or source datasets for each project
-- [ ] Validate dataset quality and appropriateness
-- [ ] Document dataset licenses and attribution
+- [x] Golden and red-team datasets in the student repo (`datasets/`)
+- [x] Five enterprise scenario datasets with one schema (`05-datasets/enterprise-scenarios/`)
+- [ ] Dataset license note in the student repo README
 
-### Lab Validation
-- [ ] Complete every lab end-to-end as a student would
-- [ ] Time each lab (target completion times)
-- [ ] Identify and resolve any ambiguities in lab instructions
-- [ ] Verify all expected outputs match documentation
+### Labs, projects, demo specs
+- [x] 12 labs and 5 projects rewritten on the current APIs; student code verified offline (2026-10-02)
+- [x] 50 demo recording specs with real output (`03-demos/`)
+- [ ] Time each lab with a test student; adjust durations in the lab headers
+- [ ] Live re-run (with a key) of the labs whose numbers will be shown live
 
----
+## Phase 4: Prototype (Module 3 pilot)
 
-## Phase 4: Prototype (Weeks 8–9)
+- [ ] Owner chooses avatar and voice (`09-heygen/avatar-config/`, `voice-config/`); IDs in env vars only
+- [ ] Add Course 2 terms to `pronunciation.json`
+- [ ] `scene_extractor.py` on `section-03-first-eval.md`; 3-scene HeyGen pilot
+- [ ] Generate the Module 3 slide deck (`slide_builder.py`)
+- [ ] Record Module 3 screencasts from demo specs 02, 14, 15, 16
+- [ ] Assemble, caption, export at final settings
+- [ ] Owner review and explicit go/no-go for full production
 
-> **Goal:** Produce 3–4 representative lectures to validate the full production pipeline before committing to all 60.
+## Phase 5: Full Production (one module at a time)
 
-### Prototype Lectures
-- [ ] Select 3–4 representative lectures (1 concept, 1 demo, 1 lab walkthrough)
-- [ ] Generate HeyGen avatar video for each prototype lecture
-- [ ] Record screen captures for demo/lab lectures
-- [ ] Create graphics and slides for prototype lectures
-- [ ] Assemble prototype lectures in CapCut (avatar + screen + graphics)
-- [ ] Add captions/subtitles to prototype lectures
-- [ ] Export prototype lectures at final quality settings
+For each module M00–M15: extract scenes → generate avatar clips → generate deck → record screencasts → assemble → QA → export → `BUILD_LOG.md` line per lecture.
 
-### Prototype Review
-- [ ] Course owner reviews all prototype lectures
-- [ ] Document feedback on avatar quality, pacing, visuals
-- [ ] Identify adjustments needed before full production
-- [ ] Get explicit go/no-go approval for full production
-- [ ] Incorporate feedback and re-export if needed
+- [ ] All avatar clips generated and QA'd (lip sync, audio, artifacts)
+- [ ] All screencasts recorded at 1080p from `03-demos/` specs
+- [ ] All decks generated; every slide checked against `10-graphics/slide-deck-outline.md`
+- [ ] All lectures assembled; audio normalized to –16 LUFS; captions added
+- [ ] All 55 lectures exported (1920×1080, H.264, 30 fps)
 
----
+## Phase 6: Quality Assurance
 
-## Phase 5: Full Production (Weeks 9–11)
+### Technical
+- [ ] Code on screen matches the repository; outputs reproducible (offline numbers labelled offline)
+- [ ] Models are `gpt-4.1-mini` / `gpt-4.1`; every price says "verify current pricing"
+- [ ] No API keys or secrets visible; throwaway Langfuse project for UI shots
+- [ ] Version banners match `uv.lock`
 
-> **Goal:** Produce all ~60 lectures using the validated pipeline.
+### Educational
+- [ ] Each lecture delivers its objectives; flow between lectures is smooth
+- [ ] Taxonomies used exactly as frozen (T2, T3, T4)
+- [ ] Recap cards and "You can now" cards present
 
-### HeyGen Avatar Videos
-- [ ] Generate avatar videos for all Module 01 lectures
-- [ ] Generate avatar videos for all Module 02 lectures
-- [ ] Generate avatar videos for all Module 03 lectures
-- [ ] Generate avatar videos for all Module 04 lectures
-- [ ] Generate avatar videos for all Module 05 lectures
-- [ ] Generate avatar videos for all Module 06 lectures
-- [ ] Generate avatar videos for all Module 07 lectures
-- [ ] Generate avatar videos for all Module 08 lectures
-- [ ] Generate avatar videos for all Module 09 lectures
-- [ ] Generate avatar videos for all Module 10 lectures
-- [ ] Generate avatar videos for all Module 11 lectures
-- [ ] Generate avatar videos for all Module 12 lectures
-- [ ] Generate avatar videos for all Module 13 lectures
-- [ ] Generate avatar videos for all Module 14 lectures
-- [ ] QA check all avatar videos (lip sync, audio quality, no artifacts)
+### Visual
+- [ ] Text readable at 720p; code font legible
+- [ ] Consistent with the design system; captions accurate
 
-### Screen Recordings
-- [ ] Record all live coding demos
-- [ ] Record all terminal/CLI demonstrations
-- [ ] Record all dashboard/UI walkthroughs
-- [ ] Verify screen recordings are clear at 1080p
-- [ ] Add zoom/highlight annotations where needed
+## Phase 7: Launch
 
-### Graphics & Slides
-- [ ] Create all slide decks for concept lectures
-- [ ] Create all architecture diagrams
-- [ ] Create all flow charts and process diagrams
-- [ ] Create all evaluation metric visualizations
-- [ ] Ensure all graphics follow the visual design system
+### Udemy
+- [ ] Upload 55 lectures into 16 sections matching the modules; mark preview lectures (suggest 0.1, 1.4, 3.1)
+- [ ] Title, subtitle, description, objectives, audience, prerequisites from `12-udemy/course-description.md` (verify Udemy limits)
+- [ ] Attach 14 quizzes and downloadable resources (`11-course-assets/`)
+- [ ] Welcome and completion messages
+- [ ] Thumbnail and promo video (`13-marketing/promo-video-script.md`)
 
-### Video Assembly
-- [ ] Assemble all lectures in CapCut (avatar + screen + graphics)
-- [ ] Add captions/subtitles to all lectures
-- [ ] Add intro/outro bumpers to each lecture
-- [ ] Normalize audio levels across all lectures
-- [ ] Export all lectures at final quality (1080p, high bitrate)
+### Marketing
+- [ ] Pricing and coupon strategy (owner)
+- [ ] LinkedIn sequence (`13-marketing/linkedin-launch.md`), social plan, YouTube teasers
+- [ ] Launch date scheduled; first 48 hours monitored
 
----
-
-## Phase 6: Quality Assurance (Week 11)
-
-> **Goal:** Systematic review of every lecture and asset before upload.
-
-### Technical QA
-- [ ] Verify all code shown in videos matches the repository code
-- [ ] Verify all terminal outputs shown are accurate and reproducible
-- [ ] Verify all API calls use correct endpoints and models
-- [ ] Check for any hardcoded API keys or secrets in videos
-- [ ] Confirm all package versions mentioned are correct
-- [ ] Test all GitHub repository links
-
-### Educational QA
-- [ ] Verify each lecture delivers on its stated learning objectives
-- [ ] Check for logical flow between consecutive lectures
-- [ ] Verify no prerequisite knowledge is assumed without being taught
-- [ ] Confirm all jargon and acronyms are defined on first use
-- [ ] Check that difficulty progression is smooth (no sudden jumps)
-- [ ] Verify recap lectures accurately summarize their modules
-
-### Visual QA
-- [ ] Check all text is readable at 720p (minimum Udemy resolution)
-- [ ] Verify code font size is legible in all screen recordings
-- [ ] Check for visual consistency across all lectures
-- [ ] Verify captions are accurate and properly timed
-- [ ] Check thumbnail at multiple sizes (search result, course page, mobile)
-
-### Enterprise QA
-- [ ] Verify enterprise patterns are realistic (not toy examples)
-- [ ] Check that CI/CD examples follow industry best practices
-- [ ] Verify observability setup matches production conventions
-- [ ] Confirm security best practices are followed (secrets management, etc.)
-
----
-
-## Phase 7: Launch (Week 12+)
-
-> **Goal:** Upload to Udemy, configure the course, and execute the launch plan.
-
-### Udemy Upload
-- [ ] Upload all lecture videos to Udemy
-- [ ] Organize lectures into sections matching the 16-module structure
-- [ ] Set lecture order and mark preview-eligible lectures
-- [ ] Upload course thumbnail
-- [ ] Upload promotional video / trailer
-
-### Course Configuration
-- [ ] Write final course title
-- [ ] Write course subtitle
-- [ ] Write course description (long-form, SEO-optimized)
-- [ ] Add all relevant tags and categories
-- [ ] Configure target student description
-- [ ] Configure prerequisites list
-- [ ] Configure "What you'll learn" bullet points (max impact)
-
-### Supplementary Content
-- [ ] Create and attach quizzes for key modules
-- [ ] Create and attach practice tests (if applicable)
-- [ ] Upload downloadable resources (cheat sheets, templates, configs)
-- [ ] Add external resource links (GitHub repo, documentation)
-- [ ] Write welcome message (auto-sent to new students)
-- [ ] Write completion message
-
-### Marketing & Launch
-- [ ] Finalize coupon strategy (launch discount, affiliate codes)
-- [ ] Prepare social media announcement posts
-- [ ] Prepare email announcement (if applicable)
-- [ ] Schedule launch date
-- [ ] Execute launch communications
-- [ ] Monitor first 48 hours for issues
-
-### Post-Launch
-- [ ] Monitor Q&A section daily for first 2 weeks
-- [ ] Track enrollment numbers and conversion rates
-- [ ] Collect and respond to initial reviews
-- [ ] Document any content fixes needed based on student feedback
-- [ ] Plan first content update (if needed)
-
----
-
-## Completion Summary
-
-| Phase                  | Total Items | Completed | Remaining |
-|------------------------|-------------|-----------|-----------|
-| Phase 1: Discovery     | 22          | 0         | 22        |
-| Phase 2: Architecture  | 25          | 0         | 25        |
-| Phase 3: Scripts & Code| 33          | 0         | 33        |
-| Phase 4: Prototype     | 12          | 0         | 12        |
-| Phase 5: Production    | 24          | 0         | 24        |
-| Phase 6: QA            | 22          | 0         | 22        |
-| Phase 7: Launch        | 25          | 0         | 25        |
-| **Total**              | **163**     | **0**     | **163**   |
-
----
-
-*Check items off as they are completed. Update the Completion Summary table periodically.*
+### Post-launch
+- [ ] Q&A daily for 2 weeks; reviews answered
+- [ ] Content fixes logged; first update planned (yearly stack refresh)

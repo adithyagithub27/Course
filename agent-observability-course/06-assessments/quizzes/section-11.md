@@ -18,7 +18,7 @@
 - **B.** Nothing; the trace is the evidence.
   - *Explanation:* Incorrect. One trace is an anecdote; without the timeline you do not know whether it is representative or when the problem began.
 - **C.** They skipped the timeline and blast radius, so they cannot tell when the change started (which points at releases and external events), who is affected (one tenant or all, one feature or all), or whether the trace they picked is typical; and they skipped hypotheses, so a fix is applied before a cause is established.
-  - *Explanation:* Correct. In Incident 2 the first slow trace shows a slow model call, which is only half the story; the timeline reveals the 12:30 release and the 13:10 provider slowdown as two separate events.
+  - *Explanation:* Correct. In Incident 2 the first slow trace shows a retriever with top-k 18, which looks guilty; the timeline (p95 out of budget from 13:00, back at 17:00) and the flat input tokens show the provider was the cause and top-k a red herring.
 - **D.** They skipped writing the postmortem first.
   - *Explanation:* Incorrect. The postmortem comes after mitigation; the method is about investigation order.
 
@@ -26,54 +26,71 @@
 
 ---
 
-### Q2. Incident 1: finance's hourly cost jumped 20× with flat request counts, `lookup_ticket` errors at 9%, p95 up but under budget. What was the root cause and the compounding mechanism?
+### Q2. Lecture 11.1's page map tells you where to look first. During an incident, input tokens per generation are flat but p95 has doubled. Which page and which number separate "the provider got slower" from "we made the requests bigger"?
 
-*Related lecture: 11.2 Incident 1: Monday's cost spike*
+*Related lecture: 11.1 How to read an incident like an SRE*
 
-- **A.** A user ran a script hammering the API.
-  - *Explanation:* Incorrect. Requests per hour were flat; cost per request is what rose.
-- **B.** A prompt change made answers longer.
-  - *Explanation:* Incorrect. Output tokens were flat; the growth was on the input side, and there was no release.
-- **C.** The provider raised prices.
-  - *Explanation:* Incorrect. Prices are pinned and the other tenants were unaffected.
-- **D.** The finance ticket API began failing intermittently; Atlas retried `lookup_ticket` per step up to `max_retries` and kept every failed result (about 560 tokens each) in the conversation, so a retry storm at the tool level compounded with context bloat, making each successive model call larger until the step limit.
-  - *Explanation:* Correct. Two mechanisms, one cause. Evidence: `execute_tool lookup_ticket` spans per trace rose from 1.1 to 11.4, and `atlas.context_tokens` climbed from 1,180 to 5,900 across steps. The tool error alert threshold (10%) was just above the observed 9%.
+- **A.** The Traffic page: requests against the shadow line.
+  - *Explanation:* Incorrect. Traffic answers "is it more requests?", not "is it the provider?".
+- **B.** The Latency page: time to first token (`atlas.ttft_ms`) by hour. Nothing in our code runs between sending a prompt and receiving the first token, so TTFT rising while prompt sizes stay flat is the provider's fingerprint.
+  - *Explanation:* Correct. In Incident 2, TTFT p95 went from 556 ms to about 1.9 s at 13:00 and back at 17:00 while input tokens stayed near 4,600 per generation.
+- **C.** The Budgets page: tenant spend against the caps.
+  - *Explanation:* Incorrect. Budgets answer "is someone about to be refused?"; cost per request did not move in this incident.
+- **D.** The Safety page: guardrail events.
+  - *Explanation:* Incorrect. Guardrails do not explain a latency change.
 
-**Correct answer: D**
+**Correct answer: B**
 
 ---
 
-### Q3. Incident 2: p95 doubled to 4.9 s after lunch; a 12:30 release raised retrieval `top_k` from 4 to 12; the provider slowed from 13:10. Which statement is correct?
+### Q3. Incident 1: ops's spend broke away at 09:00 and again at 10:00. At 08:55 a change switched the context diet off and raised retrieval top-k for ops; from 10:00 the provider timed out and Atlas resent those prompts up to three times. The same timeouts on a normal day (the full-day `retry_storm` replay) cost $58.00 against $56.28; with the retrieval change as well (`cost_spike`) the day costs $64.99. In postmortem terms, what is the root cause and what is the trigger?
+
+*Related lecture: 11.5 Writing the postmortem*
+
+- **A.** Root cause: the provider timeouts. Trigger: the retrieval change.
+  - *Explanation:* Incorrect, reversed. The timeouts on their own cost $1.72 on a normal day; they pushed on a system the retrieval change had already made fragile.
+- **B.** Root cause: the retrieval change shipped with no eval, cost check or gate. Trigger: the provider timeouts. Contributing factors: the 20-second timeout, a breaker that never saw three failures in a row, and a retry-storm alert nobody routed.
+  - *Explanation:* Correct. The root cause is the thing that, removed, means the incident doesn't happen. A trigger pushes on it; contributing factors make it bigger or longer. If you missed this, rewatch the root-cause slide in 11.5 before Project 2.
+- **C.** Root cause: human error by whoever merged the change.
+  - *Explanation:* Incorrect. "Human error" is where a blameless postmortem starts asking questions, not where it stops; the system had no gate.
+- **D.** There is no single root cause, so the postmortem should list everything equally.
+  - *Explanation:* Incorrect. Separating root cause, trigger and contributing factors is what makes the action items land on the right thing.
+
+**Correct answer: B**
+
+---
+
+### Q4. Incident 2: a provider slowdown tripled time to first token from 13:00 to 17:00. Atlas has `FALLBACKS` for every model and a `CircuitBreaker` that opens after three consecutive failures, yet the fallback never fired and p95 stayed around 8 s. Why, and what is the fix?
 
 *Related lecture: 11.3 Incident 2: p95 doubled after lunch*
 
-- **A.** Neither alone breached the budget; together they did, because 2.4× more input tokens made every already-slow call slower and every retry after a timeout costlier. The fix is both a fallback with a shorter timeout (for the provider) and `ATLAS_TOP_K=4` (for the release), and a CI budget gate would have blocked the `top_k` PR at +25% cost before it ever met the slow provider.
-  - *Explanation:* Correct. "No single change caused it" is a valid and common root-cause statement; the postmortem names both and maps prevention to each.
-- **B.** The judge scores should have caught this.
-  - *Explanation:* Incorrect. A judge reads text and is blind to latency; scores stayed normal, correctly.
-- **C.** The release alone caused the incident; roll it back and p95 returns to normal.
-  - *Explanation:* Incorrect. The `top_k` change alone added about 300 ms and 25% cost, under both budgets.
-- **D.** The provider alone caused the incident; the release is irrelevant.
-  - *Explanation:* Incorrect. The slowdown alone would have pushed p95 to about 3.6 s, still under the 4 s budget.
+- **A.** The fallback table was empty; add entries.
+  - *Explanation:* Incorrect. The fallbacks exist; nothing triggered them.
+- **B.** With a 20-second per-call timeout, slow calls still succeeded, so the breaker, which counts only errors, never saw a failure. Fix: derive the per-call timeout from the step budget, and count a call over 4 s as a breaker failure (an action item; not in the shipped code) so three slow calls open the circuit.
+  - *Explanation:* Correct. A breaker that only counts errors never protects a latency SLO. Lab 4 is where you build and tune the slow-call rule.
+- **C.** Raise top-k back to 4; the retrieval change caused the slowdown.
+  - *Explanation:* Incorrect. Top-k was a red herring: the context diet capped tool results, so prompt sizes stayed flat.
+- **D.** Raise `ATLAS_MAX_RETRIES` so slow calls are retried.
+  - *Explanation:* Incorrect. Nothing errored, so nothing is retried; more retries would only lengthen the tail once something did.
 
-**Correct answer: A**
+**Correct answer: B**
 
 ---
 
-### Q4. Incident 3: cost per session *fell* 8%, task success 94%, p95 normal, no alerts, yet HR reports vague and sometimes wrong answers after prompt v2 went to production on Wednesday. How do you confirm the cause and roll back, and what is the trap in the cost number?
+### Q5. Incident 3: judge `grounded` fell from about 0.94 to 0.56 at 11:00, cost per request fell about 7% and p95 fell from 3.5 s to 2.0 s; `atlas.prompt_version` reads `v1` before 11:00 and `v2` after. You run `python -m app.prompts promote --version 1`. What does it do, and what is the trap in the cost and latency numbers?
 
 *Related lecture: 11.4 Incident 3: users are unhappy but nothing is red*
 
-- **A.** Celebrate the 8% saving and ask HR for examples.
-  - *Explanation:* Incorrect. The saving *is* the symptom.
-- **B.** Slice judge scores by `atlas.prompt_version` (v2 grounded 0.77 vs v1 0.90), confirm output tokens fell 26% from the promotion time, then move the `production` label in Langfuse back to v1 so every instance picks it up within `cache_ttl_seconds` with no deploy; the trap is that shorter, vaguer answers are *cheaper*, so a cost-only view rewards the regression.
-  - *Explanation:* Correct. Task success is self-reported and stayed high; only judge scores, feedback and answer length moved, none of which had an alert before Sections 8 and 9. Prevention: offline eval on the failures dataset before promotion, and a drift alert on judge scores.
-- **C.** Redeploy Atlas with the old prompt hard-coded.
-  - *Explanation:* Incorrect. Unnecessary: the prompt is managed by label, and hard-coding removes the versioning that made diagnosis possible.
-- **D.** Increase `top_k` to give the model more context.
-  - *Explanation:* Incorrect. Retrieval did not change; the instruction to be brief did. This would add cost without addressing the cause.
+- **A.** It redeploys Atlas with v1 baked in; the trap is that cost went down, so nothing is wrong.
+  - *Explanation:* Incorrect on the mechanism: no deploy happens. And falling cost is the trap, not the all-clear.
+- **B.** It deletes version 2 from Langfuse so nobody can use it again.
+  - *Explanation:* Incorrect. Versions are kept; only the label moves. Keep v2 for the postmortem.
+- **C.** It calls `promote_prompt("atlas-system", 1, label="production")`, moving the `production` label back to version 1 (labels are unique, so v2 loses it); Atlas picks it up within the 60-second prompt cache, with no deploy or restart. The trap: v2's answers are shorter (output tokens 115 → 42), and shorter answers are cheaper and faster, so a cost or latency view rewards the regression.
+  - *Explanation:* Correct. Offline, the same rollback is `ATLAS_PROMPT_VERSION=v1`. The prevention is to promote only from CI after an offline eval on `atlas-failures`, and to alert on the judge (the shipped `AtlasJudgeScoreLow` cannot fire because nothing exports judge scores to Prometheus).
+- **D.** It switches the model to gpt-4.1 to make answers longer.
+  - *Explanation:* Incorrect. The model did not change; the prompt did.
 
-**Correct answer: B**
+**Correct answer: C**
 
 ---
 
@@ -85,26 +102,9 @@
   - *Explanation:* Incorrect. It names a person's failure; the system had no alert that would have told anyone.
 - **B.** "The prompt author should have run the evals."
   - *Explanation:* Incorrect. It assigns blame to a role for a step the process did not require.
-- **C.** "No cost anomaly alert existed for per-tenant hourly spend, so the spike was detected by a human reading an invoice page three hours after onset; action: add the EWMA anomaly alert (owner: platform team, verified by the alert firing in the `context_bloat` replay)."
+- **C.** "No cost anomaly alert existed for per-tenant hourly spend, so the spike was detected by a human reading an invoice page three hours after onset; action: add the EWMA anomaly alert (owner: platform team, verified by the Ops Console Alerts page flagging the `context_bloat` replay)."
   - *Explanation:* Correct. It describes the system gap, the consequence, and an action item mapped to instrumentation, budget or test with an owner role and a verification. That is the template's shape.
 - **D.** "Root cause: human error."
   - *Explanation:* Incorrect. "Human error" is where a blameless postmortem starts asking questions, not where it stops.
 
 **Correct answer: C**
-
----
-
-### Q6. Project 2 asks for prevention items that "map to instrumentation, budgets/alerts and tests/gates". Which set qualifies?
-
-*Related lecture: 11.6 Project 2: Investigate a fourth incident*
-
-- **A.** Rewrite Atlas in a different framework.
-  - *Explanation:* Incorrect. A rewrite is not a prevention item; it is a project with its own risks and no guarantee the same gap is closed.
-- **B.** Add more people to on-call.
-  - *Explanation:* Incorrect. Staffing does not fix a missing signal; the incident went unnoticed because nothing alerted, not because nobody was there.
-- **C.** "Be more careful with tool results", "monitor cost", "test more".
-  - *Explanation:* Incorrect. None is checkable; no owner, no verification, no artefact.
-- **D.** Instrumentation: add a `tool_result_bytes` histogram per tool (owner: agent team, verified in `/metrics`); alert: EWMA cost anomaly per tenant with a 2-hour detection target (owner: platform, verified by firing in the replay); gate: `test_tool_result_under_budget` in `tests/integration/` asserting every tool result attribute is under `tool_result_token_budget` (owner: agent team, verified by CI).
-  - *Explanation:* Correct. Each item names an artefact, an owner role and how you know it was done. The rubric grades exactly this.
-
-**Correct answer: D**

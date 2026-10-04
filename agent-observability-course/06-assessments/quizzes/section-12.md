@@ -32,7 +32,7 @@
 
 - **A.** LangSmith requires LangChain, so Atlas would need to be rewritten.
   - *Explanation:* Incorrect. `traceable` and `wrap_openai` work on plain Python and the OpenAI client without LangChain.
-- **B.** `from langsmith import traceable; from langsmith.wrappers import wrap_openai` — decorate `run_atlas` with `@traceable(run_type="chain")` and wrap the client with `client = wrap_openai(OpenAI())`, with `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set; feedback is attached with `Client().create_feedback(run_id, key=..., score=...)`.
+- **B.** `from langsmith import traceable; from langsmith.wrappers import wrap_openai`: wrap the client with `wrap_openai(OpenAI())` (Atlas ships this as `wrap_openai_if_enabled` in `OpenAIChatClient`), decorate `AtlasAgent.run` with `@traceable(run_type="chain")` (the `traced` helper in `telemetry/langsmith_setup.py`, your addition), with `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY` set; feedback is attached with `Client().create_feedback(run_id, key=..., score=...)` (the `send_feedback` helper, wired into `/feedback` by you).
   - *Explanation:* Correct. `traceable` plays the role of `@observe`, `wrap_openai` plays the role of auto-instrumentation, and feedback maps to Langfuse scores. Differences: LangSmith's run tree is not OTel-native by default, so the OTel escape hatch is to export via OTLP to LangSmith's OTLP endpoint instead.
 - **C.** `OpenAIInstrumentor().instrument()` alone; LangSmith reads OTel spans automatically.
   - *Explanation:* Incorrect as stated: LangSmith can ingest OTLP if you configure the exporter to its endpoint, but not automatically from a local instrumentor.
@@ -51,8 +51,8 @@
   - *Explanation:* Incorrect. Phoenix runs locally (the `phoenix` extra in `pyproject.toml`).
 - **B.** Rewrite all spans with OpenInference attributes; Phoenix ignores `gen_ai.*`.
   - *Explanation:* Incorrect. Phoenix accepts any OTLP spans; OpenInference attributes render best, but `gen_ai.*` spans arrive and are searchable.
-- **C.** Only the exporter endpoint changes (OTLP HTTP to `http://localhost:6006/v1/traces`, or a second exporter in the collector); Phoenix renders OpenInference conventions (`openinference.span.kind`, `llm.token_count.prompt`) natively, and the OpenInference instrumentor from Section 3 already emits those, while your manual spans carry `gen_ai.*`; both appear, and the collector can translate one to the other if needed.
-  - *Explanation:* Correct. This is the escape hatch in practice: same code, different destination. Lab 7's stretch goal fans out to Langfuse and Phoenix at once.
+- **C.** Only the exporter endpoint changes (OTLP HTTP to `http://localhost:6006/v1/traces`, or the collector's `otlphttp/phoenix` exporter, which `make stack` already runs next to Langfuse); Phoenix renders OpenInference conventions (`openinference.span.kind`, `llm.token_count.prompt`) natively, while Atlas's manual spans carry `gen_ai.*`, so they arrive and are searchable but token panels may stay empty unless you add the optional OpenInference mirror.
+  - *Explanation:* Correct. This is the escape hatch in practice: same code, different destination. One practical catch from 12.3: `make stack` already binds Phoenix to port 6006, so don't start a second Phoenix with `phoenix serve` alongside it.
 - **D.** Phoenix needs its own SDK and cannot use OpenTelemetry.
   - *Explanation:* Incorrect. Phoenix is built on OpenTelemetry and OpenInference.
 

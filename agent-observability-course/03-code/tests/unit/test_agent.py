@@ -234,3 +234,23 @@ def test_features_assigned(agent):
     assert agent.run("When is payroll paid?", tenant="hr").intent == "payroll"
     r = agent.run("status of my ticket TCK-100003", tenant="hr")
     assert r.intent == "ticket_status"
+
+
+def test_slow_provider_timeout_trips_breaker_and_falls_back(settings, tracing):
+    """Lab 4 offline: a tight ATLAS_REQUEST_TIMEOUT_S turns the slow primary into timeouts, the
+    breaker opens after ATLAS_ROUTER_ALLOWED_FAILS failures, and gpt-4o-mini answers at normal speed."""
+    s = settings.with_overrides(
+        scenario="slow_provider", request_timeout_s=4.0, max_retries=1, router_allowed_fails=2
+    )
+    agent = AtlasAgent(s, llm=MockLLM(seed=7, scenario="slow_provider"))
+    first = agent.run("How do I connect to the VPN from home?", tenant="eng")
+    assert first.retries >= 1 and any(not g.ok for g in first.generations)
+    assert all(g.latency_ms == 4000.0 for g in first.generations if not g.ok)
+    later = agent.run("How many days of annual leave do I get?", tenant="eng")
+    assert later.outcome == "resolved" and later.model == FALLBACKS[s.model]
+    assert all(g.latency_ms < 4000.0 for g in later.generations if g.ok)
+
+
+def test_breaker_uses_router_knobs(settings):
+    agent = AtlasAgent(settings.with_overrides(router_allowed_fails=2, router_cooldown_s=120))
+    assert agent.breaker.threshold == 2 and agent.breaker.cooldown_s == 120.0

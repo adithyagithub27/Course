@@ -104,3 +104,58 @@ def test_replay_cli_incidents_default_from_atlas_scenario(monkeypatch, tmp_path,
     rc = main(["--seed", "5", "--sessions", "60", "--store", str(tmp_path / "s.sqlite"), "--clear"])
     out = capsys.readouterr().out
     assert rc == 0 and "slow_provider" in out and "Incidents: slow_provider" in out
+
+
+def test_replay_masks_span_content_like_the_live_path():
+    """Agent input/output and tool I/O are masked (hashed placeholders), as genai_attrs._safe does."""
+    import re
+
+    _, store = replay_day(5, sessions=60, judge_rate=0.0)
+    raw = re.compile(r"\bNW-\d{5}\b")
+    keys = (
+        "langfuse.observation.input",
+        "langfuse.observation.output",
+        "gen_ai.tool.call.arguments",
+        "gen_ai.tool.call.result",
+    )
+    seen_placeholder = False
+    for span in store.spans():
+        for k in keys:
+            v = str(span.attr(k) or "")
+            assert not raw.search(v), (k, v)
+            seen_placeholder |= "<EMPLOYEE_ID:" in v
+    assert seen_placeholder
+
+
+def test_langfuse_mirror_reuses_trace_id_and_tags():
+    """Judge/feedback scores (create_score(trace_id=...)) attach to the mirrored trace."""
+    from app.langfuse_native import setup_langfuse_native
+    from simulator.replay import _hex, _push_langfuse
+
+    lf, capture = setup_langfuse_native(offline=True)
+    engine = ReplayEngine(7)
+    req = generate_day(7, sessions=3)[0]
+    r = engine._agent(req.params).run(
+        req.message, tenant=req.tenant, user_id=req.persona.user_id, session_id=req.session_id
+    )
+    trace_id = _hex(7, req.session_id, req.turn, n=32)
+    _push_langfuse(lf, req, r, trace_id)
+    lf.flush()
+    spans = capture.spans(trace_id)
+    root = next(s for s in spans if s.name == "invoke_agent atlas")
+    tags = set(root.attributes["langfuse.trace.tags"])
+    assert {f"feature:{r.feature}", f"prompt:{r.prompt_version}", f"tenant:{req.tenant}"} <= tags
+    assert len(spans) == 1 + len(r.generations) + len(r.tools)
+
+
+def test_replay_breaker_runs_on_replayed_time():
+    """The breaker's cooldown is measured on the replayed clock, so replays are deterministic."""
+    engine = ReplayEngine(7)
+    engine._now = 1000.0
+    engine.breaker.record_failure("m")
+    engine.breaker.record_failure("m")
+    engine.breaker.record_failure("m")
+    assert engine.breaker.is_open("m")
+    engine._now = 1000.0 + engine.breaker.cooldown_s
+    assert not engine.breaker.is_open("m")
+    assert engine._agent({}).breaker is engine.breaker

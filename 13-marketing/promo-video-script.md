@@ -10,11 +10,11 @@
 
 ```
 [SCENE 1 — FAILURE HOOK] (0:00–0:12)
-VISUAL: Screen recording — an AI agent responding to a customer with completely wrong data. Red highlight flashing.
+VISUAL: Screen recording of `demos/m00_agent_failure.py`: the agent answers "14-day money-back guarantee" with no tool call; "Faithfulness 0.00 -> FAIL: block this deploy" in red.
 SCRIPT:
-Your AI agent just sent the wrong customer's data... to the wrong person.
-It passed every test. It looked perfect in the demo.
-So what went wrong?
+One line deleted from a prompt.
+Now your AI agent invents your refund policy... and every unit test still passes.
+So how would you have caught it?
 
 [SCENE 2 — THE PROBLEM] (0:12–0:25)
 VISUAL: Animated split — left side: "Traditional Test: assertEqual('Paris', response)" with a green check. Right side: agent producing different outputs each run.
@@ -32,18 +32,18 @@ the way enterprise teams actually do it.
 You'll build real evaluation pipelines... not watch slides.
 
 [SCENE 4 — WHAT YOU'LL BUILD] (0:40–0:60)
-VISUAL: Quick cuts showing each project — DeepEval test output, RAGAS metrics, promptfoo red team results, Langfuse trace, Streamlit dashboard, GitHub Actions CI/CD.
+VISUAL: Quick cuts of real course output — DeepEval results table, RAGAS scores, promptfoo red-team table, SecureBank finding BRT-10, Langfuse trace, the failing PR comment, the Streamlit dashboard, the capstone "Decision: SHIP".
 SCRIPT:
 You'll use DeepEval to write AI tests that run like pytest.
 You'll use RAGAS to evaluate your RAG pipeline.
-You'll red-team agents for prompt injection with promptfoo.
-You'll trace every agent step with Langfuse.
-And you'll wire it all into GitHub Actions... so bad agents never reach production.
-Five hands-on projects. One enterprise capstone.
-A complete quality platform you can use at work tomorrow.
+You'll red-team agents with promptfoo, Garak and PyRIT.
+You'll trace every agent step with Langfuse and OpenTelemetry.
+And you'll wire it all into GitHub Actions... so a bad pull request gets blocked, not shipped.
+Fifty-five lectures. Five projects. One quality platform you can use at work.
+And every lab runs free, without an API key.
 
 [SCENE 5 — CTA] (0:60–0:70)
-VISUAL: Course title + "Enroll Now" + star rating (when available)
+VISUAL: Course title + "55 lectures · 6 h 40 min · 5 projects" + "Enroll Now" (add a star rating only once real reviews exist)
 SCRIPT:
 If you build AI agents... you need to know how to test them.
 Enroll now. I'll see you in the first lecture.

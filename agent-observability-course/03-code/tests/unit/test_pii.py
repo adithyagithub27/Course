@@ -89,3 +89,47 @@ def test_contains_pii():
 
 def test_empty_text():
     assert mask_text("") == ""
+
+
+def test_hash_is_keyed_hmac(monkeypatch):
+    """Section 10.2: the pseudonym is HMAC-SHA256 keyed with ATLAS_PII_HASH_KEY, same format."""
+    import hashlib
+    import hmac
+
+    from northwind.pii import DEMO_PII_HASH_KEY
+
+    demo = short_hash("NW-12345")
+    assert demo == hmac.new(
+        DEMO_PII_HASH_KEY.encode(), b"northwind:NW-12345", hashlib.sha256
+    ).hexdigest()[:8]
+    assert demo != hashlib.sha256(b"northwind:NW-12345").hexdigest()[:8]  # not the old salted hash
+    monkeypatch.setenv("ATLAS_PII_HASH_KEY", "s3cret")
+    keyed = short_hash("NW-12345")
+    assert keyed != demo and len(keyed) == 8
+    masked = mask_text("id NW-12345", hash_ids=True)
+    assert masked == f"id <EMPLOYEE_ID:{keyed}>"  # same placeholder shape, new key (no stale cache)
+
+
+def test_demo_key_warns_outside_offline(monkeypatch, caplog):
+    import northwind.pii as pii
+
+    monkeypatch.delenv("ATLAS_PII_HASH_KEY", raising=False)
+    monkeypatch.setattr(pii, "_warned_demo_key", False)
+    monkeypatch.setenv("OFFLINE", "1")
+    with caplog.at_level("WARNING", logger="atlas.pii"):
+        pii.short_hash("x")
+    assert not caplog.records
+    monkeypatch.setenv("OFFLINE", "0")
+    with caplog.at_level("WARNING", logger="atlas.pii"):
+        pii.short_hash("x")
+        pii.short_hash("y")
+    assert len(caplog.records) == 1 and "ATLAS_PII_HASH_KEY" in caplog.records[0].getMessage()
+
+
+def test_contains_pii_skips_documented_format_examples():
+    """The KB and prompt print 'employee ID (format NW-12345)'; repeating it is not a leak."""
+    assert not contains_pii("Reply with the code and your employee ID (NW-12345).")
+    assert not contains_pii("check the employee ID format NW-12345.")
+    assert contains_pii("Employee NW-40213 is locked out.")
+    assert contains_pii("NW-12345 or NW-40213")  # a real id next to the example still counts
+    assert "<EMPLOYEE_ID>" in mask_text("format NW-12345")  # telemetry still masks it

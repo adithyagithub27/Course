@@ -159,3 +159,41 @@ def test_judge_max_calls_caps_a_run(monkeypatch, tmp_path, capsys):
     rc = main(["--store", str(tmp_path / "j.sqlite"), "--seed", "3", "--rate", "1.0", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0 and "scored=5 " in out
+
+
+def test_judge_always_judges_thumbs_down(store):
+    """A thumbs-down trace is judged even at sample rate 0 (JudgeSamplingPolicy tail rule)."""
+    from telemetry.local_store import ScoreRecord
+
+    replay_day(3, sessions=30, store=store, judge_rate=0.0, feedback_rate=0.0)
+    agents = store.spans(kind="agent")
+    escalated = {s.trace_id for s in agents if s.attr("atlas.escalated")}  # also always judged
+    agent = next(s for s in agents if s.attr("atlas.outcome") == "resolved")
+    store.add_score(ScoreRecord(agent.trace_id, "user_feedback", 0.0, "user", "unhelpful", 0.0))
+    summary = run_judge(store, rate=0.0, dry_run=True, write_langfuse=False)
+    assert summary.sampled == summary.scored == 1 + len(escalated)
+    assert {s.trace_id for s in store.scores(name="judge_overall")} == {agent.trace_id} | escalated
+
+
+def test_judge_cap_reports_sampled_equal_to_scored(replayed_store):
+    summary = run_judge(replayed_store, rate=1.0, limit=4, dry_run=True, write_langfuse=False)
+    assert summary.scored == 4 and summary.sampled == 4
+
+
+def test_judge_main_initialises_langfuse_when_keys_set(monkeypatch, tmp_path):
+    """make judge with keys: the client is created, so create_score is not a silent no-op."""
+    import telemetry.langfuse_setup as lfs
+    from evals.online_judge import main
+
+    calls = []
+    monkeypatch.setattr(lfs, "init_langfuse", lambda settings=None, **_k: calls.append(1))
+    store_path = str(tmp_path / "j.sqlite")
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+    main(["--store", store_path, "--seed", "3", "--limit", "1", "--dry-run"])
+    assert calls == []  # OFFLINE=1 without --langfuse stays offline
+    main(["--store", store_path, "--limit", "1", "--dry-run", "--langfuse"])
+    assert calls == [1]
+    monkeypatch.delenv("LANGFUSE_PUBLIC_KEY")
+    main(["--store", store_path, "--limit", "1", "--dry-run", "--langfuse"])
+    assert calls == [1]  # no keys: never

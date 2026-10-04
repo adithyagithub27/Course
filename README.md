@@ -1,195 +1,131 @@
 # AI Agent Testing & Evaluation: Build Production-Ready Quality Frameworks with Python
 
-> A comprehensive Udemy course teaching engineers how to systematically test, evaluate, and monitor AI agents and LLM-powered applications using industry-standard tools and production-grade patterns.
+> Production package for **Course 2** of this repository: a hands-on Udemy course on testing, evaluating and monitoring AI agents across the whole quality lifecycle — evaluation metrics, RAG and tool-calling tests, red teaming, tracing, cost, regression, CI/CD quality gates and production monitoring.
+>
+> This repository also holds **Course 3** (`voice-ai-agents-course/`, Production Voice AI Agents) and **Course 4** (`agent-observability-course/`, AI Agent Observability & Cost Control). Start with `CLAUDE.md` for the repo-wide guide.
 
 ---
 
 ## Course Overview
 
-AI agents are entering production, but most teams ship without any testing or evaluation strategy. This course changes that. Students learn how to build end-to-end quality frameworks for AI agents — from unit-testing individual LLM calls to evaluating multi-step agent workflows, detecting regressions, and monitoring production systems with observability tooling.
-
-Every concept is taught through hands-on labs and real-world projects. By the end, students have a complete, reusable testing and evaluation framework they can apply to any AI agent system.
+Students work on one realistic running example — the **TechCorp customer support agent** (OpenAI tool calling, five tools) — plus a RAG policy assistant, a six-tool operations agent, a banking agent they red team, and a three-agent reply desk. Every concept is backed by code in the student repo `04-code-examples/agent-eval-framework/`, and every lab, demo and test runs **offline** (deterministic mock LLM and mock judge) without an API key.
 
 ---
 
 ## Course Specs
 
-| Attribute              | Detail                                              |
-|------------------------|-----------------------------------------------------|
-| **Target Runtime**     | 8.5 – 9.5 hours                                    |
-| **Total Lectures**     | ~60 lectures                                        |
-| **Modules**            | 16 (M00 – M15)                                     |
-| **Hands-On Projects**  | 5 projects + 1 capstone                             |
-| **Skill Level**        | Beginner-friendly with enterprise depth              |
-| **Audience Weight**    | 55% beginner / 45% enterprise                       |
-| **Prerequisites**      | Basic Python knowledge; no ML/AI experience required |
-| **Primary LLM**        | OpenAI GPT-4o-mini (~$5–10 total API cost)          |
-| **Platform**           | Udemy                                               |
-| **Standalone**         | Yes — no dependency on any prior course              |
+| Attribute | Detail |
+|---|---|
+| **Runtime** | 400 minutes of lectures = **6 h 40 min** |
+| **Lectures** | **55** (16 modules, M00–M15; includes Lecture 8.5 "Beyond promptfoo: Garak and PyRIT") |
+| **Projects** | 5 (Project 5 is the capstone) |
+| **Labs** | 12 lab guides + Thought Exercise 2.1 |
+| **Quizzes** | 14 |
+| **Skill level** | Beginner-friendly with enterprise depth |
+| **Prerequisites** | Basic Python; no ML/AI experience required |
+| **Models** | `gpt-4.1-mini` (agent), `gpt-4.1` (judge) — optional; offline mode needs no key (live runs: a few dollars in total, verify current pricing) |
+| **Platform** | Udemy |
+| **Standalone** | Yes — no dependency on any other course |
+
+Source of truth for lecture IDs, titles and durations: `01-curriculum/full-curriculum.md`.
 
 ---
 
-## Technology Stack
+## Technology Stack (verified in `uv.lock`, 2026-10-01)
 
-### Core Languages & Frameworks
+| Area | Technology | Version |
+|---|---|---|
+| Language and tooling | Python, uv, pytest | 3.11+, current, 9.1.1 |
+| LLM SDK | OpenAI Python SDK | 2.54.0 (2.x line) |
+| Evaluation | DeepEval (metrics, G-Eval, Synthesizer) | 4.2.7 |
+| RAG evaluation | RAGAS | 0.4.3 |
+| Tool contracts | MCP Python SDK | 2.2.0 |
+| Red teaming | promptfoo (via `npx`, Node 20+); Garak; PyRIT | 0.123.1; 0.17.0; 1.1.0 |
+| Observability | Langfuse (v4 SDK); OpenTelemetry SDK + GenAI semantic conventions | 4.16.0; 1.45.0 / 0.66b0 |
+| Dashboard | Streamlit | 1.64.0 |
+| CI/CD | GitHub Actions (`.github/workflows/agent-eval.yml` in the student repo) | — |
 
-| Technology        | Role                                                    |
-|-------------------|---------------------------------------------------------|
-| **Python 3.11+**  | Primary language for all code, labs, and projects       |
-| **pytest**        | Test runner and assertion framework                     |
-| **Pydantic**      | Data validation and schema enforcement                  |
-
-### AI & LLM
-
-| Technology              | Role                                           |
-|-------------------------|-------------------------------------------------|
-| **OpenAI GPT-4o-mini**  | Primary LLM for all agent interactions          |
-| **LangChain**           | Agent orchestration (where applicable)          |
-
-### Testing & Evaluation Frameworks
-
-| Technology    | Role                                                        |
-|---------------|-------------------------------------------------------------|
-| **DeepEval**  | LLM evaluation metrics (faithfulness, relevance, hallucination) |
-| **RAGAS**     | RAG-specific evaluation (context precision, recall, noise)  |
-| **promptfoo** | Prompt regression testing and red-teaming                   |
-
-### Observability & Monitoring
-
-| Technology          | Role                                              |
-|---------------------|---------------------------------------------------|
-| **Langfuse**        | LLM observability, tracing, and cost tracking     |
-| **OpenTelemetry**   | Distributed tracing and telemetry standards        |
-
-### CI/CD & Infrastructure
-
-| Technology          | Role                                              |
-|---------------------|---------------------------------------------------|
-| **GitHub Actions**  | Automated test pipelines and CI/CD                |
-| **Docker**          | Reproducible environments for labs and projects   |
-
-### UI & Visualization
-
-| Technology      | Role                                                |
-|-----------------|-----------------------------------------------------|
-| **Streamlit**   | Interactive dashboards for evaluation results       |
+LangChain is not used by the course code (it arrives only as a transitive dependency of RAGAS).
 
 ---
 
 ## Folder Structure
 
-This repository is organized into 16 sequenced folders that mirror the production pipeline:
-
 ```
-AI-Agent-Testing-Evaluation/
+Course/
 │
-├── 00-course-strategy/        # Market research, differentiation, audience personas
-├── 01-curriculum/             # Module outlines, lecture objectives, pacing plans
-├── 02-course-content/         # Lecture scripts (one per lecture, final narration-ready)
-├── 03-demos/                  # Live demo scripts and screen recording plans
-├── 04-code-examples/          # Standalone code snippets shown during lectures
-├── 05-datasets/               # Sample data for labs and projects
-├── 06-evaluation-frameworks/  # Reusable evaluation configs, metric definitions
-├── 07-labs/                   # Guided lab exercises (step-by-step)
-├── 08-projects/               # End-to-end projects (5 projects + capstone)
-├── 09-heygen/                 # HeyGen avatar configs, video generation assets
-├── 10-graphics/               # Slides, diagrams, visual design system
-├── 11-course-assets/          # Downloadable resources, cheat sheets, templates
-├── 12-udemy/                  # Udemy metadata: title, description, tags, pricing
-├── 13-marketing/              # Launch strategy, SEO, social media, coupons
-├── 14-quality-review/         # QA checklists, review feedback, iteration logs
-├── 15-release/                # Final exports, release notes, post-launch tracking
+├── 00-course-strategy/        # Differentiation and positioning; market research for all courses
+├── 01-curriculum/             # full-curriculum.md — the source of truth (55 lectures, 16 modules)
+├── 02-course-content/         # Lecture scripts, one file per module: section-00-welcome.md … section-15-career.md
+├── 03-demos/                  # Screencast specs (README.md index + demo-scripts/demo-NN-*.md) with real output
+├── 04-code-examples/          # Student repo: agent-eval-framework/ (make install, make test, make demos)
+├── 05-datasets/               # Five enterprise scenario datasets
+├── 06-evaluation-frameworks/  # Metric definitions and evaluation reference
+├── 07-labs/                   # 12 lab guides (Lab 1.1 … Lab 13.1)
+├── 08-projects/               # Projects 1–5 (Project 5 = capstone, with ARCHITECTURE.md)
+├── 09-heygen/                 # PRODUCTION-GUIDE.md, SCRIPT-TEMPLATE.md, avatar/voice config
+├── 10-graphics/               # design-system.md (shared), slide-deck-outline.md, diagrams/ D1–D16
+├── 11-course-assets/          # Cheat sheets and templates (test strategy, scorecard, 30-day plan)
+├── 12-udemy/                  # Udemy listing copy
+├── 13-marketing/              # Positioning, titles, SEO, launch, social, video
+├── 14-quality-review/         # Review reports, fix plan, course2-bible.md (code facts for writers)
+│                              # (15-release/ is planned for final exports; not created yet)
+├── voice-ai-agents-course/    # Course 3 (and the shared production tools in 09-production/tools/)
+├── agent-observability-course/# Course 4
 │
+├── CLAUDE.md                  # Repo-wide guide for contributors and agents
 ├── README.md                  # This file
-├── COURSE_STATUS.md           # Module-by-module production status tracker
-├── COURSE_DECISIONS.md        # Decision log with rationale
-├── PRODUCTION_CHECKLIST.md    # Phase-by-phase production checklist
-├── MY_DECISIONS_REQUIRED.md   # Items requiring course owner input
-└── CHANGELOG.md               # Version history of project changes
+├── COURSE_STATUS.md           # Module-by-module status (Course 2)
+├── COURSE_DECISIONS.md        # Decision log
+├── PRODUCTION_CHECKLIST.md    # Phase-by-phase checklist
+├── MY_DECISIONS_REQUIRED.md   # Open decisions for the course owner
+├── BUILD_LOG.md               # One line per exported lecture (all courses)
+└── CHANGELOG.md               # Version history
 ```
 
 ---
 
 ## How to Navigate This Project
 
-### If you're starting fresh:
-1. Read `00-course-strategy/` for market context and differentiation
-2. Review `01-curriculum/` for the full module and lecture breakdown
-3. Check `COURSE_STATUS.md` to see what's been completed
+**Starting fresh:** read `01-curriculum/full-curriculum.md`, then `COURSE_STATUS.md`, then run the student repo:
 
-### If you're building content:
-1. Write scripts in `02-course-content/` (one file per lecture)
-2. Build corresponding code in `04-code-examples/` and `07-labs/`
-3. Update `COURSE_STATUS.md` after completing each deliverable
+```bash
+cd 04-code-examples/agent-eval-framework
+make install        # uv sync --locked
+make test           # 204 passed, 5 skipped (live) — offline, no key
+make demos          # all 61 lecture demos, offline
+```
 
-### If you're in production:
-1. Follow `PRODUCTION_CHECKLIST.md` phase by phase
-2. Track HeyGen video generation in `09-heygen/`
-3. Run QA passes using checklists in `14-quality-review/`
+**Writing or fixing scripts:** scripts are in `02-course-content/section-XX-slug.md` in the format of `09-heygen/SCRIPT-TEMPLATE.md`. Code facts (files, commands, outputs, versions) come from `14-quality-review/course2-bible.md`; if a script and the code disagree, the code wins.
 
-### If you're preparing to launch:
-1. Finalize Udemy metadata in `12-udemy/`
-2. Execute marketing plan from `13-marketing/`
-3. Stage final assets in `15-release/`
+**In production:** follow `09-heygen/PRODUCTION-GUIDE.md` and `PRODUCTION_CHECKLIST.md` one module at a time; record screencasts from `03-demos/`; build decks with `python voice-ai-agents-course/09-production/tools/slide_builder.py --course . --scripts-dir 02-course-content`; log each exported lecture in `BUILD_LOG.md`.
+
+**Preparing to launch:** `12-udemy/course-description.md`, then `13-marketing/`. Open owner decisions: `MY_DECISIONS_REQUIRED.md`.
 
 ---
 
-## Quick Links
-
-| Document                                            | Purpose                                  |
-|-----------------------------------------------------|------------------------------------------|
-| [COURSE_STATUS.md](COURSE_STATUS.md)                | Track progress across all modules        |
-| [COURSE_DECISIONS.md](COURSE_DECISIONS.md)          | Review architectural and strategic decisions |
-| [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)  | Phase-by-phase production checklist      |
-| [MY_DECISIONS_REQUIRED.md](MY_DECISIONS_REQUIRED.md)| Items needing course owner approval      |
-| [CHANGELOG.md](CHANGELOG.md)                        | Project version history                  |
-
----
-
-## Production Pipeline Overview
+## Production Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     CONTENT CREATION PIPELINE                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   Script Writing ──► HeyGen Avatar Video ──► Screen Recordings     │
-│        │                    │                       │               │
-│        │                    ▼                       │               │
-│        │              OBS Studio                    │               │
-│        │            (capture/edit)                   │               │
-│        │                    │                       │               │
-│        ▼                    ▼                       ▼               │
-│   ┌─────────────────────────────────────────────┐                  │
-│   │              CapCut Assembly                 │                  │
-│   │   (avatar + screen + graphics + captions)    │                  │
-│   └──────────────────────┬──────────────────────┘                  │
-│                          │                                          │
-│                          ▼                                          │
-│                   Final QA Review                                   │
-│                          │                                          │
-│                          ▼                                          │
-│                  Udemy Upload & Publish                              │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+02-course-content scripts ──► scene_extractor.py ──► heygen_batch.py ──► avatar clips (HeyGen)
+          │                                                                      │
+          ├──► slide_builder.py ──► slides/section-XX.pptx (+ diagrams D1–D16)   │
+          │                                                                      ▼
+          └──► 03-demos specs ──► OBS screencasts ──────────────────► CapCut / DaVinci assembly
+                                                                                 │
+                                                                     QA ──► Udemy ──► BUILD_LOG.md
 ```
 
-### Tools in the Pipeline
-
-| Stage              | Tool         | Purpose                                       |
-|--------------------|--------------|------------------------------------------------|
-| Avatar Video       | **HeyGen**   | AI avatar narration from lecture scripts       |
-| Screen Capture     | **OBS Studio** | Record live coding demos and terminal sessions |
-| Video Assembly     | **CapCut**   | Combine avatar, screen recordings, graphics    |
-| Quality Review     | Manual + Checklists | Technical, educational, and visual QA  |
-| Publishing         | **Udemy**    | Final upload, metadata, and course launch      |
+| Stage | Tool |
+|---|---|
+| Avatar narration | HeyGen (`[AVATAR]` blocks only) |
+| Screen capture | OBS Studio |
+| Slides and diagrams | `slide_builder.py`, `10-graphics/diagrams/_src/build_diagrams.py` |
+| Assembly | CapCut or DaVinci Resolve |
+| Publishing | Udemy |
 
 ---
 
 ## License
 
-This repository contains proprietary course production materials. All content, scripts, code examples, and course assets are copyrighted. The public-facing framework components (evaluation utilities, testing patterns) are shared under MIT License where explicitly noted. Course-exclusive content is not licensed for redistribution.
-
----
-
-*Built with care for engineers who believe AI agents deserve the same testing rigor as any production software.*
+Proprietary course production materials. The student repo `04-code-examples/agent-eval-framework/` is MIT-licensed (see its README); other content is not licensed for redistribution.

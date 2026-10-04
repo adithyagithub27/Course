@@ -9,7 +9,7 @@
 
 ---
 
-### Q1. Capstone acceptance test AT-14 says a tenant over its hard cap must receive a polite refusal and Atlas must make **no** LLM call. A submission refuses correctly but the mock records one model call per refused request. What happened and why does the test insist on zero?
+### Q1. Capstone acceptance test AT-14 says a tenant over its hard cap must receive a polite refusal and Atlas must make **no** LLM call. A submission returns the polite refusal (HTTP 429, `outcome="refused"`) but the mock records one model call per refused request. What happened and why does the test insist on zero?
 
 *Related lecture: 14.2 Reference solution part A: instrumentation and cost*
 
@@ -53,8 +53,8 @@
   - *Explanation:* Incorrect. Averages of an unbiased sample are exactly how weekly quality is tracked and drift is detected.
 - **C.** Nothing; more judged traces means a better estimate.
   - *Explanation:* Incorrect. More traces of a biased sample is a more precise wrong number.
-- **D.** The mean is biased downward because error traces are over-represented; the headline must come from the uniform slice (`sample_reason == "uniform"`), while the tail extras feed the worst-traces table and the dataset. Mixing them makes quality look worse after every incident and better after every quiet week.
-  - *Explanation:* Correct. The judge records `sample_reason` so the two uses can be separated. Lab 5 and AT-20 both check this.
+- **D.** The mean is biased downward because error traces are over-represented; the headline must come from the head (rate) sample only, while the tail extras feed the worst-traces table and the dataset. Mixing them makes quality look worse after every incident and better after every quiet week.
+  - *Explanation:* Correct. The head sample is deterministic per trace id (`head_sample`), so the two uses can always be separated. Lab 5's quality page and AT-20 both check this.
 
 **Correct answer: D**
 
@@ -64,8 +64,8 @@
 
 *Related lecture: 14.3 Reference solution part B: quality, dashboards, alerts, CI*
 
-- **A.** `AtlasToolErrorRate` with a ratio expression, a minimum-traffic guard, `for: 2m`, severity, and a `runbook_url` pointing to a repo file whose first section answers "what do I do in the first five minutes"; versus the same expression with no `for`, no guard and no runbook.
-  - *Explanation:* Correct. The first can be handed to an on-call engineer who has never seen Atlas; the second pages them with nothing to do. Every capstone alert must have been seen `FIRING` in a recorded replay.
+- **A.** `AtlasToolErrorRate` with a ratio expression, a minimum-traffic guard, `for: 10m`, a severity, an `owner` label and a `runbook` annotation pointing to a repo file whose first section answers "what do I do in the first five minutes"; versus the same expression with no `for`, no guard, no owner and no runbook.
+  - *Explanation:* Correct. The first can be handed to an on-call engineer who has never seen Atlas; the second pages them with nothing to do. AT-22 also asks for each alert to be seen firing; in the shipped `deploy/alerts.yml` only `AtlasLatencyP95High` has a runbook and none has an owner, so the capstone adds both.
 - **B.** An alert in Grafana versus the same alert in Prometheus.
   - *Explanation:* Incorrect. Where the rule is evaluated does not change its quality.
 - **C.** A Slack alert versus an email alert.

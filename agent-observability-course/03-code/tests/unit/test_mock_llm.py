@@ -235,3 +235,25 @@ def test_loop_scenario_reissues_tool_call_on_retryable_error():
 def test_rate_limit_error_helper():
     err = make_rate_limit_error()
     assert isinstance(err, openai.RateLimitError) and err.status_code == 429
+
+
+def test_mock_honours_timeout():
+    """ATLAS_REQUEST_TIMEOUT_S reaches the mock: a call longer than the timeout raises."""
+    kw = dict(model="gpt-4.1-mini", messages=msgs("Hello Atlas!"))
+    ok = MockLLM(seed=3).chat(**kw, timeout=20)
+    assert ok.choices[0].message.content
+    m = MockLLM(seed=3)
+    with pytest.raises(openai.APITimeoutError) as exc:
+        m.chat(**kw, timeout=ok.simulated_latency_ms / 1000 / 2)
+    assert exc.value.simulated_latency_ms == pytest.approx(ok.simulated_latency_ms / 2)
+    assert m.stats.timeouts_raised == 1
+
+
+def test_slow_provider_spares_the_fallback_deployment():
+    def ttft(model, scenario):
+        return MockLLM(seed=3, scenario=scenario).chat(
+            model=model, messages=msgs("Hello Atlas!")
+        ).simulated_ttft_ms
+
+    assert ttft("gpt-4.1-mini", "slow_provider") > 3 * ttft("gpt-4.1-mini", None)
+    assert ttft("gpt-4o-mini", "slow_provider") == ttft("gpt-4o-mini", None)

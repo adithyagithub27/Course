@@ -1,5 +1,7 @@
 # LinkedIn Launch Strategy
 
+> Refreshed 2026-10-04 (T7, T8): real numbers (55 lectures, 6 h 40 min), no unsourced statistics, no "first"/"only" claims. Numbers marked "offline" come from the course repo's offline mode.
+
 ## Pre-Launch Posts (2 weeks before)
 
 ### Post 1 — The Problem (Week -2)
@@ -13,10 +15,12 @@ actually test, evaluate, and monitor AI agents in production.
 
 Here's what I found:
 
-- Most teams ship agents with zero systematic evaluation
-- Traditional testing (assertEqual, assertions) doesn't work for non-deterministic outputs
-- The #1 reason AI agents fail in production: nobody tested for hallucination, tool errors, or prompt injection
-- Premium courses on this topic cost $3,500-$4,200
+- Traditional assertions flake on non-deterministic outputs:
+  in my test, assert == passed 4 of 10 answers that were all correct
+- One deleted line in a system prompt made an agent invent a 14-day
+  refund window. Every unit test stayed green.
+- The checks that catch this exist (faithfulness, tool-call tests,
+  red teaming, CI gates). Most tutorials stop after the first metric.
 
 I'm building something to fix this. More soon.
 
@@ -27,15 +31,16 @@ I'm building something to fix this. More soon.
 ```
 The AI agent testing stack that enterprise teams are adopting in 2026:
 
-1. DeepEval — pytest for AI (50+ metrics, LLM-as-judge)
+1. DeepEval — pytest-style evals, LLM-as-judge, G-Eval
 2. RAGAS — RAG evaluation (faithfulness, context precision)
 3. promptfoo — Red teaming & security testing
-4. Langfuse — Observability & tracing (MIT, self-hostable)
+4. Langfuse + OpenTelemetry — tracing and cost per trace
 5. GitHub Actions — CI/CD quality gates
 
-If you're building AI agents without these... you're shipping blind.
+The hard part isn't any one tool. It's wiring them into one
+pipeline that blocks a bad pull request.
 
-I've built a complete course teaching all five.
+I've built a course that does exactly that.
 Launching next week on Udemy.
 
 #AIEngineering #DevTools #AIQuality
@@ -53,9 +58,10 @@ What you'll build:
 - Security red team scans with promptfoo
 - Agent traces with Langfuse
 - CI/CD quality gates with GitHub Actions
-- A full enterprise quality platform (capstone)
+- A capstone quality platform that says SHIP or BLOCK
 
-8.5 hours. 60 lectures. 5 projects + enterprise capstone.
+6 h 40 min. 55 lectures. 5 projects (the last one is the capstone).
+Every lab runs without an API key.
 
 Who it's for:
 - QA engineers adding AI testing to their skillset
@@ -73,7 +79,7 @@ Link in comments.
 
 | Week | Topic | Format |
 |---|---|---|
-| +1 | "5 ways AI agents fail that no unit test can catch" | Carousel |
+| +1 | "The 6 ways AI agents fail (and the check that catches each)" | Carousel |
 | +2 | Student success story / testimonial | Text post |
 | +3 | "I red-teamed an AI agent in 10 minutes — here's what I found" | Short demo video |
 | +4 | "The evaluation metric most teams get wrong" | Text post |

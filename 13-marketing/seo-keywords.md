@@ -2,7 +2,7 @@
 
 ## AI Agent Testing & Evaluation — Udemy Course
 
-> Comprehensive keyword strategy for Udemy discoverability, Google organic search, and content marketing.
+> Keyword strategy for Udemy discoverability, Google organic search, and content marketing.
 
 ---
 
@@ -230,21 +230,26 @@ Build an enterprise quality platform with Python.
 
 Every section title is indexed by Udemy search. Optimize:
 
-| Section | Optimized Title (Keyword-Rich)                                   |
-| ------- | ---------------------------------------------------------------- |
-| S1      | Why AI Agent Testing Is Different from Traditional Testing       |
-| S2      | Setting Up Your AI Agent Evaluation Environment (Python)         |
-| S3      | Your First AI Agent Test: DeepEval + pytest                      |
-| S4      | LLM Evaluation Metrics: Relevance, Faithfulness, Hallucination  |
-| S5      | RAG Evaluation with RAGAS: Context Precision, Recall & Faithfulness |
-| S6      | Testing AI Agent Tool Calling: Accuracy, Parameters & Error Handling |
-| S7      | Red Teaming AI Agents: Prompt Injection, Jailbreaks & PII Leakage |
-| S8      | Custom Evaluation Metrics: G-Eval & LLM-as-Judge                |
-| S9      | Test Data Engineering: Golden Datasets & Synthetic Generation    |
-| S10     | CI/CD for AI Agents: GitHub Actions Quality Gates                |
-| S11     | AI Agent Observability: Langfuse, OpenTelemetry & Tracing        |
-| S12     | Production Monitoring: Drift Detection, Cost Tracking & Alerts   |
-| S13     | Capstone: Build an Enterprise AI Agent Quality Platform          |
+Section titles below keep the curriculum's module order (16 sections, Modules 0–15; `01-curriculum/full-curriculum.md`) and add search keywords. Changing a title on Udemy does not change lecture IDs.
+
+| Section | Curriculum module | Optimized title (keyword-rich) |
+| ------- | ----------------- | ------------------------------ |
+| 0  | Welcome & Course Overview | Why AI Agents Fail in Production & Setup (Python, DeepEval) |
+| 1  | AI Agents: What You Need to Know for Testing | AI Agents for Testers: Tokens, Tools & the 6 Failure Modes |
+| 2  | Why Traditional Testing Breaks for AI Agents | Why Traditional Testing Breaks: Quality Dimensions & Test Strategy |
+| 3  | Your First Agent Evaluation | Your First AI Agent Evaluation: DeepEval, pytest & Golden Datasets |
+| 4  | Evaluation Metrics Deep Dive | LLM Evaluation Metrics: Faithfulness, Relevancy, G-Eval & LLM-as-Judge |
+| 5  | RAG Agent Evaluation | RAG Evaluation with RAGAS: Context Precision, Recall & Faithfulness |
+| 6  | Testing Tool Calling & MCP | Testing AI Agent Tool Calling & MCP Servers |
+| 7  | Multi-Agent System Testing | Multi-Agent Testing: Hand-offs, Loops & Failure Injection |
+| 8  | Security Testing & Red Teaming | AI Red Teaming: promptfoo, Garak, PyRIT, Prompt Injection & PII |
+| 9  | Agent Observability & Tracing | AI Agent Observability: Langfuse & OpenTelemetry GenAI Tracing |
+| 10 | Performance & Reliability Testing | LLM Latency, Cost & Reliability Testing |
+| 11 | Regression Testing & Synthetic Data | AI Regression Testing & Synthetic Test Data (DeepEval Synthesizer) |
+| 12 | CI/CD for Agent Evaluation | CI/CD for AI Agents: GitHub Actions Quality Gates |
+| 13 | Production Monitoring & Governance | Production Monitoring, Drift Detection & AI Governance |
+| 14 | Enterprise Capstone | Capstone: Build an AI Agent Quality Platform |
+| 15 | Career & Next Steps | AI Testing Careers: Interview Questions & 30-Day Plan |
 
 ### Tags (Udemy allows up to 4)
 
@@ -270,40 +275,30 @@ Every section title is indexed by Udemy search. Optimize:
 | Software testing courses | "software testing," "pytest," "QA"   | Bridge with "AI agent testing" + "pytest"|
 | Data science courses     | "data science," "evaluation metrics" | Bridge with "LLM evaluation metrics"     |
 
-### Keywords Nobody Owns Yet (First-Mover Opportunity)
+### Keyword Opportunities (re-check before launch)
 
-These keywords have growing search volume but no dominant Udemy course:
+As of the 2026-09-28 market research (`00-course-strategy/next-course-market-research.md` §6), several Udemy courses already target DeepEval, RAGAS and Langfuse terms (for example Rahul Shetty's "Testing AI Systems with DeepEval", "AI Agents, RAG & LLM Evals for Beginners: DeepEval & RAGAS", "Production LLM Evaluation And Observability", two Langfuse courses, and "Prompt Injection & LLM Defense (2026)" for promptfoo/Garak/PyRIT). Volume and competition below are qualitative; verify them in Udemy Marketplace Insights.
 
-| Keyword                              | Volume Trend | Competition | Our Advantage              |
-| ------------------------------------ | ------------ | ----------- | -------------------------- |
-| AI agent testing                     | Rising fast  | Very low    | We own this with our title |
-| AI agent evaluation                  | Rising fast  | Very low    | We own this with our title |
-| DeepEval tutorial                    | Rising       | Very low    | Named in subtitle          |
-| RAGAS evaluation                     | Rising       | Low         | Dedicated section          |
-| LLM observability                    | Rising       | Low         | Langfuse + OTEL section    |
-| AI red teaming                       | Rising       | Low         | Dedicated section          |
-| AI quality engineering               | Emerging     | None        | First-mover positioning    |
-| promptfoo tutorial                   | Rising       | Very low    | Named in subtitle          |
-| hallucination detection LLM          | Rising       | Low         | Core evaluation metric     |
-| AI agent CI/CD                       | Emerging     | None        | Dedicated section          |
+| Keyword | Competition (qualitative) | Our angle |
+| ------- | ------------------------- | --------- |
+| AI agent testing / AI agent evaluation | Medium (rising) | In the title; trajectory-level testing of a tool-calling agent |
+| DeepEval tutorial | Medium (several courses) | Named in the description; combined with CI gates |
+| RAGAS evaluation | Medium | Dedicated section, RAGAS 0.4 API |
+| LLM observability / Langfuse | Medium (dedicated courses exist) | Connected to evaluation and cost |
+| AI red teaming / promptfoo | Medium | promptfoo against real tools + Garak and PyRIT comparison |
+| AI agent CI/CD, LLM quality gate | Low | Dedicated section and capstone gate |
+| MCP testing | Low | MCP contract tests in Section 6 |
+| AI quality engineering | Low (emerging term) | Career section and positioning |
 
-### Competitor Gap Analysis
+### Gap Analysis
 
-**Gap 1: No comprehensive AI testing course exists on Udemy**
-- Current landscape: Scattered lectures within broader AI/MLOps courses
-- Our play: Own "AI agent testing" and "AI agent evaluation" as primary search terms
+**Gap 1: Lifecycle coverage in one pipeline.** Competitors go deep on one stage (DeepEval evaluation, Langfuse observability, or security). Our play: "from first eval to CI gate" in one repo.
 
-**Gap 2: Tool-specific tutorials exist but no multi-tool integration**
-- Current landscape: Individual blog posts on DeepEval OR RAGAS OR Langfuse
-- Our play: Be the single course that teaches all tools together with integration patterns
+**Gap 2: CI/CD quality gates for agents.** Few courses show a gate that comments on and blocks pull requests. Our play: own "AI agent CI/CD" and "LLM quality gate".
 
-**Gap 3: Security testing for AI is barely covered**
-- Current landscape: Academic papers and conference talks, no hands-on courses
-- Our play: Dedicated red teaming section captures "prompt injection testing" and "AI red teaming" searches
+**Gap 3: Agent-specific testing.** Tool-calling, MCP contracts and multi-agent failure injection are thin elsewhere. Our play: "testing AI agent tool calling", "MCP server testing".
 
-**Gap 4: "AI Quality Engineering" as a discipline has no course**
-- Current landscape: Term is emerging in job postings but no training exists
-- Our play: First-mover on an emerging keyword that could become a major search term
+**Gap 4: Enterprise scenarios.** Banking, insurance, HR and support scenario datasets. Our play: "enterprise AI agent testing".
 
 ---
 
