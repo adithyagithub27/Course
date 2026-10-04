@@ -580,7 +580,7 @@ Judge and feedback tell you whether answers are good. Next, whether they're safe
 
 [AVATAR]
 
-Seventy-two prompt-injection attempts on the replayed day. Zero budget refusals. And several hundred answers that the PII detector flags. [PAUSE] None of those numbers is alarming on its own. What's alarming is not knowing them, because then you can't see the day one of them triples. Let's make them lines on a chart, and then let's check that the lines mean what we think.
+Seventy-two prompt-injection attempts on the replayed day. Zero budget refusals. And zero answers flagged by the PII detector. [PAUSE] None of those numbers is alarming on its own. What's alarming is not knowing them, because then you can't see the day one of them triples. Let's make them lines on a chart, and then let's check that the lines mean what we think, because the zero on that third line is the one you should trust least until you know what the detector ignores.
 
 [SLIDE 1: Three safety series]
 - Injection: the guardrail from 4.7 flagged the message; Atlas refused before any model call (outcome `guardrail`)
@@ -631,11 +631,11 @@ Two places. The guardrail observation, exactly as in 4.7: its own span, the reas
 OFFLINE=1 make replay && make console      # Safety page
 ```
 
-[DEMO: the Safety page: injection rate, refusal rate and PII-in-output rate per hour for the replayed day; the table underneath. Injection rate around a percent in the morning peak, refusal rate zero all day, PII-in-output rate a few percent in every hour.]
+[DEMO: the Safety page: injection rate, refusal rate and PII-in-output rate per hour for the replayed day; the table underneath. Injection rate around a percent in the morning peak, refusal rate zero all day, PII-in-output rate flat at zero.]
 
-Here's the replayed day. Injection attempts: seventy-two in total, a fraction of a percent of every hour, a little more in the morning peak. Refusals: zero, because no tenant came near its budget. And PII in output, a few percent of answers in every single hour. [PAUSE] That last line deserves suspicion. Open a few of the flagged traces.
+Here's the replayed day. Injection attempts: seventy-two in total, a fraction of a percent of every hour, a little more in the morning peak. Refusals: zero, because no tenant came near its budget. And PII in output: zero, in every hour. [PAUSE] A flat zero deserves as much suspicion as a spike. Is the detector working, or is it blind? Check both.
 
-[SCREEN: terminal: list the flagged answers from the store]
+[SCREEN: terminal: count the flagged answers in the store, then run the detector on text you wrote yourself]
 
 ```bash
 uv run python -c "
@@ -643,18 +643,30 @@ from console.data import StoreData, load_store
 d = StoreData.load(load_store())
 hits = [a for a in d.agents if any(e['name'] == 'pii_in_output' for e in a.events)]
 print(len(hits), 'answers flagged')
-print(hits[0].attr('langfuse.observation.output')[:200])
+"
+uv run python -c "
+from northwind.pii import contains_pii, published_values
+print(sorted(published_values()))
+for s in ['reply with the code and your employee ID (NW-12345)',
+          'contact helpdesk@northwind.example or call 0800-555-0199',
+          'your ticket is assigned to dana.whitfield@northwind.example',
+          'the owner is NW-04471']:
+    print(contains_pii(s), '|', s)
 "
 ```
 
 [DEMO: output:]
 
 ```
-678 answers flagged
-Before I can reset your password I need to verify your identity. I've sent a one-time code to your registered phone. Next step: reply with the code and your employee ID (NW-12345) (Source: Password re
+0 answers flagged
+['0800-555-0199', 'NW-00000', 'NW-12345', 'helpdesk@northwind.example', 'network-eng@northwind.example', 'security@northwind.example']
+False | reply with the code and your employee ID (NW-12345)
+False | contact helpdesk@northwind.example or call 0800-555-0199
+True | your ticket is assigned to dana.whitfield@northwind.example
+True | the owner is NW-04471
 ```
 
-Six hundred seventy-eight flagged answers. Read the first one. There it is. The policy article tells people their employee ID has the format `NW-12345`, Atlas quotes the article, and the detector sees an employee ID. It's an example, not a person. Most of the flags on the replay are like this: format examples in policy text. A detector you haven't read the output of is a detector that will page you for the knowledge base.
+Zero flagged answers, and here's why that's a real zero and not a blind one. The detector uses the same patterns as the masker, but it ignores a short list of values the knowledge base itself publishes: the `NW-12345` format example from the password article, the helpdesk, security and network addresses, the employee-assistance phone line. Any other e-mail, phone, employee ID or card still counts, and the masker in Section 10 masks all of them regardless, published or not. [PAUSE] That allowlist is not decoration. Before it existed, this same day showed six hundred seventy-eight flags, every one of them Atlas quoting a policy article. A detector you haven't read the output of is a detector that will page you for the knowledge base; the morning you add a new policy page with a new example address, this line is the first place you'll see it.
 
 [SLIDE 2: Thresholds come from your baseline]
 
@@ -662,11 +674,11 @@ Six hundred seventy-eight flagged answers. Read the first one. There it is. The 
 |---|---|---|---|
 | injection rate | Safety page, a normal week | 3× baseline over 1 h | 10× over 15 min, or one user's burst |
 | refusal rate | Safety page; 0 on a normal day | any refusals for a tenant (6.7) | hard-cap refusals (`AtlasBudgetHardCapHit`, 9.5) |
-| pii_in_output rate | Safety page, after removing known false positives | 3× baseline over 1 h | raw PII reaching a span is a test failure (10.2), not a metric |
+| pii_in_output rate | Safety page; 0 on the replayed day (`contains_pii` ignores the values the KB publishes, `published_values()`) | any sustained non-zero rate; 3× baseline over 1 h once there is one | raw PII reaching a span is a test failure (10.2), not a metric |
 
 [AVATAR]
 
-Thresholds, from your own baseline, not from mine. Warn at about three times normal over an hour; page at ten times over fifteen minutes. And notice the PII row's page condition: raw PII reaching your telemetry isn't a metric threshold, it's a test in Section 10 that must never fail. The metric here is the detector's catch rate, and its job is to tell you when a prompt change starts producing more to catch. [PAUSE] Fix the false positives first, with an allowlist for format examples, or this line will train everyone to ignore it.
+Thresholds, from your own baseline, not from mine. Warn at about three times normal over an hour; page at ten times over fifteen minutes. And notice the PII row's page condition: raw PII reaching your telemetry isn't a metric threshold, it's a test in Section 10 that must never fail. The metric here is the detector's catch rate, and its job is to tell you when a prompt change starts producing more to catch. [PAUSE] Keep the allowlist honest: it holds what the knowledge base publishes and nothing else. The day that line showed six hundred seventy-eight flags for policy text, it was training everyone to ignore it.
 
 [SLIDE 3: Recap]
 - Safety events become rates per hour
@@ -686,7 +698,7 @@ Every signal so far is a point in time. Next, drift: comparing one window's scor
 - **Counts instead of rates.** Volume varies more than 50× between the quietest and busiest hour on the replay. Always divide by requests.
 - **Paging on injection attempts.** Attempts are the attacker's metric, not yours. Page on a single user's burst; otherwise it's a weekly security report.
 - **`kind` label values.** Keep them to a fixed set. A free-text reason as a label is a cardinality bomb.
-- **The false positives.** `contains_pii` uses the same regexes as the masker (`NW-\d{5}` for employee IDs). An allowlist for documented format examples, or excluding text inside backticks, is a small, testable change.
+- **The allowlist.** `contains_pii` uses the same regexes as the masker (`NW-\d{5}` for employee IDs) and skips `published_values()`: the KB's `NW-12345` format example, `helpdesk@`, `security@` and `network-eng@northwind.example`, the EAP line `0800-555-0199`, plus `NW-00000`. Masking does not use the allowlist; everything is masked. Tests: `test_contains_pii_skips_documented_format_examples`, `test_contains_pii_skips_values_published_in_the_kb`. Before the allowlist the day showed 678 flags; never quote that as the current figure.
 - **Seven-day charts.** The replay produces one day at a time. For a two-day comparison, replay a second day into the same store (`make replay DAY=2026-09-21 SCENARIO=quality_drift KEEP=1`, 8.5) and the Safety page shows both days.
 
 ---
@@ -970,10 +982,10 @@ items = [json.loads(line) for line in open('.atlas/dataset.jsonl')]
 items = [it for it in items if any(r.startswith('judge_overall') for r in it['metadata']['reasons'])]
 agent, judge = AtlasAgent(), OfflineJudge()
 passed = 0
-for it in items:
+for i, it in enumerate(items):
     r = agent.run(it['input']['message'], tenant=it['input']['tenant'])
     s = judge.score(question=it['input']['message'], answer=r.answer, intent=r.intent,
-                    outcome=r.outcome, tool_calls=r.tool_calls, trace_id=r.trace_id)
+                    outcome=r.outcome, tool_calls=r.tool_calls, trace_id=f'candidate-{i}')  # fixed id: repeatable
     passed += s['overall'] >= 0.6
 print(f\"prompt {os.environ['ATLAS_PROMPT_VERSION']}: {passed}/{len(items)} pass (judge_overall >= 0.6)\")
 "
@@ -983,11 +995,12 @@ done
 [DEMO: output:]
 
 ```
-prompt v2: 136/170 pass (judge_overall >= 0.6)
+prompt v2: 150/170 pass (judge_overall >= 0.6)
 prompt v1: 168/170 pass (judge_overall >= 0.6)
 ```
 
-Version two passes a hundred thirty-six of a hundred seventy. Version one passes a hundred sixty-eight. [PAUSE] That's the evidence for the rollback in Incident 3, produced before anyone touched the production label. If you've taken my testing and evaluation course, this is the offline eval loop you already know, fed from production instead of from a hand-written file.
+Version two passes a hundred fifty of a hundred seventy. Version one passes a hundred sixty-eight. [PAUSE] That's the evidence for the rollback in Incident 3, produced before anyone touched the production label. One detail in the script matters: the judge is passed a fixed id per item, `candidate-0`, `candidate-1` and so on. The offline judge adds a little noise keyed on the trace id, and version two's answers sit right at the threshold, so with the agent's own random trace ids the v2 figure wanders between about a hundred forty-two and a hundred forty-seven from run to run. Fixed ids make the comparison repeatable; the conclusion is the same either way.
+ If you've taken my testing and evaluation course, this is the offline eval loop you already know, fed from production instead of from a hand-written file.
 
 Two habits. First, the dataset only grows: the two items that still fail on version one get a human-written expected output and become this week's reading. Second, every item has a source trace, so when a test fails in six months, you can still see the real conversation that created it.
 

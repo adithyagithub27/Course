@@ -15,7 +15,7 @@
 | 2.5 | Lab 1: Environment and first trace | LAB | 4:00 (1:30 video) | ~195 |
 | 2.6 | Quiz: Setup and tracing basics | QZ | 2:00 (1:00 video) | ~105 |
 
-**Section guardrails (do not deviate on screen):** the Langfuse env vars are `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` (not the legacy `LANGFUSE_HOST`). The repo already ships fully instrumented in this section; students consume the trace here and take the instrumentation apart in Sections 3 to 5. Atlas reads its settings from environment variables, and nothing in the repo loads `.env` automatically, so every terminal that runs Atlas first does `set -a; source .env; set +a` (shown in 2.1). Never type an API key on camera; paste from a password manager with the terminal input hidden, or use a key you revoke before publishing.
+**Section guardrails (do not deviate on screen):** the Langfuse env vars are `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` (not the legacy `LANGFUSE_HOST`). The repo already ships fully instrumented in this section; students consume the trace here and take the instrumentation apart in Sections 3 to 5. Atlas reads its settings from environment variables; `Settings.from_env()` also loads `.env` through python-dotenv (real environment variables win, `ATLAS_DOTENV=0` disables it), so `set -a; source .env; set +a` (shown in 2.1) is optional and is kept on screen only so the same variables reach tools such as `curl` and `docker compose`. Never type an API key on camera; paste from a password manager with the terminal input hidden, or use a key you revoke before publishing.
 
 ---
 
@@ -130,7 +130,7 @@ Two accounts, three keys, one cap, one dot env, loaded into your shell. You're n
 - Mistake: `LANGFUSE_HOST` from older tutorials. The settings still read it as a fallback, but `LANGFUSE_BASE_URL` is the documented v4 variable and the one in `.env.example`.
 - "Can I use an existing OpenAI key?" Yes, but a project-scoped key with its own cap is safer and makes the course's spend visible on its own line.
 - "I only want to self-host Langfuse." Fine: skip the cloud signup, set `LANGFUSE_BASE_URL=http://localhost:3000` after Lecture 13.1, and use offline mode with the local console until then.
-- The `.env` excerpt shows only the lines students edit; the real file has every setting with a comment. The `set -a; source .env; set +a` step is needed because the repo declares `python-dotenv` but never calls it (reported to the code owner); if a later repo version loads `.env` itself, the step becomes harmless.
+- The `.env` excerpt shows only the lines students edit; the real file has every setting with a comment. The `set -a; source .env; set +a` step is optional since the repo loads `.env` itself (`Settings.from_env()`, python-dotenv, real environment variables win); keep it on screen so the same variables are visible to shell tools, but do not describe it as a workaround.
 
 ---
 
@@ -192,7 +192,7 @@ One addition for later: the Ops Console needs Streamlit, which lives in the `das
 make test
 ```
 
-[DEMO: pytest runs unit, integration and budget-gate tests offline. Output ends with `401 passed, 1 warning in 45.24s` (the time varies by machine).]
+[DEMO: pytest runs unit, integration and budget-gate tests offline. Output ends with `419 passed, 1 warning in 45.23s` (the time varies by machine).]
 
 Now the tests. Make test runs the unit suite over the pure-Python package, `src/northwind`, the integration suite, which starts the FastAPI app in offline mode and asserts on spans with an in-memory exporter, and the budget gate you'll meet in Section thirteen. No keys, no network.
 
@@ -238,10 +238,10 @@ Get used to this layout. Terminal one runs Atlas and shows its logs. Terminal tw
 
 [SLIDE 3: Recap]
 - `make install`: venv, dev extra, `.env` copy
-- `make test`: 401 passed, offline
+- `make test`: 419 passed, offline
 - `make run` plus `/healthz`: Atlas is up
 
-**Recap:** `make install` creates the uv environment with the dev extra, the `dashboards` extra adds the console, `make test` proves the offline stack with 401 passing tests, and `make run` starts Atlas on port 8000 with its telemetry already wired.
+**Recap:** `make install` creates the uv environment with the dev extra, the `dashboards` extra adds the console, `make test` proves the offline stack with 419 passing tests, and `make run` starts Atlas on port 8000 with its telemetry already wired.
 
 **Transition:** Next, the quick win: one request, one trace, and the screen the whole course is about.
 
@@ -536,7 +536,8 @@ Finally, start your build log with three baseline numbers: four hundred and one 
 [AVATAR]
 You can now run Atlas offline, read a trace, and replay a whole day. One rule for the lab: if something fails, run it offline first. If it fails offline, it's the environment, not your key.
 
-**Recap:** Lab 1 checks your environment, captures one trace with its headers visible, and starts your build log with three baseline numbers: 401 tests, $56.28, 3,827 ms.
+**Recap:** Lab 1 checks your environment, captures one trace with its headers visible, and starts your build log with three baseline numbers: 419 tests, $56.28, 3,827 ms.
+
 
 **Transition:** A five-question quiz on setup and tracing basics, then Section 3: what a trace actually is, and how to build one by hand.
 

@@ -331,7 +331,8 @@ atlas_cost_usd_total{feature="ticket_lookup",model="gpt-4.1-mini",tenant="ops"} 
 atlas_request_latency_seconds_bucket{feature="policy_question",le="4.0",tenant="ops"} 3.0
 ```
 
-That's the format Prometheus scrapes. Three policy questions and a ticket lookup, all resolved. A cent and a third of spend on the policy questions. And all three policy questions in the four-second bucket. [PAUSE] That `le="4.0"` bucket is the whole latency SLO: requests under four seconds over all requests, straight from the histogram, because we put a bucket edge at the budget in 7.2. Note the `-L`: `/metrics` is a mounted app and answers the bare path with a redirect to `/metrics/`.
+That's the format Prometheus scrapes. Three policy questions and a ticket lookup, all resolved. A cent and a third of spend on the policy questions. And all three policy questions in the four-second bucket. [PAUSE] That `le="4.0"` bucket is the whole latency SLO: requests under four seconds over all requests, straight from the histogram, because we put a bucket edge at the budget in 7.2. The `-L` is habit, not a workaround: `/metrics` and `/metrics/` both answer 200.
+
 
 Now the stack.
 
@@ -422,7 +423,7 @@ Next, Grafana: the Atlas Ops dashboard, one panel per question, tenant and featu
 
 1. Open the dashboard and identify its four rows: SLIs, traffic and latency, cost, quality and safety.
 2. Read and modify the PromQL for p95, task success, the 28-day latency SLO ratio, tool error rate, cache hit ratio and cost per resolved request.
-3. Use the `$tenant` and `$feature` variables, and replace the release annotation's `changes()` query with one that fires.
+3. Use the `$tenant` and `$feature` variables, and test the release annotation's query with `promtool` instead of trusting it.
 
 ### Script
 
@@ -524,15 +525,15 @@ label_values(atlas_requests_total, tenant)
 # variable: feature
 label_values(atlas_requests_total, feature)
 
-# annotation "Releases" as shipped: never fires
-changes(atlas_build_info[5m]) > 0
-
-# replace it with: a build-info series that wasn't there 5 minutes ago
+# annotation "Releases" (as shipped): a build-info series that wasn't there 5 minutes ago
 count by (version, prompt_version) (atlas_build_info unless atlas_build_info offset 5m)
 #   title format: release {{version}} prompt {{prompt_version}}
+
+# the obvious query, and the one an earlier version of this dashboard shipped with: never fires
+changes(atlas_build_info[5m]) > 0
 ```
 
-The variables are `label_values` queries, so they fill themselves; pick finance and the whole dashboard becomes finance's dashboard. [PAUSE] Now the annotation, and a lesson in testing your dashboards. The shipped query asks for `changes()` on `atlas_build_info`. But that gauge is always one. A new release doesn't change a value; it creates a new series whose value is also one, so `changes()` stays at zero forever and the annotation never draws. The replacement asks for a build-info series that didn't exist five minutes ago, and that's true for five minutes after every deploy. I checked both with `promtool test rules` against a synthetic release; the shipped one returns nothing, the replacement returns the new version.
+The variables are `label_values` queries, so they fill themselves; pick finance and the whole dashboard becomes finance's dashboard. [PAUSE] Now the annotation, and a lesson in testing your dashboards. The obvious query asks for `changes()` on `atlas_build_info`, and an earlier version of this dashboard shipped with it. But that gauge is always one. A new release doesn't change a value; it creates a new series whose value is also one, so `changes()` stays at zero forever and the annotation never draws. The query in the JSON now asks for a build-info series that didn't exist five minutes ago, and that's true for five minutes after every deploy. I checked both with `promtool test rules` against a synthetic release: the `changes()` version returns nothing, the shipped one returns `{version="v1.1.0",prompt_version="v2"} 1` for five minutes after the deploy and nothing before or after.
 
 [SCREEN: edit `.env` to `ATLAS_PROMPT_VERSION=v2`, then `docker compose -f deploy/docker-compose.observability.yml up -d atlas`; the dashboard draws a vertical line labelled "release v1.0.0 prompt v2". Record from your run.]
 
@@ -547,16 +548,16 @@ Restart Atlas with a different prompt version and the line appears, labelled wit
 
 [AVATAR]
 
-Thresholds and colours come from the SLOs in 9.1, not from taste: the p95 stat turns red at four seconds, task success turns red under ninety-five percent. When a threshold changes, it changes in `slo.py` and in the JSON in the same pull request. A dashboard that disagrees with the SLO document is worse than no dashboard, because people trust the colours. [PAUSE] And the JSON lives in git: edit in the UI, export, commit, so a dashboard change is a pull request. One dashboard per audience. And test what you can, because the annotation you just fixed looked perfectly reasonable for months.
+Thresholds and colours come from the SLOs in 9.1, not from taste: the p95 stat turns red at four seconds, task success turns red under ninety-five percent. When a threshold changes, it changes in `slo.py` and in the JSON in the same pull request. A dashboard that disagrees with the SLO document is worse than no dashboard, because people trust the colours. [PAUSE] And the JSON lives in git: edit in the UI, export, commit, so a dashboard change is a pull request. One dashboard per audience. And test what you can, because the `changes()` annotation looked perfectly reasonable for months before anyone noticed it had never drawn a line.
 
 [SLIDE 5: Recap]
 - Four rows: SLIs, latency, cost, quality
 - Every query filters by tenant and feature
-- Test the release annotation; `changes()` never fires
+- Test the release annotation with `promtool`; `changes()` on a constant gauge never fires
 
 ### Recap
 
-`atlas-ops.json` puts the SLIs in its top row with PromQL you can read, filters everything by `$tenant` and `$feature`, keeps cost per resolved session honest as an approximation, and marks releases once you replace the `changes()` annotation with a query that fires.
+`atlas-ops.json` puts the SLIs in its top row with PromQL you can read, filters everything by `$tenant` and `$feature`, keeps cost per resolved session honest as an approximation, and marks releases with an annotation that asks for a new build-info series, because `changes()` on a constant gauge never fires.
 
 ### Transition
 
@@ -567,7 +568,7 @@ Grafana sees metrics. Langfuse sees traces and scores. Next, a short demo of the
 - **Cost per resolved session on Prometheus.** It's per resolved request over an hour; label it. The exact figure comes from the span store in `report.py` ($0.0144 on the baseline day).
 - **`histogram_quantile` with no `sum by (le)`.** Returns nonsense or nothing. Always aggregate by `le` first.
 - **`increase` over 28 d on short retention.** Prometheus's default retention is 15 days; the compose file sets 45d. Verify on screen.
-- **The release annotation.** The shipped JSON still uses `changes(atlas_build_info[5m]) > 0`; until the repo is fixed, students should replace it in their copy and export. A `promtool` unit test for it is in the 9.5 pattern.
+- **The release annotation.** The shipped JSON uses `count by (version, prompt_version) (atlas_build_info unless atlas_build_info offset 5m)`; `metrics.set_build_info(...)` runs at startup, so the series exists. Verified with promtool 2.55.1 `test rules`. Students who copied an older dashboard with `changes(...)` should replace it and export. A `promtool` unit test for it is in the 9.5 pattern.
 - **Empty judge panel.** `atlas_judge_score` is defined but never observed by the batch judge; expected, not a scrape problem.
 - **Grafana UI changes.** Menu paths move between versions; record the current ones on Grafana 11.3.
 
@@ -659,7 +660,8 @@ Dashboards are for when you're looking. Next, alerts, for when you're not: the t
 ### Speaker notes: common mistakes and Q&A
 
 - **Verify the screens.** Langfuse's dashboards, metrics and saved-view features change between releases. Record against the current UI and say "your version may differ".
-- **Live traces, not replays.** `make replay LANGFUSE=1` mirrors replayed requests to Langfuse with tenant and intent tags only (no feature or prompt tags) and with new trace ids, so judge scores from the local store won't attach to them. For this demo, use live traffic from `make run` and `make swarm`.
+- **Replays mirror cleanly now.** `make replay LANGFUSE=1` mirrors replayed requests to Langfuse under the store's own trace ids and with the tags `tenant`, `feature`, `intent`, `prompt`, `scenario` and `replay`, so `make judge LANGFUSE=1` and feedback scores attach to them and the tag filters in this demo work on a replayed day. Live traffic from `make run` and `make swarm` is still the better recording because the sessions page then shows real timing.
+
 - **Judge scores in Langfuse.** Check that `make judge` reports `langfuse_writes` above 0 (8.2); otherwise only `/feedback` scores appear.
 - **Sharing with edit rights.** Stakeholders get Viewer. Role names vary by version; check the project settings.
 - **Cost mismatch between Langfuse and Grafana.** If they differ, something sent `usage_details` without `cost_details`, and Langfuse priced it from its own table. 6.3 covers why Atlas always sends both.

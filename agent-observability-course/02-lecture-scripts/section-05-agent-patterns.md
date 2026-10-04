@@ -550,7 +550,8 @@ One option on the request, one timestamp in the stream. Time to first token on e
 | Prerequisites | 5.1 to 5.4 |
 | Files used | `03-code/telemetry/logging_setup.py`, `03-code/telemetry/metrics.py`; `curl` against a running Atlas |
 
-**Recording note:** the terminal beat needs `make run` and two requests (the VPN and ticket questions from 2.3 and 3.4); the metric lines and the log line below were captured on 2026-10-02. `/metrics` redirects to `/metrics/`, so use `curl -sL`.
+**Recording note:** the terminal beat needs `make run` and two requests (the VPN and ticket questions from 2.3 and 3.4); the metric lines and the log line below were captured on 2026-10-02. `/metrics` and `/metrics/` both answer 200; the `-L` in `curl -sL` is harmless and can stay.
+
 
 ### Script
 

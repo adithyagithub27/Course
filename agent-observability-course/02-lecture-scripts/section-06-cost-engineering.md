@@ -1315,7 +1315,8 @@ make report STORE=.atlas/router.sqlite      # the "Cost by model" section
 | gpt-4.1-nano generations | 0 | 6,700 (33%) |
 | gpt-4.1-mini generations | 20,087 | 13,344 |
 | gpt-4.1 generations (escalation) | 43 | 43 |
-| Requests answered on gpt-4.1-nano (report, by model) | 0 | 3,397, $3.05 |
+| Requests answered on gpt-4.1-nano (report, by model; a simple intent runs both steps on nano, so 6,700 generations are 3,397 requests) | 0 | 3,397, $3.05 |
+
 | Requests answered on gpt-4.1-mini | 10,141, $55.90 | 6,744, $43.70 |
 | Day | $56.28 | **$47.07** |
 | Saving | | **$9.21 a day, 16.4%** |

@@ -6,7 +6,7 @@
 > **Production format:** HeyGen avatar for [AVATAR] segments; OBS screencast for [SCREEN], [CODE] and [DEMO] segments; slides built from the [SLIDE] cues. Latency charts: one metric per chart, p95 annotated with a callout, budget line drawn in red.
 > **Standing on-screen note (every code lecture, lower third, first 10 seconds):** "APIs verified on litellm 1.103 / langfuse 4.15 / opentelemetry-semantic-conventions 0.66b0 (GenAI attributes are incubating; names may change)."
 > **Companion course tie-in:** Lecture 7.1 links once to *Production Voice AI Agents* for the 800 ms voice budget. Never require it.
-> **Offline latency note:** offline, the mock LLM stamps every call with a simulated latency (`simulated_ttft_ms`, `simulated_latency_ms`) drawn per model, and the agent records those instead of wall time. The mock never times out a slow call: it ignores `timeout=`. Timeouts, retries on timeouts and fallbacks are therefore shown with scripted failures (`retry_storm`, a stalling provider in 7.4) and unit tests, and apply to a real provider with `OFFLINE=0` (see `03-code/.env.chaos.example`).
+> **Offline latency note:** offline, the mock LLM stamps every call with a simulated latency (`simulated_ttft_ms`, `simulated_latency_ms`) drawn per model, and the agent records those instead of wall time. The mock honours `timeout=` (the agent passes `ATLAS_REQUEST_TIMEOUT_S`) as a whole-call deadline: a simulated call that would run past it raises `APITimeoutError` with `simulated_latency_ms` equal to the timeout, which the agent records as the failed attempt's latency. `slow_provider` slows only the primary deployment (gpt-4.1-mini, gpt-4.1, gpt-4.1-nano); gpt-4o-mini, the first fallback, keeps normal latency. So timeouts, retries and fallbacks are all measurable in the replay (7.3, 7.6, Lab 4); `03-code/.env.chaos.example` is the reference configuration and passes the budget gate offline.
 
 **Cue legend:** [AVATAR] avatar on camera · [SLIDE n: title] full-screen slide with the listed bullets · [SCREEN: ...] OBS recording · [CODE: ...] code on screen, exact code in the fenced block · [DEMO: ...] live run · [B-ROLL] cutaway · [PAUSE] one-beat pause.
 
@@ -24,7 +24,8 @@
 | Hourly p95, baseline | flat, 3,647 to 3,870 ms |
 | `slow_provider` preset (13:00 to 17:00, 75% of requests; TTFT ×3.5, tokens/s halved) | day p95 8,877 ms; hourly p95 about 9.2 to 9.4 s from 13:00 to 17:00; cost $55.86 (baseline $56.28); no errors, no retries, no fallbacks |
 | `retry_storm` preset (ops, 10:00 to 12:00, 70%; the first two attempts of each call time out) | $58.00 vs $56.28; 1,002 failed attempts, all `APITimeoutError`; every request still resolves with the default 2 retries |
-| `retry_storm` with `ATLAS_MAX_RETRIES=1` | $50.13; 397 requests end `error` |
+| `retry_storm` with `ATLAS_MAX_RETRIES=1` | $54.59; p95 3,934 ms; **392 requests end `error`**; 799 failed attempts; the breaker opens and 795 calls go to the fallback gpt-4o-mini |
+| `slow_provider` with `ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800` (7.6, Lab 4) | p95 3,859 ms, $43.29, 0 errors; 39 timed-out attempts; 7,318 calls served by gpt-4o-mini. Budget gate on the 300-session replay: 5 passed, p95 3,882 ms, $0.01114/session |
 
 ---
 
@@ -405,11 +406,11 @@ Three rules. Timeouts derive from the budget you wrote in 7.1. Retries are bound
 - Normal calls: TTFT p95 0.65 s, generation p95 2.8 s (7.2)
 - A timeout near 2× the slowest normal call (about 6 s) cuts off a stall, not a long answer
 - 20 s × 3 attempts is a minute of waiting before the user sees an error
-- Offline the mock never times out a call; this setting matters against a real provider (verify the client's timeout semantics)
+- Offline the mock honours it as a whole-call deadline: a simulated call slower than the timeout raises `APITimeoutError`, so 7.6 and Lab 4 can show the effect in the replay (verify the real client's timeout semantics)
 
 [AVATAR]
 
-Timeouts. Atlas has one, `ATLAS_REQUEST_TIMEOUT_S`, twenty seconds by default, passed to the OpenAI client and the Router on every call. Is twenty right? Look at the worksheet. A normal call starts in two thirds of a second at p95 and finishes in under three. So twenty seconds is seven times the slowest normal call. [PAUSE] With two retries, a stalled provider can make one user wait a minute before they see an error. Something near twice the slowest normal call, around six seconds, cuts off a stall without cutting off a long answer. One caution: offline, the mock never times out, so this knob only shows its effect against a real provider. Lab 4 and `.env.chaos.example` spell that out.
+Timeouts. Atlas has one, `ATLAS_REQUEST_TIMEOUT_S`, twenty seconds by default, passed to the OpenAI client and the Router on every call. Is twenty right? Look at the worksheet. A normal call starts in two thirds of a second at p95 and finishes in under three. So twenty seconds is seven times the slowest normal call. [PAUSE] With two retries, a stalled provider can make one user wait a minute before they see an error. Something near twice the slowest normal call, around six seconds, cuts off a stall without cutting off a long answer. And the offline mock respects it: a simulated call that would run past the deadline raises a timeout instead of completing, so you'll watch this knob work in the replay in 7.6 and in Lab 4.
 
 [SCREEN: VS Code, `app/agent.py`]
 
@@ -506,22 +507,23 @@ OFFLINE=1 ATLAS_MAX_RETRIES=1 make replay SCENARIO=retry_storm STORE=.atlas/retr
 Total cost $57.9980   p95 latency 3889 ms   elapsed 19.4s
 Outcomes: escalated=40, guardrail=66, resolved=10088
 ...
-Total cost $50.1286   p95 latency 3946 ms   elapsed 19.7s
-Outcomes: error=397, escalated=36, guardrail=66, resolved=9695
+Total cost $54.5865   p95 latency 3934 ms   elapsed 20.8s
+Outcomes: error=392, escalated=36, guardrail=66, resolved=9700
 ```
 
 [SLIDE 4: The storm, two bounds (ops, 10:00 to 12:00; full day)]
 
 | | 2 retries (shipped) | 1 retry |
 |---|---|---|
-| Day cost | $58.00 (+$1.72 vs $56.28) | $50.13 |
-| Failed attempts billed (Reliability page) | 1,002, all `APITimeoutError` | 806 |
-| Requests ending `error` | 0 | **397** |
-| What users saw | every answer, a little later | 397 "Atlas is temporarily unavailable" |
+| Day cost | $58.00 (+$1.72 vs $56.28) | $54.59 |
+| Failed attempts billed (Reliability page) | 1,002, all `APITimeoutError` | 799 |
+| Requests ending `error` | 0 | **392** |
+| Calls served by the fallback gpt-4o-mini (report, "Cost by model") | 0 | 795 |
+| What users saw | every answer, a little later | 392 "Atlas is temporarily unavailable" |
 
 [AVATAR]
 
-With the shipped bound of two, the storm costs a dollar seventy-two extra, a thousand failed attempts billed for their input, and every request still resolves. Tighten it to one retry, and the day gets cheaper, fifty dollars thirteen. [PAUSE] Cheaper because three hundred ninety-seven people got an error instead of an answer, and their requests stopped spending. That's not a saving. The right bound comes from the failure shape: here the provider fails exactly twice, so two is the smallest bound that works. Retries are a trade between cost and outcomes, and you only see the trade when both are on the same table.
+With the shipped bound of two, the storm costs a dollar seventy-two extra, a thousand failed attempts billed for their input, and every request still resolves. Tighten it to one retry, and the day gets cheaper, fifty-four fifty-nine. [PAUSE] Cheaper because three hundred ninety-two people got an error instead of an answer, and their requests stopped spending. That's not a saving. And look at the new line in the cost table: once three requests in a row had failed, the breaker from 7.4 opened and nearly eight hundred calls went to gpt-4o-mini, which is why the number isn't even worse. The right bound comes from the failure shape: here the provider fails exactly twice, so two is the smallest bound that works. Retries are a trade between cost and outcomes, and you only see the trade when both are on the same table.
 
 [SLIDE 5: Retry checklist]
 - One timeout per call, justified by a row in the worksheet
@@ -541,7 +543,7 @@ The checklist. Every timeout justified by a worksheet row. Retry only what can s
 
 ### Recap
 
-Derive the per-call timeout from the budget, bound retries with jittered backoff and only for retryable errors, price every failed attempt on its own span, and choose the bound by looking at cost and outcomes together: one retry saved money on `retry_storm` by turning 397 answers into errors.
+Derive the per-call timeout from the budget, bound retries with jittered backoff and only for retryable errors, price every failed attempt on its own span, and choose the bound by looking at cost and outcomes together: one retry saved money on `retry_storm` by turning 392 answers into errors.
 
 ### Transition
 
@@ -713,9 +715,9 @@ Log the served model and the reason. Keep the error body in the structured log, 
 
 [SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "retry or fallback or breaker"`]
 
-[DEMO: `3 passed, 21 deselected`: `test_retry_storm_is_billed`, `test_circuit_breaker_states`, `test_fallback_after_circuit_opens`]
+[DEMO: `5 passed, 21 deselected`: `test_retry_storm_is_billed`, `test_circuit_breaker_states`, `test_fallback_after_circuit_opens`, `test_slow_provider_timeout_trips_breaker_and_falls_back`, `test_breaker_uses_router_knobs`]
 
-Three unit tests pin this offline: failed attempts are billed with their error type, the breaker moves through closed, open and half-open on a fake clock, and once it's open the next call goes to `FALLBACKS[model]`.
+Five unit tests pin this offline: failed attempts are billed with their error type, the breaker moves through closed, open and half-open on a fake clock, once it's open the next call goes to `FALLBACKS[model]`, a slow call that hits the timeout trips the breaker and falls back, and the breaker reads its threshold and cooldown from `ATLAS_ROUTER_ALLOWED_FAILS` and `ATLAS_ROUTER_COOLDOWN_S`.
 
 [SLIDE 3: Recap]
 - Every model has one fallback
@@ -735,7 +737,7 @@ Fallbacks handle a failing model. Next, the provider and your own traffic say "t
 - **Fallback to the same model on the same provider.** It fails the same way. Different model or different provider, never the same deployment.
 - **Strongest model first in the list.** It works and costs 5× for the whole outage. Cheapest viable first.
 - **Silent fallbacks.** The Router does not annotate spans. Opening the generation span under `current`, the model that answers, is our code; without it, the trace says gpt-4.1-mini and the bill says something else.
-- **Cooldown too long.** 30 s means a long outage costs you a probe every 30 s, which is cheap. 30 minutes means you miss the recovery.
+- **Cooldown too long.** 30 s means a long outage costs you a probe every 30 s, which is cheap. 30 minutes means you miss the recovery. Lab 4's reference config uses 1,800 s on purpose: on a replayed day the slowdown lasts four hours, every probe is a slow request, and with 300 sessions a 120 s cooldown re-probes the slow deployment on almost every request (p95 10,349 ms). Say that trade-off out loud.
 - **The demo's first request errors.** With `ATLAS_MAX_RETRIES=2` the first request uses all three attempts on mini before the breaker opens. That's the price of learning; a lower `threshold` opens sooner and flaps more.
 - **Verify Router kwargs** on the installed litellm: `model_list`, `fallbacks`, `num_retries`, `timeout`, `allowed_fails`, `cooldown_time` are present on 1.103; `context_window_fallbacks` and `routing_strategy` are extensions for a second provider under the same logical name.
 
@@ -992,19 +994,34 @@ The diet takes the afternoon from nine point three to eight point eight. Routing
 - A timeout that turns a stall into an error: `ATLAS_REQUEST_TIMEOUT_S`, about 2× the slowest normal call (7.3)
 - The error opens the breaker; the next calls go to `FALLBACKS[model]` (7.4)
 - The fallback must be somewhere the slowness isn't: another model family or another provider
-- Offline, the mock slows every model and never times out, so this half is proven by tests, not by the replay
-- Against a real provider: `.env.chaos.example` (`ATLAS_REQUEST_TIMEOUT_S=4`, `ATLAS_MAX_RETRIES=1`, `ATLAS_ROUTER_MODE=1`, `OFFLINE=0`)
+- Offline this is measurable: the mock honours the timeout, and `slow_provider` slows only the gpt-4.1 family, so gpt-4o-mini is somewhere the slowness isn't
+- The reference settings, `.env.chaos.example`: `ATLAS_REQUEST_TIMEOUT_S=4`, `ATLAS_MAX_RETRIES=2`, `ATLAS_ROUTER_ALLOWED_FAILS=2`, `ATLAS_ROUTER_COOLDOWN_S=1800`
 
 [AVATAR]
 
-The fix that buys seconds has two halves. First, a timeout tight enough to turn a stalled call into an error: around twice the slowest normal call, not twenty seconds. Second, somewhere else to send the step once the breaker opens, and it has to be somewhere the slowness isn't: another model family, or better, another provider. [PAUSE] Here's the honest part. In this replay the whole provider is slow, every model, and the offline mock never times out a call. So the replay can't show the second half. You saw it work in 7.4, with the stalling provider: three timeouts, breaker open, every following request answered by the fallback. Against a real provider, `.env.chaos.example` has the settings, and the lab walks you through them.
+The fix that buys seconds has two halves. First, a timeout tight enough to turn a stalled call into an error: around twice the slowest normal call, not twenty seconds. Second, somewhere else to send the step once the breaker opens, and it has to be somewhere the slowness isn't: another model family, or better, another provider. [PAUSE] In Atlas the first fallback for gpt-4.1-mini is gpt-4o-mini, a different family, and in this scenario only the gpt-4.1 family is slow. So let's run the same afternoon with the reference settings from `.env.chaos.example`: a four-second timeout, two retries, a breaker that opens after two failures and stays open for half an hour.
 
-[SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "slow_provider or fallback"`: `2 passed`]
+[SCREEN: terminal, then the Latency and Cost pages for the new store]
 
-Two tests pin the mechanism offline: the slow-provider scenario really makes a request slower, and once the breaker is open the next call goes to the fallback.
+```bash
+OFFLINE=1 ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800 \
+  make replay SCENARIO=slow_provider STORE=.atlas/slow_fix.sqlite
+make report STORE=.atlas/slow_fix.sqlite      # "Cost by model": gpt-4o-mini appears
+```
+
+[DEMO: the summary ends `Total cost $43.2886   p95 latency 3859 ms` with `Outcomes: escalated=47, guardrail=71, resolved=9996`, no errors. The Reliability page shows 39 `APITimeoutError` attempts spread thinly across 13:00 to 17:00, two or three every half hour; the "Cost by model" table has a new line, `gpt-4o-mini`, 3,686 requests, $7.73. On the Latency page the afternoon is back under four seconds.]
+
+[AVATAR]
+
+Three thousand eight hundred fifty-nine milliseconds for the day. Under budget, through a four-hour provider slowdown, with zero errors. [PAUSE] Read how it happened. At one o'clock the first slow call hit the four-second deadline, then a second one, and two in a row opened the breaker. From then on every call that would have gone to the slow deployment went to gpt-4o-mini instead: seven thousand three hundred of them, a new line in the cost table at seven dollars seventy-three. The thirty-nine timeouts on the Reliability page are the probes: every thirty minutes the breaker half-opens, tries the slow deployment once, the probe times out, and the circuit opens again. Each probe is one slow, billed request, which is the price of a cooldown and the reason the lab asks you to think about its length.
+ The day costs forty-three dollars instead of fifty-six, because the fallback is cheaper per token; on another day it would be dearer, and the cost table is how you'd know. That's the whole mechanism from 7.3 and 7.4, working on real traffic shapes, and nobody was paged for it.
+
+[SCREEN: terminal, `uv run pytest tests/unit/test_agent.py -q -k "slow_provider or fallback"`: `3 passed`]
+
+Three tests pin the mechanism offline: the slow-provider scenario really makes a request slower, a slow call that hits the timeout trips the breaker and falls back, and once the breaker is open the next call goes to the fallback.
 
 [SLIDE 4: What we did not change, and why]
-- The fallback list: right already, it just needs an error to fire
+- The fallback list: right already, it just needed the timeout to turn slowness into an error
 - Concurrency limits (7.5): a slow provider fills slots; watch `atlas_queue_wait_seconds` live (Section 9), not in a replay
 - Budget guard: never triggered; the day cost the same
 - The prompt and the tools: untouched; this was never Atlas's bug
@@ -1020,7 +1037,7 @@ And what we didn't touch. The fallback list, which is right; it just needs an er
 
 ### Recap
 
-A slow provider is a silent incident: p95 goes to 9.4 seconds while retries, fallbacks and cost stay flat; the context diet buys half a second, and only a timeout that turns stalls into errors, plus a fallback somewhere the slowness isn't, gets you back under four.
+A slow provider is a silent incident: p95 goes to 9.4 seconds while retries, fallbacks and cost stay flat; the context diet buys half a second, and a four-second timeout plus a breaker that sends the step to gpt-4o-mini brings the day back to 3,859 ms with zero errors.
 
 ### Transition
 
@@ -1030,7 +1047,8 @@ Your turn. Lab 4 hands you the same scenario and asks you to bring p95 back towa
 
 - **"Why not just fall back on latency?"** Fallbacks fire on errors and timeouts. A timeout is how you turn latency into an error. That's the insight of the whole demo.
 - **Latency-based routing.** It helps between two deployments of the same model but reacts over minutes; a timeout reacts in seconds. Use both.
-- **"Why doesn't the replay show the tuned run?"** The mock draws a simulated latency and returns it; it has no wall clock to time out and it slows every model in the scenario. Say it on camera; `.env.chaos.example` says the same in its header.
+- **How the offline timeout works.** The mock has no wall clock: it compares the drawn simulated latency to `timeout=` and raises `APITimeoutError` with `simulated_latency_ms` equal to the timeout, and the replay's shared breaker runs on the replayed clock, so the result is deterministic. `.env.chaos.example` says the same in its header.
+- **Why `ALLOWED_FAILS` must be ≤ `MAX_RETRIES`.** With 2 and 2 the breaker opens while the request still has an attempt left, and that attempt goes to the fallback. With `ATLAS_MAX_RETRIES=1` and `ALLOWED_FAILS=3` the breaking request ends in `error` first; that is the old reference config, and it fails the gate (p95 10,349 ms, 58 errors).
 - **The 20 s default.** `ATLAS_REQUEST_TIMEOUT_S=20` is generous on purpose so a first install never times out. Production sets it from the worksheet.
 - **Recording.** Three pages, same time axis, p95 with the red budget line. Annotate 13:00 and 17:00.
 
@@ -1062,7 +1080,7 @@ Lab four. Same scenario as the demo, and this time you hold the controls. [PAUSE
 
 [SCREEN: `04-labs/lab-04-latency-chaos.md`, the checklist; then `03-code/.env.chaos.example`]
 
-You start by reproducing the incident: `make replay SCENARIO=slow_provider`, then the budget gate with the same incident, `BUDGET_GATE_INCIDENTS=slow_provider make budget-check`. It fails on p95, as it should. Then you copy `.env.chaos.example` to `.env.chaos` and tune: the per-call timeout, the retry bound, the Router's `allowed_fails` and cooldown, and the per-tenant concurrency slots.
+You start by reproducing the incident: `make replay SCENARIO=slow_provider`, then the budget gate with the same incident, `BUDGET_GATE_INCIDENTS=slow_provider make budget-check`. It fails on p95, eight thousand seven hundred fifty-five milliseconds, as it should. Then you copy `.env.chaos.example` to `.env.chaos` and tune: the per-call timeout, the retry bound, the breaker's `allowed_fails` and cooldown, and the per-tenant concurrency slots. The reference values in the example pass: with `ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800` the gate reports five passed and a p95 of three thousand eight hundred eighty-two. Your job is to get there yourself, one setting at a time, and to find the settings that don't work.
 
 [SLIDE 1: Lab 4 checklist]
 - Replay `slow_provider`; screenshot the three charts; gate red on p95
@@ -1073,7 +1091,7 @@ You start by reproducing the incident: `make replay SCENARIO=slow_provider`, the
 
 [AVATAR]
 
-Two hints. First, look at the retries and fallback panels before you touch anything; if they're at zero, the fix starts with a timeout, not a fallback. Second, remember what 7.6 showed: offline, the mock slows every model and never times out a call, so the replay shows the problem and the context diet's half second, and the timeout-and-fallback half needs a real provider or the stalling provider from 7.4. The lab tells you which steps run where, and if you have keys, how to set a spending cap before you run anything against the real API.
+Two hints. First, look at the retries and fallback panels before you touch anything; if they're at zero, the fix starts with a timeout, not a fallback. Second, keep `allowed_fails` at or below the retry bound: if the breaker needs more failures than one request has attempts, the breaking request ends in an error before anything falls back, and a short cooldown re-probes the slow deployment on almost every request. One retry and a two-minute cooldown fail the gate at ten seconds with fifty-eight errors. The lab has you record that run too, because knowing which settings fail is half the worksheet. If you have keys, the lab also says how to set a spending cap before you run anything against the real API.
 
 [SLIDE 2: You can now]
 - Budget latency at p95 and measure it from spans
@@ -1091,6 +1109,8 @@ Before the lab, the Section 7 quiz.
 ### Speaker notes: common mistakes and Q&A
 
 - **Retries on during a slowdown.** More retries only add waiting when nothing errors; when the timeout does fire, every retry is billed. Point students at the 7.3 table.
+- **Reference results (offline, 300-session gate).** Defaults: 1 failed, p95 8,755 ms. `.env.chaos.example` values: 5 passed, p95 3,882 ms, $0.01114/session, 0 errors; with `ROUTER=1` as well: 5 passed, p95 3,885 ms, $0.00962/session. Old values (`ATLAS_MAX_RETRIES=1`, cooldown 120 s): fail, p95 10,349 ms, 58 errors. Full day with the passing config: p95 3,859 ms, $43.29.
+
 - **Timeout too tight.** Below the slowest normal call, healthy answers time out and fall back; cost rises and p95 barely moves.
 - **Skipping the worksheet.** Grade it. The setting without a justification is the one that breaks next quarter.
 - **Gate store.** `make budget-check` writes `.atlas/budget-gate.sqlite`; `BUDGET_GATE_STORE` moves it if two runs share a machine.

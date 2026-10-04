@@ -9,18 +9,18 @@
 
 **Cue legend:** [AVATAR] avatar on camera · [SLIDE n: title] full-screen slide with the listed bullets · [SCREEN: ...] OBS recording · [CODE: ...] code on screen, exact code in the fenced block · [DEMO: ...] live run · [B-ROLL] cutaway · [PAUSE] one-beat pause.
 
-**Code names used in this section (to match `03-code/`):** `northwind.pii` (`EMAIL_RE`, `EMPLOYEE_ID_RE`, `PHONE_RE`, `CARD_RE`, `mask_text`, `mask_with_stats`, `mask_value`, `stable_hash` / `short_hash`, `langfuse_mask`, `mask_fn` alias, `contains_pii`), `telemetry/genai_attrs.py` (`_safe`, `set_tool`, `set_llm_messages`), `telemetry/langfuse_setup.py` (`Langfuse(mask=langfuse_mask, ...)`), `deploy/otel-collector.yaml` (`memory_limiter`, `attributes/redact`, `tail_sampling`, `batch`), `tests/unit/test_pii.py`, `tests/integration/test_spans.py::test_no_raw_pii_reaches_any_span`, `10-resources/telemetry-governance-checklist.md`.
+**Code names used in this section (to match `03-code/`):** `northwind.pii` (`EMAIL_RE`, `EMPLOYEE_ID_RE`, `PHONE_RE`, `CARD_RE`, `mask_text`, `mask_with_stats`, `mask_value`, `short_hash` / alias `stable_hash` (HMAC-SHA256 keyed with `ATLAS_PII_HASH_KEY`; `pii_hash_key`, `DEMO_PII_HASH_KEY`, `PII_HASH_KEY_ENV`), `langfuse_mask`, `mask_fn` alias, `contains_pii`, `published_values`), `telemetry/genai_attrs.py` (`_safe`, `set_tool`, `set_llm_messages`), `telemetry/langfuse_setup.py` (`Langfuse(mask=langfuse_mask, ...)`), `deploy/otel-collector.yaml` (`memory_limiter`, `attributes/redact`, `tail_sampling`, `batch`), `tests/unit/test_pii.py`, `tests/integration/test_spans.py::test_no_raw_pii_reaches_any_span`, `10-resources/telemetry-governance-checklist.md`.
 
 **The numbers card for this section (synthetic data):**
 
 | Item | Value |
 |---|---|
 | What every stored agent span carries | `user.id` (an employee ID such as `NW-34624`), `session.id`, tenant and feature tags, the question and the answer: 10,184 of them on the replayed day |
-| PII-in-output flags on the replayed day (8.4) | 678 answers, mostly policy text quoting the ID format `NW-12345` |
+| PII-in-output flags on the replayed day (8.4) | 0 of 10,184 (`contains_pii` ignores the values the KB publishes); before that allowlist the same day showed 678 flags, all policy text quoting the ID format `NW-12345` |
 | Masking at the source | every content attribute passes `mask_value(..., hash_ids=True)` and is clipped to 4,000 characters (`genai_attrs._safe`) |
-| Placeholders | `<EMAIL>`, `<PHONE>`, `<EMPLOYEE_ID>`, `<CARD>`; with `hash_ids=True`, `<EMPLOYEE_ID:a116ca8c>`; employee IDs match `NW-\d{5}`; ticket and shipment ids (`TCK-`, `SHP-`) are kept |
-| The shipped hash | salted SHA-256, 8 hex characters (`stable_hash`); a five-digit employee ID falls to a brute-force loop in under a tenth of a second; production needs a keyed HMAC |
-| Collector processors | `memory_limiter`, `attributes/redact` (deletes tool results, message bodies, system instructions and Langfuse input/output; hashes tool arguments, `user.id`, `enduser.id`), `tail_sampling`, `batch` |
+| Placeholders | `<EMAIL>`, `<PHONE>`, `<EMPLOYEE_ID>`, `<CARD>`; with `hash_ids=True`, `<EMPLOYEE_ID:4fbbe98e>` (demo key); employee IDs match `NW-\d{5}`; ticket and shipment ids (`TCK-`, `SHP-`) are kept |
+| The shipped hash | HMAC-SHA256 keyed with `ATLAS_PII_HASH_KEY`, 8 hex characters (`short_hash`, alias `stable_hash`); with the key unset Atlas uses the public `DEMO_PII_HASH_KEY` (one warning when `OFFLINE` is not 1), and then a five-digit employee ID falls to a brute-force loop in under a tenth of a second; production sets the key (`python -c "import secrets; print(secrets.token_hex(32))"`) |
+| Collector processors | `memory_limiter`, `attributes/redact` (deletes tool results, message bodies, system instructions, Langfuse input/output, `user.id` and `enduser.id`; hashes `gen_ai.tool.call.arguments` only, which Atlas has already masked), `tail_sampling`, `batch` |
 | Retention (Atlas policy) | traces 30 days prod, 7 days dev; scores and aggregates 13 months; datasets indefinitely (reviewed quarterly); Prometheus 45 days (compose) |
 
 ---
@@ -104,13 +104,13 @@ Six destinations. Langfuse, where every project member can read every trace. The
 [SLIDE 3: The scale (one replayed day, synthetic)]
 - An employee ID on every one of the 10,184 agent spans
 - Every question and every answer, in plain text, on the agent span
-- 678 answers flagged by the PII detector in 8.4, before anyone reviewed them
+- 678 answers the PII detector in 8.4 flagged before its allowlist of published values, every one of them policy text
 - Illustrative: multiply by 30 days of retention and four destinations, and a helpdesk holds over a million identifiers at rest
 - Masking a value costs a fraction of a millisecond and no tokens
 
 [AVATAR]
 
-Here's the scale on the replayed day. An employee ID on every one of ten thousand requests. Every question and every answer, in plain text. Six hundred seventy-eight answers flagged by the PII detector from 8.4. Multiply by a month of retention and a few destinations, and a helpdesk is holding over a million identifiers at rest. [PAUSE] Masking a value before it leaves the process costs a fraction of a millisecond. No tokens. No dollars. This is the cheapest security control you will ever ship.
+Here's the scale on the replayed day. An employee ID on every one of ten thousand requests. Every question and every answer, in plain text. And the six hundred seventy-eight answers the PII detector from 8.4 flagged before it learned which values the knowledge base publishes, a reminder that the detector reads text that is already stored. Multiply by a month of retention and a few destinations, and a helpdesk is holding over a million identifiers at rest. [PAUSE] Masking a value before it leaves the process costs a fraction of a millisecond. No tokens. No dollars. This is the cheapest security control you will ever ship.
 
 [SLIDE 4: Four threats, four answers]
 - Over-collection: you captured what you didn't need → masking at the source, the SDK and the collector (10.2)
@@ -138,7 +138,7 @@ A trace copies identifiers, questions, records, answers and judge inputs into si
 
 ### Transition
 
-Next, the code-along: masking at the source, in the Langfuse SDK and in the OpenTelemetry collector, with a hash that keeps your joins working, and a hard look at how strong that hash is.
+Next, the code-along: masking at the source, in the Langfuse SDK and in the OpenTelemetry collector, with a keyed hash that keeps your joins working, and a hard look at where its strength comes from.
 
 ### Speaker notes: common mistakes and Q&A
 
@@ -158,15 +158,15 @@ Next, the code-along: masking at the source, in the Langfuse SDK and in the Open
 | Title | Code-along: masking in the SDK and the collector |
 | Type | SC (screencast code-along) |
 | Target duration | 8:00 (about 680 spoken words at ~140 wpm; remaining time is on-screen code and the demo) |
-| One idea | Mask PII in three layers, at the source when a span attribute is set, in the Langfuse SDK with `mask=`, and in the collector for everything else, replace identifiers with a hash so joins still work, and make sure the hash is strong enough for the identifier. |
+| One idea | Mask PII in three layers, at the source when a span attribute is set, in the Langfuse SDK with `mask=`, and in the collector for everything else, replace identifiers with a keyed hash so joins still work, and keep the key out of the repo. |
 | Prerequisites | 10.1; 4.6 (`mask=` introduced) |
 | Files used | `src/northwind/pii.py`, `telemetry/genai_attrs.py`, `telemetry/langfuse_setup.py`, `deploy/otel-collector.yaml`, `tests/unit/test_pii.py`, `tests/integration/test_spans.py` |
 
 **Learning objectives**
 
-1. Read `mask_text` for emails, phones, employee IDs and card numbers (with a Luhn check), the placeholders it writes, and `stable_hash` for identifiers.
-2. Trace the three layers: `genai_attrs._safe` on every content attribute, `Langfuse(mask=langfuse_mask)`, and the collector's `attributes/redact` processor that deletes and hashes.
-3. Run `test_no_raw_pii_reaches_any_span`, the test that fails if raw PII ever reaches a span, and explain why an unkeyed hash of a five-digit ID is not a pseudonym.
+1. Read `mask_text` for emails, phones, employee IDs and card numbers (with a Luhn check), the placeholders it writes, and `short_hash`, the keyed HMAC for identifiers.
+2. Trace the three layers: `genai_attrs._safe` on every content attribute, `Langfuse(mask=langfuse_mask)`, and the collector's `attributes/redact` processor that deletes what a backend never needs.
+3. Run `test_no_raw_pii_reaches_any_span`, the test that fails if raw PII ever reaches a span, and explain why a hash of a five-digit ID is only a pseudonym while its key is secret.
 
 ### Script
 
@@ -190,9 +190,24 @@ CARD_RE = re.compile(r"\b\d(?:[ -]?\d){12,18}\b")
 _SAFE_RE = re.compile(r"\b(?:TCK|SHP)-\d{4,8}\b")
 
 
-def short_hash(value: str, salt: str = "northwind", length: int = 8) -> str:
-    """Deterministic short hash for joinable pseudonyms."""
-    return hashlib.sha256(f"{salt}:{value}".encode()).hexdigest()[:length]
+DEMO_PII_HASH_KEY = "atlas-demo-pii-key-not-a-secret"
+PII_HASH_KEY_ENV = "ATLAS_PII_HASH_KEY"
+
+
+def pii_hash_key() -> bytes:
+    """The HMAC key: ``ATLAS_PII_HASH_KEY`` if set, else the demo key (warns once if not offline)."""
+    ...
+
+
+def short_hash(
+    value: str, salt: str = "northwind", length: int = 8, *, key: bytes | None = None
+) -> str:
+    """Deterministic short pseudonym for joins: HMAC-SHA256 keyed with ``ATLAS_PII_HASH_KEY``.
+
+    ``salt`` is a domain label (different salts give unrelated pseudonyms for the same value);
+    the secrecy comes from the key, never from the salt."""
+    k = pii_hash_key() if key is None else key
+    return hmac.new(k, f"{salt}:{value}".encode(), hashlib.sha256).hexdigest()[:length]
 
 
 def mask_with_stats(
@@ -223,7 +238,7 @@ Four patterns. Email, phone, the Northwind employee ID, `NW-` and five digits, a
 
 [SCREEN: zoom on `tag()` and `short_hash`]
 
-Each match becomes a placeholder: `<EMAIL>`, `<PHONE>`, `<EMPLOYEE_ID>`, `<CARD>`. With `hash_ids=True`, the placeholder carries an eight-character hash of the value, so the same employee always gets the same token and you can still join a trace to a feedback score. `langfuse_mask` walks any structure, dicts, lists, strings, and applies that to every string. That's the shape the Langfuse SDK expects.
+Each match becomes a placeholder: `<EMAIL>`, `<PHONE>`, `<EMPLOYEE_ID>`, `<CARD>`. With `hash_ids=True`, the placeholder carries eight characters of an HMAC of the value, keyed with `ATLAS_PII_HASH_KEY`, so the same employee always gets the same token and you can still join a trace to a feedback score. The `salt` is only a domain label; the secret is the key. `langfuse_mask` walks any structure, dicts, lists, strings, and applies that to every string. That's the shape the Langfuse SDK expects.
 
 [SCREEN: terminal]
 
@@ -240,15 +255,15 @@ print(mask_with_stats(text)[0]); print(mask_with_stats(text)[1]); print(mask_tex
 ```
 My card <CARD> was declined, open a ticket for <EMAIL>, call me on <PHONE>, id <EMPLOYEE_ID>, ticket TCK-100231
 MaskStats(emails=1, phones=1, employee_ids=1, cards=1)
-My card <CARD:ed595cb8> was declined, open a ticket for <EMAIL:c8124ed3>, call me on <PHONE:953a8f02>, id <EMPLOYEE_ID:a116ca8c>, ticket TCK-100231
+My card <CARD:594e45cc> was declined, open a ticket for <EMAIL:4470f829>, call me on <PHONE:d7602242>, id <EMPLOYEE_ID:4fbbe98e>, ticket TCK-100231
 ```
 
-Four kinds of PII in, four placeholders out, and the ticket id untouched. Now, how private is `<EMPLOYEE_ID:a116ca8c>`?
+Four kinds of PII in, four placeholders out, and the ticket id untouched. Those are the pseudonyms you get with no key set, so Atlas fell back to `DEMO_PII_HASH_KEY`, which is a string in the source file. Now, how private is `<EMPLOYEE_ID:4fbbe98e>`?
 
 ```bash
 uv run python -c "
 from northwind.pii import stable_hash
-print(next(f'NW-{n:05d}' for n in range(100_000) if stable_hash(f'NW-{n:05d}') == 'a116ca8c'))
+print(next(f'NW-{n:05d}' for n in range(100_000) if stable_hash(f'NW-{n:05d}') == '4fbbe98e'))
 "
 ```
 
@@ -256,14 +271,29 @@ print(next(f'NW-{n:05d}' for n in range(100_000) if stable_hash(f'NW-{n:05d}') =
 
 [AVATAR]
 
-Five hundredths of a second. [PAUSE] An employee ID has only a hundred thousand possible values, and the salt is in the source code, so anyone with the repo can hash all of them and look yours up. A hash of a low-entropy identifier is a lookup table, not a pseudonym. In production, use a keyed HMAC with a secret from your secret store, rotated on a schedule, so the hash is useless without the key. The shipped `stable_hash` is fine for synthetic data and for teaching the join; it is not what you ship.
+Five hundredths of a second. [PAUSE] An employee ID has only a hundred thousand possible values, and with the demo key anyone with the repo can hash all of them and look yours up. HMAC is the right construction, but a keyed hash with a public key is a lookup table, not a pseudonym. The key is the whole secret. So set it.
+
+[SCREEN: terminal]
+
+```bash
+export ATLAS_PII_HASH_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")   # in .env in real life, from your secret store
+uv run python -c "
+from northwind.pii import mask_text, stable_hash
+print(mask_text('id NW-04471', hash_ids=True))
+print(next((f'NW-{n:05d}' for n in range(100_000) if stable_hash(f'NW-{n:05d}') == '4fbbe98e'), 'no match for the demo-key hash'))
+"
+```
+
+[DEMO: the placeholder is now a different eight characters (yours will differ from mine: the key is random), and the loop that looked up the demo-key hash prints `no match for the demo-key hash`. Without the key, the table of a hundred thousand hashes is useless.]
+
+With a real key, the same employee still gets the same token, so every join in this course keeps working, and nobody without the key can turn the token back into a person. Three rules go with it. The key lives in your secret store, never in the repo; `.env.example` shows how to generate one. Rotating it changes every pseudonym, so plan for historical joins to break on rotation day. And when `OFFLINE` is off and the key is missing, Atlas logs one warning at startup; treat that warning as a deploy blocker.
 
 [SLIDE 1: Layer one: at the source (`telemetry/genai_attrs.py`)]
 - Every content attribute goes through `_safe(value, redact=True)`: `mask_value(..., hash_ids=True)`, then clipped to 4,000 characters
 - That covers message bodies, tool arguments and results, retrieval queries, and Langfuse input/output
 - Masked before the span exists, so the local store and every exporter get the masked text
-- `user.id` is set as-is in-process: the local store needs it for the showback; the collector hashes it on export
-- Exporting straight to Langfuse, without the collector? Hash `user.id` yourself first
+- `user.id` is set as-is in-process: the local store needs it for the showback; the collector deletes it on export (its own `hash` action is unkeyed SHA-256, reversible for a five-digit ID)
+- Exporting straight to Langfuse, without the collector? Put the HMAC pseudonym on the span yourself, not the raw id
 
 [SCREEN: VS Code, `telemetry/genai_attrs.py`: `_safe`, then `set_tool` calling it for `gen_ai.tool.call.arguments` and `gen_ai.tool.call.result`]
 
@@ -272,7 +302,7 @@ def _safe(value: Any, redact: bool) -> str:
     return _clip(mask_value(value, hash_ids=True) if redact else value)
 ```
 
-Layer one is the one that does most of the work. Every helper that puts content on a span calls `_safe` first: mask, then clip to four thousand characters. Tool results are where most of the sensitive data arrives, and this is the line that catches it before the span exists. [PAUSE] One deliberate gap: `user.id` goes on the span as-is, because the local store needs the real id for the user showback in 6.3. The collector hashes it on the way out. If you export straight to Langfuse without the collector, hash it yourself before it becomes an attribute.
+Layer one is the one that does most of the work. Every helper that puts content on a span calls `_safe` first: mask, then clip to four thousand characters. Tool results are where most of the sensitive data arrives, and this is the line that catches it before the span exists. [PAUSE] One deliberate gap: `user.id` goes on the span as-is, because the local store needs the real id for the user showback in 6.3. The collector deletes it on the way out, and deletes rather than hashes because the collector's hash is plain SHA-256 with no key, which for a five-digit ID is the lookup table we just built. If you export straight to Langfuse without the collector, put the HMAC pseudonym on the span yourself before the raw id becomes an attribute.
 
 Layer two: the SDK.
 
@@ -323,11 +353,11 @@ processors:
       - key: langfuse.observation.output
         action: delete
       - key: gen_ai.tool.call.arguments
-        action: hash            # keep a stable fingerprint so identical calls can still be grouped
+        action: hash            # fingerprint of already-masked arguments: groups identical calls
       - key: user.id
-        action: hash            # joinable pseudonym, never the employee id
+        action: delete          # raw employee id; an unkeyed hash of it is reversible
       - key: enduser.id
-        action: hash
+        action: delete
   tail_sampling: { ... }        # keep errors, slow, expensive, many-step and escalated traces (13.2)
   batch: { ... }
 
@@ -339,11 +369,11 @@ service:
       exporters: [otlphttp/langfuse, otlphttp/phoenix, debug, spanmetrics]
 ```
 
-Four processors, in order: `memory_limiter`, `attributes/redact`, `tail_sampling`, `batch`. The redaction step deletes outright what a backend never needs: tool results, message bodies, the system instructions, and the Langfuse input and output copies. It hashes what you still want to group by: tool arguments, `user.id` and `enduser.id`.
+Four processors, in order: `memory_limiter`, `attributes/redact`, `tail_sampling`, `batch`. The redaction step deletes outright what a backend never needs: tool results, message bodies, the system instructions, the Langfuse input and output copies, and the raw user ids. It hashes one thing, the tool arguments, and only because Atlas has already masked them at the source, so the digest just groups identical calls and exposes nothing new.
 
 [SCREEN: zoom on the `delete` and `hash` actions]
 
-[PAUSE] Delete versus hash is the whole design. Delete when nobody downstream needs the value. Hash when you need to count or join on it. And the collector's hash has the same weakness as ours: unkeyed, so a hashed employee ID is still guessable. The collector is the safety net for spans from libraries you never wrote a mask for. It is not the plan.
+[PAUSE] Delete versus hash is the whole design. Delete when nobody downstream needs the value. Hash when you need to count or join on it, and only with a key. The collector's `hash` action is unkeyed SHA-256 with no keyed option in contrib 0.116, which is exactly why `user.id` is deleted here instead of hashed: a hashed employee ID in the collector would be as guessable as the demo-key one we brute-forced a minute ago. The collector is the safety net for spans from libraries you never wrote a mask for. It is not the plan.
 
 Now the test that makes this permanent.
 
@@ -374,18 +404,18 @@ Send a question containing all four kinds of PII through the real `/chat` endpoi
 uv run pytest tests/unit/test_pii.py tests/integration/test_spans.py -q
 ```
 
-[DEMO: `34 passed`]
+[DEMO: `38 passed`]
 
 [SLIDE 2: Masking rules]
 - Mask before export, never after: at the source and in the SDK, not a cleanup job
 - Delete what nobody needs; hash what you join on; placeholder the rest
-- Low-entropy ids need a keyed HMAC, not a salted hash
+- Low-entropy ids need a keyed HMAC, and the key must be a secret: set `ATLAS_PII_HASH_KEY`
 - Luhn-check card candidates; protect ticket and shipment ids
 - One test, in CI, that fails on any raw value
 
 [AVATAR]
 
-Rules. Mask before export, never with a cleanup job, because a cleanup job runs after the leak. Delete what nobody needs, hash what you join on, placeholder the rest. Key your hashes for anything with a small value space. Luhn-check cards so you don't blind yourself. And one test in CI that fails on any raw value.
+Rules. Mask before export, never with a cleanup job, because a cleanup job runs after the leak. Delete what nobody needs, hash what you join on, placeholder the rest. Key your hashes for anything with a small value space, and keep the key out of the repo. Luhn-check cards so you don't blind yourself. And one test in CI that fails on any raw value.
 
 [SLIDE 3: Recap]
 - Three layers: source, SDK, collector
@@ -394,7 +424,7 @@ Rules. Mask before export, never with a cleanup job, because a cleanup job runs 
 
 ### Recap
 
-One masker, three layers: `_safe` on every content attribute at the source, `mask=langfuse_mask` in the Langfuse client, and the collector's `attributes/redact` deleting bodies and hashing ids, with `test_no_raw_pii_reaches_any_span` in CI; and a salted hash of a five-digit ID is reversible, so production keys it.
+One masker, three layers: `_safe` on every content attribute at the source, `mask=langfuse_mask` in the Langfuse client, and the collector's `attributes/redact` deleting bodies and user ids, with `test_no_raw_pii_reaches_any_span` in CI; the pseudonym is an HMAC, and with the public demo key a five-digit ID is reversible in a twentieth of a second, so production sets `ATLAS_PII_HASH_KEY`.
 
 ### Transition
 
@@ -402,9 +432,9 @@ Masking limits what gets in. Next, the other two threats: how long it stays, and
 
 ### Speaker notes: common mistakes and Q&A
 
-- **The hash is the lesson.** `stable_hash` uses a public salt. Show the brute-force loop once; then show what changes in production: `hmac.new(secret, value, sha256)` with the secret from the environment, and a rotation plan that accepts broken historical joins.
+- **The key is the lesson.** `short_hash` is already `hmac.new(key, f"{salt}:{value}", sha256)`; with `ATLAS_PII_HASH_KEY` unset the key is the public `DEMO_PII_HASH_KEY`, so the brute-force loop still recovers `NW-04471` from `4fbbe98e`. Show that once, then set the key and show the loop fail. Tests: `test_hash_is_keyed_hmac`, `test_demo_key_warns_outside_offline`. Rotation breaks historical joins; say so.
 - **Phone regex false positives.** Long numeric strings can match. The lookbehind and lookahead help, and ticket and shipment ids are protected; tune patterns per domain and test with real-shaped data.
-- **Format examples.** The detector also matches documentation like "format `NW-12345`" (8.4). An allowlist for known examples keeps the PII-in-output metric honest.
+- **Format examples.** `contains_pii` skips the values the KB publishes (`published_values()`, 8.4), so the detector no longer flags "format `NW-12345`"; the masker still masks them. Keep the allowlist to what the KB publishes.
 - **Masking the retrieval context.** Knowledge-base passages rarely contain PII; if they do, the KB is the problem. Mask anyway; it's cheap.
 - **Collector config drift.** `attributes` is a contrib processor; option names have changed before. Verify against the pinned image (0.116.1) before recording.
 - **Coding exercise.** "PII masking" in `06-assessments/coding-exercises.md` is `mask_text` with stdlib `re` only.
@@ -614,10 +644,11 @@ print(json.dumps(record))
 [DEMO: output (the replay is deterministic, so yours matches):]
 
 ```
-{"ts": 1789345407.419, "trace_id": "3cd9a47a01a79a3015b08f81975765a3", "user": "14c293e9", "tenant": "ops", "prompt_version": "v1", "model": "gpt-4.1-mini", "tools": ["check_shipment"], "outcome": "resolved", "answer_sha256": "de5cf5fb05dbf7cb"}
+{"ts": 1789345407.419, "trace_id": "3cd9a47a01a79a3015b08f81975765a3", "user": "ead71000", "tenant": "ops", "prompt_version": "v1", "model": "gpt-4.1-mini", "tools": ["check_shipment"], "outcome": "resolved", "answer_sha256": "de5cf5fb05dbf7cb"}
 ```
 
-When, which trace, which user as a hash, which department, which prompt and model, which tools, what happened, and a fingerprint of the answer. No question text, no answer text, no phone number. A job writes one of these per request to an append-only store with long retention and narrow access. [PAUSE] It answers "what did the system do, and could a human have intervened" without containing anyone's data. And remember 10.2: for an audit trail, the user hash should be a keyed HMAC, not this demo's salted hash.
+When, which trace, which user as a hash, which department, which prompt and model, which tools, what happened, and a fingerprint of the answer. No question text, no answer text, no phone number. A job writes one of these per request to an append-only store with long retention and narrow access. [PAUSE] It answers "what did the system do, and could a human have intervened" without containing anyone's data. And remember 10.2: that user hash is `short_hash`, an HMAC, and it is exactly as secret as `ATLAS_PII_HASH_KEY`; this demo ran with the public demo key, so in production set the key before the first line is written.
+
 
 [SLIDE 5: What never to log, anywhere]
 - Credentials and secrets: passwords, tokens, one-time codes, the answers to identity verification questions

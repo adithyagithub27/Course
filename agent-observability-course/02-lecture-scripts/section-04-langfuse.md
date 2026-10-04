@@ -401,7 +401,8 @@ And Atlas's own path? Same idea, one indirection. `AtlasAgent.run` opens its roo
 - Tags: short, low-cardinality, for filtering and grouping: `tenant:ops`, `feature:policy_question`, `prompt:v1`
 - Metadata: key-value, for reading on the trace: `tenant`, `scenario`
 - Never tag with a user ID or a session ID; they're dimensions of their own
-- Atlas's tag vocabulary: `tenant:*`, `feature:*`, `intent:*`, `prompt:*`, `scenario:*`
+- Atlas's tag vocabulary: `tenant:*`, `feature:*`, `intent:*`, `prompt:*`, `scenario:*` (a replayed day also carries the plain tag `replay`, under the store's own trace ids)
+
 
 Tags versus metadata. Tags are short strings with few distinct values, for filtering: tenant, feature, prompt version. Metadata is a dictionary you read when you open the trace. Tenant goes in both because we filter by it and we read it. Never make a tag out of a user ID; that's what user ID is for, and a tag with thousands of values is useless as a filter.
 
@@ -837,7 +838,9 @@ Observability has a bill and a blast radius of its own. Mask before export. Clip
 - Mistake: a mask function that only handles `str`. Nothing is masked; the payloads are dicts and lists. Recurse.
 - Mistake: masking in the tool instead of the client. The message still reaches Langfuse via the agent's input. Mask at the export boundary. Atlas's OTel setters mask too (`ga._safe`), so both paths are covered.
 - "Does `mask` also apply to other instrumentors' span attributes?" Not by default; `mask_otel_spans=` is the separate hook for that. Section 10.2.
-- `user.id` is an identifier you chose to keep, so it's not masked; Section 10 hashes it in the collector.
+- `user.id` is an identifier you chose to keep, so it's not masked in-process; the collector deletes it on export (Section 10.2).
+
+
 - `sample_rate` must be between 0 and 1; the client raises otherwise.
 
 ---
