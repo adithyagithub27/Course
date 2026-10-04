@@ -69,7 +69,7 @@ Command for each row: `OFFLINE=1 make replay <flags> STORE=.atlas/<name>.sqlite`
 | All three | `CACHE=1 DIET=1 ROUTER=1` | **$19.07** | −66.1 % | $0.0048 | 68.0 % | 3,687 ms |
 
 Per tenant, all three levers: ops $5.97, finance $4.49, eng $4.32, hr $4.28. Per feature, all three levers (`rollup(store.cost_records("request"), "feature")`): policy_question $17.56 (6,420 requests), create_ticket $0.64, ticket_lookup $0.30, password_reset $0.25, shipment_status $0.19, escalation $0.11, other $0.01.
-Router run by model (`rollup(store.cost_records("generation"), "model")` on the `ROUTER=1` store): gpt-4.1-mini 13,344 calls $43.70 · gpt-4.1-nano 6,700 calls $3.05 · gpt-4.1 43 calls $0.32. Routing sends 6,700 of 20,087 calls to gpt-4.1-nano (simple intents) and the 43 escalation requests straight to gpt-4.1, so router runs report 0 `escalated` outcomes (10,112 resolved). Challenge 6.8's −40 % target ($33.77) is met by caching alone.
+Router run by model (`rollup(store.cost_records("generation"), "model")` on the `ROUTER=1` store): gpt-4.1-mini 13,344 calls $43.70 · gpt-4.1-nano 6,700 calls $3.05 · gpt-4.1 43 calls $0.32. Routing sends 6,700 of 20,087 calls to gpt-4.1-nano (simple intents) and the 43 escalation requests straight to gpt-4.1, so router runs report 0 `escalated` outcomes (10,112 resolved). Challenge 6.8's −40 % target ($33.77) is **not** met by caching alone ($37.00, −34 %); caching plus the context diet ($22.71) clears it.
 
 ### The one demo request (6.4, 6.5)
 

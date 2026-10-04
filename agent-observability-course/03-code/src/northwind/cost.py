@@ -113,6 +113,12 @@ class Rollup:
 
     @property
     def cost_per_resolved(self) -> Decimal | None:
+        """Cost per resolved *request* in this rollup.
+
+        Not the report's "cost per resolved session", which divides the day's cost by the
+        number of sessions that ended resolved (``console.data`` and ``report.py``). Keep the
+        two apart on slides: per request is a unit cost, per session is what finance asks for.
+        """
         return self.cost_usd / self.resolved if self.resolved else None
 
     @property

@@ -21,6 +21,11 @@ services:
     environment:
       OFFLINE: ${OFFLINE:-1}
       OTEL_EXPORTER: otlp
+      # Langfuse keys from ../.env are blanked here on purpose: in the stack the collector is
+      # the only exporter to Langfuse (otel-collector.yaml). Leaving them set would make the
+      # app export the same spans directly as well, so every trace would appear twice.
+      LANGFUSE_PUBLIC_KEY: ""
+      LANGFUSE_SECRET_KEY: ""
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
       DEPLOYMENT_ENVIRONMENT: compose
     depends_on:
