@@ -75,3 +75,19 @@ Ranked by how many learners each would hurt and how early.
 4. Course 2: a go/no-go decision on finishing 41 lectures versus relaunching as a shorter course. Either way, freeze one taxonomy and one agent before writing another line.
 
 Each per-course report ends with a numbered fix list with file and line references.
+
+---
+
+## 6. Status after the fix pass (2026-10-04)
+
+Every observation in sections 1 to 3 above was worked through between 2026-10-02 and 2026-10-04. The frozen decisions are in `2026-10-01-fix-plan.md`; the Course 4 code reference is `course4-code-changes.md`; the Course 2 writers' reference is `course2-bible.md`.
+
+| Course | Scripts | Code | Visuals | Docs | Ready to record? |
+|---|---|---|---|---|---|
+| **Course 3: Voice AI Agents** | 97 lectures, prose matches code, recap and section-end cards, no avatar run over 140 words | 233 passed, 32 live-only skipped; `uv.lock` committed | 16 diagrams, 15 decks | Curriculum, labs, assessments, listing synced (683 min video) | **Yes.** Record the Section 3 pilot per `PRODUCTION-HANDOFF.md`. |
+| **Course 4: Observability** | 105 lectures rewritten against the fixed code and one numbers card | 419 passed; 10 further bugs fixed (keyed PII hash, replay masking, timeouts, judge, annotation) | 12 diagrams, 15 decks | Labs, projects, assessments, incidents and production docs synced (627 min video) | **Yes**, after the live captures listed in `MY_DECISIONS_REQUIRED.md`. |
+| **Course 2: Agent Testing** | 55 lectures written in the pipeline format (41 new, 13 converted, 8.5 added) | 204 passed offline; 61 runnable demos; current DeepEval 4, RAGAS 0.4, Langfuse 4, MCP 2.2 | 16 diagrams, 16 decks | Curriculum, 12 labs, 5 projects, 50 demo specs, positioning, status docs synced (400 min video) | **After owner items:** Garak run, live re-capture of mock numbers, openai 2.x vs 3.x decision. |
+
+Cross-course: the premium avatar look (white or slate-blue shirt, charcoal blazer, `09-heygen/backgrounds/studio-navy.png`) is specified in `09-heygen/avatar-config/PENDING.md`; `heygen_batch.py` takes an image background. `BUILD_LOG.md` exists and is empty until the first export.
+
+Known open items that need the owner's machine or accounts: HeyGen avatar, voice and look creation; Langfuse, GitHub Actions, Grafana and Streamlit screen captures; Twilio numbers; a real Garak scan; live re-capture of every figure marked "re-capture live" in the speaker notes.
