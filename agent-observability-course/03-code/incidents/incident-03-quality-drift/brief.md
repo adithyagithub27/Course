@@ -8,7 +8,7 @@
 
 - Grafana: latency, error rate, cost — all **green**. Two of them look *better*: cost per request is down about 7% since late Monday morning and p95 latency fell from ~3.5 s to ~2.0 s.
 - `atlas_feedback_total`: too sparse to read. Four to eleven thumbs an hour; the thumbs-down rate bounces between 0% and 50% from hour to hour, before and after lunch. The one comment that recurs is `unhelpful`.
-- Ops Console, Quality page: the sampled judge's `judge_grounded` hourly mean runs 0.92–0.95 all morning, then **0.57 in the 11:00 bin** on Monday 2026-09-14 and 0.51–0.60 for the rest of the day; `judge_resolved` goes 0.90 → 0.65 in the same hour. `judge_safe_escalation` does not move.
+- Ops Console, Quality page: the sampled judge's `judge_grounded` hourly mean runs 0.92–0.95 all morning, then **0.57 in the 11:00 bin** on Monday 2026-09-14 and about 0.5–0.6 for the rest of the day; `judge_resolved` goes 0.90 → 0.65 in the same hour. `judge_safe_escalation` does not move.
 - The console's batch rules did raise tickets that nobody read: `judge_drift` (`judge_overall` PSI 2.0, mean moved −19.3%) and `slo_burn:quality` at 4.49. `deploy/alerts.yml` has `AtlasJudgeScoreLow`, but it did not fire.
 - Nobody deployed code on Monday. The Langfuse prompt `atlas-system` has two versions.
 
