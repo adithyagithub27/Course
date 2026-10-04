@@ -15,17 +15,17 @@ Course 4 in the Build → Test → Deploy → Operate series. Complete productio
 
 | Field | Value |
 |---|---|
-| Runtime | ≈10.5 h video (629 min), 15 sections, 92 video lectures + 13 quizzes |
+| Runtime | ≈10.5 h video (627 min), 15 sections, 91 video items (76 lectures, 7 labs, 5 challenges, 3 assignments) + 13 quizzes + a practice test |
 | Level | Intermediate Python (beginner-safe first three sections) |
 | Stack | langfuse 4, opentelemetry-sdk 1.45, GenAI semconv 0.66, openinference, litellm, langsmith, deepeval, prometheus-client, fastapi, Docker Compose (Langfuse, OTel Collector, Prometheus, Grafana) |
 | Student cost | ≈$5-15 in API usage; everything runs offline via the mock LLM |
-| Deliverables | 1 GitHub repo, 7 labs, 2 projects + capstone + domain swap, 5 challenges, 13 quizzes, 1 practice test, 5 coding exercises, 3 incident datasets |
+| Deliverables | 1 GitHub repo (401 offline tests), 7 labs, 2 projects + capstone + domain swap, 5 challenges, 13 quizzes, 1 practice test, 5 coding exercises, 4 incident datasets (3 with reveals, 1 for Project 2) |
 
 ## Folder map
 
 | Folder | Contents |
 |---|---|
-| `01-curriculum/` | Source of truth: sections, lectures, durations, file map, verified API reference |
+| `01-curriculum/` | Source of truth: sections, lectures, durations, file map, verified API reference; `numbers-card.md` holds every number the scripts may quote |
 | `02-lecture-scripts/` | Narration-ready scripts with production cues |
 | `03-code/` | Student repository: Atlas agent, telemetry, simulator, evals, console, incidents, deploy, tests, CI |
 | `04-labs/` | Guided labs |
@@ -33,9 +33,10 @@ Course 4 in the Build → Test → Deploy → Operate series. Complete productio
 | `06-assessments/` | Quizzes, practice test, assignments, coding exercises |
 | `07-udemy-listing/` | Landing page and course settings package |
 | `08-marketing/` | Launch, SEO, content, cross-sell |
-| `09-production/` | Recording guide, slides, schedule, budget, QA; reuses the HeyGen tools from Course 3 |
+| `09-production/` | Recording guide, slide-deck outline, video plan, schedule, budget, QA; reuses the HeyGen and slide tools from Course 3 (`voice-ai-agents-course/09-production/tools/`) |
+| `10-graphics/` | D1-D12 diagram masters (`diagrams/`) and the generated per-section slide decks (`slides/`); regenerate with `python voice-ai-agents-course/09-production/tools/slide_builder.py --course agent-observability-course` |
 | `10-resources/` | Student downloads: worksheets, checklists, templates, decision matrices |
 
 ## Version note
 
-Written against the package versions listed in `01-curriculum/curriculum.md` as installed on 2026-09-28. Re-run `make test` before recording and pin versions in `03-code/pyproject.toml`.
+Written against the package versions listed in `01-curriculum/curriculum.md` as installed on 2026-09-28. Re-run `make test` (401 passed) and `make budget-check` (5 passed) before recording and pin versions in `03-code/pyproject.toml`. The offline fixture day is `OFFLINE=1 make replay` with the Makefile defaults: seed 7, Monday 2026-09-14, tenants `ops`, `finance`, `hr`, `eng`, $56.28.

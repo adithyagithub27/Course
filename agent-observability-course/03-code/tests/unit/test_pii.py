@@ -99,9 +99,12 @@ def test_hash_is_keyed_hmac(monkeypatch):
     from northwind.pii import DEMO_PII_HASH_KEY
 
     demo = short_hash("NW-12345")
-    assert demo == hmac.new(
-        DEMO_PII_HASH_KEY.encode(), b"northwind:NW-12345", hashlib.sha256
-    ).hexdigest()[:8]
+    assert (
+        demo
+        == hmac.new(DEMO_PII_HASH_KEY.encode(), b"northwind:NW-12345", hashlib.sha256).hexdigest()[
+            :8
+        ]
+    )
     assert demo != hashlib.sha256(b"northwind:NW-12345").hexdigest()[:8]  # not the old salted hash
     monkeypatch.setenv("ATLAS_PII_HASH_KEY", "s3cret")
     keyed = short_hash("NW-12345")

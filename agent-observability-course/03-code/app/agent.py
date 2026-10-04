@@ -565,7 +565,9 @@ class AtlasAgent:
                         else getattr(last, "model", None),
                         finish_reasons=[finish] if finish else None,
                         ttft_s=ttft_s,
-                        completion_start_time=(t0 + timedelta(seconds=ttft_s)) if ttft_s is not None else None,
+                        completion_start_time=(t0 + timedelta(seconds=ttft_s))
+                        if ttft_s is not None
+                        else None,
                     )
                     ga.set_cost(span, cost)
                     if self.capture_content:
@@ -612,9 +614,7 @@ class AtlasAgent:
                     # offline, the mock says how long the call ran before timing out
                     sim_ms = getattr(exc, "simulated_latency_ms", None)
                     gen.latency_ms = (
-                        float(sim_ms)
-                        if sim_ms is not None
-                        else (self._clock() - started) * 1000.0
+                        float(sim_ms) if sim_ms is not None else (self._clock() - started) * 1000.0
                     )
                     result.generations.append(gen)
                     result.retries += 1

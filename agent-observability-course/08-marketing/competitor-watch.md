@@ -30,7 +30,7 @@ Vendors publish free docs, courses and examples that shape what students expect 
 
 | Source | Type | Monitor |
 |---|---|---|
-| **Langfuse** docs, cookbooks, YouTube and release notes | Framework (our primary backend) | **Breaking SDK changes** (we pin 4.x; verify `update_current_trace` naming per curriculum §6), new dashboard/alerting features that change 9.4, changes to the self-host compose file (13.1), pricing and free-tier changes (affects `cost-guide.md`) |
+| **Langfuse** docs, cookbooks, YouTube and release notes | Framework (our primary backend) | **Breaking SDK changes** (we pin 4.15.x; re-verify `propagate_attributes`, `update_current_generation` and `score_current_trace` per curriculum §6), new dashboard/alerting features that change 9.4, changes to the self-host compose file (13.1), pricing and free-tier changes (affects `cost-guide.md`) |
 | **OpenTelemetry** GenAI semantic conventions and `opentelemetry-semantic-conventions` releases | Standard | **Attribute renames or graduation from incubating** (affects 3.3, 3.4, the cheat sheet and the captions); the status of the OpenAI instrumentor in otel-contrib (the curriculum notes it was broken at verification time; if it is fixed, 3.5 gets a note) |
 | **OpenInference / Arize Phoenix** docs and courses | Framework + backend (3.5, 12.3) | Convention changes vs GenAI semconv; Phoenix feature parity claims; Arize's free educational content on agent evaluation |
 | **LangSmith** docs, LangChain Academy courses | Backend (12.2) | Free LangSmith courses from LangChain Academy set expectations for "observability" tutorials; watch for OTel ingestion changes and pricing |

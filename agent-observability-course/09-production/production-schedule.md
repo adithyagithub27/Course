@@ -2,7 +2,7 @@
 
 > Assumes a single instructor-producer, part-time help for editing optional, and the curriculum done (it is). Scripts, code, labs and assessments may already be partly drafted in `02-lecture-scripts/` to `06-assessments/`. If they are, compress Weeks 1-3. Target Udemy launch in **Q2 2027** (the market research roadmap). Work backwards from the chosen launch date, and let the marketing plan (`../08-marketing/launch-plan.md`) start at W-4, which overlaps Weeks 9-12 here.
 
-**Scope (curriculum tables):** 76 video lectures (629 min of non-quiz video by table minutes, incl. labs, challenges and assignment intros; the curriculum header says ≈10.6 h) + 7 lab walkthroughs + 5 challenge videos (4.7, 6.8, 11.2, 11.3, 11.4) + 13 quizzes + practice test + 5 coding exercises + 2 projects + capstone + domain swap. Seven long lectures (6.3, 6.6, 11.2, 11.3, 11.4, 14.2, 14.3) are uploaded as Part A / Part B.
+**Scope (curriculum tables):** 91 video items: 76 lectures (627 min of non-quiz video by table minutes, incl. labs, challenges and assignment intros; ≈10.5 h) + 7 lab walkthroughs + 5 challenge videos (4.7, 6.8, 11.2, 11.3, 11.4) + 13 quizzes + practice test + 5 coding exercises + 2 projects + capstone + domain swap. Seven long lectures (6.3, 6.6, 11.2, 11.3, 11.4, 14.2, 14.3) are uploaded as Part A / Part B.
 
 ---
 
@@ -10,7 +10,7 @@
 
 | # | Milestone | End of week | Exit criteria |
 |---|---|---|---|
-| M1 | Code freeze v1 + frozen fixture day | 3 | `make test` green offline (150+ tests); `make replay` deterministic for the chosen seed; `[NUMBERS]` blocks generated for Sections 6-9, 11, 14; versions pinned (langfuse 4.15.x, opentelemetry-sdk 1.45.x, semconv 0.66b0, litellm 1.103.x, deepeval 4.2.x); live path (2.3) works with keys; three incident datasets final with solutions |
+| M1 | Code freeze v1 + frozen fixture day | 3 | `make test` green offline (401 tests); `OFFLINE=1 make replay` reproduces `numbers-card.md` (seed 7, 2026-09-14, $56.28); numbers card regenerated for Sections 6-9, 11, 14; versions pinned (langfuse 4.15.x, opentelemetry-sdk 1.45.x, semconv 0.66b0, litellm 1.103.x, deepeval 4.2.x); live path (2.3) works with keys; three incident datasets final with solutions, plus incident 4 (solution instructor-only) |
 | M2 | Pilot lectures approved | 4 | 4 pilot lectures (1.2 SL, 2.3 SC live, 6.3 SC capture-heavy, 11.2 CH investigation) fully produced and QA'd; pipeline timing measured; Track C legibility confirmed on a phone |
 | M3 | Sections 1-5 recorded | 6 | Raw screencasts, captures and avatar renders done |
 | M4 | Sections 6-10 recorded | 8 | Same |
@@ -24,8 +24,8 @@
 
 | Week | Focus | Tasks | Output |
 |---|---|---|---|
-| 1 | **Code, environment, fixture** | Run the full repo on clean macOS, Windows (WSL) and Linux; fix setup friction; pin versions and record them in the README; choose the seed and fixture day; set up the recording accounts (`recording-guide.md` §6.2); test the capture rig (Langfuse 150%, Grafana kiosk, Ops Console theme) | Clean-machine install log; pinned `pyproject.toml`; frozen replay snapshot |
-| 2 | **Scripts S1-S8 final** | Script review against the PRODUCTION-GUIDE 7-beat structure and word budget; check every code line and attribute name against curriculum §6; paste `[NUMBERS]` blocks from `make report`; build diagrams D1-D7 | Final scripts S1-S8; diagrams D1-D7 |
+| 1 | **Code, environment, fixture** | Run the full repo on clean macOS, Windows (WSL) and Linux; fix setup friction; pin versions and record them in the README; confirm the fixture day (seed 7, Monday 2026-09-14) reproduces the numbers card; set up the recording accounts (`recording-guide.md` §6.2); test the capture rig (Langfuse 150%, Grafana kiosk, Ops Console theme) | Clean-machine install log; pinned `pyproject.toml`; numbers card re-verified |
+| 2 | **Scripts S1-S8 final** | Script review against the PRODUCTION-GUIDE 7-beat structure and word budget; check every code line and attribute name against curriculum §6; check every number against `numbers-card.md`; regenerate decks with `slide_builder.py` (diagrams D1-D12 are built) | Final scripts S1-S8; diagrams D1-D7 |
 | 3 | **Scripts S9-S15 final + code freeze (M1)** | Same for S9-S15; diagrams D8-D12; incident datasets final and `solution.md` written; capstone reference solution runs end to end; compose stacks verified on the recording machine | Final scripts; all diagrams; **M1** |
 | 4 | **Pilot (M2)** | Produce 1.2, 2.3, 6.3, 11.2 end to end; measure hours per finished minute; test Track C legibility on a phone at 720p; adjust the plan; get feedback from 2-3 reviewers (ideally one who runs agents in production) | 4 finished lectures; revised estimates; **M2** |
 | 5 | **Record S1-S3** | HeyGen batch render S1-S3; OBS sessions S2-S3 (incl. 2.3 live, 2.4 console reference frame); demos 1.1 (cost meter), 3.6 (broken traces) | Raw S1-S3 |
@@ -48,17 +48,17 @@
 | CH incident investigation + reveal | 2.5-3.0 h (rehearsal, solution-free checkout, red herring, two uploads) |
 | TH (avatar) | 0.5-1.0 h |
 
-At ~630 video minutes, total effort lands in the **hundreds of hours**. The Week 4 pilot exists to replace these guesses with real numbers. If the pilot shows more than a 20% overrun, either extend to 14 weeks or move Section 12 (portability) to a post-launch update (keep 12.5 decision matrix at launch).
+At ~627 video minutes, total effort lands in the **hundreds of hours**. The Week 4 pilot exists to replace these guesses with real numbers. If the pilot shows more than a 20% overrun, either extend to 14 weeks or move Section 12 (portability) to a post-launch update (keep 12.5 decision matrix at launch).
 
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
 | GenAI semantic conventions rename attributes mid-production (they are incubating) | Re-records of 3.3, 3.4, cheat sheet, captions | Pin `opentelemetry-semantic-conventions` 0.66b0; say "incubating, names may change" on screen; use the `g.GEN_AI_*` constants in code so a rename is a version bump, not a code change; plan a post-launch update window |
-| Langfuse SDK minor release changes a method name (curriculum flags `update_current_trace`) | Code lectures go stale | Pin langfuse 4.15.x; record Section 4 in one tight window; keep the version banner; pinned Q&A thread for breaking changes |
+| Langfuse SDK minor release changes a method name (`propagate_attributes`, `update_current_generation`, `score_current_trace`) | Code lectures go stale | Pin langfuse 4.15.x; record Section 4 in one tight window; keep the version banner; pinned Q&A thread for breaking changes |
 | Langfuse self-host compose file changes | 13.1 screencast out of date | Record 13.1 last within Week 9; flag "verify against current compose" on screen; keep a text "current steps" resource |
 | OpenAI model renames or pricing changes | Numbers and price table stale | Models come from env vars in `config.py` (by design); `pricing.py` fallback table is dated; every dollar figure is labelled simulated with a price-table date; say "default model" in narration |
-| Numbers on screen drift from narration after a replay regeneration | Confusing lectures, bad reviews | One frozen fixture day (M1); `[NUMBERS]` blocks generated, not typed; regenerate and re-record a whole section if the replay changes |
+| Numbers on screen drift from narration after a replay regeneration | Confusing lectures, bad reviews | One fixture day (M1, deterministic replay); numbers card generated, not typed; regenerate and re-record a whole section if the replay changes |
 | Track C captures unreadable on phones | Core value of the course lost | Pilot legibility test in Week 4; the 25% rule in `recording-guide.md` §6.1 |
 | Exposed keys, project ids or org names in footage | Security incident, re-edit | Recording accounts, OBS masks, address bar crop, scrub pass, rotate keys after recording |
 | Docker/self-hosted stack too heavy for the recording machine or students' machines | 9.x and 13.x fail | Check RAM in Week 1; offline path and Langfuse Cloud remain the default; Section 13 is optional depth |

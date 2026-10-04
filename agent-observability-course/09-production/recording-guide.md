@@ -7,10 +7,10 @@
 ## 1. Workflow overview
 
 ```
-Script (02-lecture-scripts/) ──► Scene plan (per lecture) ──► [NUMBERS] block from the frozen replay
+Script (02-lecture-scripts/) ──► Scene plan (per lecture) ──► numbers checked against 01-curriculum/numbers-card.md
         │
         ├─► Avatar scenes ──► HeyGen batch render (per section; Course 3 tools by reference)
-        ├─► Slides/diagrams ──► Figma/Canva (K1-K7 scene kits, diagrams D1-D12)
+        ├─► Slides/diagrams ──► slide_builder.py decks (10-graphics/slides) + D1-D12 masters (10-graphics/diagrams)
         ├─► Screencasts ──► OBS (one session per section, same layout)
         └─► Dashboard/trace captures (Langfuse, Grafana, Ops Console) ──► OBS at fixed zoom + redaction masks
                      │
@@ -29,6 +29,7 @@ Lecture types from the curriculum map to recording methods:
 | CH challenge | 5 | Spec card → **pause card** → capture-scene solution or reveal (11.2-11.4 as Part A investigation / Part B reveal) |
 | LAB walkthrough | 7 | Short OBS walkthrough of the lab doc and expected result |
 | AS intro | 3 | Avatar + brief slide |
+| QZ intro | 14 | 13 section quizzes plus the 15.3 practice test: a short avatar intro over the quiz-topics slide (1:00 or less), no screen capture |
 
 **Split 6.3, 6.6, 11.2, 11.3, 11.4, 14.2 and 14.3 into Part A / Part B** at record time (same script, two uploads, each under ten minutes). Give Part B a 10-second recap hook instead of a cold hook.
 
@@ -63,8 +64,8 @@ Lecture types from the curriculum map to recording methods:
 | Minimap, breadcrumbs, extensions UI | Off |
 | Notifications | Do Not Disturb on the OS; close Slack/email; hide the dock and taskbar |
 | File label | Filename visible top-left (matches `03-code/` paths) |
-| Version banner | Corner note: "APIs verified on langfuse 4 / opentelemetry-sdk 1.45 / semconv 0.66 (incubating)" |
-| Log format | `LOG_LEVEL=INFO LOG_FORMAT=pretty` for recording; `LOG_FORMAT=json` only in 5.5 where JSON logs are the lesson |
+| Version banner | Corner note on every code lecture: "APIs verified on langfuse 4.15 / opentelemetry-sdk 1.45 / semconv 0.66b0 (incubating) / litellm 1.103" (curriculum §1) |
+| Logs | Atlas always logs JSON (`telemetry/logging_setup.py`); there is no pretty mode. Use `LOG_LEVEL=WARNING` when log lines would distract from the screen beat, and `LOG_LEVEL=INFO` in 5.5, where the JSON log with `trace_id` is the lesson |
 
 ## 4. Audio chain (narration)
 
@@ -81,7 +82,8 @@ Dynamic or small-diaphragm condenser mic
 
 ## 5. Demos: rehearsal rules
 
-- Run every demo **3 times before recording**. Demos in this course are deterministic when run in `OFFLINE=1` against the frozen day, so a demo that differs between rehearsals means the seed or the fixture changed: stop and find out why.
+- Run every demo **3 times before recording**. Demos in this course are deterministic when run in `OFFLINE=1` with the Makefile defaults (seed 7, Monday 2026-09-14, 4,000 sessions, `CACHE=0 DIET=0 ROUTER=0`), so a demo that differs between rehearsals means a lever, the seed or the store changed: stop and find out why. Remember the Makefile's `CACHE`/`DIET`/`ROUTER` override `ATLAS_*` variables in your shell; pass levers on the `make` line.
+- **Shell set-up for every session:** `.env` is not loaded automatically, so start each terminal with `set -a; source .env; set +a`. Read `/metrics` with `curl -sL` (the mount answers 307). For live Ops Console demos next to a running server, start it with `STREAMLIT_SERVER_HEADLESS=true make console STORE=...` and open the page URL directly (on an empty store the home page would replay a whole day into it). For trace waterfalls that look like a real model's, run Atlas with `ATLAS_MOCK_LATENCY_SCALE=1`.
 - **Live-LLM demos** (2.3, part of 6.6, 8.2, 13.5) are not deterministic. Record them as live, say "live request" on screen, and accept small differences from the script's numbers; the narration for these lectures must quote ranges, not exact figures.
 - **Keep genuine surprises when they teach something** (a cached-token share lower than expected in 6.4, a fallback that fires earlier than planned in 7.6). Cut surprises that are noise (a network blip).
 - Say the lecture ID and the take number out loud at the start of each take ("6.3A, take 2") to make editing easier.
@@ -119,7 +121,7 @@ Before recording:
 During recording:
 
 - [ ] Run demos with `pii.py` masking on, so the course demonstrates its own advice and no persona "employee id" appears unmasked.
-- [ ] Tenant names are the fixture names (`hr`, `it`, `ops`, `logistics`); persona names are fictional and obviously so.
+- [ ] Tenant names are the fixture names (`ops`, `finance`, `hr`, `eng`); persona names are fictional and obviously so; employee IDs follow `NW-` plus five digits (`NW-10433`).
 - [ ] If a real value leaks into a frame (a key, an email from a browser autofill), stop the take. Don't plan to fix it in post.
 
 After recording:
@@ -130,12 +132,12 @@ After recording:
 
 ### 6.3 Consistent (the Ops Console rule)
 
-- [ ] **One frozen replay for the whole course:** `OFFLINE=1 make replay SEED=<seed> DAY=2026-03-16`, snapshot committed to the production branch. Langfuse (re-import), Grafana (Prometheus snapshot or re-scrape of the same replay) and the Ops Console all show the same day.
+- [ ] **One fixture day for the whole course:** plain `OFFLINE=1 make replay` (seed 7, Monday 2026-09-14; `DAY=` is only for adding a second day to a two-day store, as in Lab 5). Lever comparisons go into their own stores (`make replay CACHE=1 STORE=.atlas/cache.sqlite`) and side by side on the Compare replays page. Langfuse (`make replay LANGFUSE=1`) and the Ops Console show the same day; Grafana shows live swarm traffic, not the replay.
 - [ ] `.streamlit/config.toml` pins the theme (design-system colours); Streamlit version pinned in `pyproject.toml`.
-- [ ] Page order fixed: Cost → Latency → Quality → Budgets → Alerts. Sidebar width fixed. Date range fixed to the fixture day (or fixture week for Sections 8 and 14).
+- [ ] Pages are the ones in `03-code/console/pages/`, in sidebar order: Live cost, Cost, Latency, Quality, Budgets, Traffic, Retrieval, Reliability, Safety, Alerts, Traces, Compare replays (Lab 5 adds My quality). Sidebar width fixed. Incident lectures open the incident store (`make console STORE=.atlas/incident-0N.sqlite`).
 - [ ] The browser window for the console is the same size in every lecture (save the OBS window-capture geometry; don't drag it between sessions).
-- [ ] **Numbers come from `make report DAY=…`**, pasted into the script's `[NUMBERS]` block. If the replay is regenerated (pricing table update, mock LLM change), regenerate the block and re-record every capture in that section.
-- [ ] Every dollar figure on screen carries the K5 footer `Simulated traffic · price table dated YYYY-MM-DD`; every offline latency figure carries `mock LLM latencies`.
+- [ ] **Numbers come from `01-curriculum/numbers-card.md`** (regenerated with `make replay`, `make report` and the console; the scripts quote it). If the code or the price table changes, regenerate the card, fix the scripts, and re-record every capture in the affected sections.
+- [ ] Every dollar figure on screen carries the K5 footer `Simulated traffic · verify current pricing`; every offline latency figure carries `mock LLM latencies`.
 - [ ] Between sections, re-open the console and compare the Cost page against the Section 2 capture frame by frame. Any drift (a changed column, a different colour) gets fixed before recording continues.
 
 ## 7. Screen content rules for observability lectures
@@ -150,21 +152,21 @@ After recording:
 
 | Lecture | What's special | How to record |
 |---|---|---|
-| 1.1 | The $4,000 weekend: cost meter climbing over a repeating red tool span, then the fixed run | Run the `loop` scenario against the frozen store with the Ops Console cost meter visible. Record at real speed; speed the counter up in the edit. Label `Simulated traffic` for the whole shot. Record the fixed run (step limit + budget + alert) in the same session so the console looks identical |
+| 1.1 | The $4,000 weekend: cost meter climbing, then the guarded run | `make loop-demo` with the guards off (`ATLAS_MAX_STEPS=0 ATLAS_MAX_TOOL_RETRIES=0`, `PACE=0.1`) into `STORE=.atlas/live.sqlite`, with the Live cost page open (`STREAMLIT_SERVER_HEADLESS=true make console STORE=.atlas/live.sqlite`, then `http://localhost:8501/Live_cost`). It ends at 549 steps and $4.90; then the default guard stops it at 6 steps and $0.0086. Record at real speed (about 50 s). Label `Simulated traffic` for the whole shot |
 | 2.3 | First live trace | Live request; say "live" on screen; keep the Langfuse trace open and collapsed before expanding. This trace is reused in the promo, so record a clean take |
-| 2.4 | Offline replay fills the store | Show the replay progress in the terminal, then the console. This is the first appearance of the console: this frame is the reference for rule 6.3 |
-| 3.2, 3.4 | Console exporter output | Pipe through `jq` or `--pretty` so spans wrap; highlight the attribute keys with a zoom-and-hold |
-| 3.6 | Three broken traces | Use the `BROKEN=<case>` toggles in `tests/integration/test_spans.py` fixtures (or an equivalent env toggle in `telemetry/otel_setup.py`); record each broken trace and its fix back to back |
-| 5.6 | The loop you can only see in a trace | Inject `loop`; read the waterfall top-down; the red repeated tool span is the visual |
-| 6.4-6.8 | Before/after cost | Replay twice (before, after) into two Langfuse environments or two console date ranges; show the two totals on one card |
-| 7.6 | Slow provider chaos | Inject `slow_provider` mid-replay; capture the console latency page and the Grafana p95 panel; the fallback-rate rise is the visual |
+| 2.4 | Offline replay fills the store | `OFFLINE=1 make replay` (about 20 s; $56.28, 10,184 requests), then `make console`. This is the first appearance of the console: this frame is the reference for rule 6.3 |
+| 3.2, 3.4 | Console exporter output | `OTEL_EXPORTER=console make run`; the exporter prints indented JSON per span, children first. Highlight the attribute keys with a zoom-and-hold |
+| 3.6 | Three broken traces | Each break is code on a slide plus a real test: `test_broken_orphan_span_is_detectable` builds the orphan on purpose; the other two breaks are caught by `test_tool_spans_are_children_of_agent`, `test_one_generation_per_model_call` and `test_double_instrumentation_is_idempotent` in `tests/integration/test_spans.py`. Record the test run once, red slides then green tests |
+| 5.6 | The loop you can only see in a trace | `make loop-demo` three ways into one store (guards off, default 6 steps, `ATLAS_MAX_TOOL_RETRIES=2`); open each `trace_id` on the Traces page; the red repeated tool span is the visual |
+| 6.4-6.8 | Before/after cost | One store per configuration (`make replay CACHE=1 STORE=.atlas/cache.sqlite`, and so on), then the Compare replays page: baseline $56.28, cache $37.00, diet $41.99, router $47.07, all three $19.07 |
+| 7.6 | Slow provider chaos | `make replay SCENARIO=slow_provider STORE=...`, then the console Latency page: p95 leaves the budget while retries, fallbacks and cost stay flat (the mock never times out, so offline no fallback fires; that flat line is the lesson) |
 | 8.2 | Live judge | Cap with `JUDGE_MAX_CALLS`; show the judge's own cost line item on screen |
-| 9.6 | An alert fires | Grafana alert state visible; time the replay so the alert fires within the lecture |
-| 11.2-11.4 | Incident investigations (Part A) and reveals (Part B) | Record Part A from a checkout **without** `solution.md`; rehearsed path with one `[RED HERRING]`; full-screen pause card with a static timer graphic; Part B opens with a 10-second recap |
+| 9.6 | An alert fires | `make stack`, `ATLAS_SCENARIO=loop` in `.env` for the stack's Atlas container, `make swarm`; Prometheus Alerts (port 9091) shows the rule pending then firing (Lab 6). Time-lapse the wait |
+| 11.2-11.4 | Incident investigations (Part A) and reveals (Part B) | `make incident N=<n>`, then `make console STORE=.atlas/incident-0N.sqlite`; each `[SCREEN: Exhibit n. …]` cue is one console page or trace. Don't open `solution.md` on screen; full-screen pause card with a static timer graphic; Part B opens with a 10-second recap |
 | 12.2, 12.3 | Same trace in LangSmith and Phoenix | Dedicated free-tier accounts; same redaction masks; show the exporter line that changed |
 | 13.1 | Self-hosted Langfuse compose up | Show the compose file with a `verify against current Langfuse compose` note; the services starting; the first project created. Mask any generated secret in the compose `.env` |
 | 13.3 | CI budget gate | A prepared failing PR, then the fix; GitHub org avatar masked |
-| 13.5 | Kill the observability backend | Stop the Langfuse container mid-swarm; show Atlas still answering and the exporter's queue/timeouts in the log |
+| 13.5 | Kill the observability backend | Stop the collector container mid-swarm (`make stack`, `make swarm`); show Atlas still answering, `/healthz` `exporter_health` counting failures, and the `telemetry exporter … dropping spans` warning in the log |
 | 14.1a | Capstone gate | Full-screen pause card: "Stop here. Build it from the brief. Time box: one week." |
 | 15.2 | Careers | No salary figures on screen or in narration |
 
@@ -178,7 +180,7 @@ Build these into production. They aren't lecture content, but they affect rating
 4. **Failure-first demos.** Start each build section (3, 5, 6, 7, 8, 13) with about 30 seconds of the broken version (an orphan span, a runaway loop, a bill by tenant that doesn't add up, a p95 doubling, a green dashboard over unhappy users, a dead backend) before building the fix.
 5. **Investigate first.** In 11.2-11.4, the pause card comes before any hint. Q&A pinned post explains how to post hypotheses with a spoiler tag.
 6. **Q&A seeding.** On launch day, post the five most likely questions per section with answers (draw them from `../10-resources/troubleshooting.md` and the beta feedback). Pin the setup, versions, Docker and incident-lab threads.
-7. **Announce version pins.** Put "Verified on langfuse 4 / otel 1.45 / semconv 0.66 (incubating)" on the **first slide of every code lecture**, and keep a pinned Q&A thread for breaking changes and attribute renames.
+7. **Announce version pins.** Put "Verified on langfuse 4.15 / opentelemetry-sdk 1.45 / semconv 0.66b0 (incubating) / litellm 1.103" on the **first slide of every code lecture**, and keep a pinned Q&A thread for breaking changes and attribute renames.
 
 Checklist for each lecture: see `qa-checklist.md` §1 (engagement mechanics item).
 

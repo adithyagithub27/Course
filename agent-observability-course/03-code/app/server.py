@@ -270,7 +270,9 @@ def create_app(
     # Mounted twice so both /metrics and /metrics/ answer 200 directly (a single mount at
     # "/metrics" made Starlette answer /metrics with a 307 redirect to /metrics/).
     metrics_asgi = metrics.metrics_app()
-    app.add_route("/metrics", _asgi_endpoint(metrics_asgi), methods=["GET"], include_in_schema=False)
+    app.add_route(
+        "/metrics", _asgi_endpoint(metrics_asgi), methods=["GET"], include_in_schema=False
+    )
     app.mount("/metrics/", metrics_asgi)
 
     @app.get("/healthz")

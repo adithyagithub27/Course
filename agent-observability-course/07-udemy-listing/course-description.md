@@ -60,7 +60,7 @@ By the end, Atlas has:
 - **Operate (Sections 8-11):** online evaluation and drift, SLIs, SLOs, dashboards and alerts, telemetry privacy and governance, and the incident labs
 - **Choose and ship (Sections 12-15):** portability and alternatives, self-hosting and CI budget gates, the capstone Atlas Ops Console, a domain-swap project, and a careers lecture on LLMOps, AI platform and AI SRE roles with interview questions
 
-**What you get:** about 10.6 hours of video across 15 sections, a complete GitHub code repository with 150+ offline unit tests, 7 guided labs, 5 build-it-yourself challenges, 2 projects plus a capstone and a domain-swap project, 13 section quizzes, a 40-question practice test, 5 in-browser coding exercises, 3 incident datasets, and downloadable cheat sheets, templates and checklists: cost guide, latency budget worksheet, runbook, incident and postmortem templates, telemetry governance checklist, backend decision matrix, production checklist, instrumentation template, GenAI semantic conventions cheat sheet, Langfuse cheat sheet, interview questions, glossary and troubleshooting guide.
+**What you get:** about 10.5 hours of video across 15 sections, a complete GitHub code repository with 401 offline tests, 7 guided labs, 5 build-it-yourself challenges, 2 projects plus a capstone and a domain-swap project, 13 section quizzes, a 40-question practice test, 5 in-browser coding exercises, 4 incident datasets (three with reveal lectures, one you investigate alone), and downloadable cheat sheets, templates and checklists: cost guide, latency budget worksheet, runbook, incident and postmortem templates, telemetry governance checklist, backend decision matrix, production checklist, instrumentation template, GenAI semantic conventions cheat sheet, Langfuse cheat sheet, interview questions, glossary and troubleshooting guide.
 
 **Part of a series.** This is Course 4 in a Build → Test → Deploy → Operate series with *Generative AI & AI Agents: Zero to Production*, *AI Agent Testing & Evaluation* and *Production Voice AI Agents with Python*. It stands on its own, and you don't need the other courses. Where it helps, it points to the testing course for offline evals and to the voice course for latency budgets.
 
@@ -79,7 +79,7 @@ If you can call an LLM from Python, this course teaches you to run agents in pro
 - The "$4,000 weekend" is labelled as a fictional scenario in the first paragraph.
 - The description has no external links, no coupon codes and no off-platform contact details. Udemy's promotional rules don't allow them in the landing page (verify current policy).
 - The description makes no market, competitor or salary claims. The careers lecture (15.2) also has no salary figures.
-- Counts match the curriculum: ~10.6 h video, 15 sections, 7 labs, 5 challenges, 2 projects + capstone + domain swap, 13 quizzes, 40-question practice test, 5 coding exercises, 3 incident datasets. The curriculum header says 92 lectures; the lecture count is not quoted here because Part A/B splits change what Udemy displays (see `publish-checklist.md` §0).
+- Counts match the curriculum: ~10.5 h video (627 min), 15 sections, 7 labs, 5 challenges, 2 projects + capstone + domain swap, 13 quizzes, 40-question practice test, 5 coding exercises, 4 incident datasets. The lecture count (91 video items) is not quoted here because Part A/B splits change what Udemy displays (see `publish-checklist.md` §0).
 
 ---
 

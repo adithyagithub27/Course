@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Working title | AI Agent Observability & Cost Control: LLMOps in Production with OpenTelemetry & Langfuse |
-| Runtime | ≈10.5 h video (629 min) across 15 sections; 105 curriculum items = 92 video lectures + 13 quizzes; ≈11.2 h including quizzes |
+| Runtime | ≈10.5 h video (627 min) across 15 sections; 105 curriculum items = 91 video items (76 lectures, 7 labs, 5 challenges, 3 assignments) + 13 section quizzes + the practice test; ≈11.2 h including quizzes |
 | Level | Intermediate. Basic Python and one LLM API call before. Sections 1-3 are beginner-safe. |
 | Running example | **"Atlas"**, the internal IT and HR helpdesk agent at **Northwind Logistics** (fictional, 4 departments as tenants). Atlas answers policy questions from a knowledge base, looks up and creates tickets, resets passwords after verification, and checks shipment status. Served over HTTP so traffic can be generated. |
 | The twist | A **traffic simulator** ("the swarm") replays a realistic day of multi-tenant load, deterministically, with injectable incidents (runaway loop, context bloat, retry storm, provider slowdown, prompt version regression). Students always have data to look at, even without spending money. |
@@ -47,63 +47,73 @@ Lives in `agent-observability-course/03-code/`. Scripts and labs must reference 
 03-code/
 ├── README.md                       # setup, run commands, lecture→file map, offline mode
 ├── pyproject.toml                  # pinned majors; extras: dev, langsmith, phoenix, dashboards
-├── .env.example                    # OPENAI_API_KEY, LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL, OFFLINE, model env vars
-├── Makefile                        # install | run | swarm | replay | console | test | eval | budget-check | lint
+├── .env.example                    # OPENAI_API_KEY, LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL, OFFLINE, model env vars (not auto-loaded: `set -a; source .env; set +a`)
+├── .env.chaos.example              # live (OFFLINE=0) chaos settings for Section 7
+├── Makefile                        # install | run | swarm | replay | loop-demo | console | test | judge | feedback | drift | dataset | report | budget-check | incident | stack | langfuse-up | student-repo
 ├── src/northwind/                  # pure Python, no network, fully unit-tested
 │   ├── config.py                   # env-driven settings: models, budgets, sampling rate, OFFLINE
 │   ├── pricing.py                  # price table (from litellm.model_cost with a pinned fallback), per-token math incl. cached + reasoning tokens
 │   ├── cost.py                     # cost per request/session/user/tenant/feature; showback aggregation
-│   ├── budget.py                   # per-tenant budgets, soft/hard caps, spend windows, anomaly detection (z-score / EWMA)
+│   ├── budget.py                   # per-tenant budgets (BudgetGuard), soft/hard caps over a rolling 24 h, EWMAAnomalyDetector
 │   ├── tokens.py                   # approximate token counter (no network; tiktoken optional) + context-diet helpers
 │   ├── latency.py                  # TTFT/TPOT/total, percentiles, budgets, violations
 │   ├── slo.py                      # SLI definitions, error budgets, burn rate
 │   ├── sampling.py                 # head/tail sampling policies for traces and judge sampling
-│   ├── drift.py                    # window comparison for scores, cost, latency; PSI/Jensen-Shannon lite
-│   ├── pii.py                      # mask emails, phones, employee IDs, card numbers in spans
+│   ├── drift.py                    # window comparison for scores, cost, latency; PSI with watch/alert thresholds
+│   ├── pii.py                      # mask emails, phones, employee IDs (NW-#####), cards; keyed HMAC hashes (ATLAS_PII_HASH_KEY); langfuse_mask
 │   ├── report.py                   # weekly ops report (markdown) from aggregated spans
 │   └── data/kb/*.md                # Northwind IT/HR knowledge base (VPN, laptop policy, leave, expenses, security, onboarding, payroll dates, ...)
 ├── app/                            # Atlas agent
-│   ├── agent.py                    # tool-calling loop over OpenAI Responses/Chat API, step limits, escalation model
+│   ├── agent.py                    # AtlasAgent: tool loop, step spans, step limit, tool-retry bound, budgets, escalation, FALLBACKS, CircuitBreaker, router mode
 │   ├── tools.py                    # search_knowledge_base, lookup_ticket, create_ticket, reset_password(verify), check_shipment
 │   ├── knowledge.py                # BM25-lite retriever over data/kb
+│   ├── guardrails.py               # prompt-injection check
+│   ├── langfuse_native.py          # the same agent with the Langfuse SDK (@observe; Section 4 and Challenge 4.7)
 │   ├── mock_llm.py                 # deterministic offline LLM with realistic usage + latency; scenario-aware
 │   ├── server.py                   # FastAPI: POST /chat, /feedback, /metrics (Prometheus), /healthz; tenant + user headers
-│   └── prompts.py                  # Atlas instructions v1, v2 (the regression used in Incident 3)
+│   └── prompts.py                  # Atlas instructions v1, v2 (Incident 3); CLI: register | promote --version N | show
 ├── telemetry/
 │   ├── otel_setup.py               # TracerProvider, resource attrs, exporters (console | otlp | file | langfuse)
 │   ├── genai_attrs.py              # helpers to set gen_ai.* attributes per semconv 0.66 (operation, model, usage, tool, agent)
-│   ├── langfuse_setup.py           # get_client(), observe decorators, sessions/users/tags, mask fn, environment/release
+│   ├── langfuse_setup.py           # init_langfuse, trace_attributes, create_score, get_prompt_text, push_prompts, promote_prompt
 │   ├── openinference_setup.py      # OpenAIInstrumentor().instrument(tracer_provider=...)
-│   ├── langsmith_setup.py          # traceable + wrap_openai (Section 12)
-│   ├── metrics.py                  # Prometheus counters/histograms: tokens, cost, latency, tool errors, budget hits
+│   ├── langsmith_setup.py          # wrap_openai_if_enabled (wired), traced and send_feedback helpers (Section 12)
+│   ├── metrics.py                  # Prometheus counters/histograms (tenant, feature, model, tool labels only); /metrics app
 │   ├── local_store.py              # SQLite/JSONL span store for offline mode and the Ops Console
 │   └── logging_setup.py            # structured JSON logs with trace_id correlation
 ├── simulator/
 │   ├── personas.py                 # employees, departments, intents, misbehaviour (injection, rambling)
-│   ├── scenarios.py                # a day of traffic; incident injectors: loop, context_bloat, retry_storm, slow_provider, prompt_regression
+│   ├── scenarios.py                # a day of traffic (seed 7, Monday 2026-09-14); scenarios loop, ticket_flaky, context_bloat, retry_storm, slow_provider, prompt_regression; incident presets
 │   ├── swarm.py                    # drives the FastAPI app at configurable RPS with seeds
-│   └── replay.py                   # offline: emit a full day of spans into local store / Langfuse without any LLM calls
+│   ├── replay.py                   # offline: emit a full day of spans into the local store / Langfuse without any LLM calls
+│   └── loop_demo.py                # one conversation through the loop scenario (make loop-demo)
 ├── evals/
 │   ├── online_judge.py             # sample traces, DeepEval G-Eval judge, write Langfuse scores
 │   ├── feedback.py                 # thumbs up/down → scores; correlate with judge
 │   ├── drift_report.py             # weekly window comparison using northwind.drift
 │   └── to_dataset.py               # promote bad traces to Langfuse dataset items (feeds Course 2 style offline evals)
 ├── console/
-│   └── ops_console.py              # Streamlit Ops Console over local store: cost, latency, quality, budgets, alerts
+│   ├── ops_console.py              # Streamlit entry point (and the text console)
+│   ├── data.py                     # StoreData and the per-page query functions
+│   └── pages/                      # Live cost, Cost, Latency, Quality, Budgets, Traffic, Retrieval, Reliability, Safety, Alerts, Traces, Compare replays
 ├── incidents/
-│   ├── incident-01-cost-spike/     # spans.jsonl, brief.md, (solution.md revealed in lecture 11.2)
-│   ├── incident-02-latency-regression/
-│   └── incident-03-quality-drift/
+│   ├── incident-01-cost-spike/     # spans.jsonl, scores.jsonl, brief.md, solution.md (revealed in 11.2); seed 11
+│   ├── incident-02-latency-regression/   # seed 22
+│   ├── incident-03-quality-drift/  # seed 33
+│   └── incident-04-project/        # Project 2; seed 44; solution.md instructor-only (stripped by make student-repo)
 ├── deploy/
 │   ├── docker-compose.langfuse.yml # self-hosted Langfuse (verify against current Langfuse compose)
 │   ├── docker-compose.observability.yml  # OTel Collector + Prometheus + Grafana
-│   ├── otel-collector.yaml
-│   ├── grafana/dashboards/atlas-ops.json
+│   ├── otel-collector.yaml         # memory_limiter, attributes/redact, tail_sampling, batch → Langfuse, Phoenix, debug, spanmetrics
+│   ├── prometheus.yml
+│   ├── alerts.yml                  # ten alert rules (SLO, cost, quality)
+│   ├── grafana/dashboards/atlas-ops.json   # 21 panels, variables tenant and feature
 │   └── Dockerfile
 ├── tests/
-│   ├── unit/                       # offline, no keys, 150+ tests over src/northwind + simulator + mock_llm
+│   ├── unit/                       # offline, no keys: src/northwind, simulator, mock_llm, console, evals
 │   ├── integration/                # FastAPI app in OFFLINE mode; span assertions via in-memory exporter
-│   └── budget/test_budget_gate.py  # CI gate: replay day, assert cost/session and p95 within budgets
+│   └── budget/test_budget_gate.py  # CI gate (5 tests): cost/session, p95, tenant soft cap, task-success SLO, input tokens per generation
+│                                   # make test = 401 passed
 └── .github/workflows/ci.yml        # unit + integration always; budget gate always (offline); live evals when secrets exist
 ```
 
@@ -124,7 +134,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 1.5 | Course roadmap and how to get the most out of it | SC | 6 | Fifteen sections, build log habit, Q&A, version banner (langfuse 4 / otel 1.45). | `03-code/README.md` |
 | 1.6 | Quiz: Foundations | QZ | 3 | 6 questions | `06-assessments/quizzes/section-01.md` |
 
-### Section 2: Setup and Your First Trace in 10 Minutes (≈38 min)
+### Section 2: Setup and Your First Trace in 10 Minutes (≈35 min)
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
@@ -153,7 +163,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
 | 4.1 | How Langfuse sits on OpenTelemetry | SL | 6 | SDK v4 is an OTel exporter plus semantics: observation types (agent, tool, generation, retriever, guardrail, chain), traces, sessions, users, environments, releases. | Diagram |
-| 4.2 | Code-along: `@observe` and observation types | SC | 9 | `observe(as_type="agent" / "tool" / "generation" / "retriever")`, `get_client()`, `update_current_generation(model=, usage_details=, cost_details=)`, `update_current_trace(session_id=, user_id=, tags=, metadata=)`. | `telemetry/langfuse_setup.py`, `app/agent.py` |
+| 4.2 | Code-along: `@observe` and observation types | SC | 9 | `observe(as_type="agent" / "tool" / "generation" / "retriever")`, `get_client()`, `update_current_generation(model=, usage_details=, cost_details=)`, `update_current_span(...)`; trace-level attributes come from `propagate_attributes` (4.3). | `telemetry/langfuse_setup.py`, `app/agent.py` |
 | 4.3 | Sessions, users, tenants and tags: slicing production | SC | 7 | Map Northwind departments to tags/metadata, employees to user_id, conversations to session_id. Filtering in the UI. | `app/server.py` |
 | 4.4 | Prompt management and versions | SC | 8 | `create_prompt`, labels (production/staging), `get_prompt` with fallback and cache, linking generations to prompt versions. Sets up Incident 3. | `app/prompts.py` |
 | 4.5 | Scores, datasets and the feedback loop | SC | 8 | `score_current_trace`, `create_score`, `create_dataset_item(source_trace_id=)`; how production becomes your next regression suite (bridge to Course 2). | `evals/to_dataset.py` |
@@ -242,9 +252,9 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
 | 11.1 | How to read an incident like an SRE | SL | 6 | Timeline first, then blast radius, then hypothesis, then evidence in traces. The investigation template. | `10-resources/incident-template.md` |
-| 11.2 | Incident 1: Monday's cost spike (investigate, then reveal) | CH | 12 | Students get `incident-01` spans and a brief; 8 minutes to find root cause (context bloat plus retry storm on one tenant). Reveal walkthrough. | `incidents/incident-01-cost-spike/` |
-| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Provider slowdown compounded by retrieval top-k change; fix with fallback and k. | `incidents/incident-02-latency-regression/` |
-| 11.4 | Incident 3: users are unhappy but nothing is red | CH | 12 | Prompt version 2 went to production without evals; judge scores drift; roll back via prompt labels. | `incidents/incident-03-quality-drift/` |
+| 11.2 | Incident 1: Monday's cost spike (investigate, then reveal) | CH | 12 | Students get `incident-01` spans and a brief; 8 minutes to find root cause (a retrieval change that switched the context diet off for ops, compounded by provider timeouts that resent each prompt). Reveal walkthrough and replay of the fix. | `incidents/incident-01-cost-spike/` |
+| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Provider slowdown (TTFT ×3.5) with a top-k change as the red herring; a 20 s timeout meant the breaker never saw a failure; fix with a budget-derived timeout and a breaker that counts slow calls. | `incidents/incident-02-latency-regression/` |
+| 11.4 | Incident 3: users are unhappy but nothing is red | CH | 12 | Prompt version 2 went to production without evals; judge scores drift while cost and latency improve; roll back with `python -m app.prompts promote --version 1`. | `incidents/incident-03-quality-drift/` |
 | 11.5 | Writing the postmortem | SC | 7 | Blameless postmortem template, action items that map to instrumentation, budgets and tests. | `10-resources/postmortem-template.md` |
 | 11.6 | Project 2: Investigate a fourth incident | AS | 3 | An unrevealed incident dataset; submit the postmortem. | `05-projects/project-2-incident-postmortem.md` |
 | 11.7 | Quiz: Incident response | QZ | 3 | 6 questions | `06-assessments/quizzes/section-11.md` |
@@ -254,8 +264,8 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
 | 12.1 | Vendor lock-in and the OTel escape hatch | SL | 6 | Because we emit OTel with GenAI conventions, backends are swappable. What is not portable (scores, prompts, datasets). | |
-| 12.2 | Code-along: same Atlas, traced to LangSmith | SC | 8 | `traceable`, `wrap_openai`, feedback API; what differs from Langfuse. | `telemetry/langsmith_setup.py` |
-| 12.3 | Arize Phoenix and OpenInference | SC | 7 | Point the OTLP exporter at Phoenix; OpenInference conventions vs GenAI conventions. | `telemetry/otel_setup.py` |
+| 12.2 | Code-along: same Atlas, traced to LangSmith | SC | 8 | `wrap_openai` (shipped), `traceable` and the feedback API (student additions); what differs from Langfuse. | `telemetry/langsmith_setup.py` |
+| 12.3 | Arize Phoenix and OpenInference | SC | 7 | Point the OTLP exporter at Phoenix (the stack already runs one on 6006); OpenInference conventions vs GenAI conventions. | `telemetry/otel_setup.py` |
 | 12.4 | OpenLLMetry, Datadog and the enterprise APMs | SL | 6 | When your company already has an APM; cost of LLM observability add-ons; hybrid setups. | |
 | 12.5 | Decision matrix: choosing your backend | SL | 5 | Control, cost, compliance, features, lock-in. | `10-resources/backend-decision-matrix.md` |
 | 12.6 | Quiz: Portability | QZ | 2 | 5 questions | `06-assessments/quizzes/section-12.md` |
@@ -265,26 +275,26 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
 | 13.1 | Self-hosting Langfuse with Docker Compose | SC | 9 | Compose up, env, first project, pointing Atlas at it. Flag: verify against the current Langfuse compose file. | `deploy/docker-compose.langfuse.yml` |
-| 13.2 | OTel Collector as the traffic cop | SC | 7 | Receivers, processors (attributes, tail sampling), exporters to two backends at once. | `deploy/otel-collector.yaml` |
-| 13.3 | Code-along: the CI budget gate | SC | 9 | `tests/budget/test_budget_gate.py` replays the day offline and fails the PR if cost per session or p95 regress beyond budget; GitHub Actions wiring; release tags in Langfuse. | `.github/workflows/ci.yml` |
+| 13.2 | OTel Collector as the traffic cop | SC | 7 | Receivers, processors (memory_limiter, attributes/redact, tail_sampling, batch), exporters to Langfuse and Phoenix at once. | `deploy/otel-collector.yaml` |
+| 13.3 | Code-along: the CI budget gate | SC | 9 | `tests/budget/test_budget_gate.py` replays the day offline and fails the PR on cost per session, p95, tenant soft cap, task success or input tokens per generation; GitHub Actions wiring; release on `service.version`. | `.github/workflows/ci.yml` |
 | 13.4 | Production readiness checklist for observability | SL | 6 | Sampling in prod, exporter back-pressure, secrets, dashboards as code, alert ownership. | `10-resources/production-checklist.md` |
-| 13.5 | Chaos demo: kill the observability backend | DM | 5 | Langfuse down: does Atlas still serve? Exporter timeouts, queue limits, dropping telemetry not requests. | `telemetry/otel_setup.py` |
+| 13.5 | Chaos demo: kill the observability backend | DM | 5 | The collector down: does Atlas still serve? Exporter timeouts, queue limits, dropping telemetry not requests. | `telemetry/otel_setup.py` |
 | 13.6 | Lab 7: Self-hosted stack end to end | LAB | 4 | Langfuse + collector + Grafana running locally, CI gate green. | `04-labs/lab-07-self-host.md` |
 
-### Section 14: Capstone: The Atlas Ops Console (≈55 min)
+### Section 14: Capstone: The Atlas Ops Console (≈53 min)
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
-| 14.1 | Capstone brief and acceptance criteria | SL | 6 | Fully instrumented Atlas, budgets, routing, online judge, dashboards, alerts, CI gate, weekly report. | `05-projects/capstone-atlas-ops.md` |
+| 14.1 | Capstone brief and acceptance criteria | SL | 6 | Fully instrumented Atlas, budgets, routing, online judge, dashboards, alerts, CI gate, weekly report; 24 acceptance tests (AT-01 to AT-24, pass at 15). | `05-projects/capstone-atlas-ops.md` |
 | 14.1a | Build it yourself first: the capstone gate | TH | 3 | Stop and build from the brief for one week before watching the reference solution. | same |
 | 14.2 | Reference solution part A: instrumentation and cost | SC | 12 | Assemble telemetry, pricing, budgets, routing. | `03-code/` |
-| 14.3 | Reference solution part B: quality, dashboards, alerts, CI | SC | 12 | Online judge, drift, Grafana, alert rules, budget gate. | `03-code/` |
-| 14.4 | The weekly ops report your manager reads | SC | 8 | `report.py` generates a one-page markdown: cost, quality, latency, incidents, recommendations. | `src/northwind/report.py` |
+| 14.3 | Reference solution part B: quality, dashboards, alerts, CI | SC | 10 | Online judge, drift, Grafana, alert rules, budget gate. | `03-code/` |
+| 14.4 | The weekly ops report your manager reads | SC | 8 | `make report` (`report.py`) generates a one-page markdown: cost, SLOs, showback by tenant, feature and model, incidents, recommendations. | `src/northwind/report.py` |
 | 14.5 | Capstone submission and portfolio | TH | 5 | Repo, dashboard screenshots, report, postmortems on GitHub and LinkedIn. | `05-projects/capstone-atlas-ops.md` |
 | 14.6 | Domain swap: observe a different agent | AS | 4 | Instrument the Course 3 voice agent or a student's own agent with the same stack; adapt SLIs. | `10-resources/instrumentation-template.md` |
 | 14.7 | Quiz: Capstone review | QZ | 5 | 6 questions | `06-assessments/quizzes/section-14.md` |
 
-### Section 15: Wrap-up and Careers (≈18 min)
+### Section 15: Wrap-up and Careers (≈17 min)
 
 | ID | Lecture | Type | Min | Objective and key points | Code / resource |
 |---|---|---|---|---|---|
@@ -300,7 +310,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | Section | Minutes |
 |---|---|
 | 1 Welcome | 36 |
-| 2 Setup and first trace | 38 |
+| 2 Setup and first trace | 35 |
 | 3 Tracing fundamentals | 52 |
 | 4 Langfuse deep dive | 55 |
 | 5 Agent patterns | 48 |
@@ -312,9 +322,9 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 | 11 Incident labs | 55 |
 | 12 Portability | 34 |
 | 13 Deploy and CI gates | 40 |
-| 14 Capstone | 55 |
-| 15 Wrap-up | 18 |
-| **Total** | **673 min incl. quizzes (≈11.2 h); 629 min video (≈10.5 h)** |
+| 14 Capstone | 53 |
+| 15 Wrap-up | 17 |
+| **Total** | **671 min incl. quizzes (≈11.2 h); 627 min video (≈10.5 h)** |
 
 Recording note: split 6.3, 6.6, 11.2, 11.3, 11.4, 14.2 and 14.3 into Part A / Part B uploads to keep videos under ten minutes.
 
@@ -337,7 +347,7 @@ Use these exact forms. Verified on the installed versions listed at the top.
 # Langfuse 4.x (OpenTelemetry-based)
 from langfuse import Langfuse, get_client, observe
 lf = Langfuse(public_key=..., secret_key=..., base_url=..., environment="dev", release="v1.2.0",
-              sample_rate=1.0, mask=mask_fn, flush_at=..., flush_interval=...)
+              sample_rate=1.0, mask=langfuse_mask, flush_at=..., flush_interval=...)   # northwind.pii.langfuse_mask (alias mask_fn)
 @observe(as_type="agent")            # also: "tool", "generation", "retriever", "guardrail", "chain", "embedding"
 def run_atlas(...): ...
 client = get_client()
@@ -345,7 +355,7 @@ client.update_current_generation(model=..., usage_details={"input": 1200, "outpu
                                  cost_details={"input": 0.00048, "output": 0.000288}, completion_start_time=..., model_parameters={...})
 client.update_current_span(metadata=..., level="WARNING", status_message=...)
 from langfuse import propagate_attributes
-with propagate_attributes(session_id=..., user_id=..., tags=[...], metadata={...}): ...   # update_current_trace does not exist in 4.15
+with propagate_attributes(session_id=..., user_id=..., tags=[...], metadata={...}): ...   # trace-level attributes, wrapped around the root
 client.score_current_trace(name="resolved", value=1, data_type="BOOLEAN", comment=...)
 client.create_score(trace_id=..., name="judge_grounded", value=0.8)
 client.create_prompt(name="atlas-system", prompt=..., labels=["production"], type="text")

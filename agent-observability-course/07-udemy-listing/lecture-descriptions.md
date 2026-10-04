@@ -1,6 +1,6 @@
 # Lecture Descriptions
 
-> One Udemy lecture description for every item in `01-curriculum/curriculum.md` (105 items: 76 video lectures, 7 labs, 5 challenges, 3 assignments/projects, 14 quizzes incl. the practice test). Paste into each lecture's **Description** field. Where the curriculum splits a long lecture into Part A / Part B uploads (6.3, 6.6, 11.2, 11.3, 11.4, 14.2, 14.3), use the same description for both parts and add "Part A:" or "Part B:" at the start; for the three incident challenges, Part A is the investigation and Part B is the reveal. Descriptions say what the student will do or learn. **No links, coupons or promotion** (Udemy rules; verify). The only exception is 15.4, the bonus lecture, and its links go in the lecture itself under Udemy's bonus-lecture rules.
+> One Udemy lecture description for every item in `01-curriculum/curriculum.md` (105 items: 76 video lectures, 7 labs, 5 challenges, 3 assignments/projects, 14 quizzes incl. the practice test; 627 min of video). Paste into each lecture's **Description** field. Where the curriculum splits a long lecture into Part A / Part B uploads (6.3, 6.6, 11.2, 11.3, 11.4, 14.2, 14.3), use the same description for both parts and add "Part A:" or "Part B:" at the start; for the three incident challenges, Part A is the investigation and Part B is the reveal. Descriptions say what the student will do or learn. **No links, coupons or promotion** (Udemy rules; verify). The only exception is 15.4, the bonus lecture, and its links go in the lecture itself under Udemy's bonus-lecture rules.
 
 > Type key: DM demo, SL slides, SC screencast, TH talking head/avatar, LAB lab, CH challenge (pause, then solution), QZ quiz/practice test, AS assignment/project.
 
@@ -134,18 +134,18 @@
 |---|---|---|---|---|
 | 11.1 | How to read an incident like an SRE | SL | 6 | Learn the investigation order: timeline first, then blast radius, then hypothesis, then evidence in traces. Download the incident template you'll use for the next three lectures. |
 | 11.2 | Incident 1: Monday's cost spike (investigate, then reveal) | CH | 12 | Open the incident-01 spans and brief and take eight minutes to find the root cause before the reveal walkthrough. Part A is the investigation; Part B is the reveal. |
-| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Investigate a latency regression from spans alone, then watch the reveal and fix it with a fallback and a retrieval change. Part A is the investigation; Part B is the reveal. |
-| 11.4 | Incident 3: users are unhappy but nothing is red | CH | 12 | Investigate a quality drift that no dashboard flagged, then watch the reveal and roll back using prompt labels. Part A is the investigation; Part B is the reveal. |
+| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Investigate a latency regression from spans alone, then watch the reveal: tell a provider slowdown from a red herring and fix the timeout and the breaker that never saw a failure. Part A is the investigation; Part B is the reveal. |
+| 11.4 | Incident 3: users are unhappy but nothing is red | CH | 12 | Investigate a quality drift that no dashboard flagged, then watch the reveal and roll back by moving the production prompt label. Part A is the investigation; Part B is the reveal. |
 | 11.5 | Writing the postmortem | SC | 7 | Write a blameless postmortem with the template, and turn each finding into an action item that maps to instrumentation, a budget or a test. |
 | 11.6 | Project 2: Investigate a fourth incident | AS | 3 | Investigate an unrevealed incident dataset from the spans alone and submit a postmortem. |
-| 11.7 | Quiz: Incident response | QZ | 3 | Six questions on investigation order, the three incidents' root causes and postmortem action items. |
+| 11.7 | Quiz: Incident response | QZ | 3 | Six questions on investigation order, the page map, root cause versus trigger, and the fixes for the three incidents. |
 
 ## Section 12: Portability and Alternatives
 
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
 | 12.1 | Vendor lock-in and the OTel escape hatch | SL | 6 | Learn what stays portable when you emit OpenTelemetry with the GenAI conventions (traces) and what doesn't (scores, prompts, datasets), and plan for both. |
-| 12.2 | Code-along: same Atlas, traced to LangSmith | SC | 8 | Trace the same Atlas to LangSmith with traceable and wrap_openai, send feedback through its API, and note what differs from Langfuse. |
+| 12.2 | Code-along: same Atlas, traced to LangSmith | SC | 8 | Trace the same Atlas to LangSmith with wrap_openai and your own traceable runs, send feedback through its API, and note what differs from Langfuse. |
 | 12.3 | Arize Phoenix and OpenInference | SC | 7 | Point the OTLP exporter at Arize Phoenix and compare OpenInference conventions with the GenAI conventions you've been using. |
 | 12.4 | OpenLLMetry, Datadog and the enterprise APMs | SL | 6 | Decide what to do when your company already has an APM: what OpenLLMetry adds, what LLM observability add-ons cost in principle, and how hybrid setups work. |
 | 12.5 | Decision matrix: choosing your backend | SL | 5 | Score backends on control, cost, compliance, features and lock-in using the decision matrix, and write a one-page decision record. |
@@ -156,21 +156,21 @@
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
 | 13.1 | Self-hosting Langfuse with Docker Compose | SC | 9 | Bring up self-hosted Langfuse with Docker Compose, configure the environment, create a first project and point Atlas at it. Verify the compose file against the current Langfuse release. |
-| 13.2 | OTel Collector as the traffic cop | SC | 7 | Configure receivers, attribute and tail-sampling processors, and exporters to two backends at once, so the collector becomes the single place your telemetry policy lives. |
-| 13.3 | Code-along: the CI budget gate | SC | 9 | Write the budget gate test that replays the day offline and fails the pull request if cost per session or p95 regress, wire it into GitHub Actions and tag releases in Langfuse. |
+| 13.2 | OTel Collector as the traffic cop | SC | 7 | Read the collector config: receivers, the redaction and tail-sampling processors, and exporters to Langfuse and Phoenix at once, so the collector becomes the single place your telemetry policy lives. |
+| 13.3 | Code-along: the CI budget gate | SC | 9 | Read the five budget-gate tests that replay a day offline and fail the pull request on cost per session, p95, a tenant's soft cap, task success or input tokens per generation, wire them into GitHub Actions and tag releases. |
 | 13.4 | Production readiness checklist for observability | SL | 6 | Walk the production checklist: sampling in prod, exporter back-pressure, secrets, dashboards as code and alert ownership. |
-| 13.5 | Chaos demo: kill the observability backend | DM | 5 | Take Langfuse down and check that Atlas still serves: exporter timeouts, queue limits and the rule that you drop telemetry, never requests. |
+| 13.5 | Chaos demo: kill the observability backend | DM | 5 | Take the collector down mid-traffic and check that Atlas still serves: exporter timeouts, queue limits and the rule that you drop telemetry, never requests. |
 | 13.6 | Lab 7: Self-hosted stack end to end | LAB | 4 | Run Langfuse, the OTel Collector and Grafana locally and get the CI gate green. |
 
 ## Section 14: Capstone: The Atlas Ops Console
 
 | ID | Lecture | Type | Min | Description |
 |---|---|---|---|---|
-| 14.1 | Capstone brief and acceptance criteria | SL | 6 | Read the capstone brief: a fully instrumented Atlas with budgets, routing, an online judge, dashboards, alerts, a CI gate and a weekly report, with acceptance criteria for each. |
+| 14.1 | Capstone brief and acceptance criteria | SL | 6 | Read the capstone brief: a fully instrumented Atlas with budgets, routing, an online judge, dashboards, alerts, a CI gate and a weekly report, with 24 acceptance tests (pass at 15). |
 | 14.1a | Build it yourself first: the capstone gate | TH | 3 | Stop here and build the capstone from the brief for one week before watching the reference solution. |
 | 14.2 | Reference solution part A: instrumentation and cost | SC | 12 | Assemble the reference solution's telemetry, pricing, budgets and routing, and compare each decision with your own build. |
-| 14.3 | Reference solution part B: quality, dashboards, alerts, CI | SC | 12 | Assemble the online judge, drift reports, Grafana dashboard, alert rules and budget gate, and compare with your own build. |
-| 14.4 | The weekly ops report your manager reads | SC | 8 | Generate a one-page weekly markdown report covering cost, quality, latency, incidents and recommendations from aggregated spans. |
+| 14.3 | Reference solution part B: quality, dashboards, alerts, CI | SC | 10 | Assemble the online judge, drift reports, Grafana dashboard, alert rules and budget gate, and compare with your own build. |
+| 14.4 | The weekly ops report your manager reads | SC | 8 | Generate the one-page weekly markdown report with `make report`: cost, SLOs, showback by tenant, feature and model, incidents and recommendations. |
 | 14.5 | Capstone submission and portfolio | TH | 5 | Package your repo, dashboard screenshots, weekly report and postmortems for GitHub and LinkedIn, and learn how to present them. |
 | 14.6 | Domain swap: observe a different agent | AS | 4 | Instrument a different agent (a voice agent or your own) with the same stack using the instrumentation template, and adapt the SLIs to its domain. |
 | 14.7 | Quiz: Capstone review | QZ | 5 | Six questions that check the capstone's components and the reasoning behind the reference solution's choices. |

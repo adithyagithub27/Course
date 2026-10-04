@@ -179,7 +179,11 @@ def test_feedback_comment_is_redacted(client):
     tid = r.json()["trace_id"]
     client.post(
         "/feedback",
-        json={"trace_id": tid, "score": -1, "comment": "I am NW-40213, mail me at a.b@northwind.example"},
+        json={
+            "trace_id": tid,
+            "score": -1,
+            "comment": "I am NW-40213, mail me at a.b@northwind.example",
+        },
         headers=HDR,
     )
     comment = client.app_store.scores(name="user_feedback")[0].comment

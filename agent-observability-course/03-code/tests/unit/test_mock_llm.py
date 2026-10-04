@@ -251,9 +251,11 @@ def test_mock_honours_timeout():
 
 def test_slow_provider_spares_the_fallback_deployment():
     def ttft(model, scenario):
-        return MockLLM(seed=3, scenario=scenario).chat(
-            model=model, messages=msgs("Hello Atlas!")
-        ).simulated_ttft_ms
+        return (
+            MockLLM(seed=3, scenario=scenario)
+            .chat(model=model, messages=msgs("Hello Atlas!"))
+            .simulated_ttft_ms
+        )
 
     assert ttft("gpt-4.1-mini", "slow_provider") > 3 * ttft("gpt-4.1-mini", None)
     assert ttft("gpt-4o-mini", "slow_provider") == ttft("gpt-4o-mini", None)

@@ -52,7 +52,7 @@ Use the same terms in section titles and lecture titles so Udemy's search index 
 Reasoning:
 
 - **Udemy's sitewide sales set most actual purchase prices.** When you opt in to Udemy's promotions (verify current program terms), the list price mostly acts as an anchor for the "% off" badge. A very low list price shrinks that badge and gains little.
-- **The course is specialised and production-level.** It has ~10.6 h of video in 15 sections, a full repo with 150+ tests, 7 labs, 5 challenges, 2 projects, a capstone, a domain swap, 13 quizzes, a practice test, 5 coding exercises and 3 incident datasets. It aims at working engineers and engineering managers, not casual learners.
+- **The course is specialised and production-level.** It has ~10.5 h of video in 15 sections, a full repo with 401 offline tests, 7 labs, 5 challenges, 2 projects, a capstone, a domain swap, 13 quizzes, a practice test, 5 coding exercises and 4 incident datasets. It aims at working engineers and engineering managers, not casual learners.
 - **The series should have consistent prices.** Price Course 4 in the same tier as Courses 2 and 3, so cross-sell coupons and "bundle-like" offers stay simple (see `08-marketing/cross-sell-plan.md`).
 - **The buyer is often reimbursed.** Observability and cost control are budget-owner topics; many students will expense this course or take it through Udemy Business. Pricing it like a hobby course undersells it.
 - **There's room to test.** The research names three Langfuse/observability courses on Udemy and says none is large yet. Record their current list and sale prices in `08-marketing/competitor-watch.md` before launch. Don't price off numbers we haven't checked.

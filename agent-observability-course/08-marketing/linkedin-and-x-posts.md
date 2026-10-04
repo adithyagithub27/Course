@@ -236,7 +236,7 @@ What you build across 15 sections:
 → Langfuse, LangSmith, Phoenix, OpenLLMetry and Datadog compared
 → Self-hosted stack in Docker Compose and a CI gate that fails a PR on cost or p95
 
-About 10.6 hours of video, a full repo with 150+ offline tests, 7 labs, 5 challenges, a capstone.
+About 10.5 hours of video, a full repo with 401 offline tests, 7 labs, 5 challenges, a capstone.
 
 Launch coupon in the first comment.
 
@@ -248,7 +248,7 @@ Live: AI Agent Observability & Cost Control: LLMOps in Production.
 
 OTel GenAI semconv → Langfuse. Cost per session/tenant. Caching, routing, budgets. p95 under chaos. LLM judge on live traffic. SLOs + alerts. 3 incident labs. Docker Compose stack. CI budget gate.
 
-~10.6 h. Coupon below.
+~10.5 h. Coupon below.
 ```
 
 ## Post 9: The incident labs (W0, D2)

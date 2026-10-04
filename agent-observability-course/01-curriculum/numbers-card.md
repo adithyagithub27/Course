@@ -1,10 +1,10 @@
 # Course 4 numbers card (the one replayed day)
 
-> **Scripts, labs, quizzes and production docs must quote these figures and nothing else.** Every number below was produced by the command next to it, in `agent-observability-course/03-code/`, on 2026-10-02, against the locked environment (`uv.lock`: langfuse 4.16.0, opentelemetry-sdk 1.45.0, litellm 1.103.2, fastapi 0.142.2, openai 2.54.0, deepeval 4.2.7, streamlit 1.64.0). The replay is deterministic: each replay was run at least twice and produced byte-identical totals. If a code change moves a number, regenerate this card; do not hand-edit a figure.
+> **Scripts, labs, quizzes and production docs must quote these figures and nothing else.** Every number below was produced by the command next to it, in `agent-observability-course/03-code/`, on 2026-10-02 (re-run 2026-10-04 after the second code-fix pass, see `14-quality-review/course4-code-changes.md` §16), against the locked environment (`uv.lock`: langfuse 4.16.0, opentelemetry-sdk 1.45.0, litellm 1.103.2, fastapi 0.142.2, openai 2.54.0, deepeval 4.2.7, streamlit 1.64.0). The replay is deterministic: each replay was run at least twice and produced byte-identical totals. If a code change moves a number, regenerate this card; do not hand-edit a figure.
 >
 > Decision O1: **one day** = `OFFLINE=1 make replay` with the Makefile defaults: seed 7, 4,000 sessions, fixture day Monday 2026-09-14, tenants `ops`, `finance`, `hr`, `eng`, baseline = caching off, context diet off, routing off (`CACHE=0 DIET=0 ROUTER=0`). Prices are "verify current pricing" on screen.
 >
-> Retired figures (never use): $6.42, 1,184 conversations, 412 personas, seed 20260928 / 42, $56.70, $37.24, $42.28, $47.37, $19.21, "168 passed", "329 tests", 61 steps / $3.90 / 480k tokens, default step limit 8, TTFT p50 350 ms / 0.55 s, judge 0.83 / 0.89 / 0.90, task success 83 %, containment 78 %, $5.67 → $1.92 for 400 sessions.
+> Retired figures (never use): "401 passed" (now 419), retry_storm + `ATLAS_MAX_RETRIES=1` $50.13 / 397 errors / 806 failed attempts, `make judge` sampled=712 / mean 0.907 / $1.5379 and `make feedback` after it joined=457 agreement=80%, 678 PII-in-output flags, drift 0.910 → 0.912, "candidate v2 136/170 vs v1 168/170" as a fixed figure, $6.42, 1,184 conversations, 412 personas, seed 20260928 / 42, $56.70, $37.24, $42.28, $47.37, $19.21, "168 passed", "329 tests", 61 steps / $3.90 / 480k tokens, default step limit 8, TTFT p50 350 ms / 0.55 s, judge 0.83 / 0.89 / 0.90, task success 83 %, containment 78 %, $5.67 → $1.92 for 400 sessions.
 
 ---
 
@@ -52,6 +52,7 @@ Command: `OFFLINE=1 make replay` (prints the summary; ~20 s). Detail: `make cons
 
 Top intents (`make console-text`, "Cost by intent"): general $18.60, create_ticket $6.66, payroll $5.39, leave $4.73, vpn $3.98.
 Most expensive conversation (Ops Console → Cost → top 10): `s07-00666` (finance, 4 turns) $0.0362.
+Per user (`rollup(store.cost_records("request"), "user_id")` on the baseline store): 80 employees; the top 20 account for **36.4 %** of spend ("just over a third"); the top five are ops users with 214–256 requests each.
 Busiest hour: 09:00 ($6.02); quietest: 02:00 ($0.06).
 
 ## 2. Cost levers (Section 6, Challenge 6.8, 14.2)
@@ -67,7 +68,8 @@ Command for each row: `OFFLINE=1 make replay <flags> STORE=.atlas/<name>.sqlite`
 | Caching + diet | `CACHE=1 DIET=1` | **$22.71** | −59.6 % | $0.0057 | 67.9 % | 3,687 ms |
 | All three | `CACHE=1 DIET=1 ROUTER=1` | **$19.07** | −66.1 % | $0.0048 | 68.0 % | 3,687 ms |
 
-Per tenant, all three levers: ops $5.97, finance $4.49, eng $4.32, hr $4.28. Routing sends 6,700 of 20,087 calls to gpt-4.1-nano (simple intents) and the 43 escalation requests straight to gpt-4.1, so router runs report 0 `escalated` outcomes (10,112 resolved). Challenge 6.8's −40 % target ($33.77) is met by caching alone.
+Per tenant, all three levers: ops $5.97, finance $4.49, eng $4.32, hr $4.28. Per feature, all three levers (`rollup(store.cost_records("request"), "feature")`): policy_question $17.56 (6,420 requests), create_ticket $0.64, ticket_lookup $0.30, password_reset $0.25, shipment_status $0.19, escalation $0.11, other $0.01.
+Router run by model (`rollup(store.cost_records("generation"), "model")` on the `ROUTER=1` store): gpt-4.1-mini 13,344 calls $43.70 · gpt-4.1-nano 6,700 calls $3.05 · gpt-4.1 43 calls $0.32. Routing sends 6,700 of 20,087 calls to gpt-4.1-nano (simple intents) and the 43 escalation requests straight to gpt-4.1, so router runs report 0 `escalated` outcomes (10,112 resolved). Challenge 6.8's −40 % target ($33.77) is met by caching alone.
 
 ### The one demo request (6.4, 6.5)
 
@@ -96,6 +98,24 @@ Command: `make console-text` ("Latency") or `make report`. Offline latency is th
 | Generation duration p50 / p95 | 960 / 2,824 ms |
 | p50 / p95 by tenant | ops 2,168 / 3,670 · eng 3,303 / 3,844 · hr 3,345 / 3,836 · finance 3,511 / 3,905 ms |
 | Hourly p95 | flat, 3,647–3,870 ms; no lunchtime bump on the baseline day |
+| `LatencyBudget()` default | total p95 4,000 ms; `ttft_p95_ms` 2,000 ms applies to the **final-answer** TTFT (`LatencySample.ttft_ms`), so the baseline's 1,702 ms passes |
+
+### 3a. The slow-provider day (7.6, 9.x, Lab 4)
+
+Command: `OFFLINE=1 make replay SCENARIO=slow_provider STORE=.atlas/slow.sqlite`, then the Ops Console Latency page, or the store queries named.
+
+| Figure | Value |
+|---|---|
+| Day p95 / mean end to end | 8,877 ms / **4.0 s** (4,000 ms) |
+| Requests 13:00–17:00 over 4 s | **74.0 %** of 3,510 |
+| Generation duration p95 | 2.8 s outside the window; 6,445 ms across 13:00–17:00 (hourly 6.3–6.5 s) |
+| Generation TTFT p95 | ≈ 650 ms → ≈ 2,250 ms in the window |
+| Context diet (`SCENARIO=slow_provider DIET=1`) | p95 **8,404 ms**, $41.68 |
+| Diet + routing (`... DIET=1 ROUTER=1`) | p95 8,404 ms, $33.70 |
+| Defaults: retries / fallbacks / errors | 0 / 0 / 0 (the 20 s timeout never fires) |
+| Timeout + fallback (`ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800`) | p95 **3,859 ms**, $43.29, 0 errors; 39 timed-out attempts; 7,318 calls served by the fallback gpt-4o-mini |
+
+`slow_provider` slows only the primary deployment (gpt-4.1-mini, gpt-4.1, gpt-4.1-nano); gpt-4o-mini, the first fallback, keeps normal latency. The mock honours `ATLAS_REQUEST_TIMEOUT_S` as a whole-call deadline.
 
 ## 4. Quality, feedback, SLOs (Sections 5.3, 8, 9)
 
@@ -111,9 +131,27 @@ Commands: `make console-text` ("Quality", "SLOs"); Ops Console → Quality (`con
 | Feedback rate by session length | 1 turn 12.6 % · 2 turns 23.9 % · 3 turns 34.4 % · 4 turns 39.9 % |
 | Judge (resolved ≥ 0.7) vs user agreement | 77.7 % over 363 traces with both; 81 disagreements |
 | SLIs (`make report`) | task_success **0.993** (target 0.95) · containment **0.989** (0.80) · tool_success 1.000 (0.99) · latency 0.993 (0.95) · cost 1.000 (0.90) · quality 0.986 (0.90); all OK, no alerts |
-| Drift report on the baseline day (`make drift`, split 12:00) | 0 alerts; judge_overall 0.910 → 0.912 |
+| Drift report on the baseline day (`make drift`, split 12:00) | 0 alerts; judge_overall **0.911 → 0.913** |
+| `make feedback` on the fresh replay store (before `make judge`) | `feedback=1291 (12.7% of 10184 requests) positive=79% joined_with_judge=363 agreement=80% judge|👍=0.91 judge|👎=0.91` (user vs `judge_overall ≥ 0.6`; the Quality page's 77.7 % uses `judge_resolved ≥ 0.7`) |
+| PII-in-output flags (Safety page; agent spans with a `pii_in_output` event) | **0** of 10,184. `contains_pii` ignores values the KB itself publishes (the `NW-12345` format example, `helpdesk@`/`security@`/`network-eng@northwind.example`, the EAP line `0800-555-0199`); before that fix the day showed 678 flags, all policy text |
 
-`make judge` afterwards (offline heuristic, `JUDGE_SAMPLE_RATE=0.1`, tail rules): `candidates=10112 sampled=712 scored=712 already_scored=2971 mean_overall=0.907 est_judge_cost=$1.5379`. After it, `make feedback`: `feedback=1291 (12.7% of 10184 requests) positive=79% joined_with_judge=457 agreement=80%`.
+`make judge` afterwards (offline heuristic, `JUDGE_SAMPLE_RATE=0.1`, tail rules; every thumbs-down and every escalation is judged): `candidates=10112 sampled=894 scored=894 already_scored=2971 mean_overall=0.909 est_judge_cost=$1.9310`. After it, `make feedback`: `feedback=1291 (12.7% of 10184 requests) positive=79% joined_with_judge=639 agreement=57% judge|👍=0.91 judge|👎=0.91`: the judge rates most thumbs-down answers as fine, which is the disagreement 8.3 teaches.
+
+### 4a. Two weeks, drift and the dataset (8.5, 8.6)
+
+Commands: `OFFLINE=1 make replay`, `OFFLINE=1 make replay DAY=2026-09-21 SCENARIO=quality_drift KEEP=1`, `python -m evals.drift_report --prev 2026-W38 --curr 2026-W39`, `python evals/to_dataset.py --limit 1000`.
+
+| metric | status | W38 mean | W39 mean | Δ mean | Δ p95 | PSI |
+|---|---|---:|---:|---:|---:|---:|
+| judge_overall | alert | 0.912 | 0.785 | −13.9 % | −0.6 % | 1.981 |
+| judge_grounded | alert | 0.943 | 0.720 | −23.7 % | −1.0 % | 2.013 |
+| judge_resolved | alert | 0.892 | 0.737 | −17.5 % | −0.4 % | 3.678 |
+| cost_per_request_usd | ok | 0.006 | 0.005 | −4.9 % | −2.5 % | 0.077 |
+| latency_ms | watch | 2,867 | 2,126 | −25.9 % | −4.4 % | 1.231 |
+| steps | ok | 1.979 | 1.978 | −0.1 % | +0.0 % | 0.000 |
+| user_feedback | ok | 0.787 | 0.726 | −7.7 % | +0.0 % | 0.020 |
+
+3 alerts. Dataset: `selected=771 written=771` (170 of them carry a `judge_overall` reason). The 8.6 candidate check (re-run the 170 judge failures on v1 and v2 with `OfflineJudge`) is **not deterministic**: the judge's ±0.05 noise is keyed on each run's random trace id and v2 answers score about 0.6, on the threshold. Four runs gave v2 143–147/170 and v1 166–170/170; quote "about 145 of 170 vs about 168 of 170", or pass a fixed `trace_id` to `judge.score` for a stable figure.
 
 ## 5. Incidents (Section 11, 14.3)
 
@@ -127,15 +165,15 @@ Command: `OFFLINE=1 make replay SCENARIO=<preset>` (the preset name now works th
 | `cost_spike` (Incident 1 shape) | 10,203 | **$64.99** | 6,763 ms | ops $28.98; console alerts: `latency_p95`, `tenant_budget` (ops 72 % of hard cap), `cost_anomaly` (ops 10:00) |
 | `context_bloat` | 10,269 | $65.79 | 6,560 ms | ops $29.24 |
 | `retry_storm` (= Incident 1 with the retrieval change rolled back) | 10,194 | **$58.00** | 3,889 ms | ops $21.84; 1,002 failed attempts, all `APITimeoutError`, 10:00–12:00 |
-| `retry_storm` + `ATLAS_MAX_RETRIES=1` | 10,194 | $50.13 | 3,946 ms | the mock times out twice, so one retry is not enough: **397 requests end `error`** |
+| `retry_storm` + `ATLAS_MAX_RETRIES=1` | 10,194 | **$54.59** | 3,934 ms | the mock times out twice, so one retry is not enough: **392 requests end `error`**; 799 failed attempts (all `APITimeoutError`); the circuit breaker opens and 795 calls go to the fallback gpt-4o-mini |
 | `latency_regression` (Incident 2 shape) | 10,114 | $61.63 | **9,474 ms** | hourly p95 13:00–16:00 ≈ 10.1–10.4 s; per-gen TTFT p95 656 → ~2,750 ms; mean input tokens/gen 6,600 → ~8,400 (top_k 20) |
-| `slow_provider` (Incident 2 with top_k fixed) | 10,114 | $55.86 | 8,877 ms | hourly p95 ≈ 9.2–9.4 s 13:00–16:00; input tokens/gen unchanged |
+| `slow_provider` (Incident 2 with top_k fixed) | 10,114 | $55.86 | 8,877 ms | hourly p95 ≈ 9.2–9.4 s 13:00–16:00; input tokens/gen unchanged; details in §3a |
 | `quality_drift` = `prompt_regression` (Incident 3 shape) | 10,210 | $53.68 | 3,661 ms | judge grounded 0.94 → 0.59 and resolved 0.89 → 0.65 from 11:00; by version v1 overall 0.910 / v2 0.711; output tokens/gen 119 → 41 |
 | `loop` | 10,127 | $55.96 | 3,830 ms | 36 `step_limit` outcomes |
 | `ticket_flaky` | 10,189 | $56.72 | 3,827 ms | |
 | `mixed` (Incident 4 shape) | 10,210 | $57.47 | 4,129 ms | |
 
-`cost_spike` evidence for ops (Ops Console → Cost / Retrieval / Reliability / Budgets, store `.atlas/inc-cost_spike.sqlite`): cost per session 08:00 $0.011 → 09:00 $0.025 → 10:00 $0.032; mean input tokens per generation 5,514 → 11,817 at 09:00; mean `atlas.retrieval.top_k` 4 → 18.2 at 09:00 (the model asks for 20, `cost_spike` sets 12); retriever result sent to the model ≈ 3,100 → 14,000 tokens; LLM retries 0.19 per generation at 10:00; Budgets page flags ops cost-per-request bins 09:30–11:00; the replay never reaches the soft cap ($25) because the budget guard is not in the replay path.
+`cost_spike` evidence for ops (Ops Console → Cost / Retrieval / Reliability / Budgets, store `.atlas/inc-cost_spike.sqlite`): cost per session 08:00 $0.011 → 09:00 $0.025 → 10:00 $0.032; mean input tokens per generation 5,514 → 11,817 at 09:00; mean `atlas.retrieval.top_k` 4 → 18.2 at 09:00 (the model asks for 20, `cost_spike` sets 12); retriever result sent to the model ≈ 3,100 → 14,000 tokens; LLM retries 0.19 per generation at 10:00; Budgets page flags ops cost-per-request bins 09:30–11:00; ops's cumulative spend crosses the $25 soft cap at **16:08** (and ends the day at $28.98, under the $40 hard cap). The budget guard is not in the replay path, so nothing degrades or refuses: the line keeps climbing after the cap.
 
 ### 5b. The four incident datasets (`incidents/incident-0N-*/`, 300 sessions each, seeds 11/22/33/44)
 
@@ -168,7 +206,9 @@ Command: `make langfuse-native` (offline; question "How do I connect to the VPN 
 
 | Figure | Command | Value |
 |---|---|---|
-| Test suite | `make test` | **401 passed** (356 unit, 40 integration, 5 budget gate), offline |
+| Test suite | `make test` | **419 passed** (372 unit, 42 integration, 5 budget gate), offline |
 | Budget gate | `make budget-check` | 5 passed (300-session replay; cost/session, p95, soft cap, task success, max input tokens per generation ≤ 24,000) |
 | Gate failing on purpose | `BUDGET_GATE_INCIDENTS=cost_spike make budget-check` | 2 failed: `test_p95_latency_within_budget`, `test_max_input_tokens_per_generation` (worst generation 51,835 tokens) |
 | Baseline gate replay max input tokens per generation | (same gate) | 17,992 |
+| Gate under a slow provider | `BUDGET_GATE_INCIDENTS=slow_provider make budget-check` | 1 failed: `test_p95_latency_within_budget` (p95 8,755 ms, $0.0138/session) |
+| Same, with timeout + fallback | `BUDGET_GATE_INCIDENTS=slow_provider ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800 make budget-check` | **5 passed** (p95 3,882 ms, $0.01114/session, 0 errors); with `ROUTER=1` added: 5 passed, p95 3,885 ms, $0.00962/session. The old reference values (`ATLAS_MAX_RETRIES=1`, cooldown 120 s) fail: p95 10,349 ms, 58 errors |

@@ -26,7 +26,7 @@
 
 ## 2. Blast radius
 - Tenants affected: <ops | finance | hr | eng | all>   (Langfuse tag filter `tenant=`; Grafana tenant variable)
-- Features affected: <kb_answer | ticket | password_reset | shipment | all>
+- Features affected: <policy_question | create_ticket | ticket_lookup | shipment_status | password_reset | escalation | other | all>
 - Sessions affected so far: <count>   Users: <count>
 - Is it per-session (same sessions, worse) or volume (more sessions)? <answer, with the metric you used>
 - Is it getting worse, stable, or recovering? <trend>
