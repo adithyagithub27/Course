@@ -76,6 +76,7 @@ Follow the method from lecture 11.1: **timeline, blast radius, hypotheses, evide
 | R8 | **Prevention**: at least three action items that map to course tools (an instrumentation change, a budget or alert change, a CI gate or test), each with an owner role and a check that it was done. |
 | R9 | **Cost of the incident**: dollars above baseline for each window (the morning's re-billed tool retries; the afternoon's slower, longer generations), and what one such day a week would cost in a month. |
 | R10 | Blameless: no person or team is named as the cause; systems and decisions are. |
+| R11 | **The regression test**: `test_tool_retries_are_bounded` in `tests/unit/test_agent.py`. Run `AtlasAgent` offline with `scenario="ticket_flaky"` on a ticket-lookup question and the retry guard on (`max_tool_retries=2`, the setting your fix proposes), and assert the request makes at most three `execute_tool lookup_ticket` spans and ends with a `tool_retries_exhausted` event instead of `step_limit_reached`. The test must fail with the guard off (`max_tool_retries=0`). The shipped `test_loop_scenario_stops_early` in `tests/integration/test_spans.py` is the pattern. |
 
 ---
 
@@ -185,6 +186,7 @@ for sc in store.scores(name="judge_overall"):
 8. The incident cost and the projected monthly cost are computed from the data.
 9. The document is blameless.
 10. The investigation worksheet is included and filled in.
+11. `test_tool_retries_are_bounded` exists, passes with the guard on, fails with it off, and `make test` stays green.
 
 ---
 
@@ -196,6 +198,7 @@ for sc in store.scores(name="judge_overall"):
 | D2 | `projects/p2/POSTMORTEM.md`: the blameless postmortem from `10-resources/postmortem-template.md` (about two pages) | Markdown |
 | D3 | `projects/p2/queries/` or a notebook: every query or script behind a number in D1/D2 | Code |
 | D4 | Two screenshots or charts: the metric that shows the incident, and the span-level evidence for the root cause | Images |
+| D5 | `tests/unit/test_agent.py::test_tool_retries_are_bounded` (R11), with the `pytest` output for the guard on and off | Code |
 
 ---
 
@@ -207,7 +210,7 @@ for sc in store.scores(name="judge_overall"):
 | **Root cause and evidence** (25) | 23-25: Correct root cause for each page in one sentence, the relation between the pages decided, with two independent span-level proofs each | 15-22: Correct causes but evidence is aggregate only (console output) or single-source | 0-14: Wrong cause, the two pages treated as one without evidence, or a symptom presented as the cause |
 | **Panels and the relation between the pages** (10) | 9-10: All four panels explained for both windows with numbers | 6-8: Three of four | 0-5: Missing or hand-waved |
 | **Fix and verification** (15) | 14-15: Concrete change, the metric to watch, expected value, and a rollback condition | 9-13: Concrete change, vague verification | 0-8: "Optimise the prompt" |
-| **Prevention** (15) | 14-15: Three items mapped to instrumentation, budget/alert and test/gate, each with owner role and check | 9-13: Three items but not mapped or unverifiable | 0-8: Fewer than three or generic |
+| **Prevention** (15) | 14-15: Three items mapped to instrumentation, budget/alert and test/gate, each with owner role and check, and `test_tool_retries_are_bounded` delivered and failing without the guard | 9-13: Three items but not mapped or unverifiable | 0-8: Fewer than three or generic |
 | **Cost of incident** (5) | 5: Daily excess and monthly projection computed | 3-4: One of the two | 0-2: Missing |
 | **Writing** (10) | 9-10: Blameless, two pages, a reader who was not there understands it in five minutes | 6-8: Slightly long or one blaming phrase | 0-5: Names people; unreadable |
 

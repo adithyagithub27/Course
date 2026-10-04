@@ -14,7 +14,7 @@
 
 Northwind Logistics runs Atlas for four departments. Finance has been paying one OpenAI invoice for six months and has started asking questions. The head of finance, Ines Okafor, sent this to the platform team:
 
-> "The Atlas invoice was $1,140 last month, up 38% on the month before, and nobody can tell me which department drove it. From next quarter I want a weekly report that shows cost by department and by what the agent was doing, in numbers I can put in front of department heads. And I want three things we can do about it, with the saving each one is worth. If I cannot get that, I will start charging departments a flat split, and Operations will be furious."
+> "The Atlas invoice was $1,700 last month, up 38% on the month before, and nobody can tell me which department drove it. From next quarter I want a weekly report that shows cost by department and by what the agent was doing, in numbers I can put in front of department heads. And I want three things we can do about it, with the saving each one is worth. If I cannot get that, I will start charging departments a flat split, and Operations will be furious."
 
 You are the engineer who owns Atlas's telemetry. Produce the report Ines can defend in front of four department heads, from the traces alone.
 
@@ -24,52 +24,68 @@ You are the engineer who owns Atlas's telemetry. Produce the report Ines can def
 
 ## Requirements
 
-You will build the report from a replayed week of traffic. Both paths produce the same span data:
+You build the report from the replayed day (Decision O1: `OFFLINE=1 make replay` with the Makefile defaults, seed 7, 4,000 sessions, fixture day Monday 2026-09-14, tenants `ops`, `finance`, `hr`, `eng`). The replayed day stands in for the week; the report's title still says "weekly" because that is the cadence finance will get.
 
-- **Offline (recommended):** `OFFLINE=1 uv run python -m simulator.replay --days 7 --start 2026-09-14 --seed 42 --label showback`. No keys, no cost, deterministic.
-- **Online:** the same replay with `OTEL_EXPORTER=langfuse` so you can cross-check totals in the Langfuse cost dashboard (the replay still makes no LLM calls; the spans carry mock usage).
+```bash
+cd 03-code
+OFFLINE=1 make replay                     # baseline day into .atlas/spans.sqlite (about 20 s)
+make report                               # northwind.report.weekly_report, Markdown to stdout
+```
 
-Write your own script `projects/p1/showback.py` (or a notebook) that reads spans from `.atlas/spans.sqlite` (or Langfuse via the API) and produces `projects/p1/REPORT.md`. You may import from `src/northwind/` (`pricing`, `cost`, `tokens`, `budget`) but **compute the roll-ups yourself** rather than calling `report.weekly_report`; comparing yours with the reference afterwards is part of the learning.
+Expected headline (offline, deterministic; prices "verify current pricing"):
+
+```text
+| Total LLM cost | $56.28 | - |
+| Requests | 10,184 | sessions: 4,000 |
+| Cost per session | $0.0141 | budget $0.0500 |
+| Cost per resolved session | $0.0144 | |
+| Latency p50 / p95 | 3232 / 3827 ms | budget p95 4000 ms |
+```
+
+and three showback tables: **by tenant** (ops $20.27, 36.0%; eng $12.50, 22.2%; finance $11.91, 21.2%; hr $11.59, 20.6%), **by feature** (policy_question $42.91, 76.2%; create_ticket $6.66; ticket_lookup $3.21; shipment_status $2.21; password_reset $0.78; escalation $0.38; other $0.13) and **by model** (gpt-4.1-mini $55.90, gpt-4.1 $0.38 for the 43 escalations).
+
+For the comparison rows, replay each configuration into its own store; without `STORE=` every replay clears `.atlas/spans.sqlite`:
+
+```bash
+OFFLINE=1 make replay DIET=1 STORE=.atlas/diet.sqlite && make report STORE=.atlas/diet.sqlite
+OFFLINE=1 make replay CACHE=1 STORE=.atlas/cache.sqlite && make report STORE=.atlas/cache.sqlite
+```
+
+Reference totals for the same day: caching $37.00, diet $41.99, routing $47.07, caching + diet $22.71, all three $19.07 (the Ops Console's **Compare replays** page shows them side by side).
+
+You may submit the `make report` output edited into a one-pager, or write your own script (`projects/p1/showback.py`) over the local store using `northwind.cost` (`CostRecord`, `rollup`, `total_cost`, `cost_per_session`, `showback_table`). Either way, the numbers must come from the store, not from this brief.
 
 ### Functional requirements
 
 | ID | Requirement |
 |---|---|
-| F1 | **Total cost for the week** computed from generation spans using your own price table (`northwind.pricing` or your own), with cached input tokens billed at the cached price and reasoning tokens as output. Show the total and the cost of the previous week (replay `--start 2026-09-07 --label showback-prev`) with the percentage change. |
-| F2 | **Cost by tenant**: a table with requests, sessions, input tokens, output tokens, cache hit ratio, cost, cost per session and share of total, sorted by cost. Four rows plus a total row. |
-| F3 | **Cost by feature** (intent / tool family): at minimum `policy_question` (KB only), `ticket` (`lookup_ticket`, `create_ticket`), `password_reset`, `shipment`, `escalated` (any request that used `gpt-4.1`), `other`. Same columns as F2. |
-| F4 | **Cost per resolved session**, overall and per tenant, using the `northwind.outcome` attribute (`resolved`, `handed_off`, `failed`, `step_limit`). This is the headline number; explain in one sentence why it differs from cost per session. |
-| F5 | **Where the tokens go**: a breakdown of input tokens into system prompt, retrieved context, conversation history and tool results (the mock and the real agent both set `northwind.prompt_breakdown` on each generation), as a percentage of input tokens and of cost. |
-| F6 | **Top 10 most expensive sessions** with tenant, steps, model(s), tokens, cost and a one-line explanation of why each was expensive (loop? escalation? long history? oversized tool result?). |
-| F7 | **Three recommendations** with the projected weekly saving for each, computed from the data (not guessed), and the risk or quality trade-off of each. At least one must be from the Section 6 toolkit: prompt caching, context diet, small-model-first routing, budgets. |
-| F8 | **Reconciliation**: your total must be within 2% of `northwind.cost.total_cost` over the same spans, and the report must state the difference and explain it (rounding, unknown models, price table version). If you are online, also compare with the Langfuse cost dashboard total. |
+| F1 | **Headline**: total cost, requests, sessions, cost per session and **cost per resolved session**, with the resolved rate stated beside it (outcomes come from the `atlas.outcome` attribute: `resolved`, `escalated`, `guardrail`, `step_limit`, `refused`, `error` ...). Explain in one sentence why cost per resolved session is higher than cost per session. |
+| F2 | **Cost by tenant**: requests, sessions, tokens in and out, cache hit, cost, cost per session and share, sorted by cost, with a total row. |
+| F3 | **Cost by feature** (the `atlas.feature` attribute on the request): policy_question, create_ticket, ticket_lookup, shipment_status, password_reset, escalation, other. Same columns as F2. |
+| F4 | **Trend across configurations**: at least the baseline and two lever stores (for example diet and caching), each as total cost and cost per resolved session. |
+| F5 | **Three recommendations**, each citing a number from your report and estimating the saving in dollars per month (a replayed day × 30 is fine if you say so), with the quality trade-off (the judge's grounded or resolved mean from the same store). |
+| F6 | **Prices** stated with a date and the words "verify current pricing". |
 
 ### Non-functional requirements
 
 | ID | Requirement |
 |---|---|
-| N1 | The report is **one page** (about 600 words plus tables). Ines will not read page two. |
-| N2 | Every number is traceable to a query or a function in your script; no hand-typed numbers. |
-| N3 | Prices are pinned and stated in the report ("prices as of 2026-09-28: gpt-4.1-mini $0.40 / $1.60 per 1M, cached $0.10"). |
-| N4 | No PII: the report names tenants and features, never employees. If you list a session, use the session id, not the user id. |
-| N5 | The script runs in under 60 seconds on the replayed week and is deterministic. |
+| N1 | One page (about 600 words plus tables). |
+| N2 | Every number traceable to `make report`, the console, or a function in your script; no hand-typed numbers. |
+| N3 | No PII: tenants and features, never employees. If you cite a session, use the session id. |
+| N4 | Deterministic: rerunning the commands reproduces the numbers. |
 
 ---
 
 ## Acceptance criteria
 
-Your submission is complete when all of these are demonstrably true:
-
-1. `python projects/p1/showback.py --label showback --prev showback-prev` produces `REPORT.md` without errors.
-2. The week total reconciles with `northwind.cost.total_cost` within 2% and the report says by how much.
-3. The tenant table has four tenants plus a total, and the shares sum to 100% (±0.1).
-4. The feature table covers at least the six features in F3 and the `escalated` row shows a cost per request at least 4× the `policy_question` row (the replay guarantees this).
-5. Cost per resolved session is shown overall and per tenant, and is higher than cost per session everywhere (since some sessions are not resolved).
-6. The token breakdown (F5) shows that system prompt plus retrieved context is more than 50% of input tokens on the baseline replay, which is the argument for caching.
-7. The top 10 sessions each have a one-line cause, and at least one is a `step_limit` session.
-8. Each of the three recommendations has a projected saving in dollars per week and a stated trade-off, and the three together are worth at least 25% of the weekly total.
-9. Cached input tokens are billed at the cached price (a test: change the cached price to equal the input price and the total must go up).
-10. No user ids or names appear in the report.
+1. The report's total matches `make report` on the same store (offline baseline: $56.28) and the tenant shares sum to 100% (±0.1).
+2. The tenant table has four tenants (`ops`, `finance`, `hr`, `eng`) plus a total; the feature table has the seven features in F3.
+3. Cost per resolved session is shown with the resolved rate and is higher than cost per session.
+4. At least two comparison stores appear in the trend, each replayed with its own `STORE=`.
+5. Each recommendation cites a number, a monthly saving and a trade-off. Example of the bar: "Policy questions are 76% of the bill; the diet replay takes the day from $56.28 to $41.99, about $430 a month, with grounded unchanged."
+6. Prices are dated and marked "verify current pricing".
+7. No user ids or names appear.
 
 ---
 
@@ -77,24 +93,22 @@ Your submission is complete when all of these are demonstrably true:
 
 | # | Deliverable | Format |
 |---|---|---|
-| D1 | `projects/p1/showback.py` (or notebook) | Code in your fork |
-| D2 | `projects/p1/REPORT.md` (and optionally a PDF export) | One page |
-| D3 | `projects/p1/NOTES.md`: how you reconciled, what surprised you, what you would automate | Half a page |
-| D4 | A screenshot of the tenant table next to the Ops Console **Cost** tab (or the Langfuse cost dashboard) showing the same total | Image |
+| D1 | `projects/p1/REPORT.md` (and optionally a PDF export) | One page |
+| D2 | The commands or script that produced it | Code or a shell snippet |
+| D3 | A screenshot of your tenant table next to the Ops Console **Cost** page (`make console`) showing the same total | Image |
 
 ---
 
 ## Grading rubric (100 points)
 
+Matches the rubric slide in lecture 6.9.
+
 | Criterion | Excellent | Good | Needs work |
 |---|---|---|---|
-| **Cost maths** (20) | 18-20: Correct price table, cached and reasoning tokens handled, escalation model priced separately, reconciles within 2% with the difference explained | 12-17: Reconciles but one of cached/reasoning/escalation is wrong or unexplained | 0-11: Off by more than 5%, or cost computed from a single average price |
-| **Attribution** (20) | 18-20: Tenant and feature tables complete, shares sum to 100%, features derived from span attributes with the rule stated | 12-17: Tables present but a feature is missing or the rule for `escalated`/`other` is unclear | 0-11: Only a tenant total, or features guessed |
-| **Cost per resolved session** (10) | 9-10: Correct, per tenant, with the one-sentence explanation of the gap to cost per session | 6-8: Present but overall only, or explanation missing | 0-5: Missing or computed as cost per session |
-| **Token anatomy and top sessions** (15) | 14-15: Breakdown adds up, top 10 each have a specific cause read from the trace | 9-13: Breakdown present, causes generic ("many tokens") | 0-8: Missing |
-| **Recommendations** (20) | 18-20: Three data-backed savings with dollars and trade-offs, totalling ≥25%, at least one verified by re-replaying with the change | 12-17: Three recommendations with estimated savings but no verification or thin trade-offs | 0-11: Generic advice without numbers |
-| **Report quality** (10) | 9-10: One page, readable by finance, prices pinned, no PII, every number traceable | 6-8: Slightly long, or one untraceable number | 0-5: Multi-page dump of tables, or PII present |
-| **Notes and reflection** (5) | 5: Reconciliation story and a real surprise | 3-4: Present but thin | 0-2: Missing |
+| **Report by tenant and feature, with the trend across configurations** (40) | 36-40: Tenant and feature tables complete and reconciled with `make report`; two or more comparison stores, each replayed with its own `STORE=` | 24-35: Tables present, trend thin or one store reused | 0-23: Only a tenant total, or numbers that do not reconcile |
+| **Cost per resolved session as the headline** (20) | 18-20: Headline, resolved rate stated, gap to cost per session explained | 12-17: Present but no resolved rate or explanation | 0-11: Missing or computed as cost per session |
+| **Three recommendations** (30) | 27-30: Each cites a number and a monthly saving, with a trade-off; at least one verified by a re-replay | 18-26: Savings estimated but not verified, or trade-offs missing | 0-17: Generic advice without numbers |
+| **Prices dated and marked "verify current pricing"** (10) | 10: Dated and flagged | 5: Dated but not flagged | 0: Undated |
 
 **Pass mark:** 70/100.
 
@@ -102,13 +116,11 @@ Your submission is complete when all of these are demonstrably true:
 
 ## Hints
 
-1. Start from `CostRecord.from_usage(...)` per generation span, then `rollup(records, by="tenant")` and `rollup(records, by="feature")` from `northwind.cost` to check your own numbers. If yours and theirs differ, the difference is usually the escalation model or cached tokens.
-2. The `feature` for a request is on the **agent** span (`northwind.feature`), not on the generation. Join generation cost up to its root span by `trace_id`.
-3. `escalated` should take precedence: a ticket request that escalated belongs in `escalated`, otherwise the escalation row understates and the ticket row overstates. State the rule in the report.
-4. For the recommendations, do not estimate; **re-replay** the week with the change and diff the totals: `ATLAS_PROMPT_CACHE=1` vs `0`, `ATLAS_CONTEXT_DIET=1` vs `0`, `ATLAS_ROUTER_MODE=1`, `ATLAS_MAX_STEPS=4`. The replay is deterministic, so the diff is the saving. Lecture 6.8's challenge is the same trick.
-5. Quality trade-offs need a number too: run the offline judge (`evals.online_judge`) on the before and after replays and quote the `resolved` delta.
-6. `showback_table()` in `northwind.cost` produces a Markdown table in the shape finance is used to; use it as a formatting reference, not as your implementation.
-7. Write the report headline first: "Atlas cost $X this week, up Y%; HR drove Z% of the increase; we can save $W with three changes." Everything else supports that sentence.
+1. Each lever needs its own store. `make replay CACHE=1` without `STORE=` overwrites your baseline.
+2. The Makefile exports `CACHE`, `DIET` and `ROUTER` (default 0), which override `ATLAS_*` variables in your shell; pass the levers on the `make` line.
+3. Ops is the biggest tenant because it has the most sessions, not because it misuses Atlas: its cost per session is the lowest. Say so before anyone asks for a flat split.
+4. The baseline's only recommendation from `make report` is the cache one (hit ratio 0%). The other two are yours; the feature table is where to look.
+5. Write the headline first: "Atlas cost $X on a normal day; ops is Y% because it has Z% of the sessions; three changes save $W a month."
 
 ---
 
@@ -118,23 +130,21 @@ Submit through the **Project 1: The showback report** assignment in lecture 6.9.
 
 **Assignment questions:**
 
-1. Paste the link to your script and your report. What was the week's total, how close was your reconciliation with `northwind.cost`, and what explained the difference?
-2. Paste your three recommendations with the projected weekly saving and the trade-off for each. Which one did you verify by re-replaying, and did the measured saving match your estimate?
-3. Describe one thing in the token anatomy or the top-10 sessions that surprised you, and what you would instrument differently because of it.
+1. Paste your report (or a link to it). What is the day's total, the cost per resolved session and the resolved rate, and which tenant has the highest cost per session and why?
+2. Paste your three recommendations, each with the cited number, the monthly saving and the trade-off. Which one did you verify with a re-replay into its own store, and what did it measure?
+3. Which comparison stores did you build, and what did the trend across them tell you that the baseline alone did not?
 
 ---
 
 ## Peer-review checklist
 
 - [ ] The report fits on one page and opens with a headline sentence a non-engineer understands.
-- [ ] Prices are pinned with a date; cached tokens are billed at the cached price.
-- [ ] Tenant shares sum to 100%; there is a total row.
-- [ ] The `escalated` feature is priced separately and the rule for it is stated.
-- [ ] Cost per resolved session is present and higher than cost per session.
-- [ ] The token breakdown supports the caching recommendation with a percentage.
-- [ ] Each top-10 session has a specific cause, not "many tokens".
-- [ ] Each recommendation has a dollar saving, a trade-off, and at least one was measured by re-replay.
-- [ ] Reconciliation difference is stated and explained.
+- [ ] The total matches `make report` on the same store; tenant shares sum to 100%; there is a total row.
+- [ ] The feature table has all seven features, with `escalation` priced at gpt-4.1's rate.
+- [ ] Cost per resolved session is the headline, with the resolved rate beside it.
+- [ ] The trend uses at least two lever stores, each replayed with its own `STORE=`.
+- [ ] Each recommendation has a cited number, a monthly saving and a trade-off; at least one was measured by re-replay.
+- [ ] Prices are dated and marked "verify current pricing".
 - [ ] No employee names or ids anywhere in the report.
 - [ ] One thing I would copy from this submission: ______
 - [ ] One suggestion: ______

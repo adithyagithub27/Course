@@ -59,6 +59,6 @@
 
 ## Coverage
 
-Every lecture of type Demo, Build-along or "+ demo" in `01-curriculum/full-curriculum.md` has a spec, and so do the slide/teach lectures that get a screen beat under fix-plan decision A5. Lectures without a spec: 2.1-style quiz/lab intros, 12.1 (uses demo 05's local gate run), 14.2–14.4 share demo 48, 15.2 (outro).
+Every lecture of type Demo, Build-along or "+ demo" in `01-curriculum/full-curriculum.md` has a spec, and so do the slide/teach lectures that get a screen beat under fix-plan decision A5. Lectures without a spec of their own: 12.1 (uses demo 05's local gate run), 14.2–14.4 (share demo 48), 15.2 (outro, no demo).
 
 Lab reference demos are covered inside the matching spec: `m01_lab_run_agent.py` (Lab 1.1, see `07-labs/lab-01-first-agent-run.md`), `m07_lab_failure_injection.py` (demo 31), `m09_lab_trace_find_fix.py` (Lab 9.1, see `07-labs/lab-08-langfuse-tracing.md`), `m11_lab_generate_regress_catch.py` (demo 43), `m04_lab_regulatory_geval.py` (demo 20).
