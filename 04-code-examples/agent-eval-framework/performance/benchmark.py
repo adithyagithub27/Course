@@ -92,18 +92,30 @@ class BenchmarkReport:
 
 
 def run_benchmark(questions: list[str], model: str | None = None,
-                  router: Callable[[str], str] | None = None, system_prompt: str | None = None) -> BenchmarkReport:
-    """Run each question once; `router` picks a model per question (cost engineering)."""
+                  router: Callable[[str], str] | None = None, system_prompt: str | None = None,
+                  agent_fn: Callable[..., dict] | None = None) -> BenchmarkReport:
+    """Run each question once; `router` picks a model per question (cost engineering).
+
+    ``agent_fn`` defaults to the TechCorp support agent. The capstone platform passes the
+    registered agent so every agent is benchmarked, not just the shipped one. An agent that
+    accepts ``client=`` and ``model=`` is metered; one that only takes the message is called
+    plainly and reports the tokens, calls and latency from its own result dict.
+    """
+    fn = agent_fn or run_support_agent
     rep = BenchmarkReport(model=model or ("routed" if router else "default"))
     for q in questions:
         meter = UsageMeter()
         m = router(q) if router else model
         kwargs = {"system_prompt": system_prompt} if system_prompt else {}
-        r = run_support_agent(q, client=meter, model=m, **kwargs)
+        try:
+            r = fn(q, client=meter, model=m, **kwargs)
+        except TypeError:
+            r = fn(q)
         rep.runs.append({
-            "question": q, "model": m or r["model"], "latency_s": r["latency_s"], "tokens": r["total_tokens"],
-            "llm_calls": r["llm_calls"], "cost_usd": sum(c.cost for c in meter.calls), "calls": meter.calls,
-            "tools": [t["tool"] for t in r["tool_calls"]], "response": r["response"],
+            "question": q, "model": m or r.get("model", "default"), "latency_s": r.get("latency_s", 0.0),
+            "tokens": r.get("total_tokens", 0), "llm_calls": r.get("llm_calls", 0),
+            "cost_usd": sum(c.cost for c in meter.calls), "calls": meter.calls,
+            "tools": [t["tool"] for t in r.get("tool_calls", [])], "response": r.get("response", ""),
         })
     return rep
 

@@ -25,5 +25,22 @@
   "gpt-4.1-mini": "G P T four point one mini",
   "gpt-realtime": "G P T realtime",
   "nova-3": "nova three",
-  "sonic-3": "sonic three"
+  "sonic-3": "sonic three",
+  "DeepEval": "Deep Eval",
+  "RAGAS": "rag-us",
+  "promptfoo": "prompt foo",
+  "Garak": "GAR-ak",
+  "PyRIT": "pie-rit",
+  "G-Eval": "G Eval",
+  "GEval": "G Eval",
+  "pytest": "pie test",
+  "LangSmith": "Lang Smith",
+  "Phoenix": "Phoenix",
+  "LiteLLM": "Lite L L M",
+  "Prometheus": "Prometheus",
+  "Grafana": "Grafana",
+  "OTLP": "O T L P",
+  "SLO": "S L O",
+  "gpt-4.1": "G P T four point one",
+  "TechCorp": "Tech Corp"
 }

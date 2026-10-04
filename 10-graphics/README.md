@@ -27,7 +27,7 @@ Interpretations: D1 severity ratings are qualitative (critical / high / medium) 
 
 ## Slide decks (`slides/section-NN.pptx`)
 
-`02-course-content/` (T5) does not exist yet, so no Course 2 decks are built. Once it does:
+Course 2 scripts live in `02-course-content/` and the slide map is in `10-graphics/slide-deck-outline.md`. Build the decks with:
 
 ## Regenerate
 

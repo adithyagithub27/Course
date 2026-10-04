@@ -74,7 +74,7 @@ class QualityPlatform:
         return run_redteam(load(cfg.redteam), cfg.fn, cfg.forbidden_tools, own)
 
     def performance(self, cfg: AgentConfig) -> dict:
-        return run_benchmark(cfg.benchmark_queries).summary() if cfg.benchmark_queries else {}
+        return run_benchmark(cfg.benchmark_queries, agent_fn=cfg.fn).summary() if cfg.benchmark_queries else {}
 
     def regression(self, cfg: AgentConfig, functional: dict) -> dict | None:
         if not cfg.baseline or not (BASELINE_DIR / f"{cfg.baseline}.json").exists():
