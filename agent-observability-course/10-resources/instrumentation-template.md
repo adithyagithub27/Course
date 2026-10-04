@@ -36,10 +36,10 @@
 
 ## Phase 2: Langfuse semantics (Section 4)
 
-- [ ] `Langfuse(public_key=, secret_key=, base_url=, environment=, release=, sample_rate=, mask=mask_fn)`; `get_client()`
+- [ ] `Langfuse(public_key=, secret_key=, base_url=, environment=, release=, sample_rate=, mask=langfuse_mask)` (`from northwind.pii import langfuse_mask`); `get_client()`
 - [ ] `@observe(as_type="agent")` on the run; `"tool"`, `"retriever"`, `"generation"`, `"guardrail"`, `"chain"` where they apply
 - [ ] `client.update_current_generation(model=, usage_details={"input":…, "output":…, "cache_read_input_tokens":…}, cost_details={…}, completion_start_time=…)`
-- [ ] `with propagate_attributes(session_id=, user_id=, tags=[tenant, feature], metadata={…}):` around the request (langfuse 4.x; there is no `update_current_trace`)
+- [ ] `with propagate_attributes(session_id=, user_id=, tags=[tenant, feature], metadata={…}):` around the request (langfuse 4.x)
 - [ ] Prompts through `client.create_prompt(...)` / `client.get_prompt(name, label="production", fallback=, cache_ttl_seconds=)`, with the version recorded on each generation
 - [ ] `client.score_current_trace(...)` for in-process signals (resolved, guardrail flags); `client.create_score(trace_id=, ...)` for out-of-band judges
 - [ ] `client.flush(); client.shutdown()` on exit
@@ -100,7 +100,7 @@ lf = get_client()
 
 @observe(as_type="agent")
 def run(user_msg, *, session_id, user_id, tenant):
-    with propagate_attributes(session_id=session_id, user_id=user_id, tags=[tenant]):  # langfuse 4.x: no update_current_trace
+    with propagate_attributes(session_id=session_id, user_id=user_id, tags=[tenant]):  # langfuse 4.x
         ...
     with tracer.start_as_current_span("agent my_agent") as root:
         root.set_attribute(g.GEN_AI_AGENT_NAME, "my_agent")

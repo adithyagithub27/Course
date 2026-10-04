@@ -3,7 +3,7 @@
 **Used in:** 2.3, 4.1-4.7, 5.2, 8.2, 8.6, 10.2, 13.1
 **Scope:** only the API forms verified for the course in curriculum §6 (**langfuse 4.15**, the OpenTelemetry-based SDK).
 
-> **APIs verified on langfuse 4.15; check the repo README for updates.** Anything not on this sheet: check the official docs for your installed version before using it. In particular, **there is no `update_current_trace` on langfuse 4.x**: trace-level `session_id`, `user_id`, `tags` and `metadata` are set with the `propagate_attributes(...)` context manager. Do **not** use v2/v3 idioms (`langfuse.trace(...)`, `langfuse_context`, `Langfuse().generation(...)`); they are not what this course teaches.
+> **APIs verified on langfuse 4.15; check the repo README for updates.** Anything not on this sheet: check the official docs for your installed version before using it. In particular, trace-level `session_id`, `user_id`, `tags` and `metadata` are set with the `propagate_attributes(...)` context manager, wrapped around the root observation. Do **not** use v2/v3 idioms (`langfuse.trace(...)`, `langfuse_context`, `Langfuse().generation(...)`); they are not what this course teaches.
 
 ---
 
@@ -16,7 +16,7 @@ lf = Langfuse(
     public_key=..., secret_key=..., base_url=...,      # from .env: LANGFUSE_PUBLIC_KEY / SECRET_KEY / BASE_URL
     environment="dev", release="v1.2.0",              # project-per-environment (10.3); release tags for annotations (9.3, 13.3)
     sample_rate=1.0,                                  # head sampling (4.6); lower in prod
-    mask=mask_fn,                                     # PII masking function from src/northwind/pii.py (10.2)
+    mask=langfuse_mask,                               # from northwind.pii: langfuse_mask(*, data) (4.6, 10.2)
     flush_at=..., flush_interval=...,                 # batching (4.6)
 )
 client = get_client()                                 # anywhere after init
@@ -100,10 +100,10 @@ Promote **masked** traces only (10.2). The dataset feeds offline evals before an
 ## 7. Masking, sampling, blocking, shutdown (4.6, 10.2)
 
 ```python
-def mask_fn(data):            # called on inputs/outputs/metadata before export
-    return pii.mask(data)     # src/northwind/pii.py: emails, phones, employee ids, card numbers → hashes/placeholders
-
-lf = Langfuse(..., mask=mask_fn, sample_rate=0.2, blocked_instrumentation_scopes=[...])
+from northwind.pii import langfuse_mask   # langfuse_mask(*, data) -> mask_value(data, hash_ids=True)
+# employee ids and emails -> <EMPLOYEE_ID:731ea41e>, <EMAIL:…> (HMAC keyed with ATLAS_PII_HASH_KEY, joinable);
+# phones and cards -> <PHONE>, <CARD>.  make_mask(hash_ids=False) gives plain placeholders everywhere.
+lf = Langfuse(..., mask=langfuse_mask, sample_rate=0.2, blocked_instrumentation_scopes=[...])
 ...
 client.flush(); client.shutdown()      # on process exit; never block inside a request handler
 ```

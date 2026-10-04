@@ -69,20 +69,46 @@
 
 ## Alert fatigue rules (lecture 9.5)
 
-1. **Every page has a runbook and an owner.** No owner, no page: make it a ticket instead.
-2. **Alert on symptoms users or finance feel** (SLO burn, cost per resolved session, p95), not on causes (CPU, one 429). Causes go on the dashboard.
-3. **Use burn-rate alerts with two windows** (fast burn: page; slow burn: ticket) rather than a static threshold on the raw SLI.
-4. **Cost anomaly alerts use the EWMA baseline** from `budget.py`, per tenant, so a big tenant's normal day doesn't page for a small tenant's spike, and vice versa.
-5. **Review every alert that fired this month.** If it wasn't actionable, change the threshold, the window, or delete it.
-6. **Silence with an expiry** during known changes (a prompt rollout), never indefinitely.
+1. **Page only on user-facing symptoms and budget burn**; everything else is a ticket.
+2. **Every alert has a runbook entry and an owner**, or it doesn't ship. In the shipped `deploy/alerts.yml` only `AtlasLatencyP95High` has a `runbook` annotation and no rule has an `owner` label; adding both is part of Lab 6 and capstone AT-22.
+3. **Two windows or a `for:` clause on anything rate-based**: burn-rate alerts with a fast window (page) and a slow window (ticket) rather than a static threshold on the raw SLI.
+4. **Cost anomaly alerts compare a tenant with its own history**: `AtlasTenantCostAnomaly` fires when a tenant's last hour is above 2.5× its average hour over the previous day (and above $1) for 15 minutes, so a big tenant's normal day doesn't page for a small tenant's spike. It needs a day of history; the EWMA detector in `budget.py` does the per-request version on the Ops Console's Budgets page.
+5. **Review the alert log weekly**: any alert that fired three times with no action gets deleted or demoted.
+6. **Unit-test every rule with `promtool test rules`** before it goes live, including that it *can* fire (`AtlasJudgeScoreLow` can't until judge scores reach Prometheus).
+7. **Silence with an expiry** during known changes (a prompt rollout), never indefinitely.
 
-## The four course alerts (fill in during 9.5 and Lab 6)
+## The shipped rules (`deploy/alerts.yml`, ten rules in three groups)
 
-| Alert | SLI | Rule sketch | Severity | Runbook file |
+| Group | Alert | Rule (as shipped) | Severity | Runbook entry |
 |---|---|---|---|---|
-| `AtlasTaskSuccessBurnRateFast` | task success SLO | burn rate > <X> over 1 h **and** > <X> over 5 min | page | `runbooks/error-budget-fast-burn.md` |
-| `AtlasTaskSuccessBurnRateSlow` | task success SLO | burn rate > <Y> over 6 h and 30 min | ticket | `runbooks/error-budget-slow-burn.md` |
-| `AtlasTenantCostAnomaly` / `AtlasBudgetHardCapHit` | hourly spend per tenant | > 2.5× the tenant's daily average hour for 15 min; hard-cap refusals > 0 | ticket (anomaly) / page (hard cap) | `runbooks/cost-anomaly.md` |
-| `AtlasToolErrorRate` | tool error rate | > <Z>% over 10 min for any tool | ticket; page if it coincides with fast burn | `runbooks/tool-error-spike.md` |
+| SLO | `AtlasLatencyP95High` | p95 of `atlas_request_latency_seconds` > 4 s for 10 min | page | [#latency](#latency) (shipped link) |
+| SLO | `AtlasTaskSuccessBurnRateFast` | bad-outcome share / (1 − 0.95) > 14.4 over 1 h, for 5 min | page | #latency (add the annotation) |
+| SLO | `AtlasTaskSuccessBurnRateSlow` | same, > 6 over 6 h, for 30 min | ticket | #latency (add) |
+| SLO | `AtlasToolErrorRate` | any tool's error share > 5% over 10 min, for 10 min | ticket | write `#tool-errors` |
+| Cost | `AtlasTenantCostAnomaly` | last hour > 2.5× previous day's average hour and > $1, for 15 min | ticket | write `#cost-anomaly` |
+| Cost | `AtlasBudgetHardCapHit` | any `refuse` budget decision in 15 min | page | write `#cost-anomaly` |
+| Cost | `AtlasRetryStorm` | > 0.2 LLM retries per request over 10 min, for 10 min | page | write `#retry-storm` |
+| Quality | `AtlasJudgeScoreLow` | mean `judge_grounded` < 0.75 over 2 h, for 30 min (cannot fire: nothing exports judge scores to Prometheus) | ticket | write once it can fire |
+| Quality | `AtlasNegativeFeedbackSpike` | negative share of feedback > 40% over 2 h, for 30 min | ticket | write `#quality` |
+| Quality | `AtlasTelemetryExportFailures` | more than 20 export failures in 10 min | ticket | write `#telemetry` |
 
-Thresholds are yours to set from the replayed baseline; the worksheet in `latency-budget-worksheet.md` and the SLO definitions in `src/northwind/slo.py` give you the starting numbers.
+Read the exact expressions in `deploy/alerts.yml`; the table paraphrases them.
+
+## latency
+
+The entry `AtlasLatencyP95High` links to (`runbook: "10-resources/runbook-template.md#latency"`). Lecture 9.5 fills it in from the template above.
+
+```markdown
+## latency  (AtlasLatencyP95High; AtlasTaskSuccessBurnRateFast / Slow)
+Owner: Atlas on-call (#atlas-ops). Severity: page (fast) / ticket (slow).
+First look (2 min): Grafana "Atlas Ops": p95 latency, "LLM retries and fallbacks / s", outcomes / s.
+Decision tree:
+  - retries and fallbacks ≈ 0 and p95 high → provider is slow, not failing; lower ATLAS_REQUEST_TIMEOUT_S so stalls error and fall back (7.3, 7.6)
+  - fallbacks high, cost per hour rising → fallbacks working; check from_model/to_model; add a second provider (7.4)
+  - one tenant's atlas_queue_wait_seconds rising, sheds climbing → burst; raise that tenant's slots in ATLAS_TENANT_MAX_INFLIGHT temporarily (7.5)
+  - retries by reason = RateLimitError → provider 429s; check provider status (7.5)
+Verify: p95 under 4 s for 10 min; task-success burn rate < 1.
+Postmortem needed if: fast burn > 30 min, or budget remaining < 20%.
+```
+
+The thresholds come from the replayed baseline (p95 3,827 ms against the 4,000 ms budget) and the SLO definitions in `src/northwind/slo.py` (`DEFAULT_SLOS`: task success 0.95, containment 0.80, tool success 0.99, latency 0.95, cost 0.90, quality 0.90); the worksheet in `latency-budget-worksheet.md` gives you the per-step numbers.

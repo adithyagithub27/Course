@@ -133,3 +133,14 @@ def test_contains_pii_skips_documented_format_examples():
     assert contains_pii("Employee NW-40213 is locked out.")
     assert contains_pii("NW-12345 or NW-40213")  # a real id next to the example still counts
     assert "<EMPLOYEE_ID>" in mask_text("format NW-12345")  # telemetry still masks it
+
+
+def test_contains_pii_skips_values_published_in_the_kb():
+    from northwind.pii import published_values
+
+    pub = published_values()
+    assert {"NW-12345", "helpdesk@northwind.example", "0800-555-0199"} <= pub
+    assert not contains_pii("Call the EAP on 0800-555-0199 or mail helpdesk@northwind.example.")
+    assert contains_pii("Call me on 0800-555-0198.")  # one digit off: a real number
+    assert contains_pii("mail anna.devries@northwind.example")
+    assert contains_pii("helpdesk@northwind.example.attacker.io")  # not the published mailbox

@@ -32,11 +32,11 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 
 | Symptom | Fix |
 |---|---|
-| `make replay` produces different numbers from the video | Different seed or fixture day: use `SEED=` and `DAY=` from the README; the course numbers are from one frozen day and a dated price table (and are simulated) |
-| Ops Console shows an empty store | Replay didn't run or wrote elsewhere; check `LOCAL_STORE_PATH`; run `OFFLINE=1 make replay` then `make console` |
+| `make replay` produces different numbers from the video | A lever left on, a different seed, or another store: plain `OFFLINE=1 make replay` is seed 7, Monday 2026-09-14, 4,000 sessions, `CACHE=0 DIET=0 ROUTER=0` ($56.28). The Makefile's `CACHE`/`DIET`/`ROUTER` override `ATLAS_*` variables in your shell, so pass levers on the `make` line. Prices are a dated table (simulated traffic) |
+| Ops Console shows an empty store | Replay didn't run or wrote elsewhere; check `ATLAS_LOCAL_STORE` (or the `STORE=` you passed); run `OFFLINE=1 make replay` then `make console` with the same `STORE=`. `make console` replays a day into the store only if it is empty; for a live demo next to a running server, start Streamlit with `STREAMLIT_SERVER_HEADLESS=true` |
 | Ops Console pages look different from the video | Streamlit version or theme: `uv sync` pins it; check `.streamlit/config.toml` exists |
 | Replay is slow | Lower RPS or the day length via env (see README); the replay writes every span |
-| `OFFLINE=1` but the app still tries to call OpenAI | Env var not exported in that shell, or set after import; export it before `make run`; check `config.py` reads it |
+| `OFFLINE=1` but the app still tries to call OpenAI | Env var not exported in that shell, or set after import; export it before `make run`; `.env` is not loaded automatically, so `set -a; source .env; set +a` first |
 
 ## 3. API keys and accounts
 
@@ -47,7 +47,7 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 | Langfuse traces never appear, no error | Wrong `LANGFUSE_BASE_URL` (Cloud **region** mismatch, or pointing at a self-host that isn't running) | Copy the base URL shown in your project settings; for self-host use your compose URL (13.1) |
 | OpenAI `401` | Invalid key | Regenerate the key; no quotes or spaces in `.env` |
 | OpenAI `429` / insufficient quota | No credit, a rate limit, or **your own hard cap** was hit | Add credit; check the cap you set in 2.1 (that's it working); wait and retry for rate limits |
-| OpenAI "model not found" | A provider renamed a model | Set `ATLAS_MODEL` / `ESCALATION_MODEL` / `ROUTING_MODEL` env vars (names in `config.py`) to the current name; check the repo README |
+| OpenAI "model not found" | A provider renamed a model | Set `ATLAS_MODEL` / `ATLAS_ESCALATION_MODEL` / `ATLAS_ROUTING_MODEL` env vars (names in `config.py`) to the current name; check the repo README |
 | Judge runs cost more than expected | No cap | Set `JUDGE_MAX_CALLS` and a sample rate ≤ 10% (8.2) |
 | Live evals in CI are skipped | No secrets in the fork | Expected: unit, integration and the budget gate always run; live evals only with secrets (13.3) |
 
@@ -77,6 +77,7 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 | Collector receives nothing | Wrong OTLP endpoint or port; http vs grpc mismatch | The course exporter is OTLP/HTTP (`opentelemetry.exporter.otlp.proto.http`); point it at the collector's HTTP receiver port; check the collector logs |
 | Collector exports to Langfuse fail with auth errors | `Authorization` header not set from env | The header value is `${env:LANGFUSE_AUTH}` (basic auth of public:secret, base64); never a literal in the file |
 | Prometheus target DOWN | `/metrics` not mounted or wrong host from inside Docker | `make_asgi_app()` mounted at `/metrics` (9.2); from a container, the host is `host.docker.internal` (Docker Desktop) or the compose service name, not `localhost` |
+| `curl localhost:8000/metrics` prints nothing | `/metrics` is a mounted app and answers with a 307 redirect to `/metrics/` | `curl -sL localhost:8000/metrics` (Prometheus follows the redirect itself) |
 | Grafana dashboard import fails | Grafana version schema mismatch | Pin the Grafana image version in the compose file; re-export the JSON from that version |
 | Alert never fires in Lab 6 | Threshold too high for the replayed traffic, or evaluation interval too long | Lower the threshold for the lab, or replay the incident scenario that breaches it |
 | Atlas errors when Langfuse container is stopped | Exporter blocking or prompt fetch without fallback | This is lecture 13.5: set exporter timeouts/queue limits and pass `fallback=` to `get_prompt` |
@@ -85,7 +86,7 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 
 | Symptom | Fix |
 |---|---|
-| I opened `solution.md` by accident | Close it, write your hypothesis anyway, and do the next incident blind; the fourth (Project 2) has no solution in the repo |
+| I opened `solution.md` by accident | Close it, write your hypothesis anyway, and do the next incident blind; the fourth (Project 2) has no solution in the student repo |
 | The incident spans don't load in the Ops Console | `make incident N=1` (text console over `incidents/incident-01-cost-spike/`), or `LocalSpanStore.from_jsonl(spans_path, scores_path)` in your own script |
 | My root cause differs from the reveal | Post it in the pinned incident thread with a spoiler tag; alternative explanations that fit the evidence are worth discussing |
 

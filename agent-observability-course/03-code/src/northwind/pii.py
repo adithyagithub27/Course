@@ -26,6 +26,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -208,13 +209,32 @@ def make_mask(hash_ids: bool = True, salt: str = "northwind") -> Callable[..., A
     return _mask
 
 
+_KB_DIR = Path(__file__).resolve().parent / "data" / "kb"
+
+
+@lru_cache(maxsize=1)
+def published_values() -> frozenset[str]:
+    """Values that look like PII but are published in the knowledge base itself: the format
+    example ``NW-12345``, role mailboxes (``helpdesk@northwind.example``) and the EAP hotline.
+    An answer quoting them is quoting policy, not leaking a person. Plus :data:`EXAMPLE_IDS`."""
+    found: set[str] = set(EXAMPLE_IDS)
+    for path in sorted(_KB_DIR.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        for rx in (EMAIL_RE, EMPLOYEE_ID_RE, PHONE_RE):
+            found.update(m.group(0) for m in rx.finditer(text))
+    return frozenset(found)
+
+
 def contains_pii(text: str) -> bool:
     """Cheap check used for the PII-in-output metric.
 
-    Documented format examples (:data:`EXAMPLE_IDS`, e.g. "format NW-12345") are not counted:
-    an answer that repeats the KB's own example is not leaking anyone's data."""
+    Values the knowledge base publishes (:func:`published_values`: the ``NW-12345`` format
+    example, role mailboxes, the EAP hotline) are not counted, so an answer quoting policy is
+    not flagged; any other e-mail, phone, employee ID or card number still is. Telemetry masking
+    (:func:`mask_text`) is unaffected and still masks every match."""
     if not text:
         return False
-    for example in EXAMPLE_IDS:
-        text = re.sub(rf"\b{re.escape(example)}\b", " ", text)
+    for value in sorted(published_values(), key=len, reverse=True):
+        if value in text:
+            text = re.sub(rf"(?<![\w.%+-]){re.escape(value)}(?![\w-]|\.\w)", " ", text)
     return mask_with_stats(text)[1].total > 0

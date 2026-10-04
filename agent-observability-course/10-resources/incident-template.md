@@ -25,7 +25,7 @@
 | now | Current state | |
 
 ## 2. Blast radius
-- Tenants affected: <hr | it | ops | logistics | all>   (Langfuse tag filter `tenant=`; Grafana tenant variable)
+- Tenants affected: <ops | finance | hr | eng | all>   (Langfuse tag filter `tenant=`; Grafana tenant variable)
 - Features affected: <kb_answer | ticket | password_reset | shipment | all>
 - Sessions affected so far: <count>   Users: <count>
 - Is it per-session (same sessions, worse) or volume (more sessions)? <answer, with the metric you used>

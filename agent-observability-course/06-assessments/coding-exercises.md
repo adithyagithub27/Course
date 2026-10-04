@@ -721,7 +721,7 @@ class Evaluate(unittest.TestCase):
         self.assertEqual(scan(values, alpha=0.3, threshold=2.0, warmup=4), [4])
 
     def test_cost_spike_is_flagged(self):
-        # Hourly spend for the finance tenant: stable around $2, then a retry storm
+        # Hourly spend for the ops tenant: stable around $2, then a retry storm
         spend = [2.0, 2.1, 1.9, 2.0, 2.2, 1.8, 2.0, 2.1, 1.9, 2.0, 9.5]
         self.assertEqual(scan(spend, alpha=0.3, threshold=3.0, warmup=5), [10])
 
@@ -763,7 +763,7 @@ class Evaluate(unittest.TestCase):
 
 ### Solution explanation
 
-The detector keeps two numbers per tenant, the EWMA of hourly spend and the EWMA of squared deviations, so it needs no history buffer and can run inside the request path or the Ops Console for every tenant at once. `alpha` sets memory: 0.3 means the last few hours dominate, which is why the detector adapts to a genuine step change within a dozen points (the test asserts that a sustained new level stops alerting), while `threshold` in standard deviations sets sensitivity. The warm-up guard stops the detector alerting on the first day of a new tenant, and the minimum-std guard handles the flat history that a brand-new deployment produces. The finance-tenant test encodes Incident 1 from Section 11 in miniature: ten stable hours around two dollars, then a retry storm pushes the hour to nine dollars fifty, and the detector flags exactly that point. The repo's `src/northwind/budget.py` wraps this class per tenant next to the soft and hard caps, and `telemetry/metrics.py` increments `atlas_budget_anomalies_total{tenant=...}` when it fires, which is the counter the alert rule in lecture 9.5 watches.
+The detector keeps two numbers per tenant, the EWMA of hourly spend and the EWMA of squared deviations, so it needs no history buffer and can run inside the request path or the Ops Console for every tenant at once. `alpha` sets memory: 0.3 means the last few hours dominate, which is why the detector adapts to a genuine step change within a dozen points (the test asserts that a sustained new level stops alerting), while `threshold` in standard deviations sets sensitivity. The warm-up guard stops the detector alerting on the first day of a new tenant, and the minimum-std guard handles the flat history that a brand-new deployment produces. The ops-tenant test encodes Incident 1 from Section 11 in miniature: ten stable hours around two dollars, then a cost spike pushes the hour to nine dollars fifty, and the detector flags exactly that point. The repo's `src/northwind/budget.py` has the same idea as `EWMAAnomalyDetector`, run per tenant next to the soft and hard caps (the Ops Console's Budgets page marks the anomalous bins). The shipped code does not count anomalies in Prometheus; the Grafana-side alert, `AtlasTenantCostAnomaly` in lecture 9.5, compares the last hour's spend with the previous day's average hour instead. Adding an anomaly counter is a capstone extension.
 
 ---
 
@@ -778,17 +778,17 @@ Everything Atlas sends to Langfuse passes through a `mask` function first. Imple
 
 1. `short_hash(value)` returns the first 8 hex characters of the SHA-256 of the value after `.strip().lower()`.
 2. `luhn_valid(number)` returns `True` when the digits in `number` (spaces and dashes ignored) pass the Luhn checksum; return `False` for fewer than 13 or more than 19 digits.
-3. `mask_text(text, keep_hash=False)` replaces, in this order: cards, emails, employee IDs, phones.
+3. `mask_text(text, *, hash_ids=False)` replaces, in this order: cards, emails, employee IDs, phones.
 
 | Tag | What to match |
 |---|---|
-| `[CARD]` | 13 to 19 digits with optional single spaces or dashes between digits, **only if** the digits pass Luhn |
-| `[EMAIL]` | `name@example.com` including `+`, `.` and multi-part domains |
-| `[EMPLOYEE_ID]` | `NW-` followed by exactly 5 digits, with word boundaries on both sides (`XNW-12345`, `NW-1234` and `NW-123456` are left alone) |
-| `[PHONE]` | US numbers: `5125550161`, `512-555-0161`, `512.555.0161`, `(512) 555-0161`, `+1 512 555 0161`, `1-512-555-0161` |
+| `<CARD>` | 13 to 19 digits with optional single spaces or dashes between digits, **only if** the digits pass Luhn |
+| `<EMAIL>` | `name@example.com` including `+`, `.` and multi-part domains |
+| `<EMPLOYEE_ID>` | `NW-` followed by exactly 5 digits, with word boundaries on both sides (`XNW-12345`, `NW-1234` and `NW-123456` are left alone) |
+| `<PHONE>` | US numbers: `5125550161`, `512-555-0161`, `512.555.0161`, `(512) 555-0161`, `+1 512 555 0161`, `1-512-555-0161` |
 
-   With `keep_hash=True`, emails and employee IDs become `[EMAIL#1a2b3c4d]` and `[EMPLOYEE_ID#1a2b3c4d]` using `short_hash` of the matched text. Ticket numbers such as `TCK-4471`, shipment IDs such as `SHP-88213`, times such as `14:30` and short numbers must be left exactly as they were.
-4. `mask_attributes(data, keep_hash=False)` recursively masks every string inside dicts, lists and tuples, leaves dict keys, numbers, booleans and `None` untouched, does not mutate the input, and returns tuples as lists.
+   With `hash_ids=True`, emails and employee IDs become `<EMAIL:1a2b3c4d>` and `<EMPLOYEE_ID:1a2b3c4d>` using `short_hash` of the matched text. Ticket numbers such as `TCK-4471`, shipment IDs such as `SHP-88213`, times such as `14:30` and short numbers must be left exactly as they were.
+4. `mask_attributes(data, *, hash_ids=False)` recursively masks every string inside dicts, lists and tuples, leaves dict keys, numbers, booleans and `None` untouched, does not mutate the input, and returns tuples as lists.
 
 ### Starter code (`pii.py`)
 
@@ -811,18 +811,18 @@ def luhn_valid(number):
     raise NotImplementedError
 
 
-def mask_text(text, keep_hash=False):
+def mask_text(text, *, hash_ids=False):
     """Replace PII in a string with tags, in this order: cards, emails, employee IDs, phones.
 
-    [CARD]         13-19 digits with optional single spaces/dashes between digits,
+    <CARD>         13-19 digits with optional single spaces/dashes between digits,
                    ONLY when the digits pass the Luhn check
-    [EMAIL]        name@example.com, including +, . and multi-part domains
-    [EMPLOYEE_ID]  NW- followed by exactly 5 digits (word boundaries on both sides)
-    [PHONE]        US numbers: 5551234567, 555-123-4567, 555.123.4567,
+    <EMAIL>        name@example.com, including +, . and multi-part domains
+    <EMPLOYEE_ID>  NW- followed by exactly 5 digits (word boundaries on both sides)
+    <PHONE>        US numbers: 5551234567, 555-123-4567, 555.123.4567,
                    (555) 123-4567, +1 555 123 4567, 1-555-123-4567
 
-    With keep_hash=True, emails and employee IDs become [EMAIL#1a2b3c4d] and
-    [EMPLOYEE_ID#1a2b3c4d] using short_hash(matched_text), so traces can still be
+    With hash_ids=True, emails and employee IDs become <EMAIL:1a2b3c4d> and
+    <EMPLOYEE_ID:1a2b3c4d> using short_hash(matched_text), so traces can still be
     joined per person without storing the value. Everything else must be left unchanged
     (ticket numbers like TCK-4471, times like 14:30, short numbers, ordinary words).
     """
@@ -830,7 +830,7 @@ def mask_text(text, keep_hash=False):
     raise NotImplementedError
 
 
-def mask_attributes(data, keep_hash=False):
+def mask_attributes(data, *, hash_ids=False):
     """Recursively mask every string inside dicts, lists and tuples.
 
     Dict KEYS are left alone; numbers, booleans and None pass through unchanged.
@@ -874,42 +874,42 @@ def luhn_valid(number):
     return total % 10 == 0
 
 
-def mask_text(text, keep_hash=False):
+def mask_text(text, *, hash_ids=False):
     """Replace PII in a string with tags, in this order: cards, emails, employee IDs, phones.
 
-    Tags: [CARD], [EMAIL], [EMPLOYEE_ID], [PHONE].
-    With keep_hash=True, emails and employee IDs become [EMAIL#1a2b3c4d] / [EMPLOYEE_ID#...]
+    Tags: <CARD>, <EMAIL>, <EMPLOYEE_ID>, <PHONE> (the same format as the repo's `northwind.pii`).
+    With hash_ids=True, emails and employee IDs become <EMAIL:1a2b3c4d> / <EMPLOYEE_ID:...>
     using short_hash, so traces can still be joined per person without storing the value.
     Cards are only masked when they pass the Luhn check. Everything else is left unchanged.
     """
     def card(match):
-        return "[CARD]" if luhn_valid(match.group(0)) else match.group(0)
+        return "<CARD>" if luhn_valid(match.group(0)) else match.group(0)
 
     def email(match):
-        return f"[EMAIL#{short_hash(match.group(0))}]" if keep_hash else "[EMAIL]"
+        return f"<EMAIL:{short_hash(match.group(0))}>" if hash_ids else "<EMAIL>"
 
     def employee(match):
-        return f"[EMPLOYEE_ID#{short_hash(match.group(0))}]" if keep_hash else "[EMPLOYEE_ID]"
+        return f"<EMPLOYEE_ID:{short_hash(match.group(0))}>" if hash_ids else "<EMPLOYEE_ID>"
 
     text = CARD_CANDIDATE.sub(card, text)
     text = EMAIL.sub(email, text)
     text = EMPLOYEE_ID.sub(employee, text)
-    text = PHONE.sub("[PHONE]", text)
+    text = PHONE.sub("<PHONE>", text)
     return text
 
 
-def mask_attributes(data, keep_hash=False):
+def mask_attributes(data, *, hash_ids=False):
     """Recursively mask every string inside dicts, lists and tuples.
 
     Dict KEYS are left alone; numbers, booleans and None pass through unchanged.
     Return a new structure of the same shape (tuples come back as lists).
     """
     if isinstance(data, str):
-        return mask_text(data, keep_hash=keep_hash)
+        return mask_text(data, hash_ids=hash_ids)
     if isinstance(data, dict):
-        return {key: mask_attributes(value, keep_hash) for key, value in data.items()}
+        return {key: mask_attributes(value, hash_ids=hash_ids) for key, value in data.items()}
     if isinstance(data, (list, tuple)):
-        return [mask_attributes(item, keep_hash) for item in data]
+        return [mask_attributes(item, hash_ids=hash_ids) for item in data]
     return data
 ```
 
@@ -933,12 +933,12 @@ class Evaluate(unittest.TestCase):
     def test_email(self):
         self.assertEqual(
             mask_text("Contact priya.nair+hr@northwind-logistics.co.uk for payroll"),
-            "Contact [EMAIL] for payroll",
+            "Contact <EMAIL> for payroll",
         )
 
     def test_employee_id(self):
         self.assertEqual(mask_text("Reset password for NW-10433 please"),
-                         "Reset password for [EMPLOYEE_ID] please")
+                         "Reset password for <EMPLOYEE_ID> please")
         # not an employee id: too short, or glued to other characters
         self.assertEqual(mask_text("NW-1234 and XNW-12345 and NW-123456"), "NW-1234 and XNW-12345 and NW-123456")
 
@@ -946,22 +946,22 @@ class Evaluate(unittest.TestCase):
         for phone in ["5125550161", "512-555-0161", "512.555.0161",
                       "(512) 555-0161", "+1 512 555 0161", "1-512-555-0161"]:
             self.assertEqual(mask_text(f"call me on {phone} tomorrow"),
-                             "call me on [PHONE] tomorrow", phone)
+                             "call me on <PHONE> tomorrow", phone)
 
     def test_card_only_when_luhn_valid(self):
         self.assertEqual(mask_text("card 4532 0151 1283 0366 was charged"),
-                         "card [CARD] was charged")
+                         "card <CARD> was charged")
         self.assertEqual(mask_text("ref 4532 0151 1283 0367"), "ref 4532 0151 1283 0367")
 
     def test_leaves_operational_data_alone(self):
         text = "Ticket TCK-4471 opened at 14:30, shipment SHP-88213, 3 pallets, VPN error 809"
         self.assertEqual(mask_text(text), text)
 
-    def test_keep_hash_is_stable_and_short(self):
-        masked = mask_text("NW-10433 wrote from j.doe@northwind.com", keep_hash=True)
+    def test_hash_ids_is_stable_and_short(self):
+        masked = mask_text("NW-10433 wrote from j.doe@northwind.com", hash_ids=True)
         emp_hash = short_hash("NW-10433")
         email_hash = short_hash("j.doe@northwind.com")
-        self.assertEqual(masked, f"[EMPLOYEE_ID#{emp_hash}] wrote from [EMAIL#{email_hash}]")
+        self.assertEqual(masked, f"<EMPLOYEE_ID:{emp_hash}> wrote from <EMAIL:{email_hash}>")
         self.assertEqual(len(emp_hash), 8)
         self.assertEqual(short_hash("  J.Doe@Northwind.com "), email_hash)
         self.assertEqual(short_hash("abc"), hashlib.sha256(b"abc").hexdigest()[:8])
@@ -977,17 +977,17 @@ class Evaluate(unittest.TestCase):
         masked = mask_attributes(span)
         self.assertEqual(masked["gen_ai.tool.name"], "reset_password")
         self.assertEqual(masked["gen_ai.tool.call.arguments"],
-                         {"employee_id": "[EMPLOYEE_ID]", "phone": "[PHONE]"})
-        self.assertEqual(masked["gen_ai.tool.call.result"], ["sent to [EMAIL]", 200, True, None])
+                         {"employee_id": "<EMPLOYEE_ID>", "phone": "<PHONE>"})
+        self.assertEqual(masked["gen_ai.tool.call.result"], ["sent to <EMAIL>", 200, True, None])
         self.assertEqual(masked["gen_ai.usage.input_tokens"], 1200)
-        self.assertEqual(masked["nested"], ["[EMPLOYEE_ID]"])
+        self.assertEqual(masked["nested"], ["<EMPLOYEE_ID>"])
         # original is untouched
         self.assertEqual(span["gen_ai.tool.call.arguments"]["employee_id"], "NW-10433")
 
     def test_mask_attributes_passthrough(self):
         self.assertEqual(mask_attributes(42), 42)
         self.assertEqual(mask_attributes(None), None)
-        self.assertEqual(mask_attributes("NW-10433"), "[EMPLOYEE_ID]")
+        self.assertEqual(mask_attributes("NW-10433"), "<EMPLOYEE_ID>")
 ```
 
 ### Hints
@@ -995,12 +995,12 @@ class Evaluate(unittest.TestCase):
 1. Compile the four patterns once at module level; `re.sub` accepts a function as the replacement, which is how you apply the Luhn check per match.
 2. Mask cards before phones: a 16-digit card number contains something that looks like a phone number.
 3. `(?<!\d)` and `(?!\d)` around the card pattern stop you matching a 13-digit slice out of a longer digit run.
-4. For `keep_hash`, hash the matched text (`match.group(0)`), not the whole string.
+4. For `hash_ids`, hash the matched text (`match.group(0)`), not the whole string.
 5. `mask_attributes` is a four-way `isinstance` dispatch: `str`, `dict`, `list`/`tuple`, everything else returned as is.
 
 ### Solution explanation
 
-The masking runs client-side, before the Langfuse SDK serialises the span, which is the only place that guarantees raw values never leave the process; the OTel collector `attributes` processor in lecture 10.2 is defence in depth, not the primary control. The order of substitutions matters because the patterns overlap: card numbers are checked first with a Luhn filter so that a shipment reference or a run of digits in a log line does not disappear, then emails, then the Northwind employee-ID format (`NW-` plus five digits; ticket `TCK-` and shipment `SHP-` ids are deliberately different prefixes so they survive), and finally phones. The `keep_hash` option is the governance compromise from lecture 10.3: the analyst can still count "how many sessions did this employee have" or join a Langfuse trace to a ticket by hashed ID, but nobody can read the identity out of the trace. The recursive `mask_attributes` matches the shape Langfuse hands to `mask=`: nested input, output and metadata dicts. The repo's `src/northwind/pii.py` is this module plus configurable extra patterns per tenant, and `telemetry/langfuse_setup.py` passes `mask_attributes` as `Langfuse(mask=...)`.
+The masking runs client-side, before the Langfuse SDK serialises the span, which is the only place that guarantees raw values never leave the process; the OTel collector's `attributes/redact` processor in lecture 10.2 is defence in depth, not the primary control. The order of substitutions matters because the patterns overlap: card numbers are checked first with a Luhn filter so that a shipment reference or a run of digits in a log line does not disappear, then emails, then the Northwind employee-ID format (`NW-` plus five digits; ticket `TCK-` and shipment `SHP-` ids are deliberately different prefixes so they survive), and finally phones. The `hash_ids` option is the governance compromise from lecture 10.2: the analyst can still count "how many sessions did this employee have" or join a Langfuse trace to a ticket by hashed ID, but nobody can read the identity out of the trace. The recursive `mask_attributes` matches the shape Langfuse hands to `mask=`: nested input, output and metadata dicts. The repo's `src/northwind/pii.py` has the same shape and signatures (`mask_text(text, *, hash_ids=False, salt=...)`, `mask_value(value, *, hash_ids=False, salt=...)`, and `langfuse_mask(*, data)` for `Langfuse(mask=...)`), with one production difference: its `short_hash` is an HMAC-SHA256 keyed with `ATLAS_PII_HASH_KEY`, so nobody without the key can hash a list of employee IDs and match them. The plain SHA-256 here is fine for the exercise and not for production.
 
 ---
 
@@ -1258,7 +1258,7 @@ Place files as `exN/solution/<module>.py`, `exN/starter/<module>.py` and `exN/te
 ```bash
 #!/bin/bash
 # Run each exercise's tests against the solution (must pass) and the starter (must import cleanly and fail).
-cd /tmp/claude-0/ex2
+cd "$(dirname "$0")"
 status=0
 for ex in ex1:pricing ex2:latency ex3:anomaly ex4:pii ex5:context; do
   d=${ex%%:*}; m=${ex##*:}
@@ -1272,7 +1272,7 @@ done
 exit $status
 ```
 
-Last verified run (Python 3.11):
+Last verified run (Python 3.11, 2026-10-04):
 
 ```text
 ex1 pricing [solution]: Ran 12 tests in 0.001s OK

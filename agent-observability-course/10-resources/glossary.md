@@ -9,12 +9,12 @@
 | **Attribute** | A key-value pair on a span; the GenAI semantic conventions define the `gen_ai.*` keys | 3.1, 3.3 |
 | **Blast radius** | Which tenants, features, users and sessions an incident affects | 11.1 |
 | **Budget (cost)** | A per-tenant spend limit: soft cap (degrade) and hard cap (refuse politely) | 6.7 |
-| **Budget gate** | The CI test that replays a day offline and fails a PR if cost per session or p95 regress | 13.3 |
+| **Budget gate** | The CI tests (`tests/budget/test_budget_gate.py`, five of them) that replay a day offline and fail a PR if cost per session, p95, a tenant's soft cap, the task-success SLO or input tokens per generation regress | 13.3 |
 | **Burn rate** | How fast an error budget is being consumed relative to the SLO window; alerted on with fast and slow windows | 9.1, 9.5 |
 | **Cached input tokens** | Input tokens served from the provider's prompt cache, usually cheaper; reported in `prompt_tokens_details.cached_tokens` / `input_tokens_details` | 6.1, 6.4 |
 | **Circuit breaker** | Stops calling a failing provider for a cooldown, then probes (half-open) before resuming | 7.4 |
 | **Containment** | Share of sessions handled without escalation to a human or a larger model | 9.1 |
-| **Context bloat** | The prompt growing every step because history and tool results are re-sent; a cost and latency driver (Incident 1) | 6.5, 11.2 |
+| **Context bloat** | The prompt growing every step because history and tool results are re-sent; a cost and latency driver (Incident 1, the `context_bloat` scenario) | 6.5, 11.2 |
 | **Context diet** | Trimming history, truncating tool results, summarising and tuning top-k to cut tokens per step | 6.5 |
 | **Context propagation** | Carrying the trace context into child calls and async tasks so spans nest correctly | 3.1, 3.6 |
 | **Cost per resolved session** | Total cost for a tenant divided by sessions the agent resolved; the manager's number | 6.3, 9.1 |
@@ -25,7 +25,7 @@
 | **EWMA** | Exponentially weighted moving average; the baseline for cost anomaly detection | 6.7 |
 | **Exporter** | The OTel component that ships spans to a backend (console, OTLP, file, Langfuse) | 3.2 |
 | **Fallback** | An alternative model or provider used when the primary fails or times out | 7.4 |
-| **Feature (tag)** | Which Atlas capability a request used: `kb_answer`, `ticket`, `password_reset`, `shipment` | 6.3 |
+| **Feature (tag)** | Which Atlas capability a request used (`atlas.feature`): `policy_question`, `create_ticket`, `ticket_lookup`, `shipment_status`, `password_reset`, `escalation`, `other` | 6.3 |
 | **GenAI semantic conventions (semconv)** | OpenTelemetry's incubating attribute and metric names for GenAI operations, models, usage, tools and agents | 3.3 |
 | **Generation** | A span/observation for one LLM call, carrying model, usage and cost | 4.1 |
 | **Grafana** | Dashboard tool; the Atlas Ops dashboard is `atlas-ops.json` | 9.3 |
@@ -39,14 +39,14 @@
 | **LiteLLM** | Library providing model price tables, cost functions, a Router with fallbacks, and budget concepts | 6.2, 6.6, 7.4 |
 | **LLMOps** | Operating LLM applications in production: tracing, quality, cost, reliability, incidents | 1.2 |
 | **Local store** | SQLite/JSONL span store used in offline mode and by the Ops Console | 2.4 |
-| **Mask function** | The Langfuse `mask=` hook (and collector processor) that redacts PII before export | 4.6, 10.2 |
+| **Mask function** | The Langfuse `mask=` hook (`langfuse_mask(*, data)`, which calls `mask_value(data, hash_ids=True)`) that replaces PII with `<EMAIL>`-style placeholders or keyed hashes before export; the collector's `attributes/redact` is the second layer | 4.6, 10.2 |
 | **Mock LLM** | The deterministic offline model with realistic usage and latency, scenario-aware | 2.4 |
-| **Northwind Logistics** | The fictional company; four departments (`hr`, `it`, `ops`, `logistics`) as tenants | 1.4 |
+| **Northwind Logistics** | The fictional company; four departments as tenants: `ops`, `finance`, `hr`, `eng` | 1.4 |
 | **Observation** | Langfuse's name for a span with a type (agent, tool, generation, retriever, guardrail, chain, embedding) | 4.1 |
 | **OFFLINE=1** | Env flag: mock LLM, local store, Ops Console; every lab has this path | 2.4 |
 | **OpenInference** | Instrumentation library and convention family from Arize; the course uses its OpenAI instrumentor | 3.5, 12.3 |
 | **OpenLLMetry** | Open-source OTel instrumentation for LLM apps (Traceloop); Section 12 alternative | 12.4 |
-| **Ops Console** | The course's Streamlit app over the local store: Cost, Latency, Quality, Budgets, Alerts pages | 2.4, 14.x |
+| **Ops Console** | The course's Streamlit app over the local store (`make console`): Live cost, Cost, Latency, Quality, Budgets, Traffic, Retrieval, Reliability, Safety, Alerts, Traces and Compare replays pages | 2.4, 14.x |
 | **OTel Collector** | The OpenTelemetry service that receives, processes (attributes, tail sampling) and exports telemetry to one or more backends | 13.2 |
 | **OTLP** | OpenTelemetry's wire protocol for exporting traces, metrics and logs | 3.2 |
 | **p50 / p95 / p99** | Median and tail percentiles; budgets and alerts use p95 | 7.1 |
@@ -69,8 +69,8 @@
 | **SLI / SLO** | Service level indicator (a measured signal) and objective (a target on it over a window) | 9.1 |
 | **Span** | One timed operation in a trace, with attributes, events and status | 3.1 |
 | **Step (span)** | One iteration of the agent's tool loop | 5.2 |
-| **Step limit** | Maximum iterations before the agent stops and escalates; emits an event | 5.2, 5.6 |
-| **Swarm** | The traffic simulator driving Atlas at configurable RPS with seeds and injectable incidents | 1.4 |
+| **Step limit** | Maximum iterations (`ATLAS_MAX_STEPS`, default 6) before the agent stops with an honest answer; emits a `step_limit_reached` event | 5.2, 5.6 |
+| **Swarm** | The traffic simulator driving a running Atlas at configurable RPS (`make swarm RPS=`) with seeds and injectable incidents; `make replay` is its offline, in-process sibling | 1.4 |
 | **Tail sampling** | See Head / tail sampling | 13.2 |
 | **Tool (observation type)** | Span/observation for a tool call with redacted arguments and result | 5.2 |
 | **Trace** | The tree of spans for one run, identified by a trace id | 3.1 |
