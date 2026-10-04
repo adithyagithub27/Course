@@ -179,7 +179,7 @@ Six. Three ways to cut spend. "Prompt caching with a stable prefix, measured by 
 
 Seven. One tenant burning the budget. "A per-tenant budget with a soft cap that degrades, a hard cap that refuses before any model call, and an anomaly alert on spend so I'm paged before the cap."
 
-Eight. What a fallback needs. "A timeout derived from the step budget, not a default, and a breaker that counts slow calls, not only errors. A slow provider produces no errors, so nothing fails over unless you define slowness as failure. And a fallback-rate metric, because a fallback nobody has seen fire is one you don't have."
+Eight. What a fallback needs. "A timeout derived from the step budget, not a default, so a stalled call becomes an error the breaker can count. A slow provider produces no errors, so nothing fails over until the timeout defines slowness as failure. And a fallback-rate metric, because a fallback nobody has seen fire is one you don't have."
 
 [SLIDE 7: Interview questions 9-10: quality]
 9. How do you know an agent got worse when latency, errors and cost all look fine?

@@ -267,11 +267,11 @@ If your sentence had the timeouts, good. If it had the retrieval change, very go
 
 Now the fix, and what each part does on the full day.
 
-[SCREEN: Ops Console, Compare replays page with four stores from `OFFLINE=1 make replay ... STORE=.atlas/<name>.sqlite`: baseline $56.28, p95 3,827 ms; `SCENARIO=cost_spike` $64.99, p95 6,763 ms; `SCENARIO=retry_storm` (the retrieval change rolled back) $58.00, p95 3,889 ms; `SCENARIO=retry_storm` with `ATLAS_MAX_RETRIES=1` $50.13, p95 3,946 ms.]
+[SCREEN: Ops Console, Compare replays page with four stores from `OFFLINE=1 make replay ... STORE=.atlas/<name>.sqlite`: baseline $56.28, p95 3,827 ms; `SCENARIO=cost_spike` $64.99, p95 6,763 ms; `SCENARIO=retry_storm` (the retrieval change rolled back) $58.00, p95 3,889 ms; `SCENARIO=retry_storm` with `ATLAS_MAX_RETRIES=1` $54.59, p95 3,934 ms, 392 errors.]
 
 Fix now: roll the retrieval change back. `ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, context diet on. Replay the full four-thousand-session day to see what that buys. The incident day costs sixty-four ninety-nine. With the retrieval change rolled back and the same provider storm, fifty-eight dollars, against a fifty-six twenty-eight baseline. p95 drops from six point eight seconds to three point nine. The storm alone is a small problem. The bloat is what made it expensive.
 
-Now the tempting second fix: fewer retries. With `ATLAS_MAX_RETRIES=1` the day costs fifty dollars thirteen, cheaper than baseline. But the mock provider times out twice before it succeeds, so three hundred and ninety-seven requests now end in an error. Cheaper and broken. A retry bound is a dial between cost and failure, not a fix.
+Now the tempting second fix: fewer retries. With `ATLAS_MAX_RETRIES=1` the day costs fifty-four fifty-nine, a little cheaper than baseline. But the mock provider times out twice before it succeeds, so three hundred and ninety-two requests now end in an error. Cheaper and broken. A retry bound is a dial between cost and failure, not a fix.
 
 [SLIDE 6: The fix this week]
 - Now: `ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, `ATLAS_CONTEXT_DIET=1`
@@ -287,7 +287,7 @@ Two changes for this week. First, no code path that lets a tenant override switc
 def record_failure(self, model: str) -> None:
     n = self._failures.get(model, 0) + 1
     self._failures[model] = n
-    if n >= self.threshold:                 # threshold = 3
+    if n >= self.threshold:                 # threshold = ATLAS_ROUTER_ALLOWED_FAILS, default 3
         self._opened_at[model] = self._clock()
 
 def record_success(self, model: str) -> None:
@@ -464,20 +464,22 @@ Because nothing failed. The per-call timeout is twenty seconds, so a five-second
 If your sentence blamed top-k, go back to exhibit four. If it said "the provider" and stopped, add the missing safety net. That's the part you can fix.
 
 [SLIDE 6: The fix]
-- `ATLAS_REQUEST_TIMEOUT_S` from the step budget, not the default
-- Action item: a call over 4 s counts as a breaker failure
+- `ATLAS_REQUEST_TIMEOUT_S=4`, from the step budget, not the default 20
+- A timed-out call is a failure: the breaker opens, `FALLBACKS` answer
 - Keep `ATLAS_TOP_K=4` until recall is measured
-- Lab 4: tune it until the budget gate passes under `slow_provider`
+- Lab 4: find this config yourself and make the gate pass
 
-The fix in three parts. One: a per-call timeout derived from the step budget in Lecture 7.1, not an inherited twenty seconds. Two: treat slowness as failure. A call over four seconds counts toward the breaker, so three slow calls open the circuit and the next call goes to `FALLBACKS`. That rule is not in the shipped code; it's an action item, and Lab 4 is where you build and tune it. Three: top-k stays at four until someone measures recall against tokens.
+[SCREEN: Ops Console, Compare replays: `OFFLINE=1 make replay SCENARIO=slow_provider` p95 8,877 ms, $55.86; the same with `ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800`: p95 3,859 ms, $43.29, 0 errors.]
+
+The fix, in three parts. One: a per-call timeout derived from the step budget in Lecture 7.1, four seconds, not an inherited twenty. Now a stalled call fails, and a failure is something the breaker can count. After two, the circuit opens for half an hour and calls go to `FALLBACKS`, gpt-4o-mini, which the slowdown didn't touch. Replay the slow day with that config: p95 from eight point nine seconds to three point nine, no errors, and cheaper, because the fallback model costs less. Two: top-k stays at four until someone measures recall against tokens. Three: Lab 4 asks you to find that config yourself, with the budget gate as the judge.
 
 [SLIDE 7: What would have prevented this]
 - 5.3: top-k and hits on every retriever span made the red herring checkable
 - 7.1: per-call timeouts from the step budget
-- 7.4: breakers that count slow calls
+- 7.4: a breaker only sees what the timeout turns into failures
 - 13.3: `ATLAS_TOP_K=20 make budget-check` fails on p95 and tokens
 
-Thirty seconds on prevention. Lecture 5.3 put top-k and hits on the retriever span, which is why you could clear it in one click. Lecture 7.1 told you to derive timeouts from the budget. Lecture 7.4 built the breaker; now you know it needs to count slowness. And the CI gate in Lecture 13.3 fails `ATLAS_TOP_K=20` on the pull request, before a pilot reaches anyone.
+Thirty seconds on prevention. Lecture 5.3 put top-k and hits on the retriever span, which is why you could clear it in one click. Lecture 7.1 told you to derive timeouts from the budget. Lecture 7.4 built the breaker; now you know it only works when the timeout feeds it failures. And the CI gate in Lecture 13.3 fails `ATLAS_TOP_K=20` on the pull request, before a pilot reaches anyone.
 
 [AVATAR]
 Carry this forward: compare prompt sizes before you blame the prompt, and compare the recovery before you blame the provider. And a fallback nobody has seen fire is a fallback you don't have.
@@ -487,7 +489,7 @@ Carry this forward: compare prompt sizes before you blame the prompt, and compar
 - The diet made top-k 20 harmless here
 - Slowness must count as failure
 
-**Recap:** A provider slowdown tripled time to first token while prompt sizes stayed flat, the top-k change was a red herring because the context diet capped tool results, and the 20-second timeout meant the breaker never saw a failure; fix with a budget-derived timeout and a breaker that counts slow calls.
+**Recap:** A provider slowdown tripled time to first token while prompt sizes stayed flat, the top-k change was a red herring because the context diet capped tool results, and the 20-second timeout meant the breaker never saw a failure; a budget-derived 4-second timeout turns the stalls into failures, opens the breaker and lets the fallback answer.
 
 **Transition:** Next, Incident 3, the hardest kind: every dashboard is green, and the answers are quietly getting worse.
 
@@ -497,7 +499,8 @@ Carry this forward: compare prompt sizes before you blame the prompt, and compar
 - Preset (`INCIDENT_PRESETS["latency_regression"]`): `slow_provider` 13:00 to 17:00, all tenants, 75% of requests, with `top_k=20` on the same requests. So the top-k change and the slowdown share a window in the data; the brief's 12:30 is the human's memory. 200 of the 265 requests between 13:00 and 17:00 carry `atlas.scenario = slow_provider`.
 - `brief.md` says "cost is up ~10%" and "tokens per request slightly up"; the dataset shows cost per request flat ($0.0021 → $0.0020) and input tokens per generation flat. Narrate the dataset.
 - Breaker state and fallback counts are process metrics, not span data. The Reliability page says so and points to `atlas_model_fallbacks_total` in Grafana. With zero failed attempts in the dataset, the breaker in `_call_model` never records a failure, so it cannot open.
-- "Isn't a 4 s slow-call rule too aggressive for long answers?" With streaming you would time out on TTFT instead (Lecture 5.4). Say both on screen.
+- "Isn't a 4 s timeout too aggressive for long answers?" With streaming you would time out on TTFT instead (Lecture 5.4). Say both on screen.
+- Fix figures: numbers card §3a (re-run 2026-10-04 after the mock started honouring `timeout=`): `slow_provider` defaults p95 8,877 ms; with the four settings on the slide, p95 3,859 ms, $43.29, 0 errors, 39 timed-out attempts, 7,318 calls served by gpt-4o-mini (the scenario slows only the primary deployments).
 - `build_router_config` is pure data and testable offline; `Router(timeout=, num_retries=, fallbacks=, allowed_fails=, cooldown_time=)` per the curriculum reference.
 
 ---
