@@ -63,7 +63,7 @@
 | 1.5 | Course roadmap and how to get the most out of it | SC | `make` targets listed on screen exist in `03-code/Makefile`; version banner text matches pinned versions | [ ] | |
 | 1.6 | Quiz: Foundations | QZ | Every question has correct answer + explanation; answers match current APIs and attribute names | [ ] | |
 | 2.1 | Accounts, keys and spending caps | SC | Provider cap screens masked (account ids, billing); `.env.example` has placeholders only; "check current pricing" said | [ ] | |
-| 2.2 | Project setup with uv and the Makefile | SC | Fresh clone → `make install` → `make test` = 401 passed offline on macOS, Windows (WSL) and Linux | [ ] | |
+| 2.2 | Project setup with uv and the Makefile | SC | Fresh clone → `make install` → `make test` = 419 passed offline on macOS, Windows (WSL) and Linux | [ ] | |
 | 2.3 | Quick win: one request, one trace | SC | `curl` (offline, `.env` sourced, `ATLAS_MOCK_LATENCY_SCALE=1`) produces `invoke_agent atlas` with `step 1`/`step 2`, two `chat gpt-4.1-mini` generations (3,262→44 and 6,678→271 tokens) and the retriever; total $0.00448; address bar cropped | [ ] | |
 | 2.4 | Offline mode: a full day of traffic for free | SC | `OFFLINE=1 make replay` = $56.28, 10,184 requests, 4,000 sessions, 70,560 spans; Ops Console reference frame saved for the consistency check | [ ] | |
 | 2.5 | Lab 1: Environment and first trace | LAB | Complete the lab as a student on a clean machine (offline path first, then with keys); expected outputs match | [ ] | |
@@ -107,7 +107,7 @@
 | 7.3 | Timeouts, retries and backoff done right | SC | Code on screen matches `03-code/` file and curriculum §6; runs offline where the curriculum says so | [ ] | |
 | 7.4 | Fallbacks and circuit breakers with the Router | SC | Scripted stalling provider: request 1 errors after three timeouts, requests 2-3 go to gpt-4o-mini with `fallbacks=2`; breaker opens after three consecutive failures | [ ] | |
 | 7.5 | Rate limits, queues and graceful degradation | SL | n/a (conceptual). Check facts and diagrams against curriculum; version banner if any code shown | [ ] | |
-| 7.6 | Chaos demo: slow provider during peak | DM | `slow_provider` replay: p95 leaves the budget while retries, fallbacks and cost stay flat; the context diet's half-second gain shown; no offline fallback claimed (the mock ignores `timeout=`) | [ ] | |
+| 7.6 | Chaos demo: slow provider during peak | DM | `slow_provider` replay: p95 leaves the budget while retries, fallbacks and cost stay flat; the context diet's half-second gain shown; timeout + breaker config brings p95 to 3,859 ms | [ ] | |
 | 7.7 | Lab 4: Hold p95 under 4 seconds during chaos | LAB | Complete the lab as a student on a clean machine (offline path first, then with keys); expected outputs match | [ ] | |
 | 7.8 | Quiz: Latency and reliability | QZ | Every question has correct answer + explanation; answers match current APIs and attribute names | [ ] | |
 | 8.1 | Offline evals are not enough | SL | n/a (conceptual). Check facts and diagrams against curriculum; version banner if any code shown | [ ] | |
@@ -132,7 +132,7 @@
 | 10.5 | Quiz: Governance | QZ | Every question has correct answer + explanation; answers match current APIs and attribute names | [ ] | |
 | 11.1 | How to read an incident like an SRE | SL | n/a (conceptual). Check facts and diagrams against curriculum; version banner if any code shown | [ ] | |
 | 11.2 | Incident 1: Monday's cost spike (investigate, then reveal) | CH | Exhibits match the incident store (`make incident N=1`); pause card shown; Part B reveal: a retrieval change (diet off, top-k up) on ops from 09:00 compounded by provider timeouts from 10:00; replay-the-fix $64.99 vs $58.00 | [ ] | |
-| 11.3 | Incident 2: p95 doubled after lunch | CH | Same protocol; reveal: provider slowdown (TTFT ×3.5 from 13:00 to 17:00) with top-k as a red herring; fix = budget-derived timeout + a breaker that counts slow calls | [ ] | |
+| 11.3 | Incident 2: p95 doubled after lunch | CH | Same protocol; reveal: provider slowdown (TTFT ×3.5 from 13:00 to 17:00) with top-k as a red herring; fix = 4 s timeout so stalls fail, breaker opens, fallback answers (p95 8,877 → 3,859 ms on the replayed day) | [ ] | |
 | 11.4 | Incident 3: users are unhappy but nothing is red | CH | Same protocol; reveal: prompt v2 promoted without evals (grounded 0.94 → 0.56); rollback with `python -m app.prompts promote --version 1` | [ ] | |
 | 11.5 | Writing the postmortem | SC | Code on screen matches `03-code/` file and curriculum §6; runs offline where the curriculum says so | [ ] | |
 | 11.6 | Project 2: Investigate a fourth incident | AS | Brief complete; incident 4's `solution.md` is stripped from the student repo by `make student-repo` | [ ] | |
@@ -166,7 +166,7 @@
 
 ## 3. Course-level checks (before submission)
 
-- [ ] Fresh clone on macOS, Windows (WSL and native if supported) and Linux: `make install`, `make test` (offline, 401 tests) pass
+- [ ] Fresh clone on macOS, Windows (WSL and native if supported) and Linux: `make install`, `make test` (offline, 419 tests) pass
 - [ ] `OFFLINE=1 make replay` reproduces the numbers card ($56.28 for seed 7, 2026-09-14); `make budget-check` = 5 passed
 - [ ] With keys: the live trace (2.3 `OFFLINE=0` variant) works; `make judge` with the DeepEval judge runs under `JUDGE_MAX_CALLS`; CI green on a fresh fork (unit + integration + budget gate always; live evals only with secrets)
 - [ ] 13 section quizzes + practice test present; 5 challenges (4.7, 6.8, 11.2, 11.3, 11.4) have clear pause/submit instructions; 14.1a gate present

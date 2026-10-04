@@ -66,8 +66,8 @@
 
 - **A.** The fallback table was empty; add entries.
   - *Explanation:* Incorrect. The fallbacks exist; nothing triggered them.
-- **B.** With a 20-second per-call timeout, slow calls still succeeded, so the breaker, which counts only errors, never saw a failure. Fix: derive the per-call timeout from the step budget, and count a call over 4 s as a breaker failure (an action item; not in the shipped code) so three slow calls open the circuit.
-  - *Explanation:* Correct. A breaker that only counts errors never protects a latency SLO. Lab 4 is where you build and tune the slow-call rule.
+- **B.** With a 20-second per-call timeout, slow calls still succeeded, so the breaker, which counts only errors, never saw a failure. Fix: derive the per-call timeout from the step budget (4 s), so a stalled call fails; then the breaker counts those failures, opens, and the fallback (gpt-4o-mini) answers.
+  - *Explanation:* Correct. A breaker only counts errors, so it protects a latency SLO only when a timeout turns slowness into errors. Replayed with `ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800`, the slow day's p95 falls from 8,877 ms to 3,859 ms with no errors; Lab 4 has you find that config.
 - **C.** Raise top-k back to 4; the retrieval change caused the slowdown.
   - *Explanation:* Incorrect. Top-k was a red herring: the context diet capped tool results, so prompt sizes stayed flat.
 - **D.** Raise `ATLAS_MAX_RETRIES` so slow calls are retried.

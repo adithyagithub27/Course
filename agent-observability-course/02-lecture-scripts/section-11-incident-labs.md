@@ -27,7 +27,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 |---|---|---|---|---|
 | 11.1 | How to read an incident like an SRE | SL | 6:00 | ~660 |
 | 11.2 | Incident 1: Monday's cost spike (Part A / Part B) | CH | 12:00 (4:00 + 8:00) | ~1,310 |
-| 11.3 | Incident 2: p95 doubled after lunch (Part A / Part B) | CH | 12:00 (4:00 + 8:00) | ~1,080 |
+| 11.3 | Incident 2: p95 doubled after lunch (Part A / Part B) | CH | 12:00 (4:00 + 8:00) | ~1,115 |
 | 11.4 | Incident 3: users are unhappy but nothing is red (Part A / Part B) | CH | 12:00 (4:00 + 8:00) | ~1,140 |
 | 11.5 | Writing the postmortem | SC | 7:00 | ~670 |
 | 11.6 | Project 2: Investigate a fourth incident | AS | 3:00 | ~345 |
@@ -337,7 +337,7 @@ Two lessons to carry forward. Config changes are deploys. And the trigger is rar
 |---|---|
 | ID | 11.3 (recorded and uploaded as 11.3 Part A and 11.3 Part B) |
 | Type | CH (challenge: investigate, then reveal) |
-| Target duration | 12:00 total. Part A 4:00 (~245 spoken words over slides and six exhibits) ending on the pause card. Part B 8:00 (~840 spoken words; the rest is trace and replay screen time). |
+| Target duration | 12:00 total. Part A 4:00 (~245 spoken words over slides and six exhibits) ending on the pause card. Part B 8:00 (~875 spoken words; the rest is trace and replay screen time). |
 | Learning objectives | 1. Separate a provider slowdown from a self-inflicted regression using TTFT, input tokens, span durations and the recovery curve. 2. Explain why a fallback that is configured but never triggers is the same as no fallback. 3. Choose the fix: a per-call timeout derived from the step budget, a breaker that treats slowness as failure, and a top-k decided by measurement. |
 | Prerequisites | 11.1, 11.2; Sections 5.3, 5.4 and 7 |
 | Files used | `incidents/incident-02-latency-regression/`; `simulator/scenarios.py` (`INCIDENT_PRESETS["latency_regression"]`); `app/agent.py` (`build_router_config`, `CircuitBreaker`, `FALLBACKS`); `src/northwind/config.py`; `console/pages/3_Latency.py`, `7_Retrieval.py`, `8_Reliability.py` |

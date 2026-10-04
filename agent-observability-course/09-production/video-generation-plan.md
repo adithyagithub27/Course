@@ -143,7 +143,7 @@ Langfuse and Grafana are dense UIs designed for a 27" monitor. Recorded at 100% 
 | **Grafana** | 9.2, 9.3, 9.6, 11.3, 14.3 | Kiosk mode, 125% zoom, one panel row at a time. Time range fixed to the fixture day. Annotations for releases visible. Alert state visible when an alert fires (9.6) |
 | **Prometheus** | 9.2 | `/targets` page and one query only; it's not the teaching UI |
 | **Ops Console (Streamlit)** | 1.1, 2.4, 3.1, 5.6, 6.3-6.8, 7.2, 7.6, 8.3, 8.7, 11.2-11.4, 14.2-14.4 | Same theme and window every time (rule 4). 1.1 uses the Live cost page, which refreshes every two seconds; record it at real speed (`PACE=0.1`, about 50 s) |
-| **Terminal (console exporter, `make` targets, pytest, CI logs)** | 3.2, 3.4, 3.6, 13.3, 13.5 | Track B rules; the console exporter (`OTEL_EXPORTER=console make run`) already prints indented JSON per span. Start every terminal with `set -a; source .env; set +a` (`.env` is not loaded automatically) and read `/metrics` with `curl -sL` (307 redirect) |
+| **Terminal (console exporter, `make` targets, pytest, CI logs)** | 3.2, 3.4, 3.6, 13.3, 13.5 | Track B rules; the console exporter (`OTEL_EXPORTER=console make run`) already prints indented JSON per span. `.env` is loaded automatically; clear stale `ATLAS_*` exports from the recording shell, since they override it |
 | **GitHub Actions** | 13.3 | The failing then passing budget gate. Blur any organisation avatar; the repo is the public course repo so its name is fine |
 
 ### 5.4 Incident investigations need scripting

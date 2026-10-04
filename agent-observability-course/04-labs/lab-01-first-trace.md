@@ -54,7 +54,7 @@ make test
 Expected last line (about 40 seconds; the count grows if the course adds tests):
 
 ```text
-401 passed, 1 warning in 41.30s
+419 passed, 1 warning in 45.10s
 ```
 
 That is 356 unit tests, 40 integration tests and the 5 budget-gate tests, all offline.

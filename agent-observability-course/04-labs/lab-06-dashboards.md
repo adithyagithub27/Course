@@ -34,10 +34,10 @@ OFFLINE=1 make run
 Terminal 2: send one request (the Lab 1 curl), then:
 
 ```bash
-curl -sL http://localhost:8000/metrics | grep -E '^atlas_' | grep -v _created | head -40
+curl -s http://localhost:8000/metrics | grep -E '^atlas_' | grep -v _created | head -40
 ```
 
-(`-L` matters: `/metrics` answers with a redirect to `/metrics/`.) Expected, abridged:
+Expected, abridged:
 
 ```text
 atlas_requests_total{feature="policy_question",model="gpt-4.1-mini",outcome="resolved",tenant="hr"} 1.0
@@ -238,7 +238,6 @@ The rule's `runbook` annotation points at this file.
 | Grafana "No data" but Prometheus has data | Datasource URL changed | It must be `http://prometheus:9090` (inside the network), not `localhost:9091` |
 | `ATLAS_SCENARIO` change has no effect | Container not recreated | `docker compose -f deploy/docker-compose.observability.yml up -d atlas` |
 | Alert stuck in pending | Ratio hovering near 0.02, or the guard not met | Raise `RPS`; check the `step_limit` series in "Outcomes / s" |
-| `curl /metrics` prints nothing | Redirect not followed | `curl -sL` |
 
 ---
 

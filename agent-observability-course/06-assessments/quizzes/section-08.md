@@ -138,7 +138,7 @@
   - *Explanation:* Incorrect. A PSI around 2 is far beyond the 0.25 alert line; this is a real change.
 - **C.** The judge drifted, not Atlas; recalibrate the judge.
   - *Explanation:* Incorrect as the first step. Check what changed in Atlas in the window before blaming the judge; feedback moving the same way (79% → 74% positive on the drift day) corroborates a real regression.
-- **D.** The output got worse while the operation got cheaper and faster: shorter, vaguer answers. That is the signature of a prompt or model change, not infrastructure; the Quality page's split by prompt version (v1 grounded 0.941 vs v2 0.586) names the release, and moving the `production` label back to v1 is the fix.
+- **D.** The output got worse while the operation got cheaper and faster: shorter, vaguer answers. That is the signature of a prompt or model change, not infrastructure; the Quality page's split by prompt version (v1 grounded 0.941 vs v2 0.579) names the release, and moving the `production` label back to v1 is the fix.
   - *Explanation:* Correct. This is Incident 3's signature. A cost-only or latency-only view would have rewarded the regression.
 
 **Correct answer: D**

@@ -47,7 +47,7 @@ Lives in `agent-observability-course/03-code/`. Scripts and labs must reference 
 03-code/
 ├── README.md                       # setup, run commands, lecture→file map, offline mode
 ├── pyproject.toml                  # pinned majors; extras: dev, langsmith, phoenix, dashboards
-├── .env.example                    # OPENAI_API_KEY, LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL, OFFLINE, model env vars (not auto-loaded: `set -a; source .env; set +a`)
+├── .env.example                    # OPENAI_API_KEY, LANGFUSE_PUBLIC_KEY/SECRET_KEY/BASE_URL, OFFLINE, model env vars (loaded by Settings.from_env(); shell variables win)
 ├── .env.chaos.example              # live (OFFLINE=0) chaos settings for Section 7
 ├── Makefile                        # install | run | swarm | replay | loop-demo | console | test | judge | feedback | drift | dataset | report | budget-check | incident | stack | langfuse-up | student-repo
 ├── src/northwind/                  # pure Python, no network, fully unit-tested
@@ -113,7 +113,7 @@ Lives in `agent-observability-course/03-code/`. Scripts and labs must reference 
 │   ├── unit/                       # offline, no keys: src/northwind, simulator, mock_llm, console, evals
 │   ├── integration/                # FastAPI app in OFFLINE mode; span assertions via in-memory exporter
 │   └── budget/test_budget_gate.py  # CI gate (5 tests): cost/session, p95, tenant soft cap, task-success SLO, input tokens per generation
-│                                   # make test = 401 passed
+│                                   # make test = 419 passed
 └── .github/workflows/ci.yml        # unit + integration always; budget gate always (offline); live evals when secrets exist
 ```
 
@@ -253,7 +253,7 @@ Lecture types: **TH** talking head/avatar, **SL** slides, **SC** screencast/code
 |---|---|---|---|---|---|
 | 11.1 | How to read an incident like an SRE | SL | 6 | Timeline first, then blast radius, then hypothesis, then evidence in traces. The investigation template. | `10-resources/incident-template.md` |
 | 11.2 | Incident 1: Monday's cost spike (investigate, then reveal) | CH | 12 | Students get `incident-01` spans and a brief; 8 minutes to find root cause (a retrieval change that switched the context diet off for ops, compounded by provider timeouts that resent each prompt). Reveal walkthrough and replay of the fix. | `incidents/incident-01-cost-spike/` |
-| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Provider slowdown (TTFT ×3.5) with a top-k change as the red herring; a 20 s timeout meant the breaker never saw a failure; fix with a budget-derived timeout and a breaker that counts slow calls. | `incidents/incident-02-latency-regression/` |
+| 11.3 | Incident 2: p95 doubled after lunch | CH | 12 | Provider slowdown (TTFT ×3.5) with a top-k change as the red herring; a 20 s timeout meant the breaker never saw a failure; fix with a budget-derived timeout that turns stalls into failures so the breaker opens and the fallback answers. | `incidents/incident-02-latency-regression/` |
 | 11.4 | Incident 3: users are unhappy but nothing is red | CH | 12 | Prompt version 2 went to production without evals; judge scores drift while cost and latency improve; roll back with `python -m app.prompts promote --version 1`. | `incidents/incident-03-quality-drift/` |
 | 11.5 | Writing the postmortem | SC | 7 | Blameless postmortem template, action items that map to instrumentation, budgets and tests. | `10-resources/postmortem-template.md` |
 | 11.6 | Project 2: Investigate a fourth incident | AS | 3 | An unrevealed incident dataset; submit the postmortem. | `05-projects/project-2-incident-postmortem.md` |

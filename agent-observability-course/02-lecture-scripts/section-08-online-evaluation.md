@@ -19,7 +19,8 @@
 | Traffic | 10,184 requests, 4,000 sessions a day ($56.28 baseline; $19.07 after the Section 6 levers) |
 | Judged by the replay (30% sample, 4 scores each) | 2,971 traces |
 | Judge means, baseline day | overall **0.912** · grounded **0.943** · resolved **0.892** · safe_escalation 0.901 |
-| `make judge` afterwards (offline, `JUDGE_SAMPLE_RATE=0.1`) | `candidates=10112 sampled=712 scored=712 already_scored=2971 mean_overall=0.907 est_judge_cost=$1.5379` |
+| `make judge` afterwards (offline, `JUDGE_SAMPLE_RATE=0.1`; every thumbs-down and every escalation is judged) | `candidates=10112 sampled=894 scored=894 already_scored=2971 mean_overall=0.909 est_judge_cost=$1.9310` |
+| `make feedback` after `make judge` | `joined_with_judge=639 agreement=57%` (before the judge: 363 / 80%) |
 | User feedback | 1,291 events, 12.7% of requests, 78.7% positive (1,016 👍 / 275 👎); every 👎 comment is `unhelpful` |
 | Feedback rate by session length (share of sessions with any feedback) | 1 turn 12.6% · 2 turns 23.9% · 3 turns 34.4% · 4 turns 39.9% |
 | Judge (resolved ≥ 0.7) vs user agreement | 77.7% over 363 traces with both; 81 disagreements |
@@ -49,7 +50,7 @@
 
 ### Script
 
-[SCREEN: terminal, split. Left: `make test` ends `401 passed`. Right: a replay of a day on which prompt version 2 went live at 11:00, then the Quality block of the text console.]
+[SCREEN: terminal, split. Left: `make test` ends `419 passed`. Right: a replay of a day on which prompt version 2 went live at 11:00, then the Quality block of the text console.]
 
 ```bash
 OFFLINE=1 make replay SCENARIO=quality_drift STORE=.atlas/drift-day.sqlite
@@ -296,6 +297,8 @@ Two judges behind one interface. With a key, G-Eval. Without one, `OfflineJudge`
 [CODE: `evals/online_judge.py` (excerpt): judging the sample and writing scores]
 
 ```python
+    # "always judge a thumbs-down" (JudgeSamplingPolicy.always_judge_negative_feedback)
+    thumbs_down = {s.trace_id for s in store.scores(name="user_feedback") if s.value <= 0.25}
     for span in store.spans(kind="agent", since=since):
         a = span.attributes
         outcome = str(a.get("atlas.outcome", "resolved"))
@@ -313,12 +316,13 @@ Two judges behind one interface. With a key, G-Eval. Without one, `OfflineJudge`
             steps=int(a.get("atlas.steps", 1) or 1),
             tenant=str(a.get("atlas.tenant", "")),
             escalated=bool(a.get("atlas.escalated", False)),
+            feedback_negative=span.trace_id in thumbs_down,
         )
         if not policy.should_judge(t):
             continue
-        summary.sampled += 1
         if limit is not None and summary.scored >= limit:
-            break
+            break  # capped (JUDGE_MAX_CALLS / --limit): this trace is not counted as sampled
+        summary.sampled += 1
         scores = judge.score(
             question=str(a.get("langfuse.observation.input", "")),
             answer=str(a.get("langfuse.observation.output", "")),
@@ -342,11 +346,11 @@ Two judges behind one interface. With a key, G-Eval. Without one, `OfflineJudge`
         summary.estimated_cost_usd += 3 * (1200 * 0.4e-6 + 150 * 1.6e-6)
 ```
 
-Walk the agent spans in the store. Skip guardrail hits and budget refusals, and anything already scored, so the job is idempotent. Build the `TraceSummary` the policy needs and ask `should_judge`. For a sampled trace, the judge reads the question and the answer and returns the three scores plus `overall`.
+Walk the agent spans in the store. Skip guardrail hits and budget refusals, and anything already scored, so the job is idempotent. Build the `TraceSummary` the policy needs, including whether the trace carries a thumbs-down, and ask `should_judge`: escalations and thumbs-down always, errors never, everything else by the head hash. For a sampled trace, the judge reads the question and the answer and returns the three scores plus `overall`.
 
 [SCREEN: zoom on the two writes: `store.add_score(...)` and `create_score(...)`]
 
-Then every score is written twice: to the local store, which the console, the drift report and the CI gate read, and to Langfuse with `create_score`, the trace id, the name prefixed `judge_`, the value, and the judge's name as the comment. [PAUSE] And the summary keeps a running estimate of what judging cost: three calls per trace at the mini price. That's the line item. Two honest notes. The tail rule for thumbs-down lives in the policy, but this loop only fills in `escalated`; wiring the feedback flag in is a one-line exercise. And `atlas_judge_score` exists in `metrics.py`, but this batch job never observes it, so Prometheus doesn't see judge scores. We come back to that in 9.5.
+Then every score is written twice: to the local store, which the console, the drift report and the CI gate read, and to Langfuse with `create_score`, the trace id, the name prefixed `judge_`, the value, and the judge's name as the comment. [PAUSE] And the summary keeps a running estimate of what judging cost: three calls per trace at the mini price. That's the line item. Two honest notes. The cap, `JUDGE_MAX_CALLS` or `--limit`, stops the loop before the next trace is counted, so a capped run reports `sampled` equal to `scored`. And `atlas_judge_score` exists in `metrics.py`, but this batch job never observes it, so Prometheus doesn't see judge scores. We come back to that in 9.5.
 
 [SCREEN: terminal]
 
@@ -358,10 +362,10 @@ OFFLINE=1 make judge       # evals/online_judge.py --dry-run: 10% of what's left
 [DEMO: output (first line):]
 
 ```
-judge=offline-heuristic candidates=10112 sampled=712 scored=712 already_scored=2971 mean_overall=0.907 langfuse_writes=0 est_judge_cost=$1.5379
+judge=offline-heuristic candidates=10112 sampled=894 scored=894 already_scored=2971 mean_overall=0.909 langfuse_writes=0 est_judge_cost=$1.9310
 ```
 
-Ten thousand one hundred twelve candidates: the day minus the guardrail hits. Two thousand nine hundred seventy-one already scored by the replay, so they're skipped. Seven hundred twelve more sampled and scored at ten percent, mean overall point nine oh seven. Zero Langfuse writes, because we're offline. And the bill: a dollar fifty-four for this run, at the mini judge's price.
+Ten thousand one hundred twelve candidates: the day minus the guardrail hits. Two thousand nine hundred seventy-one already scored by the replay, so they're skipped. Eight hundred ninety-four more sampled and scored: the ten percent head, plus every escalation and every thumbs-down the replay hadn't scored yet, which is why it's more than ten percent of what was left. Mean overall point nine oh nine. Zero Langfuse writes, because we're offline. And the bill: a dollar ninety-three for this run, at the mini judge's price.
 
 [SLIDE 3: The judge's bill (3 criteria, about 1,200 in / 150 out each; verify current pricing)]
 
@@ -375,9 +379,10 @@ Ten thousand one hundred twelve candidates: the day minus the guardrail hits. Tw
 
 Here's the judge's bill on one slide. Mini judge at ten percent, about two dollars a day. Strong judge, eleven. Judge everything on the strong model, a hundred and nine, almost six times what serving costs after Section 6. [PAUSE] So: sample at ten percent, judge with mini day to day, and run the strong model on the same head sample once a week as a calibration check. And cap the run: `JUDGE_MAX_CALLS`, or `--limit`, stops a misconfigured sample rate from becoming a surprise invoice. The judge is an agent too, and its cost belongs on the same showback.
 
-[SCREEN: Langfuse UI (online run, keys set, live traces from `make run`): a trace with `judge_resolved`, `judge_grounded`, `judge_safe_escalation` and `judge_overall` scores in the sidebar, each with the comment `deepeval-geval`. Verify before recording: the `make judge` process must initialise the Langfuse client (`init_langfuse()`) for `langfuse_writes` to rise above 0.]
+[SCREEN: Langfuse UI (online run, keys set, live traces from `make run`): a trace with `judge_resolved`, `judge_grounded`, `judge_safe_escalation` and `judge_overall` scores in the sidebar, each with the comment `deepeval-geval`. Recording note: `make judge` initialises the Langfuse client itself when the keys are set and either `OFFLINE=0` or `LANGFUSE=1` is given (`make judge LANGFUSE=1` writes the offline heuristic's scores to Langfuse), and flushes before it exits; `langfuse_writes` in the summary line counts what reached Langfuse.]
 
-And here's what you get in Langfuse with keys: four scores on the trace, with the judge's name as the comment, so you always know which judge said it. Two things to check on your run. The `langfuse_writes` count in the summary line must be above zero; if it isn't, the judge process never set up its Langfuse client. And G-Eval also produces a reason for each score; storing `metric.reason` as the comment is a two-line change, and it's the change that lets a human check a score in ten seconds.
+And here's what you get in Langfuse with keys: four scores on the trace, with the judge's name as the comment, so you always know which judge said it. Two things to check on your run. The `langfuse_writes` count in the summary line should match four times `scored`; offline it stays at zero unless you pass `LANGFUSE=1`. And G-Eval also produces a reason for each score; storing `metric.reason` as the comment is a two-line change, and it's the change that lets a human check a score in ten seconds.
+
 
 [SLIDE 4: Recap]
 - Head sample for estimates, tail for failures

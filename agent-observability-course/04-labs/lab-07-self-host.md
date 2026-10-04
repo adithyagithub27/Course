@@ -70,7 +70,7 @@ Send the Lab 1 curl from another terminal. Within a few seconds the trace appear
 
 ## Step 3: Put the Collector in the middle
 
-Read `deploy/otel-collector.yaml` (Lecture 13.2). In order: `memory_limiter`; `attributes/redact`, which **deletes** `gen_ai.tool.call.result`, the input and output message attributes, `gen_ai.system_instructions` and Langfuse's input and output fields, and **hashes** `gen_ai.tool.call.arguments`, `user.id` and `enduser.id`; `tail_sampling` (keep errors, slow > 4 s, expensive > $0.05, ≥ 5 steps, escalated, and 20% of the rest); then `batch`. Exporters: `otlphttp/langfuse` (`${LANGFUSE_BASE_URL}/api/public/otel` with Basic auth), `otlphttp/phoenix` (the `phoenix` service), `debug`, and the `spanmetrics` connector.
+Read `deploy/otel-collector.yaml` (Lecture 13.2). In order: `memory_limiter`; `attributes/redact`, which **deletes** `gen_ai.tool.call.result`, the input and output message attributes, `gen_ai.system_instructions` and Langfuse's input and output fields, **hashes** `gen_ai.tool.call.arguments` (already masked at the source) and **deletes** `user.id` and `enduser.id` (the Collector's hash is unkeyed, so a hashed employee ID could be reversed; the SDK's keyed pseudonym is the joinable one); `tail_sampling` (keep errors, slow > 4 s, expensive > $0.05, ≥ 5 steps, escalated, and 20% of the rest); then `batch`. Exporters: `otlphttp/langfuse` (`${LANGFUSE_BASE_URL}/api/public/otel` with Basic auth), `otlphttp/phoenix` (the `phoenix` service), `debug`, and the `spanmetrics` connector.
 
 Now move the Langfuse credentials from Atlas to the Collector. Edit `.env`: **blank** `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` (the stack's Atlas container reads `.env`, and with keys it would also export to Langfuse directly, doubling every trace). Then, in the shell that runs `make stack`:
 
@@ -102,7 +102,7 @@ Put the stack's Atlas into the `retry_storm` scenario (add `ATLAS_SCENARIO=retry
 
 ```bash
 make swarm RPS=2 DURATION=120
-curl -sL localhost:8000/metrics | grep '^atlas_requests_total' | awk '{s+=$2} END {print "served", s}'
+curl -s localhost:8000/metrics | grep '^atlas_requests_total' | awk '{s+=$2} END {print "served", s}'
 ```
 
 Then count what reached Phoenix: in the Phoenix UI, filter the project's traces to the last few minutes, and separately to status error. Every trace with a timed-out (ERROR) generation is kept by the `errors` policy; healthy traces are kept at about 20%. Write down served, exported, and errors exported. Compare with head sampling at 20% (`TRACE_SAMPLE_RATE=0.2` in Atlas's own SDK), which keeps about a fifth of the errors too, because it decides before the trace finishes. That's why sampling moves to the Collector once you self-host.
@@ -118,7 +118,7 @@ Remove `ATLAS_SCENARIO` from `.env` and recreate the container when you're done.
 With the swarm running (`make swarm RPS=2 DURATION=600`), in a third terminal:
 
 ```bash
-watch -n 2 "curl -sL localhost:8000/metrics | grep -E '^atlas_requests_total|^atlas_telemetry_export_failures_total'"
+watch -n 2 "curl -s localhost:8000/metrics | grep -E '^atlas_requests_total|^atlas_telemetry_export_failures_total'"
 docker compose -f deploy/docker-compose.observability.yml stop otel-collector
 ```
 
@@ -225,7 +225,6 @@ In Langfuse, filter traces by release and compare cost per trace between the two
 | Every trace appears twice in Langfuse | Atlas still has Langfuse keys in `.env` and exports directly too | Blank them in `.env` and recreate the `atlas` container |
 | Nothing in Phoenix or Langfuse after `make replay` | Expected: the replay doesn't use the Collector | Use `make swarm` against the stack |
 | `make budget-check` passes with `ATLAS_TOP_K` set in `.env` | The gate doesn't read `.env` | Set it on the command line or in the CI job's `env` |
-| `curl /metrics` prints nothing | Redirect not followed | `curl -sL` |
 
 ---
 

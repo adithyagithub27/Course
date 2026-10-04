@@ -192,7 +192,7 @@ Three steps, half the cost, and a `tool_retries_exhausted` event instead of `ste
 
 ## Step 6: Optional online confirmation
 
-With Langfuse keys loaded (`set -a; source .env; set +a`), repeat Step 1. In Langfuse the trace shows the agent observation, `step 1` and the two generations, and the generations' models and costs. The `escalation` event is an OpenTelemetry span event on the agent span; check where your Langfuse version displays span events (verify against the current UI). For an event *observation* inside the step instead, compare with the Langfuse-native layer: `python -m app.langfuse_native "I want to raise a grievance about my manager" --tenant hr`.
+With Langfuse keys in `.env` (loaded automatically), repeat Step 1. In Langfuse the trace shows the agent observation, `step 1` and the two generations, and the generations' models and costs. The `escalation` event is an OpenTelemetry span event on the agent span; check where your Langfuse version displays span events (verify against the current UI). For an event *observation* inside the step instead, compare with the Langfuse-native layer: `python -m app.langfuse_native "I want to raise a grievance about my manager" --tenant hr`.
 
 ---
 

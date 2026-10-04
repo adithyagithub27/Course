@@ -32,7 +32,7 @@
 
 - **A.** The SDK mask is redundant once the collector redacts.
   - *Explanation:* Incorrect for the same reason: the SDK is the only layer that guarantees raw values never leave the process.
-- **B.** The SDK mask is the primary control because it runs before data leaves the process and covers every exporter; the collector is defence in depth that enforces policy centrally, including for services you do not control: `attributes/redact` deletes message bodies, tool results and Langfuse input/output attributes and hashes tool arguments, `user.id` and `enduser.id` before anything reaches a backend.
+- **B.** The SDK mask is the primary control because it runs before data leaves the process and covers every exporter; the collector is defence in depth that enforces policy centrally, including for services you do not control: `attributes/redact` deletes message bodies, tool results, Langfuse input/output attributes, `user.id` and `enduser.id`, and hashes the (already masked) tool arguments, before anything reaches a backend.
   - *Explanation:* Correct. Two layers with different failure modes; the near one is primary.
 - **C.** Both are unnecessary if the Langfuse project is private.
   - *Explanation:* Incorrect. Access control limits who can log in; it does nothing about what analysts, judges or exports can read.

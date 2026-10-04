@@ -39,7 +39,7 @@ The conventions you will check (incubating in `opentelemetry-semantic-convention
 
 ## Step 1: See the span
 
-Terminal 1, the console exporter on (Atlas does not load `.env` by itself; if you keep settings there, load them with `set -a; source .env; set +a` first):
+Terminal 1, the console exporter on (Atlas loads `.env` itself; variables set in your shell win):
 
 ```bash
 OFFLINE=1 OTEL_EXPORTER=console make run
@@ -234,7 +234,7 @@ Expected: `3 passed`.
 
 ## Step 6: See it in a UI
 
-**Online (Langfuse):** with your keys loaded (`set -a; source .env; set +a`), restart and repeat the curl. In Langfuse the tool is an observation of type **tool** named `execute_tool check_shipment`, with **Input** = the arguments and **Output** = the masked result, under a `step 1` span.
+**Online (Langfuse):** with your Langfuse keys in `.env` (loaded automatically), restart and repeat the curl. In Langfuse the tool is an observation of type **tool** named `execute_tool check_shipment`, with **Input** = the arguments and **Output** = the masked result, under a `step 1` span.
 
 **Offline (Ops Console):** stop the server, then `make console STORE=.atlas/spans.sqlite`. On the **Traces** page, type `lab2-a` into "Session id": the waterfall lists `execute_tool check_shipment` under `step 1`, with its status and `atlas.tool.result_tokens` in the table. (Offline server spans have millisecond durations; start the server with `ATLAS_MOCK_LATENCY_SCALE=1` if you want a waterfall with realistic bar lengths.)
 
@@ -247,7 +247,7 @@ Take a screenshot for your notes.
 ## Stretch goals
 
 1. Add an `add_event` on the tool span when the status is `exception`, with `{"exception_reason": ...}` (`ga.add_event(tspan, "shipment.exception", reason=...)`). Events are timestamped and searchable and add no cardinality.
-2. Look at `atlas_tool_calls_total{tool, outcome}` and `atlas_tool_latency_seconds{tool}` on `/metrics` (`curl -sL localhost:8000/metrics | grep check_shipment`). Notice what is *not* a label: tracking id, user id.
+2. Look at `atlas_tool_calls_total{tool, outcome}` and `atlas_tool_latency_seconds{tool}` on `/metrics` (`curl -s localhost:8000/metrics | grep check_shipment`). Notice what is *not* a label: tracking id, user id.
 3. Write a test that the `check_shipment` span's `gen_ai.tool.call.result` never contains an `@`: send a message that puts an email in the question and check the masked arguments.
 
 ---

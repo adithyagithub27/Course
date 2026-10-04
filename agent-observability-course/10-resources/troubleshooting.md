@@ -36,7 +36,7 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 | Ops Console shows an empty store | Replay didn't run or wrote elsewhere; check `ATLAS_LOCAL_STORE` (or the `STORE=` you passed); run `OFFLINE=1 make replay` then `make console` with the same `STORE=`. `make console` replays a day into the store only if it is empty; for a live demo next to a running server, start Streamlit with `STREAMLIT_SERVER_HEADLESS=true` |
 | Ops Console pages look different from the video | Streamlit version or theme: `uv sync` pins it; check `.streamlit/config.toml` exists |
 | Replay is slow | Lower RPS or the day length via env (see README); the replay writes every span |
-| `OFFLINE=1` but the app still tries to call OpenAI | Env var not exported in that shell, or set after import; export it before `make run`; `.env` is not loaded automatically, so `set -a; source .env; set +a` first |
+| `OFFLINE=1` but the app still tries to call OpenAI | Env var not exported in that shell, or set after import; export it before `make run`; `.env` is loaded by `Settings.from_env()`, but a variable already exported in your shell wins (`ATLAS_DOTENV=0` disables loading) |
 
 ## 3. API keys and accounts
 
@@ -76,8 +76,8 @@ If offline works, the problem is **keys, network or the backend** (sections 3-5)
 | Apple Silicon image errors | Image architecture | Check for `platform:` overrides in the compose file; pull multi-arch images |
 | Collector receives nothing | Wrong OTLP endpoint or port; http vs grpc mismatch | The course exporter is OTLP/HTTP (`opentelemetry.exporter.otlp.proto.http`); point it at the collector's HTTP receiver port; check the collector logs |
 | Collector exports to Langfuse fail with auth errors | `Authorization` header not set from env | The header value is `${env:LANGFUSE_AUTH}` (basic auth of public:secret, base64); never a literal in the file |
+| A warning about `ATLAS_PII_HASH_KEY` at startup, or hashes that differ between machines | Pseudonyms are HMAC-SHA256 keyed with `ATLAS_PII_HASH_KEY`; unset, the public demo key is used (warned when `OFFLINE` is not 1) | Set the same secret key everywhere you need joinable hashes (`python -c "import secrets; print(secrets.token_hex(32))"`); never commit it |
 | Prometheus target DOWN | `/metrics` not mounted or wrong host from inside Docker | `make_asgi_app()` mounted at `/metrics` (9.2); from a container, the host is `host.docker.internal` (Docker Desktop) or the compose service name, not `localhost` |
-| `curl localhost:8000/metrics` prints nothing | `/metrics` is a mounted app and answers with a 307 redirect to `/metrics/` | `curl -sL localhost:8000/metrics` (Prometheus follows the redirect itself) |
 | Grafana dashboard import fails | Grafana version schema mismatch | Pin the Grafana image version in the compose file; re-export the JSON from that version |
 | Alert never fires in Lab 6 | Threshold too high for the replayed traffic, or evaluation interval too long | Lower the threshold for the lab, or replay the incident scenario that breaches it |
 | Atlas errors when Langfuse container is stopped | Exporter blocking or prompt fetch without fallback | This is lecture 13.5: set exporter timeouts/queue limits and pass `fallback=` to `get_prompt` |

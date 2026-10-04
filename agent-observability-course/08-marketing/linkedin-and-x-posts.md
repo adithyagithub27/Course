@@ -236,7 +236,7 @@ What you build across 15 sections:
 → Langfuse, LangSmith, Phoenix, OpenLLMetry and Datadog compared
 → Self-hosted stack in Docker Compose and a CI gate that fails a PR on cost or p95
 
-About 10.5 hours of video, a full repo with 401 offline tests, 7 labs, 5 challenges, a capstone.
+About 10.5 hours of video, a full repo with 419 offline tests, 7 labs, 5 challenges, a capstone.
 
 Launch coupon in the first comment.
 

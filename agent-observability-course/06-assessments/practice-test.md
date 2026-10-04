@@ -334,7 +334,7 @@ Cost engineering carries the largest weight because it is the course's signature
 *Domain: D4 · Related lecture: 7.4 Fallbacks and circuit breakers with the Router*
 
 - **A.** Without a breaker: primary times out at 4 s, fallback answers in about 1.2 s, total about 5.2 s per request, over the 4 s budget; with the breaker open, requests skip the primary and complete in about 1.2 s.
-  - *Explanation:* Correct. The breaker's job is to stop paying the timeout once the provider is known to be slow; that is the slow-call rule Lab 4 asks you to add, since the shipped breaker counts only errors.
+  - *Explanation:* Correct. The breaker's job is to stop paying the timeout once the provider is known to be slow; the timeout is what turns the slow calls into failures the breaker can count (Lab 4: timeout 4 s, retries 2, allowed fails 2, cooldown 1,800 s passes the gate).
 - **B.** Without a breaker the fallback never runs.
   - *Explanation:* Incorrect. Fallback runs after the timeout error.
 - **C.** With the breaker open, all requests fail fast.
@@ -551,18 +551,18 @@ Cost engineering carries the largest weight because it is the course's signature
 
 **Correct answer: B**
 
-### Q33. The collector's `attributes/redact` processor uses `action: hash` on `user.id` (and `delete` on message bodies and tool results). What does this achieve that `action: delete` would not, and what does it not achieve?
+### Q33. Atlas's SDK replaces employee IDs with keyed pseudonyms (`<EMPLOYEE_ID:4fbbe98e>`, HMAC-SHA256 keyed with `ATLAS_PII_HASH_KEY`). The collector's `attributes/redact` processor, by contrast, **deletes** `user.id` and `enduser.id` instead of using its `hash` action. Why?
 
 *Domain: D7 · Related lecture: 10.2 Code-along: masking in the SDK and the collector*
 
-- **A.** It keeps a stable pseudonym so traces from the same user can still be grouped and joined, which `delete` would destroy; it does not achieve anonymisation, because the hash is deterministic and the data remains personal data requiring the same access controls and retention limits.
-  - *Explanation:* Correct. Hash for joins, delete when joins are not needed; either way the raw value should already have been masked in the SDK.
-- **B.** It encrypts the id so only Langfuse admins can read it.
-  - *Explanation:* Incorrect. Hashing is one-way, not encryption with a key for reading back.
-- **C.** It shortens the attribute to save storage.
-  - *Explanation:* Incorrect. Size is incidental.
-- **D.** It makes the data exempt from regulation.
-  - *Explanation:* Incorrect. Pseudonymised data is still regulated.
+- **A.** The collector's `hash` action is an unkeyed SHA-256, so anyone can hash every employee ID (a small, known space) and match; deleting is the safe choice, and joins use the SDK's keyed pseudonym, which can't be recomputed without the key.
+  - *Explanation:* Correct. A deterministic unkeyed hash of a low-entropy identifier is pseudonymisation in name only. Keep the key out of the telemetry path, rotate it like any secret, and treat even keyed pseudonyms as personal data.
+- **B.** Hashing would make the attribute too long for Langfuse.
+  - *Explanation:* Incorrect. Size is irrelevant; reversibility is the problem.
+- **C.** `delete` and `hash` are equivalent for privacy, so the choice is cosmetic.
+  - *Explanation:* Incorrect. A hash keeps a joinable value; whether that value is safe depends on whether it can be recomputed.
+- **D.** Deleting makes the data exempt from regulation.
+  - *Explanation:* Incorrect. Other attributes may still identify a person, and keyed pseudonyms elsewhere are still personal data.
 
 **Correct answer: A**
 

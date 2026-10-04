@@ -33,7 +33,7 @@
 - **A.** Keep 20 s: a longer timeout means fewer errors.
   - *Explanation:* Incorrect. 20 s is about seven times the slowest normal call; with two retries a stalled provider can make one user wait a minute before seeing an error.
 - **B.** About 6 s, roughly twice the slowest normal call: it cuts off a stall without cutting off a long answer, and it turns a stall into an error that a retry or a fallback can act on.
-  - *Explanation:* Correct. The timeout is derived from a worksheet row, not guessed. Offline, the mock ignores `timeout=`, so the effect shows only against a real provider (`.env.chaos.example`).
+  - *Explanation:* Correct. The timeout is derived from a worksheet row, not guessed. The offline mock honours the timeout too, so Lab 4 measures it on the slow-provider day; combined with a breaker and a fallback it brings the gate's p95 from 8,755 ms to 3,882 ms.
 - **C.** 1 s, the p95 time to first token: anything slower is a failure.
   - *Explanation:* Incorrect. The timeout covers the whole call; a 1 s limit would cut off most normal answers.
 - **D.** No timeout; rely on the 4 s end-to-end budget.

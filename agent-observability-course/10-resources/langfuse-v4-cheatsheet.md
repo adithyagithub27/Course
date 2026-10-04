@@ -101,8 +101,9 @@ Promote **masked** traces only (10.2). The dataset feeds offline evals before an
 
 ```python
 from northwind.pii import langfuse_mask   # langfuse_mask(*, data) -> mask_value(data, hash_ids=True)
-# employee ids and emails -> <EMPLOYEE_ID:731ea41e>, <EMAIL:…> (HMAC keyed with ATLAS_PII_HASH_KEY, joinable);
-# phones and cards -> <PHONE>, <CARD>.  make_mask(hash_ids=False) gives plain placeholders everywhere.
+# emails, phones, employee ids, cards -> <EMAIL:…>, <PHONE:…>, <EMPLOYEE_ID:731ea41e>, <CARD:…>
+# (8-hex HMAC-SHA256 keyed with ATLAS_PII_HASH_KEY; unset = public demo key, fine offline only).
+# make_mask(hash_ids=False) gives plain <EMAIL>-style placeholders.
 lf = Langfuse(..., mask=langfuse_mask, sample_rate=0.2, blocked_instrumentation_scopes=[...])
 ...
 client.flush(); client.shutdown()      # on process exit; never block inside a request handler

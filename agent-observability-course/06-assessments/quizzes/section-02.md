@@ -30,7 +30,7 @@
 
 *Related lecture: 2.2 Project setup with uv and the Makefile*
 
-- **A.** It passes (401 tests in the shipped repo), because `OFFLINE=1` is the default, the unit tests cover pure-Python modules in `src/northwind/`, and the integration tests run the FastAPI app against the mock LLM with an in-memory span exporter.
+- **A.** It passes (419 tests in the shipped repo), because `OFFLINE=1` is the default, the unit tests cover pure-Python modules in `src/northwind/`, and the integration tests run the FastAPI app against the mock LLM with an in-memory span exporter.
   - *Explanation:* Correct. Designing the test suite to be green without keys is deliberate: it makes the CI budget gate in Section 13 possible and gives students an immediate first win.
 - **B.** It passes only if Docker is running, because tests need Langfuse.
   - *Explanation:* Incorrect. No test needs Langfuse or Docker. Self-hosting arrives in Section 13 and even then tests stay independent of it.

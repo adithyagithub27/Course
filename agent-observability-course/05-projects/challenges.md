@@ -221,7 +221,7 @@ Scoring for the in-lecture challenge (self-assessed): root cause correct = 3 poi
 
 **Why the other panels stayed calm:** request count was flat; no 5xx, because every storm eventually succeeded on the third attempt; only ops was in the storm. The retry counter was red and nobody had routed `AtlasRetryStorm`.
 
-**Fix now:** `ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, context diet on. Full-day check: `make replay SCENARIO=cost_spike` $64.99 (p95 6,763 ms) against `SCENARIO=retry_storm` (the change rolled back, same storm) $58.00 (p95 3,889 ms), baseline $56.28. Fewer retries is not the fix: `ATLAS_MAX_RETRIES=1` costs $50.13 but 397 requests end in an error.
+**Fix now:** `ATLAS_TOP_K=4`, `KB_MIN_SCORE=0.5`, context diet on. Full-day check: `make replay SCENARIO=cost_spike` $64.99 (p95 6,763 ms) against `SCENARIO=retry_storm` (the change rolled back, same storm) $58.00 (p95 3,889 ms), baseline $56.28. Fewer retries is not the fix: `ATLAS_MAX_RETRIES=1` costs $54.59 but 392 requests end in an error.
 
 **Prevent:** (a) no per-tenant path that turns the diet off, and `test_context_diet_bounds_tokens` extended to 3 turns × 12 articles; (b) the breaker opens after three *consecutive* failures and a success resets it, so fail-fail-succeed never trips it: count failures over a window instead (not in the repo); (c) route `AtlasRetryStorm` (> 0.2 retries per request for 10 minutes; this dataset shows about 0.6 in the 10:00 hour, so it would have paged around 10:10); (d) the CI gate: `ATLAS_TOP_K=12 KB_MIN_SCORE=0 make budget-check` fails on p95 (4,469 ms) and the tokens test (44,664).
 
@@ -249,9 +249,9 @@ Scoring for the in-lecture challenge (self-assessed): root cause correct = 3 poi
 
 **The red herring:** top-k 20 added about 65 ms of retrieval and no tokens, because `KB_MIN_SCORE` let only five results through and the context diet caps tool results at 1,400 tokens. With the diet off (the Makefile's replay), it does cost: `make replay SCENARIO=latency_regression` p95 9,474 ms against `SCENARIO=slow_provider` 8,877 ms. And the spans say the change landed at 13:00, not 12:30: trust the span.
 
-**Fix now:** a per-call timeout derived from the step budget (`ATLAS_REQUEST_TIMEOUT_S`), and a breaker that treats a call over 4 s as a failure so the fallback fires (an action item; Lab 4 builds the mechanism with the stalling provider). Keep `ATLAS_TOP_K=4` until recall is measured.
+**Fix now:** a per-call timeout derived from the step budget, so stalled calls fail and the breaker opens: `ATLAS_REQUEST_TIMEOUT_S=4 ATLAS_MAX_RETRIES=2 ATLAS_ROUTER_ALLOWED_FAILS=2 ATLAS_ROUTER_COOLDOWN_S=1800` replays the slow day at p95 3,859 ms, $43.29, 0 errors (Lab 4). Keep `ATLAS_TOP_K=4` until recall is measured.
 
-**Prevent:** (a) `atlas.retrieval.top_k` and `hits` on every retriever span (exist; they cleared the red herring in one click); (b) breakers that count slow calls; (c) the CI gate: `ATLAS_TOP_K=20 make budget-check` fails on p95 (4,120 ms) and tokens (34,990) before a pilot ships.
+**Prevent:** (a) `atlas.retrieval.top_k` and `hits` on every retriever span (exist; they cleared the red herring in one click); (b) timeouts from the step budget, so the breaker sees slowness as failure; (c) the CI gate: `ATLAS_TOP_K=20 make budget-check` fails on p95 (4,120 ms) and tokens (34,990) before a pilot ships.
 
 ---
 

@@ -72,10 +72,10 @@ OFFLINE=1 make judge STORE=.atlas/weeks.sqlite
 Expected:
 
 ```text
-judge=offline-heuristic candidates=20244 sampled=1430 scored=1430 already_scored=6049 mean_overall=0.842 langfuse_writes=0 est_judge_cost=$3.0888
+judge=offline-heuristic candidates=20244 sampled=1839 scored=1839 already_scored=6049 mean_overall=0.833 langfuse_writes=0 est_judge_cost=$3.9722
 ```
 
-Offline, the heuristic judge scores `grounded` on the presence of a `(Source: …)` line and `resolved` on a next step, deterministically. `est_judge_cost` is what those 1,430 traces would cost with `gpt-4.1-mini` as the judge (three criteria each): about three dollars against $110 of serving for the two days. Write both numbers down; judge cost belongs on the page.
+Offline, the heuristic judge scores `grounded` on the presence of a `(Source: …)` line and `resolved` on a next step, deterministically. `est_judge_cost` is what those 1,839 traces would cost with `gpt-4.1-mini` as the judge (three criteria each): about three dollars against $110 of serving for the two days. Write both numbers down; judge cost belongs on the page.
 
 **Online path:** `OFFLINE=0 python evals/online_judge.py --store .atlas/weeks.sqlite --limit 200` uses DeepEval `GEval` (`deepeval` 4.2, `gpt-4.1-mini` as the judge) and writes `judge_*` scores to Langfuse with `create_score`. Start with `--limit` (or `JUDGE_MAX_CALLS`) so a first run costs cents, not dollars.
 
@@ -92,7 +92,7 @@ make feedback STORE=.atlas/weeks.sqlite
 Expected:
 
 ```text
-feedback=2598 (12.7% of 20394 requests) positive=76% joined_with_judge=934 agreement=79% judge|👍=0.85 judge|👎=0.81
+feedback=2598 (12.7% of 20394 requests) positive=76% joined_with_judge=1343 agreement=61% judge|👍=0.85 judge|👎=0.80
 ```
 
 Read the last two numbers carefully. The judge scores thumbs-up traces 0.85 and thumbs-down traces 0.81: barely different. Thumbs are noisy, and every replayed comment is just `unhelpful`. Now look at who clicks at all: on the Quality page later, "Feedback rate by session length" shows one-turn sessions rate 12% of the time and two-turn sessions 23%. People who stay longer click more. That's the survivorship and selection problem from Lecture 8.3: feedback tells you *which* traces to read, the judge tells you *how often* things go wrong.
@@ -198,7 +198,7 @@ Run it on your store:
 make console STORE=.atlas/weeks.sqlite
 ```
 
-Open **My quality** in the sidebar. Expected tiles for the two-week store: grounded 0.829, resolved 0.812, feedback rate 12.7%, agreement 67% (this page's agreement uses the judge's `resolved` ≥ 0.7 against the thumbs, over every trace that has both, so it differs from `make feedback`'s 79%; write down which definition you report). "By prompt version" shows v1 grounded 0.941 (n 5,117) against v2 0.586 (n 2,362). Because the store spans two days, hour labels read `09-14 11:00`, `09-21 11:00` and so on; find the step on the 21st at 11:00.
+Open **My quality** in the sidebar. Expected tiles for the two-week store: grounded 0.824, resolved 0.809, feedback rate 12.7%, agreement 58% (this page's agreement uses the judge's `resolved` ≥ 0.7 against the thumbs, over every trace that has both, so it differs from `make feedback`'s 61%; write down which definition you report). "By prompt version" shows v1 grounded 0.941 (n 5,349) against v2 0.579 (n 2,539). Because the store spans two days, hour labels read `09-14 11:00`, `09-21 11:00` and so on; find the step on the 21st at 11:00.
 
 Then open the shipped **Quality** page (`console/pages/4_Quality.py`) and compare. Write `DIFF_NOTES`-style: one thing the reference shows that yours doesn't, one thing yours shows better.
 
@@ -270,11 +270,11 @@ Reference numbers (two-week store from Step 1, offline):
 
 | Item | Value |
 |---|---|
-| Judge run | 1,430 traces sampled and scored on top of 6,049 already scored; mean overall 0.842; est. cost $3.09 |
-| Feedback | 2,598 events, 12.7% of 20,394 requests, 76% positive; judge on 👍 0.85, on 👎 0.81 |
-| Agreement | 79% (`make feedback`), 67% (`judge_feedback_agreement`, resolved ≥ 0.7) |
+| Judge run | 1,839 traces sampled and scored on top of 6,049 already scored (every thumbs-down is now judged); mean overall 0.833; est. cost $3.97 |
+| Feedback | 2,598 events, 12.7% of 20,394 requests, 76% positive; judge on 👍 0.85, on 👎 0.80 |
+| Agreement | 61% (`make feedback`, over 1,343 traces), 58% (`judge_feedback_agreement`, resolved ≥ 0.7) |
 | Drift W38 → W39 | three judge alerts; grounded 0.943 → 0.720 (PSI 2.0); cost −4.9%; latency improved |
-| By prompt version | v1 grounded 0.941 (n 5,117); v2 0.586 (n 2,362) |
+| By prompt version | v1 grounded 0.941 (n 5,349); v2 0.579 (n 2,539) |
 
 What separates a strong page from a weak one:
 

@@ -315,7 +315,7 @@ First, updates. This field moves fast. Langfuse ships often, the OpenTelemetry G
 
 When something changes, I update the repo README first, with the tested versions and any code changes. Big changes also go out as a course announcement.
 
-[SCREEN: Terminal in `03-code/`: `make test` → `401 passed`; `make budget-check` → `5 passed`. The monthly upgrade check, in two commands.]
+[SCREEN: Terminal in `03-code/`: `make test` → `419 passed`; `make budget-check` → `5 passed`. The monthly upgrade check, in two commands.]
 
 For your own project, pin your versions, as we did in `pyproject.toml`. Upgrade on a branch, with the budget gate running, and read the deprecation warnings. Here's a routine that works: once a month, read the changelogs for Langfuse, the OTel SDK and the semantic conventions. Upgrade on a branch. Run `make test` and `make budget-check`. If the numbers hold, merge, and keep the rollback ready. Twenty minutes a month keeps you off the "it broke on Friday" list, which after Section 11 you know is a real list.
 

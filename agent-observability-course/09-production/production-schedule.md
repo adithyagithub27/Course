@@ -10,7 +10,7 @@
 
 | # | Milestone | End of week | Exit criteria |
 |---|---|---|---|
-| M1 | Code freeze v1 + frozen fixture day | 3 | `make test` green offline (401 tests); `OFFLINE=1 make replay` reproduces `numbers-card.md` (seed 7, 2026-09-14, $56.28); numbers card regenerated for Sections 6-9, 11, 14; versions pinned (langfuse 4.15.x, opentelemetry-sdk 1.45.x, semconv 0.66b0, litellm 1.103.x, deepeval 4.2.x); live path (2.3) works with keys; three incident datasets final with solutions, plus incident 4 (solution instructor-only) |
+| M1 | Code freeze v1 + frozen fixture day | 3 | `make test` green offline (419 tests); `OFFLINE=1 make replay` reproduces `numbers-card.md` (seed 7, 2026-09-14, $56.28); numbers card regenerated for Sections 6-9, 11, 14; versions pinned (langfuse 4.15.x, opentelemetry-sdk 1.45.x, semconv 0.66b0, litellm 1.103.x, deepeval 4.2.x); live path (2.3) works with keys; three incident datasets final with solutions, plus incident 4 (solution instructor-only) |
 | M2 | Pilot lectures approved | 4 | 4 pilot lectures (1.2 SL, 2.3 SC live, 6.3 SC capture-heavy, 11.2 CH investigation) fully produced and QA'd; pipeline timing measured; Track C legibility confirmed on a phone |
 | M3 | Sections 1-5 recorded | 6 | Raw screencasts, captures and avatar renders done |
 | M4 | Sections 6-10 recorded | 8 | Same |

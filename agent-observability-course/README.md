@@ -19,7 +19,7 @@ Course 4 in the Build → Test → Deploy → Operate series. Complete productio
 | Level | Intermediate Python (beginner-safe first three sections) |
 | Stack | langfuse 4, opentelemetry-sdk 1.45, GenAI semconv 0.66, openinference, litellm, langsmith, deepeval, prometheus-client, fastapi, Docker Compose (Langfuse, OTel Collector, Prometheus, Grafana) |
 | Student cost | ≈$5-15 in API usage; everything runs offline via the mock LLM |
-| Deliverables | 1 GitHub repo (401 offline tests), 7 labs, 2 projects + capstone + domain swap, 5 challenges, 13 quizzes, 1 practice test, 5 coding exercises, 4 incident datasets (3 with reveals, 1 for Project 2) |
+| Deliverables | 1 GitHub repo (419 offline tests), 7 labs, 2 projects + capstone + domain swap, 5 challenges, 13 quizzes, 1 practice test, 5 coding exercises, 4 incident datasets (3 with reveals, 1 for Project 2) |
 
 ## Folder map
 
@@ -39,4 +39,4 @@ Course 4 in the Build → Test → Deploy → Operate series. Complete productio
 
 ## Version note
 
-Written against the package versions listed in `01-curriculum/curriculum.md` as installed on 2026-09-28. Re-run `make test` (401 passed) and `make budget-check` (5 passed) before recording and pin versions in `03-code/pyproject.toml`. The offline fixture day is `OFFLINE=1 make replay` with the Makefile defaults: seed 7, Monday 2026-09-14, tenants `ops`, `finance`, `hr`, `eng`, $56.28.
+Written against the package versions listed in `01-curriculum/curriculum.md` as installed on 2026-09-28. Re-run `make test` (419 passed) and `make budget-check` (5 passed) before recording and pin versions in `03-code/pyproject.toml`. The offline fixture day is `OFFLINE=1 make replay` with the Makefile defaults: seed 7, Monday 2026-09-14, tenants `ops`, `finance`, `hr`, `eng`, $56.28.

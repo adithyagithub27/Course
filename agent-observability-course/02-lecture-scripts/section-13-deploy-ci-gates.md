@@ -23,7 +23,7 @@ Pacing: narration is written at about 140 spoken words per minute. Word targets 
 | ID | Title | Type | Target | Spoken words (target) |
 |---|---|---|---|---|
 | 13.1 | Self-hosting Langfuse with Docker Compose | SC | 9:00 | ~659 |
-| 13.2 | OTel Collector as the traffic cop | SC | 7:00 | ~655 |
+| 13.2 | OTel Collector as the traffic cop | SC | 7:00 | ~690 |
 | 13.3 | Code-along: the CI budget gate | SC | 9:00 | ~755 |
 | 13.4 | Production readiness checklist for observability | SL | 6:00 | ~640 |
 | 13.5 | Chaos demo: kill the observability backend | DM | 5:00 | ~675 |
@@ -175,7 +175,7 @@ Your Langfuse is up. Next, we put a traffic cop in front of it, so Atlas never t
 |---|---|
 | ID | 13.2 |
 | Type | SC (screencast / code-along) |
-| Target duration | 7:00 (~655 spoken words; the rest is YAML and demo time) |
+| Target duration | 7:00 (~690 spoken words; the rest is YAML and demo time) |
 | Learning objectives | 1. Read a Collector config as a pipeline: receivers, processors, exporters. 2. Configure attribute masking and tail sampling once, for every backend. 3. Export the same spans to Langfuse and a second backend at the same time. |
 | Prerequisites | 13.1; Lectures 3.2, 4.6, 10.2, 12.1 |
 | Files used | `deploy/otel-collector.yaml`, `deploy/docker-compose.observability.yml`, `telemetry/otel_setup.py` |
@@ -231,7 +231,11 @@ processors:
 
 Receivers first. One OTLP receiver, listening on the two standard ports: four three one eight for HTTP, four three one seven for gRPC. Atlas sends HTTP.
 
-Processors. `memory_limiter` goes first in every pipeline; it drops data rather than letting the Collector die. Then `attributes/redact`, the second layer from Lecture 10.2. It *deletes* the content attributes outright: tool results, input and output messages, the system instructions, and Langfuse's own input and output fields. It *hashes* the tool arguments, which the SDK already masked, so identical calls still group. And it *deletes* `user.id` and `enduser.id`: the Collector's hash has no key, so a hash of an employee ID can be reversed by hashing every ID. The SDK's keyed pseudonym from Lecture 10.2 is the joinable one. The SDK-side `mask=` function from Lecture 4.6 still runs; this layer catches whatever the SDK missed, for every backend at once.
+Processors. `memory_limiter` goes first in every pipeline; it drops data rather than letting the Collector die. Then `attributes/redact`, the second layer from Lecture 10.2. It *deletes* the content attributes outright: tool results, input and output messages, the system instructions, and Langfuse's own input and output fields.
+
+[SCREEN: Zoom on the last three actions: `gen_ai.tool.call.arguments` `hash`, `user.id` and `enduser.id` `delete`.]
+
+It *hashes* the tool arguments, which the SDK already masked, so identical calls still group. And it *deletes* `user.id` and `enduser.id`: the Collector's hash has no key, so a hash of an employee ID can be reversed by hashing every ID. The SDK's keyed pseudonym from Lecture 10.2 is the joinable one. The SDK-side `mask=` function from Lecture 4.6 still runs; this layer catches whatever the SDK missed, for every backend at once.
 
 [CODE: tail sampling and batch, as shipped]
 ```yaml

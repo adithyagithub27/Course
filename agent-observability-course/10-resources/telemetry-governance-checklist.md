@@ -22,7 +22,7 @@ The running example is **Northwind Logistics** (fictional). Atlas handles employ
 ## 2. Minimise and mask (lecture 10.2)
 
 - [ ] **Decide what a span needs.** For a generation: model, usage, cost, latency, prompt *version*, a hash of the prompt. The prompt text itself is opt-in per environment.
-- [ ] **Mask in the SDK first:** Langfuse `mask=` function (`src/northwind/pii.py`) so PII never leaves the process. Mask emails, phones, employee ids, card numbers; keep **stable hashes** so you can still join a user's sessions without storing the identifier.
+- [ ] **Mask in the SDK first:** Langfuse `mask=` function (`src/northwind/pii.py`) so PII never leaves the process. Mask emails, phones, employee ids, card numbers; keep **keyed hashes** (HMAC-SHA256 with `ATLAS_PII_HASH_KEY`, generated with `python -c "import secrets; print(secrets.token_hex(32))"` and stored like any secret) so you can still join a user's sessions without storing the identifier. An unkeyed hash of an employee ID is reversible by hashing every ID; the demo key in the repo is public.
 - [ ] **Mask again in the OTel Collector** (`deploy/otel-collector.yaml` attribute processors) as defence in depth and to cover any exporter path that bypasses the SDK.
 - [ ] **Redact tool results** to what the investigation needs (status, counts, ids-as-hashes), not the full record (5.2).
 - [ ] **Sample** (4.6, 13.2): fewer full traces means less exposure. Keep 100% of metrics, a sample of full traces, and 100% of error traces with masking on.
