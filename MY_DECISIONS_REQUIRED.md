@@ -60,9 +60,9 @@ There are **11 items** that require your direct input. Each has a deadline tied 
 | **Needed By**| Week 9 (before avatar video generation begins)                      |
 | **Status**   | Pending                                                            |
 | **Category** | Production — Avatar                                                 |
-| **What**     | Choose the HeyGen avatar that narrates all lectures (shared by Courses 2–4). |
+| **What**     | Choose the HeyGen avatar that narrates all lectures (shared by Courses 2–4), then create the **course look** on it: white (or slate-blue) dress shirt under a charcoal blazer, over the premium `09-heygen/backgrounds/studio-navy.png` background. Full spec and steps in `09-heygen/avatar-config/PENDING.md`. |
 | **Why**      | All lecture videos are generated using this avatar. It must be selected and confirmed before any HeyGen API calls are made. |
-| **Deliverable** | Select the avatar in HeyGen, set its ID as the `HEYGEN_AVATAR_ID` environment variable on the production machine (never in the repo, `CLAUDE.md`), and record the avatar's **name** in `09-heygen/avatar-config/PENDING.md`. |
+| **Deliverable** | Select the avatar in HeyGen, set its ID as the `HEYGEN_AVATAR_ID` environment variable on the production machine (never in the repo, `CLAUDE.md`), and record the avatar's and the look's **names** in `09-heygen/avatar-config/PENDING.md`; upload the background with `heygen_batch.py upload-background` and set `HEYGEN_BACKGROUND_IMAGE`. |
 
 ---
 

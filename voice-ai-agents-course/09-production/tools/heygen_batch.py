@@ -9,6 +9,8 @@ Two subcommands:
 
 Usage:
     export HEYGEN_API_KEY=...  HEYGEN_AVATAR_ID=...  HEYGEN_VOICE_ID=...
+    python heygen_batch.py upload-background ../../../09-heygen/backgrounds/studio-navy.png
+    export HEYGEN_BACKGROUND_IMAGE=<asset id printed above>
     python heygen_batch.py generate ../scenes/section-03.json
     python heygen_batch.py poll     ../scenes/section-03.json --download-dir ../generated/S03
 
@@ -16,13 +18,17 @@ Endpoints used (verify against the current HeyGen API reference before the first
 batch; the script prints every URL it calls):
     POST https://api.heygen.com/v2/video/generate
     GET  https://api.heygen.com/v1/video_status.get?video_id=...
+    POST https://upload.heygen.com/v1/asset   (upload-background; raw image bytes)
 
 Environment:
     HEYGEN_API_KEY        required
     HEYGEN_AVATAR_ID      required for generate
     HEYGEN_VOICE_ID       required for generate
     HEYGEN_AVATAR_STYLE   default "normal"
-    HEYGEN_BACKGROUND     default "#0f172a" (solid colour)
+    HEYGEN_BACKGROUND_IMAGE  asset id (from `upload-background`) or https URL of the premium
+                          background PNG in 09-heygen/backgrounds/. Takes precedence.
+    HEYGEN_BACKGROUND_FIT default "cover" (cover | contain | crop | none)
+    HEYGEN_BACKGROUND     default "#0A1628" (solid colour; used only when no image is set)
     HEYGEN_SPEED          default "1.0"
     HEYGEN_BASE_URL       default https://api.heygen.com
 """
@@ -41,6 +47,23 @@ import requests
 BASE_URL = os.environ.get("HEYGEN_BASE_URL", "https://api.heygen.com")
 GENERATE_URL = f"{BASE_URL}/v2/video/generate"
 STATUS_URL = f"{BASE_URL}/v1/video_status.get"
+UPLOAD_URL = os.environ.get("HEYGEN_UPLOAD_URL", "https://upload.heygen.com/v1/asset")
+
+
+def background_spec() -> dict:
+    """Premium image background when HEYGEN_BACKGROUND_IMAGE is set, else a solid colour.
+
+    The image value is either an asset id returned by `upload-background` or a public https
+    URL. Verify the exact field names against the current HeyGen reference before the first
+    batch (the generate call prints its payload with --dry-run --show-payload).
+    """
+    image = os.environ.get("HEYGEN_BACKGROUND_IMAGE", "").strip()
+    fit = os.environ.get("HEYGEN_BACKGROUND_FIT", "cover")
+    if image.startswith("http://") or image.startswith("https://"):
+        return {"type": "image", "url": image, "fit": fit}
+    if image:
+        return {"type": "image", "image_asset_id": image, "fit": fit}
+    return {"type": "color", "value": os.environ.get("HEYGEN_BACKGROUND", "#0A1628")}
 
 
 def _headers() -> dict[str, str]:
@@ -80,10 +103,33 @@ def build_payload(scene: dict) -> dict:
                     "voice_id": os.environ["HEYGEN_VOICE_ID"],
                     "speed": float(os.environ.get("HEYGEN_SPEED", "1.0")),
                 },
-                "background": {"type": "color", "value": os.environ.get("HEYGEN_BACKGROUND", "#0f172a")},
+                "background": background_spec(),
             }
         ],
     }
+
+
+def cmd_upload_background(args: argparse.Namespace) -> int:
+    """Upload a background PNG as a HeyGen asset and print the asset id to export."""
+    path = Path(args.image)
+    if not path.exists():
+        raise SystemExit(f"{path} does not exist")
+    key = os.environ.get("HEYGEN_API_KEY")
+    if not key:
+        raise SystemExit("HEYGEN_API_KEY is not set")
+    content_type = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+    print(f"POST {UPLOAD_URL} ({path.name}, {path.stat().st_size // 1024} KB)")
+    resp = requests.post(UPLOAD_URL, headers={"X-Api-Key": key, "Content-Type": content_type},
+                         data=path.read_bytes(), timeout=120)
+    if resp.status_code != 200:
+        print(f"  error {resp.status_code}: {resp.text[:300]}", file=sys.stderr)
+        return 1
+    data = resp.json().get("data", {})
+    asset_id = data.get("id") or data.get("asset_id")
+    print(f"asset id: {asset_id}")
+    print(f"url:      {data.get('url', '')}")
+    print(f"\nexport HEYGEN_BACKGROUND_IMAGE={asset_id}")
+    return 0
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
@@ -107,6 +153,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
         payload = build_payload(scene)
         if args.dry_run:
             print(f"DRY RUN POST {GENERATE_URL} for {sid} ({scene['chars']} chars)")
+            if getattr(args, "show_payload", False):
+                print(json.dumps(payload, indent=2))
             continue
         print(f"POST {GENERATE_URL} for {sid} ({scene['chars']} chars, ~{scene['est_seconds']}s)")
         resp = requests.post(GENERATE_URL, headers=_headers(), json=payload, timeout=60)
@@ -183,7 +231,12 @@ def main() -> int:
     gen.add_argument("--max-chars", type=int, default=1400)
     gen.add_argument("--sleep", type=float, default=1.0, help="seconds between submissions")
     gen.add_argument("--dry-run", action="store_true")
+    gen.add_argument("--show-payload", action="store_true", help="with --dry-run, print the JSON payload")
     gen.set_defaults(func=cmd_generate)
+
+    up = sub.add_parser("upload-background", help="upload a background PNG as a HeyGen asset")
+    up.add_argument("image", type=Path)
+    up.set_defaults(func=cmd_upload_background)
 
     poll = sub.add_parser("poll", help="check status and download finished videos")
     poll.add_argument("manifest", type=Path)

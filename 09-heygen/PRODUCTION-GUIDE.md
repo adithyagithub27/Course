@@ -74,7 +74,7 @@ Count your words. If a script runs long, cut — don't speed up.
 
 6. **No captions/subtitles as the primary visual.** Captions are supplementary. The primary visual must be a diagram, code, demo, or avatar.
 
-7. **Same avatar, voice, colors, and fonts across ALL lectures.** Visual consistency builds trust. Never switch mid-course.
+7. **Same avatar, look, background, voice, colors, and fonts across ALL lectures.** The look is the premium one in `avatar-config/` (white or slate-blue shirt, charcoal blazer) over `backgrounds/studio-navy.png`. Visual consistency builds trust. Never switch mid-course.
 
 8. **Audio: –16 LUFS loudness target.** Normalize all final exports. Viewers watch on laptops and phones — consistent loudness matters.
 

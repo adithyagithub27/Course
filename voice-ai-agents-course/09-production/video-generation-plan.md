@@ -67,7 +67,7 @@ If you choose Option A, at minimum record the call demos with your real voice an
 
 ### 4.1 One-time setup
 
-1. Choose or create the avatar (business casual, neutral dark background `#0f172a` or the course design-system colour). Record the avatar ID in `../../09-heygen/avatar-config/PENDING.md` (rename to `avatar-config.md` once filled).
+1. Choose or create the avatar, then create the course look on it (white or slate-blue dress shirt, charcoal blazer) and upload the premium background `09-heygen/backgrounds/studio-navy.png` (`heygen_batch.py upload-background`); spec in `09-heygen/avatar-config/PENDING.md`. Record the avatar ID in `../../09-heygen/avatar-config/PENDING.md` (rename to `avatar-config.md` once filled).
 2. Create the voice: clone from 2-3 minutes of clean speech (Option B) or pick a stock voice (Option A). Record the voice ID.
 3. Generate a 30-second test with a paragraph from lecture 1.4 (contains numbers, "LiveKit", "Riley", "SIP", "OpenAI"). Check pronunciation, pacing at ~140 wpm, and lip sync.
 4. Fix pronunciations once with a pronunciation glossary (see `tools/pronunciation.json`): LiveKit, Pipecat, Cartesia, Deepgram, SIP, PSTN, WebRTC, VAD, Riley, Twilio, Langfuse, RAG, LLM, TTS, STT, p95.
@@ -254,7 +254,7 @@ Blocking (needed before Week 1 ends):
 | 5 | LiveKit Cloud project for demos, with egress/recording enabled if available | Track C setup 1 |
 | 6 | Deepgram and Cartesia keys (or LiveKit Inference only) | Riley must run for demos |
 | 7 | Twilio account upgraded from trial, one phone number for Riley, one destination number for transfer demos | Section 8 and 13 |
-| 8 | Brand: background colour, font, lower-third style, whether to disclose the AI avatar in lecture 1.5 | Consistency and policy |
+| 8 | Brand: **decided 2026-10-04**: premium look (white or slate-blue shirt, charcoal blazer) over `09-heygen/backgrounds/studio-navy.png`; fonts and lower thirds per the design system. Still open: whether to disclose the AI avatar in lecture 1.5 | Consistency and policy |
 
 Non-blocking (needed by Week 6):
 
