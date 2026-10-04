@@ -17,7 +17,7 @@ Lecture 14.1a is a gate, not a formality. **After reading this brief, stop watch
 - **Time box: one week** from the day you start. Put the end date in your calendar now.
 - Lectures 14.2 to 14.4 are the **reference solution**. Watching them first turns a portfolio project into a typing exercise, and interviewers can tell the difference when they ask "why did you choose that sampling policy?"
 - **Allowed while you build:** your own Labs 1 to 7 and Projects 1 and 2, everything in `src/northwind/`, `telemetry/`, `simulator/`, `evals/`, `deploy/`, the Langfuse, OpenTelemetry, LiteLLM, Prometheus and Grafana docs, and the Q&A board (ask about concepts, not for the capstone code).
-- **Not allowed until the week is over:** `03-code/console/ops_console.py`'s reference pages beyond what Lab 5 used, `src/northwind/report.py::weekly_report` (write your own), and lectures 14.2 to 14.4.
+- **Not allowed until the week is over:** the reference Ops Console (`03-code/console/ops_console.py` and `console/pages/`) beyond what Lab 5 used (build yours as `console/my_ops_console.py`), `src/northwind/report.py::weekly_report` (write your own), and lectures 14.2 to 14.4.
 - **Stuck for more than 90 minutes on one thing?** Write down what you tried, cut the scope (see "minimum viable capstone"), and move on. Unfinished-but-honest beats finished-but-copied.
 - **When the week ends**, whatever state you are in: watch 14.2 to 14.4, then write `DIFF_NOTES.md` listing three things the reference does differently from you and whether you adopted each one.
 
@@ -39,11 +39,11 @@ Suggested week plan:
 
 ## Scenario
 
-Northwind's CTO, Amara Diallo, has approved Atlas for company-wide rollout on one condition:
+Priya Raman, Engineering Manager at Northwind Logistics (fictional), runs engineering. Atlas has been in pilot with one department, and she won't roll it out to all four (`ops`, `finance`, `hr`, `eng`) until she gets four things:
 
-> "I want an operations console I can open on Monday morning and know, in two minutes, what Atlas cost last week and per department, whether people got their answers, whether it was fast, and whether anything went wrong that we did not catch. If it starts burning money at 2 a.m., I want it to stop itself and page someone. And I want a one-page report I can forward to finance and to the department heads without editing. Show me it works under the five failure modes your team keeps talking about."
+> "Before I put Atlas in front of all four departments I need to know: what it costs per resolved question, by department; whether it's getting better or worse week over week; that someone gets paged before finance does; and that a bad change can't reach production without a number telling us so. Show me the console, show me the report, show me the pull request that failed."
 
-The five failure modes are the simulator scenarios: `loop`, `context_bloat`, `retry_storm`, `slow_provider`, `prompt_regression`. You are the engineer presenting at the go-live review.
+Show her it also works under the five failure modes your team keeps talking about. The five failure modes are the simulator scenarios: `loop`, `context_bloat`, `retry_storm`, `slow_provider`, `prompt_regression`. You are the engineer presenting at the go-live review.
 
 ---
 
@@ -61,7 +61,7 @@ Build in your fork. Keep `make test`, `make budget-check` and `make eval` as the
 | **Dashboards and alerts** | `/metrics` with low-cardinality labels; Grafana Atlas Ops dashboard with tenant variable and release annotations; Langfuse saved views by tag; at least three alert rules (tool error spike, cost anomaly, burn rate) each with a runbook. |
 | **Privacy and governance** | SDK-side masking (`mask=`) plus collector-side redaction; hashed user ids; retention and environment separation documented; a telemetry governance checklist filled in. |
 | **Deployment** | Collector with tail sampling and two exporters; self-hosted Langfuse via Compose (or Cloud with a documented reason); Atlas keeps serving when the backend is down; CI with unit, integration, budget gate (always) and live evals (with secrets). |
-| **Ops Console** | Streamlit pages: Overview, Cost, Latency, Quality, Budgets, Incidents, Trace explorer, reading from the local store and/or Langfuse. |
+| **Ops Console** | Your own Streamlit console (`console/my_ops_console.py`) with at least Cost, Latency, Quality, Budgets, Alerts and Traces pages, reading from the local store and/or Langfuse. The reference console's pages are Live cost, Cost, Latency, Quality, Budgets, Traffic, Retrieval, Reliability, Safety, Alerts, Traces and Compare replays. |
 | **Weekly report** | Your own `weekly_report()` producing a one-page Markdown: cost (with week-on-week), quality, latency, incidents, budget status, three recommendations. |
 | **Incidents** | All five scenarios run through the full stack with evidence that each was detected (alert or drift) and contained (budget, step limit, breaker or rollback), plus a two-paragraph note per scenario. |
 
@@ -78,7 +78,7 @@ flowchart LR
         api[/chat  /feedback<br/>/metrics  /healthz]
         agent[AtlasAgent loop<br/>step spans, step limit<br/>guardrail]
         tools[Tools: search_knowledge_base<br/>lookup_ticket, create_ticket<br/>reset_password, check_shipment]
-        router[LiteLLM Router<br/>mini → nano fallback<br/>gpt-4.1 escalation<br/>timeouts, retries, breaker]
+        router[LiteLLM Router<br/>mini → gpt-4o-mini fallback<br/>gpt-4.1 escalation<br/>timeouts, retries, breaker]
         budget[BudgetGuard<br/>soft/hard caps, EWMA]
         diet[Context diet +<br/>prompt cache key]
         mask[PII mask]
@@ -113,7 +113,7 @@ ASCII version (for READMEs that do not render Mermaid):
  ┌──────────────── Atlas service (FastAPI) ────────────┼───────────────────────┐
  │  /chat /feedback /metrics /healthz                  │                       │
  │  AtlasAgent loop ── context diet + cache key ── LiteLLM Router ────────────┘│
- │     │  step spans, step limit, guardrail            (mini→nano fallback,     │
+ │     │  step spans, step limit, guardrail            (mini→4o-mini fallback,   │
  │     ├── Tools: search_kb, lookup_ticket, create_ticket,  gpt-4.1 escalation, │
  │     │          reset_password, check_shipment            timeouts, breaker)  │
  │     ├── BudgetGuard (soft/hard caps, EWMA anomaly)                           │
@@ -151,22 +151,22 @@ Each test states its layer: **U** unit, **I** integration (offline, in-memory ex
 | AT-06 | Redaction | A tool result containing an email, a phone and an employee id reaches the exporter with all three masked; the collector's file export shows the same | I + M |
 | AT-07 | Cost per generation | For a generation with 1,200 input (900 cached) and 180 output tokens on gpt-4.1-mini, the span cost is $0.000498 ± 1e-6 | U |
 | AT-08 | Escalation priced | An escalated request shows a gpt-4.1 generation whose cost is computed at gpt-4.1 prices (about 5× mini for the same tokens) | I |
-| AT-09 | Roll-ups | Over the replayed baseline day, tenant shares sum to 100% ± 0.1 and cost per resolved session ≥ cost per session for every tenant | R |
+| AT-09 | One cost, three places | For the same traffic, total cost agrees within 2% across the span store (console), the Prometheus counter `atlas_cost_usd_total` and the weekly report; over the replayed baseline day, tenant shares sum to 100% ± 0.1 | R + M |
 | AT-10 | Caching saves | Replaying the day with `ATLAS_PROMPT_CACHE=1` vs `0` reduces input-token cost by at least 30% with identical outputs | R |
 | AT-11 | Context diet | With `ATLAS_CONTEXT_DIET=1`, no generation's input exceeds `history_token_budget + tool schema + system` and mean tokens per step falls by at least 20% vs diet off | R |
 | AT-12 | Routing | With `ATLAS_ROUTER_MODE=1`, at most 10% of generations use gpt-4.1 on the baseline day and the judge `resolved` score drops by at most 0.02 | R + E |
 | AT-13 | Soft cap | When a tenant's rolling spend passes the soft cap, requests are served by the degraded model and `atlas_budget_decisions_total{decision="degrade"}` increments | U + R |
-| AT-14 | Hard cap | When a tenant passes the hard cap, `/chat` returns a polite refusal (HTTP 200 with `stopped_reason="budget"`), makes **no** LLM call, and the counter for `refuse` increments | I |
-| AT-15 | Anomaly | On the `context_bloat` day, the EWMA detector flags the affected tenant within 2 hours of onset and the cost anomaly alert fires | R + M |
+| AT-14 | Hard cap | When a tenant passes the hard cap, `/chat` returns HTTP 429 with a polite refusal and `outcome="refused"`, makes **no** LLM call, and `atlas_budget_decisions_total{decision="refuse"}` increments | I |
+| AT-15 | Anomaly | On the `context_bloat` day, the EWMA detector flags the affected tenant within 2 hours of onset (the reference flags `ops` from 09:30, 30 minutes after onset) and an alert fires: the Ops Console Alerts page on the replay, or `AtlasTenantCostAnomaly` on a stack with a day of history | R + M |
 | AT-16 | Loop contained | On the `loop` day, no request exceeds `max_steps`, every stopped request has a `step_limit_reached` event, and the loop day costs at most 1.5× baseline | R |
 | AT-17 | Retry storm | On the `retry_storm` day, no session creates duplicate tickets (idempotency), retries per request ≤ `max_retries`, and the tool error spike alert fires | R + M |
-| AT-18 | Slow provider | On the `slow_provider` day, p95 ≤ 4,000 ms, error rate ≤ 2%, fallbacks occur, and cost per session ≤ $0.05 | R |
+| AT-18 | Slow provider | On the `slow_provider` day, p95 ≤ 4,000 ms, error rate ≤ 2%, fallbacks occur, and cost per session ≤ $0.05. Measure it against the running service with your timeout, retry and router settings (Lab 4); the shipped offline replay does not apply those knobs, so its `slow_provider` p95 is your "before" number, not the test | R + M |
 | AT-19 | Prompt regression | On the `prompt_regression` week, the drift report flags `grounded` (PSI ≥ 0.1) and the by-prompt-version table isolates v2; rolling the `production` label back to v1 restores scores in a re-replay | R + E |
 | AT-20 | Judge cost | The judge's own cost is recorded and reported as a percentage of serving cost, and tail sampling keeps 100% of error traces at ≤ 30% of judge calls | E |
-| AT-21 | Metrics cardinality | `/metrics` exposes no label named `user_id`, `session_id`, `trace_id` or `employee_id`, and `atlas_request_latency_seconds` has ≤ 40 series | U |
-| AT-22 | Alerts and runbooks | Three alert rules exist, each with a `runbook_url` that resolves to a file in the repo, and each has been seen `FIRING` in a recorded replay | M |
+| AT-21 | Metrics cardinality | `/metrics` exposes no label named `user_id`, `session_id`, `trace_id` or `employee_id`, and `atlas_request_latency_seconds` has at most 448 series (labels `tenant` × `feature` only: 4 × 7 × 16 bucket, count and sum series) | U |
+| AT-22 | Alerts and runbooks | Three alert rules exist, each with a `runbook` annotation that resolves to a file in the repo and an `owner` label, and each has been seen firing (Grafana/Prometheus, or the Ops Console Alerts page on a replayed scenario) | M |
 | AT-23 | Backend chaos | With Langfuse (or the collector) stopped for 5 minutes under 2 RPS, Atlas p95 changes by less than 10% and `/healthz` stays green; dropped-span count is reported | M |
-| AT-24 | CI gate | A PR that sets `ATLAS_TOP_K=12` fails the budget gate with a comment showing cost per session over budget; the revert passes; the deployed commit has a green run | M |
+| AT-24 | CI gate | A PR that sets `ATLAS_TOP_K=20` in the budget-gate job fails `make budget-check` on p95 latency and on input tokens per generation (reference run: p95 4,120 ms > 4,000; 34,990 tokens > 24,000), with each failure naming its number; the revert passes; the deployed commit has a green run | M |
 
 ---
 
@@ -205,13 +205,13 @@ Each test states its layer: **U** unit, **I** integration (offline, in-memory ex
 ## Hints
 
 1. Day 1 is an audit, not a rewrite. Run the baseline replay, open five traces, and list what is missing against AT-01 to AT-06 before touching code.
-2. Measure every cost control on the **same seed**. "Caching saved 34%" means nothing without "on replay seed 42, prompt v1, diet off".
+2. Measure every cost control on the **same seed**. "Caching saved 34%" means nothing without "on replay seed 7, prompt v1, diet off".
 3. Put the hard cap check **before** the LLM call and test that the mock records zero calls (AT-14). The most common bug is refusing *after* paying.
 4. The `slow_provider` tuning from Lab 4 is a starting point, not the answer; your router config also has to survive `retry_storm` without exploding cost. Run both.
 5. Tail sampling and the judge sampling policy are different decisions. Keep 100% of errors for investigation; measure quality on the uniform slice; say so on the Quality page.
-6. Write the three alert rules with ratio, minimum-traffic guard, `for` and `runbook_url` (Lab 6). Then make each fire with a scenario and screenshot it; that is AT-22.
+6. Write the three alert rules with ratio, minimum-traffic guard, `for`, an `owner` label and a `runbook` annotation (Lab 6). In the shipped `deploy/alerts.yml` only `AtlasLatencyP95High` has a runbook and none has an owner. Then make each fire with a scenario and screenshot it; that is AT-22.
 7. For AT-23, stop the collector rather than Langfuse if you want the harder version: Atlas's own exporter queue is smaller than the collector's.
-8. Write the weekly report last, from the console's numbers, and read it as Amara would: two minutes, no jargon, three recommendations with dollars.
+8. Write the weekly report last, from the console's numbers, and read it as Priya would: two minutes, no jargon, three recommendations with dollars.
 9. Decide your targets before measuring and write them in `ACCEPTANCE.md`. Moving targets after the fact is the first thing a reviewer notices.
 
 ---
@@ -237,15 +237,15 @@ Copy this into your repository README (lecture 14.5).
 [diagram image or Mermaid block]
 [2 to 3 sentences: why OTel + Langfuse + Prometheus, what is portable and what is not]
 
-## Results (replayed baseline week, seed 42)
+## Results (replayed baseline day, seed 7)
 | Metric | Before | After | Target |
 |---|---|---|---|
 | Cost per resolved session | $___ | $___ | ≤ $0.05 |
-| Weekly cost | $___ | $___ | -40% (Challenge 6.8) |
+| Daily cost | $___ | $___ | -40% (Challenge 6.8) |
 | Cache hit ratio | ___% | ___% | ≥ 60% |
 | p95 latency (slow_provider day) | ___ ms | ___ ms | ≤ 4,000 ms |
 | Judge resolved / grounded | ___ / ___ | ___ / ___ | no more than -0.02 |
-| Judge cost as % of serving | ___% | ___% | ≤ 2% |
+| Judge cost as % of serving | ___% | ___% | ≤ 3% |
 
 ## Failure modes handled
 | Scenario | Detected by | Contained by | Evidence |
@@ -288,7 +288,7 @@ Every request is traced with OpenTelemetry's GenAI conventions into Langfuse, pr
 token (cached tokens included), rolled up per department and per resolved session, and
 guarded by per-tenant budgets that degrade, then refuse, then page.
 
-On a replayed week of traffic, prompt caching, a context diet and small-model-first routing
+On a replayed day of traffic, prompt caching, a context diet and small-model-first routing
 cut cost by [X]% with a [Y] change in judge scores, and the stack held p95 under 4 seconds
 through a simulated provider outage. Five failure modes (runaway loop, context bloat, retry
 storm, slow provider, silent prompt regression) are each detected and contained, with a
@@ -318,11 +318,11 @@ Submit through the **Capstone: The Atlas Ops Console** assignment in lecture 14.
 - [ ] A real trace (Langfuse or Ops Console) shows agent, step, generation, tool and retriever spans with usage and cost on the generation.
 - [ ] Cached tokens are priced at the cached rate and the escalation model at its own rate (look for the test, not just the claim).
 - [ ] Cost per resolved session is the headline number and is explained.
-- [ ] Each cost saving is measured before/after on the same seed.
+- [ ] Each cost saving is measured before/after on the same seed (the Makefile default is seed 7).
 - [ ] The hard cap refuses **without** an LLM call (there is a test).
 - [ ] p95 under 4 s during `slow_provider` was achieved without falling back to the expensive model.
 - [ ] The judge's cost is reported; headline quality comes from the uniform slice.
-- [ ] Three alerts with runbooks, each seen firing.
+- [ ] Three alerts with runbooks and owners, each seen firing.
 - [ ] The CI gate is shown failing and passing.
 - [ ] `ACCEPTANCE.md` shows at least 15 of 24 passing with evidence links.
 - [ ] The weekly report could be forwarded to finance without editing.
